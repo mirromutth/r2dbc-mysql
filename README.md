@@ -7,6 +7,12 @@ This implementation is NOT OFFICIAL, official implementations are all in
 
 **THIS IS ONLY AN EXPERIMENT AND NOT SUPPORTED SOFTWARE FOR NOW**
 
+## Version compatibility
+
+### MySQL
+
+- At least higher than or equal to `5.5.x GA`, low version will not be guaranteed.
+
 ## License
 
 This project is released under version 2.0 of the [Apache License][l].
