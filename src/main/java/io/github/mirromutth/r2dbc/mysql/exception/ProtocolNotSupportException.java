@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
+package io.github.mirromutth.r2dbc.mysql.exception;
 
-import io.github.mirromutth.r2dbc.mysql.message.Packet;
+import io.r2dbc.spi.R2dbcException;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * The MySQL server protocol version is not support, check version compatibility on README.
  */
-public interface BackendMessage extends Packet {
+public final class ProtocolNotSupportException extends R2dbcException {
+
+    public ProtocolNotSupportException(int code) {
+        super("MySQL protocol version " + code + "not support.");
+    }
 }

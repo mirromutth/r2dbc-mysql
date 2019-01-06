@@ -16,30 +16,28 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.HandshakeVersion;
+import io.github.mirromutth.r2dbc.mysql.message.AbstractPacket;
+import io.github.mirromutth.r2dbc.mysql.message.PacketHeader;
 
 import static java.util.Objects.requireNonNull;
 
 /**
  * A handshake packet message from the MySQL server
  */
-abstract class AbstractHandshakeMessage implements BackendMessage {
+abstract class AbstractHandshakeMessage extends AbstractPacket implements BackendMessage {
 
-    private final String serverVersion; // MySQL server version (human readable)
-    private final int connectionId; // MySQL server thread id (also connection id)
+    private final HandshakeHeader handshakeHeader;
 
-    AbstractHandshakeMessage(String serverVersion, int connectionId) {
-        this.serverVersion = requireNonNull(serverVersion);
-        this.connectionId = connectionId;
+    AbstractHandshakeMessage(
+        PacketHeader packetHeader,
+        HandshakeHeader handshakeHeader
+    ) {
+        super(packetHeader);
+
+        this.handshakeHeader = requireNonNull(handshakeHeader);
     }
 
-    public abstract HandshakeVersion getVersion();
-
-    public String getServerVersion() {
-        return serverVersion;
-    }
-
-    public int getConnectionId() {
-        return connectionId;
+    public final HandshakeHeader getHandshakeHeader() {
+        return handshakeHeader;
     }
 }

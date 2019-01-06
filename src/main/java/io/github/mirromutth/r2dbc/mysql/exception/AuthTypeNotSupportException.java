@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
+package io.github.mirromutth.r2dbc.mysql.exception;
 
-import io.github.mirromutth.r2dbc.mysql.message.Packet;
+import io.r2dbc.spi.R2dbcException;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * Authentication plugin type (aka. name) is not support.
  */
-public interface BackendMessage extends Packet {
+public final class AuthTypeNotSupportException extends R2dbcException {
+
+    public AuthTypeNotSupportException(String nativeName, Throwable e) {
+        super("Authentication plugin type \"" + nativeName + "\" not support", e);
+    }
 }

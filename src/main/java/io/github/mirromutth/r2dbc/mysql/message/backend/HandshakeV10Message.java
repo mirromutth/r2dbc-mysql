@@ -17,41 +17,237 @@
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-import io.github.mirromutth.r2dbc.mysql.constant.HandshakeVersion;
+import io.github.mirromutth.r2dbc.mysql.constant.Handshakes;
+import io.github.mirromutth.r2dbc.mysql.constant.ServerCapability;
+import io.github.mirromutth.r2dbc.mysql.message.PacketHeader;
+import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.util.EnumUtils;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
+import reactor.util.annotation.Nullable;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
 
 import static java.util.Objects.requireNonNull;
 
 /**
  * MySQL Handshake Packet for protocol version 10
  */
-public final class HandshakeV10Message extends AbstractHandshakeMessage {
+public final class HandshakeV10Message extends AbstractHandshakeMessage implements BackendMessage {
 
-    private final byte[] seed;
+    private final byte[] scramble;
+
     private final int serverCapabilities;
-    private final int charCollation;
-    private final int serverStatuses;
-    private final AuthType authType;
 
-    public HandshakeV10Message(
-            String serverVersion,
-            int connectionId,
-            byte[] seed,
-            int serverCapabilities,
-            int charCollation,
-            int serverStatuses,
-            AuthType authType
+    /**
+     * Character collation, MySQL give lower 8-bits only.
+     */
+    private final byte collationLow8Bits;
+
+    private final short serverStatuses;
+
+    @Nullable
+    private final AuthType authType; // null if PLUGIN_AUTH flag not exists in serverCapabilities
+
+    private HandshakeV10Message(
+        PacketHeader packetHeader,
+        HandshakeHeader handshakeHeader,
+        byte[] scramble,
+        int serverCapabilities,
+        byte collationLow8Bits,
+        short serverStatuses,
+        @Nullable AuthType authType
     ) {
-        super(serverVersion, connectionId);
+        super(packetHeader, handshakeHeader);
 
-        this.seed = requireNonNull(seed);
+        this.scramble = requireNonNull(scramble);
         this.serverCapabilities = serverCapabilities;
-        this.charCollation = charCollation;
+        this.collationLow8Bits = collationLow8Bits;
         this.serverStatuses = serverStatuses;
-        this.authType = requireNonNull(authType);
+        this.authType = authType;
+    }
+
+    public static HandshakeV10Message decode(ByteBuf buf) {
+        Builder builder = new Builder().withPacketHeader(CodecUtils.readPacketHeader(buf))
+            .withHandshakeHeader(HandshakeHeader.decode(buf));
+        CompositeByteBuf scramble = Unpooled.compositeBuffer(2);
+
+        try {
+            // After handshake header, MySQL give scramble first part (should be 8-bytes always).
+            ByteBuf scrambleFirstPart = CodecUtils.readCString(buf);
+
+            // No need release `scrambleFirstPart`, it will release with `scramble`
+            scramble.addComponent(true, scrambleFirstPart);
+
+            return afterScrambleFirstPart(builder, buf, scramble, scrambleFirstPart.readableBytes()).build();
+        } finally {
+            ReferenceCountUtil.release(scramble);
+        }
+    }
+
+    private static Builder afterScrambleFirstPart(
+        Builder builder,
+        ByteBuf buf,
+        CompositeByteBuf scramble,
+        int scrambleFirstPartSize
+    ) {
+        CompositeByteBuf capabilities = Unpooled.compositeBuffer(2);
+
+        try {
+            // After scramble first part, MySQL give the Server Capabilities first part (always 2-bytes).
+            // No need release `capabilities` first part, it will release with `capabilities`
+            capabilities.addComponent(true, buf.readBytes(2));
+
+            // New protocol with 16 bytes to describe server character, but MySQL give lower 8-bits only.
+            builder.withCollationLow8Bits(buf.readByte())
+                .withServerStatuses(buf.readShortLE());
+
+            // No need release `capabilities` second part, it will release with `capabilities`
+            int serverCapabilities = capabilities.addComponent(true, buf.readBytes(2))
+                .readIntLE();
+
+            builder.withServerCapabilities(serverCapabilities);
+
+            short scrambleSize = 0;
+
+            boolean isPluginAuth = (serverCapabilities & ServerCapability.PLUGIN_AUTH.getFlag()) != 0;
+
+            if (isPluginAuth) {
+                scrambleSize = buf.readUnsignedByte();
+            } else {
+                buf.readByte(); // if PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
+            }
+
+            // Reserved field, all bytes are 0x00.
+            buf.readerIndex(buf.readerIndex() + Handshakes.RESERVED_SIZE);
+
+            int scrambleSecondPartSize = Math.max(
+                Handshakes.MIN_SCRAMBLE_SECOND_PART_SIZE,
+                scrambleSize - scrambleFirstPartSize - 1
+            );
+
+            ByteBuf scrambleSecondPart = buf.readBytes(scrambleSecondPartSize);
+
+            // Always 0x00, and it is not scramble part, ignore.
+            buf.readByte();
+
+            // No need release scramble second part, it will release with `scramble`
+            builder.withScramble(ByteBufUtil.getBytes(scramble.addComponent(true, scrambleSecondPart)));
+
+            if (isPluginAuth) {
+                ByteBuf authTypeName = CodecUtils.readCString(buf);
+
+                try {
+                    builder.withAuthType(EnumUtils.authType(authTypeName.toString(Charset.defaultCharset())));
+                } finally {
+                    ReferenceCountUtil.release(authTypeName);
+                }
+            }
+
+            return builder;
+        } finally {
+            ReferenceCountUtil.release(capabilities);
+        }
+    }
+
+    public byte[] getScramble() {
+        return scramble;
+    }
+
+    public int getServerCapabilities() {
+        return serverCapabilities;
+    }
+
+    public byte getCollationLow8Bits() {
+        return collationLow8Bits;
+    }
+
+    public short getServerStatuses() {
+        return serverStatuses;
+    }
+
+    @Nullable
+    public AuthType getAuthType() {
+        return authType;
     }
 
     @Override
-    public HandshakeVersion getVersion() {
-        return HandshakeVersion.V10;
+    public String toString() {
+        return "HandshakeV10Message{" +
+            "scramble=" + Arrays.toString(scramble) +
+            ", serverCapabilities=" + serverCapabilities +
+            ", collationLow8Bits=" + collationLow8Bits +
+            ", serverStatuses=" + serverStatuses +
+            ", authType=" + authType +
+            ", handshakeHeader=" + getHandshakeHeader() +
+            ", packetHeader=" + getPacketHeader() +
+            '}';
+    }
+
+    private static final class Builder {
+
+        private PacketHeader packetHeader;
+
+        private HandshakeHeader handshakeHeader;
+
+        private AuthType authType; // null if PLUGIN_AUTH flag not exists in serverCapabilities
+
+        private byte collationLow8Bits;
+
+        private byte[] scramble;
+
+        private int serverCapabilities;
+
+        private short serverStatuses;
+
+        private Builder() {
+        }
+
+        HandshakeV10Message build() {
+            return new HandshakeV10Message(
+                packetHeader,
+                handshakeHeader,
+                scramble,
+                serverCapabilities,
+                collationLow8Bits,
+                serverStatuses,
+                authType
+            );
+        }
+
+        void withAuthType(AuthType authType) {
+            this.authType = authType;
+        }
+
+        Builder withCollationLow8Bits(byte collationLow8Bits) {
+            this.collationLow8Bits = collationLow8Bits;
+            return this;
+        }
+
+        Builder withHandshakeHeader(HandshakeHeader handshakeHeader) {
+            this.handshakeHeader = handshakeHeader;
+            return this;
+        }
+
+        Builder withPacketHeader(PacketHeader packetHeader) {
+            this.packetHeader = packetHeader;
+            return this;
+        }
+
+        void withScramble(byte[] scramble) {
+            this.scramble = scramble;
+        }
+
+        void withServerCapabilities(int serverCapabilities) {
+            this.serverCapabilities = serverCapabilities;
+        }
+
+        void withServerStatuses(short serverStatuses) {
+            this.serverStatuses = serverStatuses;
+        }
     }
 }

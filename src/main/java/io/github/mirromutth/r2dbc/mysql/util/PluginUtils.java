@@ -18,7 +18,9 @@ package io.github.mirromutth.r2dbc.mysql.util;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.plugin.AuthPlugin;
+import io.github.mirromutth.r2dbc.mysql.plugin.CachingSha2PasswordAuthPlugin;
 import io.github.mirromutth.r2dbc.mysql.plugin.NativePasswordAuthPlugin;
+import io.github.mirromutth.r2dbc.mysql.plugin.Sha256PasswordAuthPlugin;
 
 import static java.util.Objects.requireNonNull;
 
@@ -27,16 +29,14 @@ import static java.util.Objects.requireNonNull;
  */
 public class PluginUtils {
 
-    public static AuthPlugin getAuthPlugin(AuthType type)  {
+    public static AuthPlugin getAuthPlugin(AuthType type) {
         switch (requireNonNull(type)) {
             case MYSQL_NATIVE_PASSWORD:
                 return NativePasswordAuthPlugin.getInstance();
             case SHA256_PASSWORD:
-                // TODO: implement Sha256PasswordAuthPlugin
-                break;
+                return Sha256PasswordAuthPlugin.getInstance();
             case CACHING_SHA2_PASSWORD:
-                // TODO: implement CachingSha2PasswordAuthPlugin
-                break;
+                return CachingSha2PasswordAuthPlugin.getInstance();
         }
 
         throw new IllegalArgumentException("Unsupported authentication plugin type " + type);

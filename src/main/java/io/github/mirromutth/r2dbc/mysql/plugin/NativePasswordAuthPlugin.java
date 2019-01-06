@@ -22,20 +22,21 @@ import reactor.util.annotation.Nullable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
 import static java.util.Objects.requireNonNull;
 
 /**
  * MySQL Authentication Plugin for "mysql_native_password"
  */
-public class NativePasswordAuthPlugin implements AuthPlugin {
+public final class NativePasswordAuthPlugin implements AuthPlugin {
 
-    private final static NativePasswordAuthPlugin INSTANCE = new NativePasswordAuthPlugin();
-    private final static byte[] EMPTY_BYTES = new byte[0];
-
-    private NativePasswordAuthPlugin() {}
+    private static final NativePasswordAuthPlugin INSTANCE = new NativePasswordAuthPlugin();
 
     public static NativePasswordAuthPlugin getInstance() {
         return INSTANCE;
+    }
+
+    private NativePasswordAuthPlugin() {
     }
 
     @Override
@@ -47,21 +48,21 @@ public class NativePasswordAuthPlugin implements AuthPlugin {
      * SHA1(password) all bytes xor SHA1( "random data from MySQL server" + SHA1(SHA1(password)) )
      *
      * @param password plaintext password
-     * @param seed 20 bytes random seed from MySQL server
-     * @return encrypted authentication password
+     * @param scramble random scramble from MySQL server
+     * @return encrypted authentication if password is not null, otherwise empty byte array.
      */
     @Override
-    public byte[] encrypt(@Nullable byte[] password, byte[] seed) {
+    public byte[] encrypt(@Nullable byte[] password, byte[] scramble) {
         if (password == null) {
             return EMPTY_BYTES;
         }
 
-        requireNonNull(seed);
+        requireNonNull(scramble);
 
         MessageDigest digest = newSha1Digest();
         byte[] oneRound = finalDigests(digest, password);
         byte[] twoRounds = finalDigests(digest, oneRound);
-        byte[] result = finalDigests(digest, seed, twoRounds);
+        byte[] result = finalDigests(digest, scramble, twoRounds);
 
         for (int i = 0; i < result.length; ++i) {
             result[i] ^= oneRound[i];

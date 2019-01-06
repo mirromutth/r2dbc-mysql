@@ -14,12 +14,30 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
-
-import io.github.mirromutth.r2dbc.mysql.message.Packet;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * Protocol versions for MySQL Protocol, not support version 9.
+ * <p>
+ * Can NOT promise the {@link #name()} always equals than {@code "V$code"}
  */
-public interface BackendMessage extends Packet {
+public enum ProtocolVersion {
+
+    V10(10);
+
+    private final int code;
+
+    ProtocolVersion(int code) {
+        this.code = code;
+    }
+
+    /**
+     * Do NOT use it outer than {@code r2dbc-mysql}, because it is native flag code of MySQL,
+     * we can NOT promise it will be never changes.
+     *
+     * @return the native flag code
+     */
+    public int getCode() {
+        return code;
+    }
 }

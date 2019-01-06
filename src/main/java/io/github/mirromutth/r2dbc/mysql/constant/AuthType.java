@@ -18,13 +18,15 @@ package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
  * MySQL Plugin type for handshake authentication
- *
+ * <p>
  * Connect a MySQL server those test database, execute
  * `SELECT * FROM `information_schema`.`PLUGINS` where `plugin_type` = 'AUTHENTICATION';`
  * could see what authentication plugin types those this MySQL server supports.
- *
+ * <p>
  * Old Password Authentication will NEVER support, the hashing algorithm has broken that
  * is used for this authentication type (as shown in CVE-2000-0981).
+ * <p>
+ * Can NOT promise the {@link #name()} always equals than {@link #nativeName} in uppercase.
  */
 public enum AuthType {
 
@@ -34,8 +36,8 @@ public enum AuthType {
 
     private final String nativeName;
 
-    AuthType(String code) {
-        this.nativeName = code;
+    AuthType(String nativeName) {
+        this.nativeName = nativeName;
     }
 
     /**

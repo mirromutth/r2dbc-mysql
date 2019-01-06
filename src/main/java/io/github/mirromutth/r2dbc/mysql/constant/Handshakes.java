@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
-
-import io.github.mirromutth.r2dbc.mysql.message.Packet;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * Constants of handshake/handshake response packet.
  */
-public interface BackendMessage extends Packet {
+public final class Handshakes {
+
+    public static final int RESERVED_SIZE = 10;
+
+    public static final int MIN_SCRAMBLE_SECOND_PART_SIZE = 12;
 }

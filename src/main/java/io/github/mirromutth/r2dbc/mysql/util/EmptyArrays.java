@@ -14,30 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.constant;
+package io.github.mirromutth.r2dbc.mysql.util;
 
 /**
- * Protocol versions for MySQL Handshake Packet, not support version 9.
- *
- * Can NOT promise the {@link #name()} always equals than {@code V$code}
+ * Empty arrays, it is internal util, do NOT use it outer than {@code r2dbc-mysql}.
  */
-public enum HandshakeVersion {
+public final class EmptyArrays {
 
-    V10(10);
-
-    private final int flag;
-
-    HandshakeVersion(int flag) {
-        this.flag = flag;
-    }
-
-    /**
-     * Do NOT use it outer than {@code r2dbc-mysql}, because it is native flag code of MySQL,
-     * we can NOT promise it will be never changes.
-     *
-     * @return the native flag code
-     */
-    public int getFlag() {
-        return flag;
-    }
+    public static final byte[] EMPTY_BYTES = new byte[0];
 }

@@ -26,5 +26,5 @@ public interface AuthPlugin {
 
     AuthType getType();
 
-    byte[] encrypt(@Nullable byte[] password, byte[] seed);
+    byte[] encrypt(@Nullable byte[] password, byte[] scramble);
 }

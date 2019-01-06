@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
+package io.github.mirromutth.r2dbc.mysql.exception;
 
-import io.github.mirromutth.r2dbc.mysql.message.Packet;
+import io.r2dbc.spi.R2dbcException;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * Client want get a string that is terminated by a 0x00 byte,
+ * but 0x00 byte not found.
  */
-public interface BackendMessage extends Packet {
+public final class TerminateNotFoundException extends R2dbcException {
+
+    public TerminateNotFoundException() {
+        super("Terminate 0x00 byte not found");
+    }
 }

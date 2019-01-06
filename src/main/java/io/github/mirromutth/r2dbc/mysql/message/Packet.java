@@ -14,12 +14,20 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
-
-import io.github.mirromutth.r2dbc.mysql.message.Packet;
+package io.github.mirromutth.r2dbc.mysql.message;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * All packet interfaces, whether from server to client or from client to server.
  */
-public interface BackendMessage extends Packet {
+public interface Packet {
+
+    PacketHeader getPacketHeader();
+
+    /**
+     * If it is the part of a huge packet, and it is not last part,
+     * server should send next part of this huge packet.
+     *
+     * @return {@code true} if this message is not last part of a huge packet
+     */
+    boolean hasNext();
 }

@@ -14,12 +14,22 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
-
-import io.github.mirromutth.r2dbc.mysql.message.Packet;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * Global constants for all packets.
  */
-public interface BackendMessage extends Packet {
+public final class Packets {
+
+    private Packets() {
+    }
+
+    /**
+     * The length of the byte size field, it is 3 bytes.
+     */
+    public static final int SIZE_FIELD_SIZE = 3;
+
+    public static final int MAX_PART_SIZE = ~(-(1 << (SIZE_FIELD_SIZE << 3)));
+
+    public static final byte TERMINAL = 0;
 }
