@@ -46,7 +46,7 @@ public final class CodecUtils {
         }
 
         ByteBuf result = buf.readBytes(size);
-        buf.readByte(); // ignore last byte that is TERMINAL.
+        buf.skipBytes(1); // ignore last byte that is TERMINAL.
         return result;
     }
 

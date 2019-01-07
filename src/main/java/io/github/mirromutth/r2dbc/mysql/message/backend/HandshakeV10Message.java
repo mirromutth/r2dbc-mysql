@@ -119,11 +119,11 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
             if (isPluginAuth) {
                 scrambleSize = buf.readUnsignedByte();
             } else {
-                buf.readByte(); // if PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
+                buf.skipBytes(1); // if PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
             }
 
             // Reserved field, all bytes are 0x00.
-            buf.readerIndex(buf.readerIndex() + Handshakes.RESERVED_SIZE);
+            buf.skipBytes(Handshakes.RESERVED_SIZE);
 
             int scrambleSecondPartSize = Math.max(
                 Handshakes.MIN_SCRAMBLE_SECOND_PART_SIZE,
@@ -133,7 +133,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
             ByteBuf scrambleSecondPart = buf.readBytes(scrambleSecondPartSize);
 
             // Always 0x00, and it is not scramble part, ignore.
-            buf.readByte();
+            buf.skipBytes(1);
 
             // No need release scramble second part, it will release with `scramble`
             builder.withScramble(ByteBufUtil.getBytes(scramble.addComponent(true, scrambleSecondPart)));
