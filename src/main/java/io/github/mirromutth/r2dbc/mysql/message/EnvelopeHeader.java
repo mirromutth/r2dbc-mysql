@@ -17,15 +17,15 @@
 package io.github.mirromutth.r2dbc.mysql.message;
 
 /**
- * The header of all packets.
+ * The header of all envelopes.
  */
-public final class PacketHeader {
+public final class EnvelopeHeader {
 
     private final int byteSize;
 
     private final short sequenceId;
 
-    public PacketHeader(int byteSize, short sequenceId) {
+    public EnvelopeHeader(int byteSize, short sequenceId) {
         this.byteSize = byteSize;
         this.sequenceId = sequenceId;
     }
@@ -40,7 +40,7 @@ public final class PacketHeader {
 
     @Override
     public String toString() {
-        return "PacketHeader{" +
+        return "EnvelopeHeader{" +
             "byteSize=" + byteSize +
             ", sequenceId=" + sequenceId +
             '}';
@@ -55,7 +55,7 @@ public final class PacketHeader {
             return false;
         }
 
-        PacketHeader that = (PacketHeader) o;
+        EnvelopeHeader that = (EnvelopeHeader) o;
 
         if (byteSize != that.byteSize) {
             return false;

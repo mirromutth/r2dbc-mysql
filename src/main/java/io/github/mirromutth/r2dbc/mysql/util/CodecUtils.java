@@ -16,11 +16,11 @@
 
 package io.github.mirromutth.r2dbc.mysql.util;
 
-import io.github.mirromutth.r2dbc.mysql.exception.TerminateNotFoundException;
-import io.github.mirromutth.r2dbc.mysql.message.PacketHeader;
 import io.netty.buffer.ByteBuf;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.Packets.TERMINAL;
+import java.nio.charset.Charset;
+
+import static io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants.TERMINAL;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -31,27 +31,94 @@ public final class CodecUtils {
     private CodecUtils() {
     }
 
+    private static final int VAR_INT_1_BYTE_LIMIT = 250;
+    private static final int VAR_INT_2_BYTE_LIMIT = (1 << (Byte.SIZE << 1)) - 1;
+    private static final int VAR_INT_2_BYTE_CODE = 0xFC;
+    private static final int VAR_INT_3_BYTE_LIMIT = (1 << (Byte.SIZE * 3)) - 1;
+    private static final int VAR_INT_3_BYTE_CODE = 0xFD;
+    private static final int VAR_INT_8_BYTE_CODE = 0xFE;
+
     /**
-     * @param buf C-style string readable buffer
-     * @return The string of C-style, it may just be a byte array,
-     * should NEVER convert it to real string, should release manually.
+     * @param buf     C-style string readable buffer
+     * @param charset the string characters' set
+     * @return The string of C-style.
      */
-    public static ByteBuf readCString(ByteBuf buf) {
+    public static String readCString(ByteBuf buf, Charset charset) {
         requireNonNull(buf, "buf must not be null");
+        requireNonNull(charset, "charset must not be null");
 
-        int size = buf.bytesBefore(TERMINAL);
-
-        if (size < 0) {
-            throw new TerminateNotFoundException();
-        }
-
-        ByteBuf result = buf.readBytes(size);
-        buf.skipBytes(1); // ignore last byte that is TERMINAL.
+        String result = buf.readCharSequence(buf.bytesBefore(TERMINAL), charset).toString();
+        buf.skipBytes(1);
         return result;
     }
 
-    public static PacketHeader readPacketHeader(ByteBuf buf) {
-        int byteSize = buf.readUnsignedMediumLE();
-        return new PacketHeader(byteSize, buf.readUnsignedByte());
+    public static ByteBuf readCStringSlice(ByteBuf buf) {
+        requireNonNull(buf, "buf must not be null");
+
+        ByteBuf result = buf.readSlice(buf.bytesBefore(TERMINAL));
+        buf.skipBytes(1);
+        return result;
+    }
+
+    /**
+     * @param buf     that want write to this {@link ByteBuf}
+     * @param value   content that want write
+     * @param charset {@code value} characters' set
+     */
+    public static void writeCString(ByteBuf buf, CharSequence value, Charset charset) {
+        requireNonNull(buf, "buf must not be null");
+        requireNonNull(value, "value must not be null");
+        requireNonNull(charset, "charset must not be null");
+
+        buf.writeCharSequence(value, charset);
+        buf.writeByte(TERMINAL);
+    }
+
+    /**
+     * Write MySQL var int to {@code buf}.
+     * <p>
+     * WARNING: it is MySQL var int (size encoded integer),
+     * that is not like var int usually.
+     *
+     * @param buf that want write to this {@link ByteBuf}
+     * @param value integer that want write
+     */
+    public static void writeVarInt(ByteBuf buf, long value) {
+        requireNonNull(buf, "buf must not be null");
+
+        if (value < 0) {
+            throw new IllegalArgumentException("var int can not be negative integer");
+        }
+
+        // if it greater than 3 bytes limit, it must be 8 bytes integer, this is MySQL var int rule
+        if (value > VAR_INT_3_BYTE_LIMIT) {
+            buf.writeByte(VAR_INT_8_BYTE_CODE).writeLongLE(value);
+        } else if (value > VAR_INT_2_BYTE_LIMIT) {
+            buf.writeByte(VAR_INT_3_BYTE_CODE).writeMediumLE((int) value);
+        } else if (value > VAR_INT_1_BYTE_LIMIT) {
+            buf.writeByte(VAR_INT_2_BYTE_CODE).writeShortLE((int) value);
+        } else {
+            buf.writeByte((int) value);
+        }
+    }
+
+    public static void writeVarIntSizedString(ByteBuf buf, CharSequence value, Charset charset) {
+        int size = value.length();
+        if (size > 0) {
+            writeVarInt(buf, size);
+            buf.writeCharSequence(value, charset);
+        } else {
+            buf.writeByte(0);
+        }
+    }
+
+    public static void writeVarIntSizedBytes(ByteBuf buf, byte[] value) {
+        int size = value.length;
+        if (size > 0) {
+            writeVarInt(buf, size);
+            buf.writeBytes(value);
+        } else {
+            buf.writeByte(0);
+        }
     }
 }

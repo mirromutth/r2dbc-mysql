@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.exception;
-
-import io.r2dbc.spi.R2dbcException;
-
 /**
- * Client want get a string that is terminated by a 0x00 byte,
- * but 0x00 byte not found.
+ * The messages with their decoders that are both sent from a frontend client
+ * to a backend server and from a backend server to a frontend client.
  */
-public final class TerminateNotFoundException extends R2dbcException {
 
-    public TerminateNotFoundException() {
-        super("Terminate 0x00 byte not found");
-    }
-}
+@NonNullApi
+package io.github.mirromutth.r2dbc.mysql.message;
+
+import reactor.util.annotation.NonNullApi;

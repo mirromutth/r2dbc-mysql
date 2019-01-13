@@ -47,7 +47,7 @@ public final class CachingSha2PasswordAuthPlugin implements AuthPlugin {
             return EmptyArrays.EMPTY_BYTES;
         }
 
-        requireNonNull(scramble);
+        requireNonNull(scramble, "scramble must not be null");
 
         // TODO: implement this method
 

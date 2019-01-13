@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * Backend message decoder mode
  */
-public interface BackendMessage {
+public enum DecodeMode {
 
+    HANDSHAKE
 }

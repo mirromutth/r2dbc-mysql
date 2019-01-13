@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
-
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * MySQL client session data structure.
  */
-public interface BackendMessage {
 
-}
+@NonNullApi
+package io.github.mirromutth.r2dbc.mysql.session;
+
+import reactor.util.annotation.NonNullApi;

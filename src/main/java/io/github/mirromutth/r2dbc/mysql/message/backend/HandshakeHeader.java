@@ -17,11 +17,10 @@
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolVersion;
+import io.github.mirromutth.r2dbc.mysql.session.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.github.mirromutth.r2dbc.mysql.util.EnumUtils;
 import io.netty.buffer.ByteBuf;
-
-import java.nio.charset.Charset;
 
 import static java.util.Objects.requireNonNull;
 
@@ -36,13 +35,13 @@ public final class HandshakeHeader {
 
     private final ProtocolVersion protocolVersion;
 
-    private final String serverVersion;
+    private final ServerVersion serverVersion;
 
     private final int connectionId;
 
-    public HandshakeHeader(ProtocolVersion protocolVersion, String serverVersion, int connectionId) {
-        this.protocolVersion = requireNonNull(protocolVersion);
-        this.serverVersion = requireNonNull(serverVersion);
+    private HandshakeHeader(ProtocolVersion protocolVersion, ServerVersion serverVersion, int connectionId) {
+        this.protocolVersion = requireNonNull(protocolVersion, "protocolVersion must not be null");
+        this.serverVersion = requireNonNull(serverVersion, "serverVersion must not be null");
         this.connectionId = connectionId;
     }
 
@@ -57,9 +56,9 @@ public final class HandshakeHeader {
     }
 
     /**
-     * @return The human-readable MySQL server version
+     * @return MySQL server version
      */
-    public String getServerVersion() {
+    public ServerVersion getServerVersion() {
         return serverVersion;
     }
 
@@ -72,7 +71,7 @@ public final class HandshakeHeader {
 
     static HandshakeHeader decode(ByteBuf buf) {
         ProtocolVersion protocolVersion = EnumUtils.protocolVersion(buf.readUnsignedByte());
-        String serverVersion = CodecUtils.readCString(buf).toString(Charset.defaultCharset());
+        ServerVersion serverVersion = ServerVersion.parse(CodecUtils.readCStringSlice(buf));
         return new HandshakeHeader(protocolVersion, serverVersion, buf.readIntLE());
     }
 
@@ -80,7 +79,7 @@ public final class HandshakeHeader {
     public String toString() {
         return "HandshakeHeader{" +
             "protocolVersion=" + protocolVersion +
-            ", serverVersion='" + serverVersion + '\'' +
+            ", serverVersion=" + serverVersion +
             ", connectionId=" + connectionId +
             '}';
     }

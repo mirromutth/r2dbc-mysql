@@ -14,11 +14,25 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.backend;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * Global constants for MySQL protocol, do NOT use it outer than {@code r2dbc-mysql},
+ * we can NOT promise it will never be changes.
  */
-public interface BackendMessage {
+public final class ProtocolConstants {
 
+    private ProtocolConstants() {
+    }
+
+    /**
+     * The length of the byte size field, it is 3 bytes.
+     */
+    public static final int SIZE_FIELD_SIZE = 3;
+
+    public static final int ENVELOPE_HEADER_SIZE = SIZE_FIELD_SIZE + 1;
+
+    public static final int MAX_PART_SIZE = ~(-(1 << (SIZE_FIELD_SIZE << 3)));
+
+    public static final byte TERMINAL = 0;
 }

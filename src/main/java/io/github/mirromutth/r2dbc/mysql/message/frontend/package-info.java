@@ -14,28 +14,11 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message;
-
-import io.github.mirromutth.r2dbc.mysql.constant.Packets;
-
 /**
- * All packet have packet header, and have a unified "has a next part" logic.
+ * The messages that are sent from a frontend client to a backend server.
  */
-public abstract class AbstractPacket implements Packet {
 
-    private final PacketHeader packetHeader;
+@NonNullApi
+package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-    protected AbstractPacket(PacketHeader packetHeader) {
-        this.packetHeader = packetHeader;
-    }
-
-    @Override
-    public final PacketHeader getPacketHeader() {
-        return packetHeader;
-    }
-
-    @Override
-    public final boolean hasNext() {
-        return packetHeader.getByteSize() == Packets.MAX_PART_SIZE;
-    }
-}
+import reactor.util.annotation.NonNullApi;

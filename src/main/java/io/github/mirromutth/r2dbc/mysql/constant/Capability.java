@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.constant;
 /**
  * Values for the capabilities flag bitmask used by the MySQL Client/Server Protocol.
  */
-public enum ServerCapability {
+public enum Capability {
 
     LONG_PASSWORD(1), // new more secure passwords
     FOUND_ROWS(2),
@@ -38,14 +38,14 @@ public enum ServerCapability {
     PS_MULTI_RESULTS(262144),
     PLUGIN_AUTH(524288),
     CONNECT_ATTRS(1048576),
-    PLUGIN_AUTH_LENENC_CLIENT_DATA(2097152),
+    PLUGIN_AUTH_VAR_INT_SIZED_DATA(2097152), // can use var int sized bytes to encode client data
     CAN_HANDLE_EXPIRED_PASSWORD(4194304),
     SESSION_TRACK(8388608),
     DEPRECATE_EOF(16777216);
 
     private final int flag;
 
-    ServerCapability(int flag) {
+    Capability(int flag) {
         this.flag = flag;
     }
 

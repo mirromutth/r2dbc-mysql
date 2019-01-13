@@ -16,28 +16,61 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
-import io.github.mirromutth.r2dbc.mysql.message.AbstractPacket;
-import io.github.mirromutth.r2dbc.mysql.message.PacketHeader;
+import io.github.mirromutth.r2dbc.mysql.constant.ProtocolVersion;
+import io.github.mirromutth.r2dbc.mysql.exception.ProtocolNotSupportException;
+import io.netty.buffer.ByteBuf;
 
 import static java.util.Objects.requireNonNull;
 
 /**
- * A handshake packet message from the MySQL server
+ * A handshake message from the MySQL server
  */
-abstract class AbstractHandshakeMessage extends AbstractPacket implements BackendMessage {
+public abstract class AbstractHandshakeMessage implements BackendMessage {
 
     private final HandshakeHeader handshakeHeader;
 
-    AbstractHandshakeMessage(
-        PacketHeader packetHeader,
-        HandshakeHeader handshakeHeader
-    ) {
-        super(packetHeader);
-
-        this.handshakeHeader = requireNonNull(handshakeHeader);
+    AbstractHandshakeMessage(HandshakeHeader handshakeHeader) {
+        this.handshakeHeader = requireNonNull(handshakeHeader, "handshakeHeader must not be null");
     }
 
     public final HandshakeHeader getHandshakeHeader() {
         return handshakeHeader;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof AbstractHandshakeMessage)) {
+            return false;
+        }
+
+        AbstractHandshakeMessage that = (AbstractHandshakeMessage) o;
+
+        return handshakeHeader.equals(that.handshakeHeader);
+    }
+
+    @Override
+    public int hashCode() {
+        return handshakeHeader.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "AbstractHandshakeMessage{" +
+            "handshakeHeader=" + handshakeHeader +
+            '}';
+    }
+
+    static AbstractHandshakeMessage decode(ByteBuf buf) {
+        HandshakeHeader handshakeHeader = HandshakeHeader.decode(buf);
+        ProtocolVersion protocolVersion = handshakeHeader.getProtocolVersion();
+
+        if (ProtocolVersion.V10.equals(protocolVersion)) {
+            return HandshakeV10Message.decode(buf, handshakeHeader);
+        }
+
+        throw new ProtocolNotSupportException(protocolVersion.getCode());
     }
 }

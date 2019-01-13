@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.constant;
+package io.github.mirromutth.r2dbc.mysql;
+
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Constants of handshake/handshake response packet.
+ * Spring startup bootstrap
  */
-public final class Handshakes {
+@SpringBootApplication
+public class TestApplication {
 
-    public static final int RESERVED_SIZE = 10;
-
-    public static final int MIN_SCRAMBLE_SECOND_PART_SIZE = 12;
 }

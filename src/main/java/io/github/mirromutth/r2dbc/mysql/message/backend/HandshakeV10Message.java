@@ -17,27 +17,29 @@
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-import io.github.mirromutth.r2dbc.mysql.constant.Handshakes;
-import io.github.mirromutth.r2dbc.mysql.constant.ServerCapability;
-import io.github.mirromutth.r2dbc.mysql.message.PacketHeader;
+import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.github.mirromutth.r2dbc.mysql.util.EnumUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.util.ReferenceCountUtil;
-import reactor.util.annotation.Nullable;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants.TERMINAL;
 import static java.util.Objects.requireNonNull;
 
 /**
- * MySQL Handshake Packet for protocol version 10
+ * MySQL Handshake Message for protocol version 10
  */
 public final class HandshakeV10Message extends AbstractHandshakeMessage implements BackendMessage {
+
+    private static final AuthType DEFAULT_AUTH_TYPE = AuthType.MYSQL_NATIVE_PASSWORD;
+
+    private static final int RESERVED_SIZE = 10;
+
+    private static final int MIN_SCRAMBLE_SECOND_PART_SIZE = 12;
 
     private final byte[] scramble;
 
@@ -50,108 +52,100 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
     private final short serverStatuses;
 
-    @Nullable
-    private final AuthType authType; // null if PLUGIN_AUTH flag not exists in serverCapabilities
+    private final AuthType authType; // default is mysql_native_password
 
     private HandshakeV10Message(
-        PacketHeader packetHeader,
         HandshakeHeader handshakeHeader,
         byte[] scramble,
         int serverCapabilities,
         byte collationLow8Bits,
         short serverStatuses,
-        @Nullable AuthType authType
+        AuthType authType
     ) {
-        super(packetHeader, handshakeHeader);
+        super(handshakeHeader);
 
-        this.scramble = requireNonNull(scramble);
+        this.scramble = requireNonNull(scramble, "scramble must not be null");
         this.serverCapabilities = serverCapabilities;
         this.collationLow8Bits = collationLow8Bits;
         this.serverStatuses = serverStatuses;
-        this.authType = authType;
+        this.authType = requireNonNull(authType, "authType must not be null");
     }
 
-    public static HandshakeV10Message decode(ByteBuf buf) {
-        Builder builder = new Builder().withPacketHeader(CodecUtils.readPacketHeader(buf))
-            .withHandshakeHeader(HandshakeHeader.decode(buf));
-        CompositeByteBuf scramble = Unpooled.compositeBuffer(2);
+    static HandshakeV10Message decode(ByteBuf buf, HandshakeHeader handshakeHeader) {
+        Builder builder = new Builder().withHandshakeHeader(handshakeHeader);
+        CompositeByteBuf scramble = buf.alloc().compositeBuffer(2);
 
         try {
             // After handshake header, MySQL give scramble first part (should be 8-bytes always).
-            ByteBuf scrambleFirstPart = CodecUtils.readCString(buf);
+            scramble.addComponent(true, CodecUtils.readCStringSlice(buf).retain());
 
-            // No need release `scrambleFirstPart`, it will release with `scramble`
-            scramble.addComponent(true, scrambleFirstPart);
+            int serverCapabilities;
+            CompositeByteBuf capabilities = buf.alloc().compositeBuffer(2);
 
-            return afterScrambleFirstPart(builder, buf, scramble, scrambleFirstPart.readableBytes()).build();
+            try {
+                // After scramble first part, MySQL give the Server Capabilities first part (always 2-bytes).
+                capabilities.addComponent(true, buf.readRetainedSlice(2));
+
+                // New protocol with 16 bytes to describe server character, but MySQL give lower 8-bits only.
+                builder.withCollationLow8Bits(buf.readByte())
+                    .withServerStatuses(buf.readShortLE());
+
+                // No need release `capabilities` second part, it will release with `capabilities`
+                serverCapabilities = capabilities.addComponent(true, buf.readRetainedSlice(2))
+                    .readIntLE();
+
+                builder.withServerCapabilities(serverCapabilities);
+            } finally {
+                capabilities.release();
+            }
+
+            return afterCapabilities(builder, buf, serverCapabilities, scramble).build();
         } finally {
-            ReferenceCountUtil.release(scramble);
+            scramble.release();
         }
     }
 
-    private static Builder afterScrambleFirstPart(
-        Builder builder,
-        ByteBuf buf,
-        CompositeByteBuf scramble,
-        int scrambleFirstPartSize
-    ) {
-        CompositeByteBuf capabilities = Unpooled.compositeBuffer(2);
+    private static Builder afterCapabilities(Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf scramble) {
+        short scrambleSize = 0;
+        boolean isPluginAuth = (serverCapabilities & Capability.PLUGIN_AUTH.getFlag()) != 0;
 
-        try {
-            // After scramble first part, MySQL give the Server Capabilities first part (always 2-bytes).
-            // No need release `capabilities` first part, it will release with `capabilities`
-            capabilities.addComponent(true, buf.readBytes(2));
-
-            // New protocol with 16 bytes to describe server character, but MySQL give lower 8-bits only.
-            builder.withCollationLow8Bits(buf.readByte())
-                .withServerStatuses(buf.readShortLE());
-
-            // No need release `capabilities` second part, it will release with `capabilities`
-            int serverCapabilities = capabilities.addComponent(true, buf.readBytes(2))
-                .readIntLE();
-
-            builder.withServerCapabilities(serverCapabilities);
-
-            short scrambleSize = 0;
-
-            boolean isPluginAuth = (serverCapabilities & ServerCapability.PLUGIN_AUTH.getFlag()) != 0;
-
-            if (isPluginAuth) {
-                scrambleSize = buf.readUnsignedByte();
-            } else {
-                buf.skipBytes(1); // if PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
-            }
-
-            // Reserved field, all bytes are 0x00.
-            buf.skipBytes(Handshakes.RESERVED_SIZE);
-
-            int scrambleSecondPartSize = Math.max(
-                Handshakes.MIN_SCRAMBLE_SECOND_PART_SIZE,
-                scrambleSize - scrambleFirstPartSize - 1
-            );
-
-            ByteBuf scrambleSecondPart = buf.readBytes(scrambleSecondPartSize);
-
-            // Always 0x00, and it is not scramble part, ignore.
-            buf.skipBytes(1);
-
-            // No need release scramble second part, it will release with `scramble`
-            builder.withScramble(ByteBufUtil.getBytes(scramble.addComponent(true, scrambleSecondPart)));
-
-            if (isPluginAuth) {
-                ByteBuf authTypeName = CodecUtils.readCString(buf);
-
-                try {
-                    builder.withAuthType(EnumUtils.authType(authTypeName.toString(Charset.defaultCharset())));
-                } finally {
-                    ReferenceCountUtil.release(authTypeName);
-                }
-            }
-
-            return builder;
-        } finally {
-            ReferenceCountUtil.release(capabilities);
+        if (isPluginAuth) {
+            scrambleSize = buf.readUnsignedByte();
+        } else {
+            buf.skipBytes(1); // if PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
         }
+
+        // Reserved field, all bytes are 0x00.
+        buf.skipBytes(RESERVED_SIZE);
+
+        int scrambleSecondPartSize = Math.max(
+            MIN_SCRAMBLE_SECOND_PART_SIZE,
+            scrambleSize - scramble.readableBytes() - 1
+        );
+
+        ByteBuf scrambleSecondPart = buf.readSlice(scrambleSecondPartSize);
+
+        // Always 0x00, and it is not scramble part, ignore.
+        buf.skipBytes(1);
+
+        // No need release scramble second part, it will release with `scramble`
+        builder.withScramble(ByteBufUtil.getBytes(scramble.addComponent(true, scrambleSecondPart.retain())));
+
+        if (isPluginAuth) {
+            if (buf.bytesBefore(TERMINAL) < 0) {
+                // It is MySQL bug 59453, auth type native name has no terminal character in
+                // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
+                // And MySQL only support "mysql_native_password" in those versions,
+                // maybe just use constant AuthType.MYSQL_NATIVE_PASSWORD without read?
+                builder.withAuthType(EnumUtils.authType(buf.toString(StandardCharsets.US_ASCII)));
+            } else {
+                builder.withAuthType(EnumUtils.authType(CodecUtils.readCString(buf, StandardCharsets.US_ASCII)));
+            }
+        } else {
+            builder.withAuthType(DEFAULT_AUTH_TYPE);
+        }
+
+        return builder;
     }
 
     public byte[] getScramble() {
@@ -170,9 +164,48 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         return serverStatuses;
     }
 
-    @Nullable
     public AuthType getAuthType() {
         return authType;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof HandshakeV10Message)) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+
+        HandshakeV10Message that = (HandshakeV10Message) o;
+
+        if (serverCapabilities != that.serverCapabilities) {
+            return false;
+        }
+        if (collationLow8Bits != that.collationLow8Bits) {
+            return false;
+        }
+        if (serverStatuses != that.serverStatuses) {
+            return false;
+        }
+        if (!Arrays.equals(scramble, that.scramble)) {
+            return false;
+        }
+        return authType == that.authType;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + Arrays.hashCode(scramble);
+        result = 31 * result + serverCapabilities;
+        result = 31 * result + (int) collationLow8Bits;
+        result = 31 * result + (int) serverStatuses;
+        result = 31 * result + (authType != null ? authType.hashCode() : 0);
+        return result;
     }
 
     @Override
@@ -184,13 +217,10 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
             ", serverStatuses=" + serverStatuses +
             ", authType=" + authType +
             ", handshakeHeader=" + getHandshakeHeader() +
-            ", packetHeader=" + getPacketHeader() +
             '}';
     }
 
     private static final class Builder {
-
-        private PacketHeader packetHeader;
 
         private HandshakeHeader handshakeHeader;
 
@@ -209,7 +239,6 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
         HandshakeV10Message build() {
             return new HandshakeV10Message(
-                packetHeader,
                 handshakeHeader,
                 scramble,
                 serverCapabilities,
@@ -230,11 +259,6 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
         Builder withHandshakeHeader(HandshakeHeader handshakeHeader) {
             this.handshakeHeader = handshakeHeader;
-            return this;
-        }
-
-        Builder withPacketHeader(PacketHeader packetHeader) {
-            this.packetHeader = packetHeader;
             return this;
         }
 

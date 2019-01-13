@@ -21,12 +21,14 @@ import org.junit.jupiter.api.Test;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
- * Test cases for {@link ServerCapability}
+ * Test cases for {@link Capability}
  */
-class ServerCapabilityTest {
+class CapabilityTest {
 
     /**
      * Make sure all flag values ​​are integral exponent times of 2,
@@ -34,7 +36,7 @@ class ServerCapabilityTest {
      */
     @Test
     void multiples() {
-        for (ServerCapability capability : ServerCapability.values()) {
+        for (Capability capability : Capability.values()) {
             assertNotEquals(capability.getFlag(), 0);
             assertEquals(capability.getFlag(), Integer.lowestOneBit(capability.getFlag()));
         }
@@ -45,10 +47,10 @@ class ServerCapabilityTest {
      */
     @Test
     void uniqueFlags() {
-        ServerCapability[] capabilities = ServerCapability.values();
+        Capability[] capabilities = Capability.values();
         Set<Integer> flags = new HashSet<>(capabilities.length << 1);
 
-        for (ServerCapability capability : capabilities) {
+        for (Capability capability : capabilities) {
             assertFalse(flags.contains(capability.getFlag()));
             flags.add(capability.getFlag());
         }

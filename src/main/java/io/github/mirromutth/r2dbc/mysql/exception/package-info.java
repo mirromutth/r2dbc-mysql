@@ -14,22 +14,11 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.constant;
-
 /**
- * Global constants for all packets.
+ * Exceptions for MySQL protocol.
  */
-public final class Packets {
 
-    private Packets() {
-    }
+@NonNullApi
+package io.github.mirromutth.r2dbc.mysql.exception;
 
-    /**
-     * The length of the byte size field, it is 3 bytes.
-     */
-    public static final int SIZE_FIELD_SIZE = 3;
-
-    public static final int MAX_PART_SIZE = ~(-(1 << (SIZE_FIELD_SIZE << 3)));
-
-    public static final byte TERMINAL = 0;
-}
+import reactor.util.annotation.NonNullApi;

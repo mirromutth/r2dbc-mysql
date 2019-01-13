@@ -14,20 +14,16 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message;
+package io.github.mirromutth.r2dbc.mysql.exception;
+
+import io.r2dbc.spi.R2dbcException;
 
 /**
- * All packet interfaces, whether from server to client or from client to server.
+ * Authentication is too long when MySQL server not support var int sized authentication.
  */
-public interface Packet {
+public final class AuthenticationTooLongException extends R2dbcException {
 
-    PacketHeader getPacketHeader();
-
-    /**
-     * If it is the part of a huge packet, and it is not last part,
-     * server should send next part of this huge packet.
-     *
-     * @return {@code true} if this message is not last part of a huge packet
-     */
-    boolean hasNext();
+    public AuthenticationTooLongException(int size) {
+        super("authentication too long, server not support size " + size);
+    }
 }

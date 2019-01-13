@@ -57,7 +57,7 @@ public final class NativePasswordAuthPlugin implements AuthPlugin {
             return EMPTY_BYTES;
         }
 
-        requireNonNull(scramble);
+        requireNonNull(scramble, "scramble must not be null");
 
         MessageDigest digest = newSha1Digest();
         byte[] oneRound = finalDigests(digest, password);

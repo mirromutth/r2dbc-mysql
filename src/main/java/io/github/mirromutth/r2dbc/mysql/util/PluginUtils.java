@@ -30,7 +30,7 @@ import static java.util.Objects.requireNonNull;
 public class PluginUtils {
 
     public static AuthPlugin getAuthPlugin(AuthType type) {
-        switch (requireNonNull(type)) {
+        switch (requireNonNull(type, "type must not be null")) {
             case MYSQL_NATIVE_PASSWORD:
                 return NativePasswordAuthPlugin.getInstance();
             case SHA256_PASSWORD:

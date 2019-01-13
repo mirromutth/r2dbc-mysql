@@ -24,6 +24,6 @@ import io.r2dbc.spi.R2dbcException;
 public final class ProtocolNotSupportException extends R2dbcException {
 
     public ProtocolNotSupportException(int code) {
-        super("MySQL protocol version " + code + "not support.");
+        super("MySQL protocol version " + code + " not support.");
     }
 }
