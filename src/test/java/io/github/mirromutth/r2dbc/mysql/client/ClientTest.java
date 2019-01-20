@@ -46,13 +46,14 @@ class ClientTest {
         URI uri = new URI(dataSourceProperties.determineUrl().substring("jdbc:".length()));
         assertNotNull(uri.getHost());
         ConnectProperties properties = new ConnectProperties(
+            true,
             dataSourceProperties.determineUsername(),
             dataSourceProperties.determinePassword(),
             dataSourceProperties.determineDatabaseName(),
             null
         );
         List<Object> message = Client.connect(uri.getHost(), uri.getPort(), properties)
-            .flatMapMany(client -> Flux.<Object>from(client.getConnectionId()).concatWith(client.getServerVersion()).concatWith(client.getProtocolVersion()).concatWith(client.getConnectionId()).concatWith(client.getServerVersion()).concatWith(client.getProtocolVersion()))
+            .flatMapMany(client -> Flux.<Object>from(client.getConnectionId()).concatWith(client.getServerVersion()).concatWith(client.getServerVersion()).concatWith(client.getConnectionId()).concatWith(client.getServerVersion()))
             .collectList().block();
         System.out.println(message);
     }

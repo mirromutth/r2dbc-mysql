@@ -16,13 +16,11 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolVersion;
 import io.github.mirromutth.r2dbc.mysql.session.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
-import io.github.mirromutth.r2dbc.mysql.util.EnumUtils;
 import io.netty.buffer.ByteBuf;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * The handshake generic header, all protocol versions contains
@@ -33,25 +31,25 @@ import static java.util.Objects.requireNonNull;
  */
 public final class HandshakeHeader {
 
-    private final ProtocolVersion protocolVersion;
+    private final short protocolVersion;
 
     private final ServerVersion serverVersion;
 
     private final int connectionId;
 
-    private HandshakeHeader(ProtocolVersion protocolVersion, ServerVersion serverVersion, int connectionId) {
-        this.protocolVersion = requireNonNull(protocolVersion, "protocolVersion must not be null");
+    private HandshakeHeader(short protocolVersion, ServerVersion serverVersion, int connectionId) {
+        this.protocolVersion = protocolVersion;
         this.serverVersion = requireNonNull(serverVersion, "serverVersion must not be null");
         this.connectionId = connectionId;
     }
 
     /**
-     * The first byte defines the MySQL protocol version those
+     * The first byte defines the MySQL handshake version those
      * permit the MySQL server to add support for newer protocols.
      *
-     * @return The protocol version by MySQL server used.
+     * @return The handshake version by MySQL server used.
      */
-    public ProtocolVersion getProtocolVersion() {
+    public short getProtocolVersion() {
         return protocolVersion;
     }
 
@@ -70,7 +68,7 @@ public final class HandshakeHeader {
     }
 
     static HandshakeHeader decode(ByteBuf buf) {
-        ProtocolVersion protocolVersion = EnumUtils.protocolVersion(buf.readUnsignedByte());
+        short protocolVersion = buf.readUnsignedByte();
         ServerVersion serverVersion = ServerVersion.parse(CodecUtils.readCStringSlice(buf));
         return new HandshakeHeader(protocolVersion, serverVersion, buf.readIntLE());
     }
@@ -89,16 +87,16 @@ public final class HandshakeHeader {
         if (this == o) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (!(o instanceof HandshakeHeader)) {
             return false;
         }
 
         HandshakeHeader that = (HandshakeHeader) o;
 
-        if (connectionId != that.connectionId) {
+        if (protocolVersion != that.protocolVersion) {
             return false;
         }
-        if (protocolVersion != that.protocolVersion) {
+        if (connectionId != that.connectionId) {
             return false;
         }
         return serverVersion.equals(that.serverVersion);
@@ -106,7 +104,7 @@ public final class HandshakeHeader {
 
     @Override
     public int hashCode() {
-        int result = protocolVersion.hashCode();
+        int result = (int) protocolVersion;
         result = 31 * result + serverVersion.hashCode();
         result = 31 * result + connectionId;
         return result;

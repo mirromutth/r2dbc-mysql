@@ -20,15 +20,14 @@ import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import reactor.util.annotation.Nullable;
 
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL Authentication Plugin for "mysql_native_password"
  */
-public final class NativePasswordAuthPlugin implements AuthPlugin {
+public final class NativePasswordAuthPlugin extends AbstractAuthPlugin {
 
     private static final NativePasswordAuthPlugin INSTANCE = new NativePasswordAuthPlugin();
 
@@ -59,33 +58,10 @@ public final class NativePasswordAuthPlugin implements AuthPlugin {
 
         requireNonNull(scramble, "scramble must not be null");
 
-        MessageDigest digest = newSha1Digest();
+        MessageDigest digest = loadDigest("SHA-1");
         byte[] oneRound = finalDigests(digest, password);
         byte[] twoRounds = finalDigests(digest, oneRound);
-        byte[] result = finalDigests(digest, scramble, twoRounds);
 
-        for (int i = 0; i < result.length; ++i) {
-            result[i] ^= oneRound[i];
-        }
-
-        return result;
-    }
-
-    private byte[] finalDigests(MessageDigest digest, byte[] ...plains) {
-        for (byte[] plain : plains) {
-            digest.update(plain);
-        }
-
-        byte[] result = digest.digest();
-        digest.reset();
-        return result;
-    }
-
-    private MessageDigest newSha1Digest() {
-        try {
-            return MessageDigest.getInstance("SHA-1");
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        return allBytesXor(finalDigests(digest, scramble, twoRounds), oneRound);
     }
 }

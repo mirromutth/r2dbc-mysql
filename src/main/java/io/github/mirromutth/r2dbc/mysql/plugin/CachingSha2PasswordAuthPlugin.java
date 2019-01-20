@@ -20,12 +20,14 @@ import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.util.EmptyArrays;
 import reactor.util.annotation.Nullable;
 
-import static java.util.Objects.requireNonNull;
+import java.security.MessageDigest;
+
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL Authentication Plugin for "caching_sha2_password"
  */
-public final class CachingSha2PasswordAuthPlugin implements AuthPlugin {
+public final class CachingSha2PasswordAuthPlugin extends AbstractAuthPlugin {
 
     private static final CachingSha2PasswordAuthPlugin INSTANCE = new CachingSha2PasswordAuthPlugin();
 
@@ -41,6 +43,13 @@ public final class CachingSha2PasswordAuthPlugin implements AuthPlugin {
         return AuthType.CACHING_SHA2_PASSWORD;
     }
 
+    /**
+     * SHA256(password) all bytes xor SHA256( SHA256(SHA256(password)) + "random data from MySQL server" )
+     *
+     * @param password user password
+     * @param scramble random data from MySQL server
+     * @return encrypted authentication if password is not null, otherwise empty byte array.
+     */
     @Override
     public byte[] encrypt(@Nullable byte[] password, byte[] scramble) {
         if (password == null) {
@@ -49,8 +58,11 @@ public final class CachingSha2PasswordAuthPlugin implements AuthPlugin {
 
         requireNonNull(scramble, "scramble must not be null");
 
-        // TODO: implement this method
+        MessageDigest digest = loadDigest("SHA-256");
+        byte[] oneRound = finalDigests(digest, password);
+        byte[] twoRounds = finalDigests(digest, oneRound);
+        byte[] result = finalDigests(digest, twoRounds, scramble);
 
-        return new byte[0];
+        return allBytesXor(oneRound, result);
     }
 }

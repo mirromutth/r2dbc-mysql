@@ -20,12 +20,12 @@ import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.util.EmptyArrays;
 import reactor.util.annotation.Nullable;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL Authentication Plugin for "sha256_password"
  */
-public final class Sha256PasswordAuthPlugin implements AuthPlugin {
+public final class Sha256PasswordAuthPlugin extends AbstractAuthPlugin {
 
     private static final Sha256PasswordAuthPlugin INSTANCE = new Sha256PasswordAuthPlugin();
 

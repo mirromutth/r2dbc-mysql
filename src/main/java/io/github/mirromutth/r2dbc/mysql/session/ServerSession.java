@@ -17,11 +17,10 @@
 package io.github.mirromutth.r2dbc.mysql.session;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolVersion;
 
 import java.nio.charset.Charset;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL server sessions.
@@ -29,8 +28,6 @@ import static java.util.Objects.requireNonNull;
 public final class ServerSession {
 
     private final int connectionId;
-
-    private final ProtocolVersion protocolVersion;
 
     private final ServerVersion serverVersion;
 
@@ -42,14 +39,12 @@ public final class ServerSession {
 
     public ServerSession(
         int connectionId,
-        ProtocolVersion protocolVersion,
         ServerVersion serverVersion,
         int serverCapabilities,
         AuthType authType,
         Charset charset
     ) {
         this.connectionId = connectionId;
-        this.protocolVersion = requireNonNull(protocolVersion, "protocolVersion must not be null");
         this.serverVersion = requireNonNull(serverVersion, "serverVersion must not be null");
         this.serverCapabilities = serverCapabilities;
         this.authType = requireNonNull(authType, "authType must not be null");
@@ -58,10 +53,6 @@ public final class ServerSession {
 
     public int getConnectionId() {
         return connectionId;
-    }
-
-    public ProtocolVersion getProtocolVersion() {
-        return protocolVersion;
     }
 
     public ServerVersion getServerVersion() {

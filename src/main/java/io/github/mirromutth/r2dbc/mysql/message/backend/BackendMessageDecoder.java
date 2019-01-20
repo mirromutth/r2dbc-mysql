@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.util.annotation.Nullable;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A decoder that reads {@link ByteBuf}s and returns a {@link Flux} of decoded {@link BackendMessage}s.
@@ -37,14 +37,16 @@ public final class BackendMessageDecoder implements ByteBufHolder {
 
     private static final Logger logger = LoggerFactory.getLogger(BackendMessageDecoder.class);
 
-    private final CompositeByteBuf byteBuf;
+    private final CompositeByteBuf readBuf;
+    private final CompositeByteBuf envelopeBuf;
 
     public BackendMessageDecoder(ByteBufAllocator bufAllocator) {
-        this(bufAllocator.compositeBuffer());
+        this(bufAllocator.compositeBuffer(), bufAllocator.compositeBuffer());
     }
 
-    private BackendMessageDecoder(CompositeByteBuf byteBuf) {
-        this.byteBuf = requireNonNull(byteBuf, "byteBuf must not be null");
+    private BackendMessageDecoder(CompositeByteBuf readBuf, CompositeByteBuf envelopeBuf) {
+        this.readBuf = readBuf;
+        this.envelopeBuf = envelopeBuf;
     }
 
     public Flux<BackendMessage> decode(ByteBuf buf, DecodeMode mode) {
@@ -52,25 +54,38 @@ public final class BackendMessageDecoder implements ByteBufHolder {
         requireNonNull(mode, "mode must not be null");
 
         return Flux.generate(
-            () -> this.byteBuf.addComponent(true, buf),
+            () -> this.readBuf.addComponent(true, buf),
             (byteBuf, sink) -> {
-                ByteBuf envelope = sliceEnvelope(byteBuf);
+                int byteSize = Integer.MAX_VALUE;
 
-                if (envelope == null) {
-                    sink.complete();
-                    return byteBuf;
+                while (byteSize >= ProtocolConstants.MAX_PART_SIZE) {
+                    ByteBuf envelopePart = sliceEnvelopePart(byteBuf);
+
+                    if (envelopePart == null) {
+                        sink.complete();
+                        return byteBuf;
+                    }
+
+                    byteSize = envelopePart.readUnsignedMediumLE();
+                    envelopePart.skipBytes(1);
+
+                    if (envelopePart.readableBytes() > 0) {
+                        this.envelopeBuf.addComponent(true, envelopePart.retain());
+                    }
                 }
 
                 if (logger.isTraceEnabled()) {
-                    logger.trace("inbound message:\n{}", ByteBufUtil.prettyHexDump(envelope));
+                    logger.trace("Inbound message (header removed):\n{}", ByteBufUtil.prettyHexDump(this.envelopeBuf));
                 }
 
-                envelope.skipBytes(ProtocolConstants.ENVELOPE_HEADER_SIZE);
-
-                switch (mode) {
-                    case HANDSHAKE:
-                        sink.next(AbstractHandshakeMessage.decode(envelope));
-                        break;
+                try {
+                    switch (mode) {
+                        case HANDSHAKE:
+                            sink.next(AbstractHandshakeMessage.decode(this.envelopeBuf));
+                            break;
+                    }
+                } finally {
+                    this.envelopeBuf.discardReadComponents();
                 }
 
                 return byteBuf;
@@ -80,7 +95,7 @@ public final class BackendMessageDecoder implements ByteBufHolder {
     }
 
     @Nullable
-    private ByteBuf sliceEnvelope(ByteBuf buf) {
+    private ByteBuf sliceEnvelopePart(ByteBuf buf) {
         if (buf.readableBytes() < ProtocolConstants.ENVELOPE_HEADER_SIZE) {
             return null;
         }
@@ -96,71 +111,102 @@ public final class BackendMessageDecoder implements ByteBufHolder {
 
     @Override
     public ByteBuf content() {
-        return byteBuf;
+        return readBuf;
     }
 
     @Override
     public ByteBufHolder copy() {
-        return replace(byteBuf.copy());
+        return replace(readBuf.copy());
     }
 
     @Override
     public ByteBufHolder duplicate() {
-        return replace(byteBuf.duplicate());
+        return replace(readBuf.duplicate());
     }
 
     @Override
     public ByteBufHolder retainedDuplicate() {
-        return replace(byteBuf.retainedDuplicate());
+        return replace(readBuf.retainedDuplicate());
     }
 
     @Override
     public ByteBufHolder replace(ByteBuf byteBuf) {
-        CompositeByteBuf newBuf = this.byteBuf.alloc().compositeBuffer();
+        CompositeByteBuf newReadBuf = this.readBuf.alloc().compositeBuffer();
 
         if (byteBuf.isReadable() && byteBuf.readableBytes() > 0) {
-            newBuf.addComponent(true, byteBuf);
+            newReadBuf.addComponent(true, byteBuf);
         }
 
-        return new BackendMessageDecoder(newBuf.addComponent(true, byteBuf));
+        return new BackendMessageDecoder(newReadBuf, envelopeBufCopy());
     }
 
     @Override
     public int refCnt() {
-        return byteBuf.refCnt();
+        return readBuf.refCnt();
     }
 
     @Override
     public ByteBufHolder retain() {
-        byteBuf.retain();
+        readBuf.retain();
         return this;
     }
 
     @Override
     public ByteBufHolder retain(int i) {
-        byteBuf.retain(i);
+        readBuf.retain(i);
         return this;
     }
 
     @Override
     public ByteBufHolder touch() {
-        byteBuf.touch();
+        readBuf.touch();
         return this;
     }
 
     @Override
     public ByteBufHolder touch(Object o) {
-        byteBuf.touch(o);
+        readBuf.touch(o);
         return this;
     }
 
     @Override
     public boolean release() {
-        return byteBuf.release();
+        boolean result = readBuf.release();
+
+        if (result) {
+            forceReleaseEnvelope();
+        }
+
+        return result;
     }
 
     @Override
     public boolean release(int i) {
-        return byteBuf.release(i);
+        boolean result = readBuf.release(i);
+
+        if (result) {
+            forceReleaseEnvelope();
+        }
+
+        return result;
+    }
+
+    private void forceReleaseEnvelope() {
+        int refCnt = envelopeBuf.refCnt();
+
+        if (refCnt > 0) {
+            envelopeBuf.release(refCnt);
+        }
+    }
+
+    private CompositeByteBuf envelopeBufCopy() {
+        CompositeByteBuf envelopeBuf = this.envelopeBuf.alloc().compositeBuffer();
+
+        try {
+            envelopeBuf.addComponent(true, this.envelopeBuf.copy());
+            return envelopeBuf.retain();
+        } finally {
+            envelopeBuf.release();
+        }
     }
 }

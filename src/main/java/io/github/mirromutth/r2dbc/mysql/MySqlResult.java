@@ -24,7 +24,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.function.BiFunction;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link Result} representing the results of a query against the MySQL database.

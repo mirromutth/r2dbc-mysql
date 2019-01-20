@@ -17,7 +17,6 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolVersion;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
 import io.github.mirromutth.r2dbc.mysql.session.ServerVersion;
@@ -27,7 +26,7 @@ import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An abstraction that wraps the networking part of exchanging methods.
@@ -37,8 +36,6 @@ public interface Client {
     Flux<BackendMessage> exchange(Publisher<FrontendMessage> requests);
 
     Mono<Void> close();
-
-    Mono<ProtocolVersion> getProtocolVersion();
 
     Mono<Integer> getConnectionId();
 

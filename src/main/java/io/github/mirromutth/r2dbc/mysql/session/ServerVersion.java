@@ -18,12 +18,15 @@ package io.github.mirromutth.r2dbc.mysql.session;
 
 import io.netty.buffer.ByteBuf;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNegative;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL server version, looks like {@code "8.0.14"}.
  */
 public final class ServerVersion implements Comparable<ServerVersion> {
+
+    private static final ServerVersion NONE = new ServerVersion(0, 0, 0);
 
     private final int major;
 
@@ -42,7 +45,19 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
         int major = readIntBeforePoint(version);
         int minor = readIntBeforePoint(version);
-        return new ServerVersion(major, minor, readIntBeforePoint(version));
+        return create(major, minor, readIntBeforePoint(version));
+    }
+
+    public static ServerVersion create(int major, int minor, int patch) {
+        requireNonNegative(major, "major version must not be negative");
+        requireNonNegative(minor, "minor version must not be negative");
+        requireNonNegative(patch, "patch version must not be negative");
+
+        if (major == 0 && minor == 0 && patch == 0) {
+            return NONE;
+        }
+
+        return new ServerVersion(major, minor, patch);
     }
 
     public int compareTo(int major, int minor, int patch) {
@@ -108,31 +123,30 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     private static int readIntBeforePoint(ByteBuf version) {
         int digits = version.bytesBefore((byte) '.');
-        boolean hasNext = true;
+        boolean hasPoint = true;
         int result = 0;
 
-        if (digits < 0) {
+        if (digits < 0) { // no '.'
+            hasPoint = false;
             digits = version.readableBytes(); // read until end of buffer
 
             if (digits < 1) { // can not read any byte
                 return 0;
             }
-
-            hasNext = false;
         }
 
         for (int i = 0; i < digits; ++i) {
             byte current = version.readByte();
 
-            if (current < '0' || current > '9') {
+            if (current < '0' || current > '9') { // C style condition, maybe should use `!Character.isDigit(current)`?
                 throw new NumberFormatException("can not parse digit " + (char) current);
             }
 
             result = result * 10 + (current - '0');
         }
 
-        if (hasNext) {
-            version.skipBytes(1);
+        if (hasPoint) {
+            version.skipBytes(1); // skip the '.'
         }
 
         return result;

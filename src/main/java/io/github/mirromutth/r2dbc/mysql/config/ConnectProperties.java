@@ -18,36 +18,57 @@ package io.github.mirromutth.r2dbc.mysql.config;
 
 import reactor.util.annotation.Nullable;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL connection configuration properties
  */
 public class ConnectProperties {
 
+    private final boolean useSsl;
+
     private final String username;
 
     @Nullable
     private final String password;
 
-    @Nullable
     private final String database;
 
-    @Nullable
     private final Map<String, String> attributes;
 
     public ConnectProperties(
+        boolean useSsl,
         String username,
         @Nullable String password,
         @Nullable String database,
         @Nullable Map<String, String> attributes
     ) {
+        this.useSsl = useSsl;
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
-        this.database = database;
-        this.attributes = attributes;
+
+        if (database == null) {
+            this.database = "";
+        } else {
+            this.database = database;
+        }
+
+        if (attributes == null || attributes.isEmpty()) {
+            this.attributes = Collections.emptyMap();
+        } else if (attributes.size() == 1) {
+            Map.Entry<String, String> entry = attributes.entrySet().iterator().next();
+            this.attributes = Collections.singletonMap(entry.getKey(), entry.getValue());
+        } else {
+            this.attributes = new LinkedHashMap<>(attributes);
+        }
+    }
+
+    public boolean isUseSsl() {
+        return useSsl;
     }
 
     public String getUsername() {
@@ -59,12 +80,10 @@ public class ConnectProperties {
         return password;
     }
 
-    @Nullable
     public String getDatabase() {
         return database;
     }
 
-    @Nullable
     public Map<String, String> getAttributes() {
         return attributes;
     }

@@ -16,11 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolVersion;
 import io.github.mirromutth.r2dbc.mysql.exception.ProtocolNotSupportException;
 import io.netty.buffer.ByteBuf;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A handshake message from the MySQL server
@@ -65,12 +64,12 @@ public abstract class AbstractHandshakeMessage implements BackendMessage {
 
     static AbstractHandshakeMessage decode(ByteBuf buf) {
         HandshakeHeader handshakeHeader = HandshakeHeader.decode(buf);
-        ProtocolVersion protocolVersion = handshakeHeader.getProtocolVersion();
+        short protocolVersion = handshakeHeader.getProtocolVersion();
 
-        if (ProtocolVersion.V10.equals(protocolVersion)) {
+        if (protocolVersion == 10) {
             return HandshakeV10Message.decode(buf, handshakeHeader);
         }
 
-        throw new ProtocolNotSupportException(protocolVersion.getCode());
+        throw new ProtocolNotSupportException(protocolVersion);
     }
 }

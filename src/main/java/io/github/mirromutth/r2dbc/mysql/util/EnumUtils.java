@@ -17,9 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.util;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolVersion;
 import io.github.mirromutth.r2dbc.mysql.exception.AuthTypeNotSupportException;
-import io.github.mirromutth.r2dbc.mysql.exception.ProtocolNotSupportException;
 
 /**
  * The utility for convert native code/flag/name to enumerable class.
@@ -27,14 +25,6 @@ import io.github.mirromutth.r2dbc.mysql.exception.ProtocolNotSupportException;
 public final class EnumUtils {
 
     private EnumUtils() {
-    }
-
-    public static ProtocolVersion protocolVersion(int code) {
-        if (code != ProtocolVersion.V10.getCode()) {
-            throw new ProtocolNotSupportException(code);
-        }
-
-        return ProtocolVersion.V10;
     }
 
     public static AuthType authType(String nativeName) {

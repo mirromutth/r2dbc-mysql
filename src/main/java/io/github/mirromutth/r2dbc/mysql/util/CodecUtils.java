@@ -21,7 +21,8 @@ import io.netty.buffer.ByteBuf;
 import java.nio.charset.Charset;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants.TERMINAL;
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNegative;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Common codec methods util.
@@ -75,7 +76,7 @@ public final class CodecUtils {
     }
 
     /**
-     * Write MySQL var int to {@code buf}.
+     * Write MySQL var int to {@code buf} for 32-bits integer.
      * <p>
      * WARNING: it is MySQL var int (size encoded integer),
      * that is not like var int usually.
@@ -83,22 +84,19 @@ public final class CodecUtils {
      * @param buf that want write to this {@link ByteBuf}
      * @param value integer that want write
      */
-    public static void writeVarInt(ByteBuf buf, long value) {
+    public static void writeVarInt(ByteBuf buf, int value) {
         requireNonNull(buf, "buf must not be null");
-
-        if (value < 0) {
-            throw new IllegalArgumentException("var int can not be negative integer");
-        }
+        requireNonNegative(value, "value must not be negative");
 
         // if it greater than 3 bytes limit, it must be 8 bytes integer, this is MySQL var int rule
         if (value > VAR_INT_3_BYTE_LIMIT) {
             buf.writeByte(VAR_INT_8_BYTE_CODE).writeLongLE(value);
         } else if (value > VAR_INT_2_BYTE_LIMIT) {
-            buf.writeByte(VAR_INT_3_BYTE_CODE).writeMediumLE((int) value);
+            buf.writeByte(VAR_INT_3_BYTE_CODE).writeMediumLE(value);
         } else if (value > VAR_INT_1_BYTE_LIMIT) {
-            buf.writeByte(VAR_INT_2_BYTE_CODE).writeShortLE((int) value);
+            buf.writeByte(VAR_INT_2_BYTE_CODE).writeShortLE(value);
         } else {
-            buf.writeByte((int) value);
+            buf.writeByte(value);
         }
     }
 

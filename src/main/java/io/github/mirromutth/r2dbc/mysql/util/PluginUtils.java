@@ -22,10 +22,10 @@ import io.github.mirromutth.r2dbc.mysql.plugin.CachingSha2PasswordAuthPlugin;
 import io.github.mirromutth.r2dbc.mysql.plugin.NativePasswordAuthPlugin;
 import io.github.mirromutth.r2dbc.mysql.plugin.Sha256PasswordAuthPlugin;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * MySQL Plugins Utils, like Storage Engine, Authentication, Audit, Information Schema, FtParser, Daemon, etc.
+ * MySQL plugin utilities, like Storage Engine, Authentication, Audit, Information Schema, FtParser, Daemon, etc.
  */
 public class PluginUtils {
 

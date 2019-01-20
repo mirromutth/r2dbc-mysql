@@ -24,12 +24,14 @@ import io.github.mirromutth.r2dbc.mysql.session.ServerSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import reactor.util.annotation.Nullable;
 
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Map;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A handshake response message sent by clients those supporting
@@ -98,45 +100,65 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
 
     @Override
     protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, ServerSession session) {
-        ByteBuf buf = bufAllocator.buffer().writeIntLE(clientCapabilities)
-            .writeIntLE(ProtocolConstants.MAX_PART_SIZE)
-            .writeByte(collationLow8Bits)
-            .writeZero(FILTER_SIZE);
+        final ByteBuf buf = bufAllocator.buffer();
 
-        CodecUtils.writeCString(buf, username, session.getCharset());
+        try {
+            buf.writeIntLE(clientCapabilities)
+                .writeIntLE(ProtocolConstants.MAX_PART_SIZE)
+                .writeByte(collationLow8Bits)
+                .writeZero(FILTER_SIZE);
 
-        if (varIntSizedAuth) {
-            CodecUtils.writeVarIntSizedBytes(buf, authentication);
-        } else {
-            buf.writeByte(authentication.length).writeBytes(authentication);
+            CodecUtils.writeCString(buf, username, session.getCharset());
+
+            if (varIntSizedAuth) {
+                CodecUtils.writeVarIntSizedBytes(buf, authentication);
+            } else {
+                buf.writeByte(authentication.length).writeBytes(authentication);
+            }
+
+            if (!database.isEmpty()) {
+                CodecUtils.writeCString(buf, database, session.getCharset());
+            }
+
+            if (authType != null) {
+                CodecUtils.writeCString(buf, authType.getNativeName(), session.getCharset());
+            }
+
+            return writeAttrsWithRetained(buf, session.getCharset());
+        } finally {
+            buf.release();
+        }
+    }
+
+    private ByteBuf writeAttrsWithRetained(ByteBuf buf, Charset charset) {
+        if (attributes.isEmpty()) { // no need write attributes
+            return buf.retain();
         }
 
-        if (!database.isEmpty()) {
-            CodecUtils.writeCString(buf, database, session.getCharset());
-        }
+        final ByteBuf attributesBuf = buf.alloc().buffer();
 
-        if (authType != null) {
-            CodecUtils.writeCString(buf, authType.getNativeName(), session.getCharset());
-        }
-
-        if (!attributes.isEmpty()) {
-            ByteBuf attributesBuf = bufAllocator.buffer();
-
+        try {
             // attributesBuf write first
             for (Map.Entry<String, String> entry : attributes.entrySet()) {
-                CodecUtils.writeVarIntSizedString(attributesBuf, entry.getKey(), session.getCharset());
-                CodecUtils.writeVarIntSizedString(attributesBuf, entry.getValue(), session.getCharset());
+                CodecUtils.writeVarIntSizedString(attributesBuf, entry.getKey(), charset);
+                CodecUtils.writeVarIntSizedString(attributesBuf, entry.getValue(), charset);
             }
 
             // write attributesBuf to buf after write attributesBuf size by var int encoded
             CodecUtils.writeVarInt(buf, attributesBuf.readableBytes());
 
-            return bufAllocator.compositeBuffer(2)
-                .addComponent(true, buf)
-                .addComponent(true, attributesBuf);
-        }
+            CompositeByteBuf finalBuf = buf.alloc().compositeBuffer(2);
 
-        return buf;
+            try {
+                return finalBuf.addComponent(true, buf.retain())
+                    .addComponent(true, attributesBuf.retain())
+                    .retain();
+            } finally {
+                finalBuf.release();
+            }
+        } finally {
+            attributesBuf.release();
+        }
     }
 
     private int calculateCapabilities(int capabilities) {
@@ -144,12 +166,6 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
             capabilities &= ~Capability.CONNECT_WITH_DB.getFlag();
         } else {
             capabilities |= Capability.CONNECT_WITH_DB.getFlag();
-        }
-
-        if (authType == null) {
-            capabilities &= ~Capability.PLUGIN_AUTH.getFlag();
-        } else {
-            capabilities |= Capability.PLUGIN_AUTH.getFlag();
         }
 
         if (attributes.isEmpty()) {

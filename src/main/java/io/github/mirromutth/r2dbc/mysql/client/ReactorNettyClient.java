@@ -17,8 +17,8 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
+import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolVersion;
 import io.github.mirromutth.r2dbc.mysql.message.backend.AbstractHandshakeMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessageDecoder;
@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import static java.util.Objects.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of client based on the Reactor Netty project.
@@ -70,31 +70,7 @@ final class ReactorNettyClient implements Client {
 
     private volatile boolean closed = false;
 
-    private volatile DecodeMode lifecycle = DecodeMode.HANDSHAKE;
-
-    private final BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleHandshake = handleBackendMessage(
-        AbstractHandshakeMessage.class,
-        (message, sink) -> {
-            if (message instanceof HandshakeV10Message) {
-                HandshakeHeader header = message.getHandshakeHeader();
-                HandshakeV10Message messageV10 = (HandshakeV10Message) message;
-
-                // TODO: convert character collation to Charset
-                ServerSession session = new ServerSession(
-                    header.getConnectionId(),
-                    header.getProtocolVersion(),
-                    header.getServerVersion(),
-                    messageV10.getServerCapabilities(),
-                    messageV10.getAuthType(),
-                    StandardCharsets.UTF_8
-                );
-
-                serverSession.onNext(session);
-            } else {
-                forceClose();
-            }
-        }
-    );
+    private volatile DecodeMode decodeMode = DecodeMode.HANDSHAKE;
 
     ReactorNettyClient(Connection connection, ConnectProperties properties) {
         requireNonNull(connection, "connection must not be null");
@@ -107,10 +83,35 @@ final class ReactorNettyClient implements Client {
 
         this.connection = new AtomicReference<>(connection);
 
+        // TODO: convert character collation to Charset
+        BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleHandshake = handleBackendMessage(
+            AbstractHandshakeMessage.class,
+            (message, sink) -> {
+                if (message instanceof HandshakeV10Message) {
+                    HandshakeHeader header = message.getHandshakeHeader();
+                    HandshakeV10Message messageV10 = (HandshakeV10Message) message;
+                    int serverCapabilities = calculateCapabilities(messageV10.getServerCapabilities(), properties);
+
+                    // TODO: convert character collation to Charset
+                    ServerSession session = new ServerSession(
+                        header.getConnectionId(),
+                        header.getServerVersion(),
+                        serverCapabilities,
+                        messageV10.getAuthType(),
+                        StandardCharsets.UTF_8
+                    );
+
+                    serverSession.onNext(session);
+                } else {
+                    forceClose().subscribe();
+                }
+            }
+        );
+
         // TODO: implement receive
         Mono<Void> receive = connection.inbound().receive()
             .retain()
-            .concatMap(buf -> messageDecoder.decode(buf, getLifecycle()))
+            .concatMap(buf -> messageDecoder.decode(buf, getMode()))
             .handle(handleHandshake)
             .windowWhile(message -> false)
             .doOnNext(messages -> {
@@ -196,11 +197,6 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
-    public Mono<ProtocolVersion> getProtocolVersion() {
-        return serverSession.map(ServerSession::getProtocolVersion);
-    }
-
-    @Override
     public Mono<Integer> getConnectionId() {
         return serverSession.map(ServerSession::getConnectionId);
     }
@@ -210,8 +206,24 @@ final class ReactorNettyClient implements Client {
         return serverSession.map(ServerSession::getServerVersion);
     }
 
-    private DecodeMode getLifecycle() {
-        return lifecycle;
+    private DecodeMode getMode() {
+        return decodeMode;
+    }
+
+    private static int calculateCapabilities(int capabilities, ConnectProperties properties) {
+        if (!properties.isUseSsl()) {
+            capabilities &= ~Capability.SSL.getFlag();
+        }
+
+        if (properties.getDatabase().isEmpty()) {
+            capabilities &= ~Capability.CONNECT_WITH_DB.getFlag();
+        }
+
+        if (properties.getAttributes().isEmpty()) {
+            capabilities &= ~Capability.CONNECT_ATTRS.getFlag();
+        }
+
+        return capabilities;
     }
 
     @SuppressWarnings("unchecked")
