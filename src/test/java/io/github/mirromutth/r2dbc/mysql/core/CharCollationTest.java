@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
+package io.github.mirromutth.r2dbc.mysql.core;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 /**
- * MySQL client session data structure.
+ * Test cases for {@link CharCollation}
  */
+class CharCollationTest {
 
-@NonNullApi
-package io.github.mirromutth.r2dbc.mysql.session;
-
-import reactor.util.annotation.NonNullApi;
+    @Test
+    void fromId() {
+        assertNotNull(CharCollation.fromId(33)); // utf-8 general ci
+        assertNotNull(CharCollation.fromId(224)); // utf-8 more 4-bytes unicode ci
+    }
+}

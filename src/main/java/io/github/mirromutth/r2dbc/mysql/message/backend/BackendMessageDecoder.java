@@ -41,12 +41,12 @@ public final class BackendMessageDecoder implements ByteBufHolder {
     private final CompositeByteBuf envelopeBuf;
 
     public BackendMessageDecoder(ByteBufAllocator bufAllocator) {
-        this(bufAllocator.compositeBuffer(), bufAllocator.compositeBuffer());
+        this(requireNonNull(bufAllocator, "bufAllocator must not be null").compositeBuffer(), bufAllocator.compositeBuffer());
     }
 
     private BackendMessageDecoder(CompositeByteBuf readBuf, CompositeByteBuf envelopeBuf) {
-        this.readBuf = readBuf;
-        this.envelopeBuf = envelopeBuf;
+        this.readBuf = requireNonNull(readBuf, "readBuf must not be null");
+        this.envelopeBuf = requireNonNull(envelopeBuf, "envelopeBuf must not be null");
     }
 
     public Flux<BackendMessage> decode(ByteBuf buf, DecodeMode mode) {

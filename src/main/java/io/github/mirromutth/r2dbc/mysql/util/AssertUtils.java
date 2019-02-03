@@ -35,7 +35,7 @@ public final class AssertUtils {
      * @param obj     the object reference to check for nullity
      * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
      * @param <T>     the type of the reference
-     * @return {@code t} if not {@code null}
+     * @return {@code obj} if not {@code null}
      * @throws IllegalArgumentException if {@code obj} is {@code null}
      */
     public static <T> T requireNonNull(@Nullable T obj, String message) {

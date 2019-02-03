@@ -18,12 +18,12 @@ package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
-import io.github.mirromutth.r2dbc.mysql.session.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
 /**
- *
+ * The ssl request message.
  */
 public final class SslRequestMessage extends AbstractFrontendMessage {
 

@@ -19,8 +19,8 @@ package io.github.mirromutth.r2dbc.mysql.message.frontend;
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
+import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.github.mirromutth.r2dbc.mysql.exception.AuthenticationTooLongException;
-import io.github.mirromutth.r2dbc.mysql.session.ServerSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -101,6 +101,7 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
     @Override
     protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, ServerSession session) {
         final ByteBuf buf = bufAllocator.buffer();
+        Charset charset = session.getCollation().getCharset();
 
         try {
             buf.writeIntLE(clientCapabilities)
@@ -108,7 +109,7 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
                 .writeByte(collationLow8Bits)
                 .writeZero(FILTER_SIZE);
 
-            CodecUtils.writeCString(buf, username, session.getCharset());
+            CodecUtils.writeCString(buf, username, charset);
 
             if (varIntSizedAuth) {
                 CodecUtils.writeVarIntSizedBytes(buf, authentication);
@@ -117,14 +118,14 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
             }
 
             if (!database.isEmpty()) {
-                CodecUtils.writeCString(buf, database, session.getCharset());
+                CodecUtils.writeCString(buf, database, charset);
             }
 
             if (authType != null) {
-                CodecUtils.writeCString(buf, authType.getNativeName(), session.getCharset());
+                CodecUtils.writeCString(buf, authType.getNativeName(), charset);
             }
 
-            return writeAttrsWithRetained(buf, session.getCharset());
+            return writeAttrsWithRetained(buf, charset);
         } finally {
             buf.release();
         }

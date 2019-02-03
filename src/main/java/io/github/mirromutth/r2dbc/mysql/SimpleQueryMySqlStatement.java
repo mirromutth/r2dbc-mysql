@@ -23,7 +23,7 @@ import reactor.util.annotation.Nullable;
 /**
  * An implementation of {@link MySqlStatement} representing the simple query that has no parameter.
  */
-final class SimpleQueryMySqlStatement implements MySqlStatement<SimpleQueryMySqlStatement> {
+final class SimpleQueryMySqlStatement implements MySqlStatement {
 
     @Override
     public SimpleQueryMySqlStatement add() {
@@ -51,6 +51,12 @@ final class SimpleQueryMySqlStatement implements MySqlStatement<SimpleQueryMySql
 
     @Override
     public SimpleQueryMySqlStatement bindNull(int index, @Nullable Class<?> type) {
+        // TODO: implement this method
+        return this;
+    }
+
+    @Override
+    public SimpleQueryMySqlStatement returnGeneratedValues(String... columns) {
         // TODO: implement this method
         return this;
     }

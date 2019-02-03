@@ -16,12 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-import io.github.mirromutth.r2dbc.mysql.session.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
-
-import java.nio.charset.Charset;
 
 /**
  * A message sent from a frontend client to a backend server.

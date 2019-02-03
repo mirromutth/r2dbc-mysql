@@ -16,6 +16,11 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.github.mirromutth.r2dbc.mysql.client.Client;
+import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
+import io.github.mirromutth.r2dbc.mysql.constant.Capability;
+import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
+import io.github.mirromutth.r2dbc.mysql.message.frontend.SslRequestMessage;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
 import reactor.core.publisher.Mono;
@@ -26,6 +31,23 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * An implementation of {@link Connection} for connecting to the MySQL database.
  */
 public final class MySqlConnection implements Connection {
+
+    MySqlConnection(Client client, ConnectProperties properties) {
+        requireNonNull(client, "client must not be null");
+        requireNonNull(properties, "properties must not be null");
+
+        // TODO: HandshakeResponseMessage
+        client.getSession().flatMap(session -> {
+            int clientCapabilities = calculateCapabilities(session.getServerCapabilities(), properties);
+
+            if ((clientCapabilities & Capability.SSL.getFlag()) != 0) {
+                Mono<FrontendMessage> ssl = Mono.just(new SslRequestMessage(clientCapabilities, (byte) session.getCollation().getId()));
+                return client.exchange(ssl).then(Mono.just(clientCapabilities));
+            } else {
+                return Mono.just(clientCapabilities);
+            }
+        }).subscribe();
+    }
 
     @Override
     public Mono<Void> beginTransaction() {
@@ -59,7 +81,7 @@ public final class MySqlConnection implements Connection {
     }
 
     @Override
-    public MySqlStatement<?> createStatement(String sql) {
+    public MySqlStatement createStatement(String sql) {
         requireNonNull(sql, "sql must not be null");
         // TODO: implement this method
         return new SimpleQueryMySqlStatement();
@@ -90,5 +112,23 @@ public final class MySqlConnection implements Connection {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
         // TODO: implement this method
         return Mono.empty();
+    }
+
+    private static int calculateCapabilities(int serverCapabilities, ConnectProperties properties) {
+        int clientCapabilities = serverCapabilities;
+
+        if (!properties.isUseSsl()) {
+            clientCapabilities &= ~Capability.SSL.getFlag();
+        }
+
+        if (properties.getDatabase().isEmpty()) {
+            clientCapabilities &= ~Capability.CONNECT_WITH_DB.getFlag();
+        }
+
+        if (properties.getAttributes().isEmpty()) {
+            clientCapabilities &= ~Capability.CONNECT_ATTRS.getFlag();
+        }
+
+        return clientCapabilities;
     }
 }

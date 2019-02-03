@@ -16,17 +16,15 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
-import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
+import io.github.mirromutth.r2dbc.mysql.core.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.github.mirromutth.r2dbc.mysql.message.backend.AbstractHandshakeMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessageDecoder;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeHeader;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeV10Message;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
-import io.github.mirromutth.r2dbc.mysql.session.ServerSession;
-import io.github.mirromutth.r2dbc.mysql.session.ServerVersion;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -42,7 +40,6 @@ import reactor.netty.Connection;
 import reactor.util.concurrent.Queues;
 import reactor.util.concurrent.WaitStrategy;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -72,9 +69,8 @@ final class ReactorNettyClient implements Client {
 
     private volatile DecodeMode decodeMode = DecodeMode.HANDSHAKE;
 
-    ReactorNettyClient(Connection connection, ConnectProperties properties) {
+    ReactorNettyClient(Connection connection) {
         requireNonNull(connection, "connection must not be null");
-        requireNonNull(properties, "properties must not be null");
 
         connection.addHandler(new SubscribersCompleteHandler(this.requestProcessor, this.responseReceivers));
 
@@ -83,22 +79,20 @@ final class ReactorNettyClient implements Client {
 
         this.connection = new AtomicReference<>(connection);
 
-        // TODO: convert character collation to Charset
         BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleHandshake = handleBackendMessage(
             AbstractHandshakeMessage.class,
             (message, sink) -> {
                 if (message instanceof HandshakeV10Message) {
-                    HandshakeHeader header = message.getHandshakeHeader();
                     HandshakeV10Message messageV10 = (HandshakeV10Message) message;
-                    int serverCapabilities = calculateCapabilities(messageV10.getServerCapabilities(), properties);
+                    HandshakeHeader header = messageV10.getHandshakeHeader();
 
-                    // TODO: convert character collation to Charset
+                    // TODO: use full index, not just lower 8-bits
                     ServerSession session = new ServerSession(
                         header.getConnectionId(),
                         header.getServerVersion(),
-                        serverCapabilities,
+                        messageV10.getServerCapabilities(),
                         messageV10.getAuthType(),
-                        StandardCharsets.UTF_8
+                        CharCollation.fromId(messageV10.getCollationLow8Bits())
                     );
 
                     serverSession.onNext(session);
@@ -197,33 +191,12 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
-    public Mono<Integer> getConnectionId() {
-        return serverSession.map(ServerSession::getConnectionId);
-    }
-
-    @Override
-    public Mono<ServerVersion> getServerVersion() {
-        return serverSession.map(ServerSession::getServerVersion);
+    public Mono<ServerSession> getSession() {
+        return serverSession;
     }
 
     private DecodeMode getMode() {
         return decodeMode;
-    }
-
-    private static int calculateCapabilities(int capabilities, ConnectProperties properties) {
-        if (!properties.isUseSsl()) {
-            capabilities &= ~Capability.SSL.getFlag();
-        }
-
-        if (properties.getDatabase().isEmpty()) {
-            capabilities &= ~Capability.CONNECT_WITH_DB.getFlag();
-        }
-
-        if (properties.getAttributes().isEmpty()) {
-            capabilities &= ~Capability.CONNECT_ATTRS.getFlag();
-        }
-
-        return capabilities;
     }
 
     @SuppressWarnings("unchecked")

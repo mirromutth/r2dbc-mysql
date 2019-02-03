@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.session;
+package io.github.mirromutth.r2dbc.mysql.core;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-
-import java.nio.charset.Charset;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -33,22 +31,25 @@ public final class ServerSession {
 
     private final int serverCapabilities;
 
+    private volatile int clientCapabilities;
+
     private final AuthType authType;
 
-    private final Charset charset;
+    private final CharCollation collation;
 
     public ServerSession(
         int connectionId,
         ServerVersion serverVersion,
         int serverCapabilities,
         AuthType authType,
-        Charset charset
+        CharCollation collation
     ) {
         this.connectionId = connectionId;
         this.serverVersion = requireNonNull(serverVersion, "serverVersion must not be null");
         this.serverCapabilities = serverCapabilities;
+        this.clientCapabilities = serverCapabilities;
         this.authType = requireNonNull(authType, "authType must not be null");
-        this.charset = requireNonNull(charset, "charset must not be null");
+        this.collation = requireNonNull(collation, "collation must not be null");
     }
 
     public int getConnectionId() {
@@ -63,11 +64,19 @@ public final class ServerSession {
         return serverCapabilities;
     }
 
+    public int getClientCapabilities() {
+        return clientCapabilities;
+    }
+
+    public void setClientCapabilities(int clientCapabilities) {
+        this.clientCapabilities = clientCapabilities;
+    }
+
     public AuthType getAuthType() {
         return authType;
     }
 
-    public Charset getCharset() {
-        return charset;
+    public CharCollation getCollation() {
+        return collation;
     }
 }

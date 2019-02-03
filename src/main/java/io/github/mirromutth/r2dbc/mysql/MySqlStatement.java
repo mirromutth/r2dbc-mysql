@@ -17,9 +17,37 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.r2dbc.spi.Statement;
+import reactor.core.publisher.Flux;
 
 /**
  * A strongly typed implementation of {@link Statement} for the MySQL database.
  */
-public interface MySqlStatement<S extends MySqlStatement<S>> extends Statement<S> {
+public interface MySqlStatement extends Statement {
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalArgumentException if {@code identifier} is not a {@link String} like {@code $1}, {@code $2}, etc.
+     */
+    @Override
+    MySqlStatement bind(Object identifier, Object value);
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalArgumentException if {@code identifier} is not a {@link String} like {@code $1}, {@code $2}, etc.
+     */
+    @Override
+    MySqlStatement bindNull(Object identifier, Class<?> type);
+
+    @Override
+    Flux<? extends MySqlResult> execute();
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalStateException if this {@link Statement} already has a {@code RETURNING clause} or isn't a {@code DELETE}, {@code INSERT}, or {@code UPDATE} command.
+     */
+    @Override
+    MySqlStatement returnGeneratedValues(String... columns);
 }

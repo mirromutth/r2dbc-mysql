@@ -16,10 +16,9 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
-import io.github.mirromutth.r2dbc.mysql.session.ServerVersion;
+import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -37,23 +36,20 @@ public interface Client {
 
     Mono<Void> close();
 
-    Mono<Integer> getConnectionId();
+    Mono<ServerSession> getSession();
 
-    Mono<ServerVersion> getServerVersion();
-
-    static Mono<Client> connect(String host, int port, ConnectProperties properties) {
-        return connect(ConnectionProvider.newConnection(), host, port, properties);
+    static Mono<Client> connect(String host, int port) {
+        return connect(ConnectionProvider.newConnection(), host, port);
     }
 
-    static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port, ConnectProperties properties) {
+    static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port) {
         requireNonNull(connectionProvider, "connectionProvider must not be null");
         requireNonNull(host, "host must not be null");
-        requireNonNull(properties, "properties must not be null");
 
         return TcpClient.create(connectionProvider)
             .host(host)
             .port(port)
             .connect()
-            .map((connection) -> new ReactorNettyClient(connection, properties));
+            .map(ReactorNettyClient::new);
     }
 }

@@ -24,6 +24,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.CompositeByteBuf;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -106,6 +107,8 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
     }
 
     private static Builder afterCapabilities(Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf scramble) {
+        // Special charset on handshake process, just use ascii.
+        Charset charset = StandardCharsets.US_ASCII;
         short scrambleSize = 0;
         boolean isPluginAuth = (serverCapabilities & Capability.PLUGIN_AUTH.getFlag()) != 0;
 
@@ -137,9 +140,9 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
                 // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
                 // And MySQL only support "mysql_native_password" in those versions,
                 // maybe just use constant AuthType.MYSQL_NATIVE_PASSWORD without read?
-                builder.withAuthType(EnumUtils.authType(buf.toString(StandardCharsets.US_ASCII)));
+                builder.withAuthType(EnumUtils.authType(buf.toString(charset)));
             } else {
-                builder.withAuthType(EnumUtils.authType(CodecUtils.readCString(buf, StandardCharsets.US_ASCII)));
+                builder.withAuthType(EnumUtils.authType(CodecUtils.readCString(buf, charset)));
             }
         } else {
             builder.withAuthType(DEFAULT_AUTH_TYPE);

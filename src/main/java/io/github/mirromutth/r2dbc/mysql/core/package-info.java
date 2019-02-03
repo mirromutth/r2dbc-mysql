@@ -14,25 +14,11 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql;
-
-import io.r2dbc.spi.Batch;
-import reactor.core.publisher.Flux;
-
 /**
- * An implementation of {@link Batch} for executing a collection of statements in a batch against the MySQL database.
+ * MySQL client session data structure.
  */
-public final class MySqlBatch implements Batch {
 
-    @Override
-    public MySqlBatch add(String s) {
-        // TODO: implement this method
-        return this;
-    }
+@NonNullApi
+package io.github.mirromutth.r2dbc.mysql.core;
 
-    @Override
-    public Flux<MySqlResult> execute() {
-        // TODO: implement this method
-        return Flux.empty();
-    }
-}
+import reactor.util.annotation.NonNullApi;

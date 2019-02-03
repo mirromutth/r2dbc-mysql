@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
-import io.github.mirromutth.r2dbc.mysql.session.ServerVersion;
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 

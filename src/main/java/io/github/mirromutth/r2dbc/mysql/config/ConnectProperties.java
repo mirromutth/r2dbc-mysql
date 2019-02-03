@@ -29,6 +29,10 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public class ConnectProperties {
 
+    private final String host;
+
+    private final int port;
+
     private final boolean useSsl;
 
     private final String username;
@@ -41,12 +45,16 @@ public class ConnectProperties {
     private final Map<String, String> attributes;
 
     public ConnectProperties(
+        String host,
+        int port,
         boolean useSsl,
         String username,
         @Nullable String password,
         @Nullable String database,
         @Nullable Map<String, String> attributes
     ) {
+        this.host = requireNonNull(host, "host must not be null");
+        this.port = port;
         this.useSsl = useSsl;
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
