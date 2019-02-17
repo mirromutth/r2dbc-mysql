@@ -16,6 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.core;
 
+import reactor.util.annotation.Nullable;
+
 import java.nio.charset.Charset;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -29,12 +31,15 @@ public final class CharCollation {
 
     private final String name;
 
-    private final Charset charset;
+    private final CharsetTarget target;
 
-    public CharCollation(int id, String name, Charset charset) {
+    @Nullable
+    private volatile Charset defaultCharset = null;
+
+    CharCollation(int id, String name, CharsetTarget target) {
         this.id = id;
         this.name = requireNonNull(name, "name must not be null");
-        this.charset = requireNonNull(charset, "charset must not be null");
+        this.target = requireNonNull(target, "target must not be null");
     }
 
     public int getId() {
@@ -45,8 +50,28 @@ public final class CharCollation {
         return name;
     }
 
+    public int getByteSize() {
+        return target.getByteSize();
+    }
+
     public Charset getCharset() {
-        return charset;
+        Charset defaultCharset = this.defaultCharset;
+
+        if (defaultCharset == null) {
+            synchronized (this) {
+                defaultCharset = this.defaultCharset;
+
+                if (defaultCharset == null) {
+                    defaultCharset = target.getCharset();
+                    this.defaultCharset = defaultCharset;
+                    return defaultCharset;
+                } else {
+                    return defaultCharset;
+                }
+            }
+        }
+
+        return defaultCharset;
     }
 
     public static CharCollation fromId(int id) {

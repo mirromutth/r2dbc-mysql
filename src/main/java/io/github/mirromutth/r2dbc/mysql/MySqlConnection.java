@@ -19,6 +19,7 @@ package io.github.mirromutth.r2dbc.mysql;
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
+import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.SslRequestMessage;
 import io.r2dbc.spi.Connection;
@@ -32,21 +33,13 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlConnection implements Connection {
 
-    MySqlConnection(Client client, ConnectProperties properties) {
+    private final Client client;
+
+    private MySqlConnection(Client client, ConnectProperties properties) {
         requireNonNull(client, "client must not be null");
         requireNonNull(properties, "properties must not be null");
 
-        // TODO: HandshakeResponseMessage
-        client.getSession().flatMap(session -> {
-            int clientCapabilities = calculateCapabilities(session.getServerCapabilities(), properties);
-
-            if ((clientCapabilities & Capability.SSL.getFlag()) != 0) {
-                Mono<FrontendMessage> ssl = Mono.just(new SslRequestMessage(clientCapabilities, (byte) session.getCollation().getId()));
-                return client.exchange(ssl).then(Mono.just(clientCapabilities));
-            } else {
-                return Mono.just(clientCapabilities);
-            }
-        }).subscribe();
+        this.client = client;
     }
 
     @Override
@@ -57,8 +50,8 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> close() {
-        // TODO: implement this method
-        return Mono.empty();
+        // TODO: exchange close message to MySQL server
+        return client.close();
     }
 
     @Override
@@ -112,6 +105,21 @@ public final class MySqlConnection implements Connection {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
         // TODO: implement this method
         return Mono.empty();
+    }
+
+    public static Mono<MySqlConnection> connect(ConnectProperties properties) {
+        requireNonNull(properties, "properties must not be null");
+
+        return Client.connect(properties.getHost(), properties.getPort()).flatMap(client -> client.getSession().flatMap(session -> {
+            int clientCapabilities = calculateCapabilities(session.getServerCapabilities(), properties);
+
+            if ((clientCapabilities & Capability.SSL.getFlag()) != 0) {
+                Mono<FrontendMessage> ssl = Mono.just(new SslRequestMessage(clientCapabilities, (byte) session.getCollation().getId()));
+                return client.exchange(ssl).then(Mono.just(client));
+            } else {
+                return Mono.just(client);
+            }
+        })).map(client -> new MySqlConnection(client, properties));
     }
 
     private static int calculateCapabilities(int serverCapabilities, ConnectProperties properties) {

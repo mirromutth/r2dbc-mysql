@@ -62,4 +62,21 @@ public final class AssertUtils {
 
         return x;
     }
+
+    /**
+     * Checks that a specified integer is positive and throws a
+     * customized {@link IllegalArgumentException} if it is not.
+     *
+     * @param x       the specified integer to check for positively
+     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
+     * @return {@code x} if positive
+     * @throws IllegalArgumentException if {@code x} is not positive
+     */
+    public static int requirePositive(int x, String message) {
+        if (x <= 0) {
+            throw new IllegalArgumentException(message);
+        }
+
+        return x;
+    }
 }

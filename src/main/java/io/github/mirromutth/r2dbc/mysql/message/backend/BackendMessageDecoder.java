@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
+import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufHolder;
@@ -39,6 +40,7 @@ public final class BackendMessageDecoder implements ByteBufHolder {
 
     private final CompositeByteBuf readBuf;
     private final CompositeByteBuf envelopeBuf;
+    private volatile ServerSession serverSession;
 
     public BackendMessageDecoder(ByteBufAllocator bufAllocator) {
         this(requireNonNull(bufAllocator, "bufAllocator must not be null").compositeBuffer(), bufAllocator.compositeBuffer());
@@ -83,6 +85,9 @@ public final class BackendMessageDecoder implements ByteBufHolder {
                         case HANDSHAKE:
                             sink.next(AbstractHandshakeMessage.decode(this.envelopeBuf));
                             break;
+                        case RESPONSE:
+                            sink.next(AbstractResponse.decode(this.envelopeBuf, this.serverSession));
+                            break;
                     }
                 } finally {
                     this.envelopeBuf.discardReadComponents();
@@ -92,6 +97,10 @@ public final class BackendMessageDecoder implements ByteBufHolder {
             },
             CompositeByteBuf::discardReadComponents
         );
+    }
+
+    public void setServerSession(ServerSession serverSession) {
+        this.serverSession = serverSession;
     }
 
     @Nullable

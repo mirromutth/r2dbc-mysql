@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
+import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
 import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.netty.buffer.ByteBuf;
@@ -45,6 +46,11 @@ public final class SslRequestMessage extends AbstractFrontendMessage {
         } else {
             this.collationLow8Bits = 0;
         }
+    }
+
+    @Override
+    public DecodeMode responseDecodeMode() {
+        return DecodeMode.RESPONSE;
     }
 
     @Override

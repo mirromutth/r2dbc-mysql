@@ -75,6 +75,14 @@ public class ConnectProperties {
         }
     }
 
+    public String getHost() {
+        return host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
     public boolean isUseSsl() {
         return useSsl;
     }

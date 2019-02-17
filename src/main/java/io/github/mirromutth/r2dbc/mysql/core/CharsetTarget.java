@@ -14,13 +14,26 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.constant;
+package io.github.mirromutth.r2dbc.mysql.core;
+
+import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
 
 /**
- * Backend message decoder mode
+ * MySQL character collation target of {@link Charset}.
  */
-public enum DecodeMode {
+interface CharsetTarget {
 
-    HANDSHAKE,
-    RESPONSE
+    /**
+     * @return The maximum number of bytes by a character
+     */
+    int getByteSize();
+
+    /**
+     * @return Target default charset
+     * @throws UnsupportedCharsetException throw if default charset unsupported on this JVM
+     */
+    Charset getCharset() throws UnsupportedCharsetException;
+
+    boolean isExists(ServerVersion version);
 }

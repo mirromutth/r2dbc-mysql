@@ -25,7 +25,7 @@ import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessageDecoder;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeHeader;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeV10Message;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
-import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufUtil;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoProcessor;
-import reactor.core.publisher.MonoSink;
 import reactor.core.publisher.SynchronousSink;
 import reactor.netty.Connection;
 import reactor.util.concurrent.Queues;
@@ -57,31 +56,32 @@ final class ReactorNettyClient implements Client {
 
     private final AtomicReference<Connection> connection;
 
+    private final BackendMessageDecoder messageDecoder;
+
     private final MonoProcessor<ServerSession> serverSession = MonoProcessor.create(WaitStrategy.sleeping());
 
     private final EmitterProcessor<FrontendMessage> requestProcessor = EmitterProcessor.create(false);
 
     private final FluxSink<FrontendMessage> requests = requestProcessor.sink();
 
-    private final Queue<MonoSink<Flux<BackendMessage>>> responseReceivers = Queues.<MonoSink<Flux<BackendMessage>>>unbounded().get();
+    private final Queue<ResponseReceiver> responseReceivers = Queues.<ResponseReceiver>unbounded().get();
+
+    private volatile boolean handshakeHandled = false;
 
     private volatile boolean closed = false;
-
-    private volatile DecodeMode decodeMode = DecodeMode.HANDSHAKE;
 
     ReactorNettyClient(Connection connection) {
         requireNonNull(connection, "connection must not be null");
 
         connection.addHandler(new SubscribersCompleteHandler(this.requestProcessor, this.responseReceivers));
 
-        ByteBufAllocator byteBufAllocator = connection.outbound().alloc();
-        BackendMessageDecoder messageDecoder = new BackendMessageDecoder(byteBufAllocator);
-
+        this.messageDecoder = new BackendMessageDecoder(connection.outbound().alloc());
         this.connection = new AtomicReference<>(connection);
 
         BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleHandshake = handleBackendMessage(
             AbstractHandshakeMessage.class,
             (message, sink) -> {
+                this.handshakeHandled = true;
                 if (message instanceof HandshakeV10Message) {
                     HandshakeV10Message messageV10 = (HandshakeV10Message) message;
                     HandshakeHeader header = messageV10.getHandshakeHeader();
@@ -95,28 +95,35 @@ final class ReactorNettyClient implements Client {
                         CharCollation.fromId(messageV10.getCollationLow8Bits())
                     );
 
-                    serverSession.onNext(session);
+                    this.messageDecoder.setServerSession(session);
+                    this.serverSession.onNext(session);
                 } else {
                     forceClose().subscribe();
                 }
             }
         );
 
-        // TODO: implement receive
+        // TODO: implement receive, maybe need concat packets before doOnNext?
         Mono<Void> receive = connection.inbound().receive()
             .retain()
-            .concatMap(buf -> messageDecoder.decode(buf, getMode()))
-            .handle(handleHandshake)
-            .windowWhile(message -> false)
-            .doOnNext(messages -> {
-                MonoSink<Flux<BackendMessage>> receiver = this.responseReceivers.poll();
+            .doOnNext(byteBuf -> {
+                if (!this.handshakeHandled) {
+                    this.messageDecoder.decode(byteBuf, DecodeMode.HANDSHAKE).handle(handleHandshake).subscribe();
+                    return;
+                }
+
+                ResponseReceiver receiver = this.responseReceivers.poll();
 
                 if (receiver != null) {
-                    receiver.success(messages);
+                    receiver.success(this.messageDecoder.decode(byteBuf, receiver.getDecodeMode()));
+                } else {
+                    if (logger.isWarnEnabled()) {
+                        logger.warn("Unhandled byte buffer: {}", ByteBufUtil.prettyHexDump(byteBuf));
+                    }
                 }
             })
             .doOnComplete(() -> {
-                MonoSink<Flux<BackendMessage>> receiver = this.responseReceivers.poll();
+                ResponseReceiver receiver = this.responseReceivers.poll();
 
                 if (receiver != null) {
                     receiver.success(Flux.empty());
@@ -124,8 +131,7 @@ final class ReactorNettyClient implements Client {
             })
             .then();
 
-        Mono<Void> request = this.requestProcessor
-            .doOnNext(message -> logger.debug("Request: {}", message))
+        Mono<Void> request = this.requestProcessor.doOnNext(message -> logger.debug("Request: {}", message))
             .concatMap(message -> connection.outbound().send(message.encode(connection.outbound().alloc(), requireNonNull(serverSession.peek(), "send request before handshake complete"))))
             .then();
 
@@ -152,7 +158,12 @@ final class ReactorNettyClient implements Client {
             Flux.from(requests).subscribe(message -> {
                 if (!once.get() && once.compareAndSet(false, true)) {
                     synchronized (this) {
-                        this.responseReceivers.add(sink);
+                        DecodeMode mode = message.responseDecodeMode();
+
+                        // no need append to response receivers if it has no response
+                        if (mode != null) {
+                            this.responseReceivers.add(new ResponseReceiver(sink, mode));
+                        }
                     }
                 }
 
@@ -193,10 +204,6 @@ final class ReactorNettyClient implements Client {
     @Override
     public Mono<ServerSession> getSession() {
         return serverSession;
-    }
-
-    private DecodeMode getMode() {
-        return decodeMode;
     }
 
     @SuppressWarnings("unchecked")

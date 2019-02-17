@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
+import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
 import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.github.mirromutth.r2dbc.mysql.exception.AuthenticationTooLongException;
@@ -96,6 +97,11 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
         if (!this.varIntSizedAuth && authentication.length > ONE_BYTE_MAX_INT) {
             throw new AuthenticationTooLongException(authentication.length);
         }
+    }
+
+    @Override
+    public DecodeMode responseDecodeMode() {
+        return DecodeMode.RESPONSE;
     }
 
     @Override

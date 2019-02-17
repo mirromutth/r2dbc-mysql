@@ -72,7 +72,10 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     @Override
     public int compareTo(ServerVersion version) {
-        requireNonNull(version, "version must not be null");
+        if (version == null) {
+            return compareTo(NONE.major, NONE.minor, NONE.patch);
+        }
+
         return compareTo(version.major, version.minor, version.patch);
     }
 
