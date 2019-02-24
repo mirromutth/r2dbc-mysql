@@ -30,7 +30,7 @@ public final class ProtocolConstants {
      */
     public static final int SIZE_FIELD_SIZE = 3;
 
-    public static final int ENVELOPE_HEADER_SIZE = SIZE_FIELD_SIZE + 1;
+    public static final int PART_HEADER_SIZE = SIZE_FIELD_SIZE + 1;
 
     public static final int MAX_PART_SIZE = ~(-(1 << (SIZE_FIELD_SIZE << 3)));
 

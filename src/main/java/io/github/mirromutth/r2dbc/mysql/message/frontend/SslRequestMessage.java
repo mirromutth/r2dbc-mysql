@@ -49,11 +49,6 @@ public final class SslRequestMessage extends AbstractFrontendMessage {
     }
 
     @Override
-    public DecodeMode responseDecodeMode() {
-        return DecodeMode.RESPONSE;
-    }
-
-    @Override
     protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, ServerSession session) {
         ByteBuf buf = bufAllocator.buffer();
 

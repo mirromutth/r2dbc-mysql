@@ -16,12 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
-import io.github.mirromutth.r2dbc.mysql.core.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
+import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.github.mirromutth.r2dbc.mysql.message.backend.AbstractHandshakeMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessageDecoder;
+import io.github.mirromutth.r2dbc.mysql.message.backend.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeHeader;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeV10Message;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
@@ -34,13 +36,17 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoProcessor;
+import reactor.core.publisher.MonoSink;
 import reactor.core.publisher.SynchronousSink;
 import reactor.netty.Connection;
+import reactor.netty.resources.ConnectionProvider;
+import reactor.netty.tcp.TcpClient;
 import reactor.util.concurrent.Queues;
 import reactor.util.concurrent.WaitStrategy;
 
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -58,72 +64,84 @@ final class ReactorNettyClient implements Client {
 
     private final BackendMessageDecoder messageDecoder;
 
-    private final MonoProcessor<ServerSession> serverSession = MonoProcessor.create(WaitStrategy.sleeping());
+    private final AtomicInteger sequenceId = new AtomicInteger();
 
     private final EmitterProcessor<FrontendMessage> requestProcessor = EmitterProcessor.create(false);
 
     private final FluxSink<FrontendMessage> requests = requestProcessor.sink();
 
-    private final Queue<ResponseReceiver> responseReceivers = Queues.<ResponseReceiver>unbounded().get();
+    private final Queue<MonoSink<Flux<BackendMessage>>> responseReceivers = Queues.<MonoSink<Flux<BackendMessage>>>unbounded().get();
 
-    private volatile boolean handshakeHandled = false;
+    // it will always not null if the client initialized, so do not add @Nullable
+    private volatile ServerSession serverSession;
 
     private volatile boolean closed = false;
 
-    ReactorNettyClient(Connection connection) {
+    private ReactorNettyClient(
+        Connection connection,
+        ConnectProperties connectProperties,
+        MonoProcessor<ServerSession> serverSession
+    ) {
         requireNonNull(connection, "connection must not be null");
+        requireNonNull(serverSession, "serverSession must not be null");
 
-        connection.addHandler(new SubscribersCompleteHandler(this.requestProcessor, this.responseReceivers));
+        connection.addHandler(new PacketDecoder())
+            .addHandler(new SubscribersCompleteHandler(this.requestProcessor, this.responseReceivers));
 
-        this.messageDecoder = new BackendMessageDecoder(connection.outbound().alloc());
+        this.messageDecoder = new BackendMessageDecoder(connection.outbound().alloc(), sequenceId);
         this.connection = new AtomicReference<>(connection);
 
         BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleHandshake = handleBackendMessage(
             AbstractHandshakeMessage.class,
             (message, sink) -> {
-                this.handshakeHandled = true;
                 if (message instanceof HandshakeV10Message) {
                     HandshakeV10Message messageV10 = (HandshakeV10Message) message;
                     HandshakeHeader header = messageV10.getHandshakeHeader();
 
-                    // TODO: use full index, not just lower 8-bits
+                    int serverCapabilities = messageV10.getServerCapabilities();
+
                     ServerSession session = new ServerSession(
                         header.getConnectionId(),
                         header.getServerVersion(),
-                        messageV10.getServerCapabilities(),
+                        serverCapabilities,
+                        calculateCapabilities(serverCapabilities, connectProperties),
                         messageV10.getAuthType(),
-                        CharCollation.fromId(messageV10.getCollationLow8Bits())
+                        CharCollation.fromId(messageV10.getCollationLow8Bits() & 0xFF)
                     );
 
-                    this.messageDecoder.setServerSession(session);
-                    this.serverSession.onNext(session);
+                    serverSession.onNext(session);
                 } else {
                     forceClose().subscribe();
                 }
             }
         );
 
-        // TODO: implement receive, maybe need concat packets before doOnNext?
+        BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleError = handleBackendMessage(
+            ErrorMessage.class,
+            (message, sink) -> {
+                logger.error("Error: error code {}, sql state: {}, message: {}", message.getErrorCode(), message.getSqlState(), message.getErrorMessage());
+                sink.next(message);
+            }
+        );
+
+        // TODO: implement receive
         Mono<Void> receive = connection.inbound().receive()
             .retain()
-            .doOnNext(byteBuf -> {
-                if (!this.handshakeHandled) {
-                    this.messageDecoder.decode(byteBuf, DecodeMode.HANDSHAKE).handle(handleHandshake).subscribe();
-                    return;
+            .concatMap(buf -> {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Inbound: {}", ByteBufUtil.prettyHexDump(buf));
                 }
-
-                ResponseReceiver receiver = this.responseReceivers.poll();
-
-                if (receiver != null) {
-                    receiver.success(this.messageDecoder.decode(byteBuf, receiver.getDecodeMode()));
-                } else {
-                    if (logger.isWarnEnabled()) {
-                        logger.warn("Unhandled byte buffer: {}", ByteBufUtil.prettyHexDump(byteBuf));
-                    }
+                return messageDecoder.decode(buf);
+            })
+            .handle(handleHandshake)
+            .handle(handleError)
+            .doOnNext(message -> {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Response: {}", message);
                 }
             })
             .doOnComplete(() -> {
-                ResponseReceiver receiver = this.responseReceivers.poll();
+                MonoSink<Flux<BackendMessage>> receiver = this.responseReceivers.poll();
 
                 if (receiver != null) {
                     receiver.success(Flux.empty());
@@ -132,16 +150,17 @@ final class ReactorNettyClient implements Client {
             .then();
 
         Mono<Void> request = this.requestProcessor.doOnNext(message -> logger.debug("Request: {}", message))
-            .concatMap(message -> connection.outbound().send(message.encode(connection.outbound().alloc(), requireNonNull(serverSession.peek(), "send request before handshake complete"))))
+            .concatMap(message -> connection.outbound().send(message.encode(connection.outbound().alloc(), this.sequenceId, this.serverSession).doOnNext(buf -> {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Outbound:\n{}", ByteBufUtil.prettyHexDump(buf));
+                }
+            })))
             .then();
 
-        Flux.merge(receive, request)
-            .onErrorResume(throwable -> {
-                logger.error("Connection Error", throwable);
-                return close();
-            })
-            .doFinally(s -> messageDecoder.release())
-            .subscribe();
+        Flux.merge(receive, request).onErrorResume(throwable -> {
+            logger.error("Connection Error", throwable);
+            return close();
+        }).doFinally(s -> this.messageDecoder.release()).subscribe();
     }
 
     @Override
@@ -158,13 +177,11 @@ final class ReactorNettyClient implements Client {
             Flux.from(requests).subscribe(message -> {
                 if (!once.get() && once.compareAndSet(false, true)) {
                     synchronized (this) {
-                        DecodeMode mode = message.responseDecodeMode();
-
-                        // no need append to response receivers if it has no response
-                        if (mode != null) {
-                            this.responseReceivers.add(new ResponseReceiver(sink, mode));
-                        }
+                        this.responseReceivers.add(sink);
+                        this.requests.next(message);
                     }
+
+                    return;
                 }
 
                 this.requests.next(message);
@@ -202,8 +219,34 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
-    public Mono<ServerSession> getSession() {
+    public ServerSession getSession() {
         return serverSession;
+    }
+
+    private ReactorNettyClient initServerSession(ServerSession serverSession) {
+        this.serverSession = serverSession;
+        this.messageDecoder.initServerSession(serverSession);
+
+        return this;
+    }
+
+    static Mono<ReactorNettyClient> connect(ConnectProperties connectProperties) {
+        return connect(ConnectionProvider.newConnection(), connectProperties);
+    }
+
+    static Mono<ReactorNettyClient> connect(ConnectionProvider connectionProvider, ConnectProperties connectProperties) {
+        requireNonNull(connectionProvider, "connectionProvider must not be null");
+        requireNonNull(connectProperties, "connectProperties must not be null");
+
+        TcpClient client = TcpClient.create(connectionProvider)
+            .host(connectProperties.getHost())
+            .port(connectProperties.getPort());
+
+        MonoProcessor<ServerSession> serverSession = MonoProcessor.create(WaitStrategy.sleeping());
+
+        return client.connect()
+            .map(conn -> new ReactorNettyClient(conn, connectProperties, serverSession))
+            .flatMap(c -> serverSession.map(c::initServerSession));
     }
 
     @SuppressWarnings("unchecked")
@@ -218,5 +261,24 @@ final class ReactorNettyClient implements Client {
                 sink.next(message);
             }
         };
+    }
+
+    private static int calculateCapabilities(int serverCapabilities, ConnectProperties properties) {
+        // use protocol 41 and deprecate EOF message
+        int clientCapabilities = serverCapabilities | Capability.PROTOCOL_41.getFlag() | Capability.DEPRECATE_EOF.getFlag();
+
+        if (!properties.isUseSsl()) {
+            clientCapabilities &= ~Capability.SSL.getFlag();
+        }
+
+        if (properties.getDatabase().isEmpty()) {
+            clientCapabilities &= ~Capability.CONNECT_WITH_DB.getFlag();
+        }
+
+        if (properties.getAttributes().isEmpty()) {
+            clientCapabilities &= ~Capability.CONNECT_ATTRS.getFlag();
+        }
+
+        return clientCapabilities;
     }
 }

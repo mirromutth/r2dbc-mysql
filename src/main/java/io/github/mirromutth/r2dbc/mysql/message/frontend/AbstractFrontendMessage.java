@@ -25,6 +25,7 @@ import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -43,16 +44,15 @@ abstract class AbstractFrontendMessage implements FrontendMessage {
     protected abstract ByteBuf encodeSingle(ByteBufAllocator bufAllocator, ServerSession session);
 
     @Override
-    public final Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, ServerSession session) {
+    public final Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, ServerSession session) {
         requireNonNull(bufAllocator, "bufAllocator must not be null");
         requireNonNull(session, "session must not be null");
 
         ByteBuf allBodyBuf = encodeSingle(bufAllocator, session);
         List<ByteBuf> envelopes = new ArrayList<>(allBodyBuf.readableBytes() / ProtocolConstants.MAX_PART_SIZE + 1);
-        short sequenceId = 0;
 
         while (allBodyBuf.readableBytes() >= ProtocolConstants.MAX_PART_SIZE) {
-            ByteBuf headerBuf = bufAllocator.buffer(4).writeMediumLE(ProtocolConstants.MAX_PART_SIZE).writeByte(sequenceId++);
+            ByteBuf headerBuf = bufAllocator.buffer(4).writeMediumLE(ProtocolConstants.MAX_PART_SIZE).writeByte(sequenceId.getAndIncrement());
             ByteBuf bodyBuf = allBodyBuf.readRetainedSlice(ProtocolConstants.MAX_PART_SIZE);
             ByteBuf envelopeBuf = bufAllocator.compositeBuffer(2)
                 .addComponent(true, headerBuf)
@@ -60,7 +60,7 @@ abstract class AbstractFrontendMessage implements FrontendMessage {
             envelopes.add(envelopeBuf);
         }
 
-        ByteBuf headerBuf = bufAllocator.buffer(4).writeMediumLE(allBodyBuf.readableBytes()).writeByte(sequenceId);
+        ByteBuf headerBuf = bufAllocator.buffer(4).writeMediumLE(allBodyBuf.readableBytes()).writeByte(sequenceId.getAndIncrement());
         ByteBuf envelopeBuf = bufAllocator.compositeBuffer(2)
             .addComponent(true, headerBuf)
             .addComponent(true, allBodyBuf);

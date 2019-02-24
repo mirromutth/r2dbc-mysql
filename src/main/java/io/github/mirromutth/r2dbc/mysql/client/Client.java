@@ -16,14 +16,17 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
+import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
 import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoProcessor;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
+import reactor.util.concurrent.WaitStrategy;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -36,20 +39,5 @@ public interface Client {
 
     Mono<Void> close();
 
-    Mono<ServerSession> getSession();
-
-    static Mono<Client> connect(String host, int port) {
-        return connect(ConnectionProvider.newConnection(), host, port);
-    }
-
-    static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port) {
-        requireNonNull(connectionProvider, "connectionProvider must not be null");
-        requireNonNull(host, "host must not be null");
-
-        return TcpClient.create(connectionProvider)
-            .host(host)
-            .port(port)
-            .connect()
-            .map(ReactorNettyClient::new);
-    }
+    ServerSession getSession();
 }

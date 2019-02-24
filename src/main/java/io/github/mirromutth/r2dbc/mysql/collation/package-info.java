@@ -14,16 +14,11 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.exception;
-
-import io.r2dbc.spi.R2dbcException;
-
 /**
- * The MySQL server protocol version is not support, check version compatibility on README.
+ * Character collations of MySQL
  */
-public final class ProtocolNotSupportException extends R2dbcException {
 
-    public ProtocolNotSupportException(String message) {
-        super(message);
-    }
-}
+@NonNullApi
+package io.github.mirromutth.r2dbc.mysql.collation;
+
+import reactor.util.annotation.NonNullApi;

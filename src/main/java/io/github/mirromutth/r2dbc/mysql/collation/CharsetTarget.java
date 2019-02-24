@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
+package io.github.mirromutth.r2dbc.mysql.collation;
+
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
 
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
@@ -34,6 +36,8 @@ interface CharsetTarget {
      * @throws UnsupportedCharsetException throw if default charset unsupported on this JVM
      */
     Charset getCharset() throws UnsupportedCharsetException;
+
+    boolean isCached();
 
     boolean isExists(ServerVersion version);
 }

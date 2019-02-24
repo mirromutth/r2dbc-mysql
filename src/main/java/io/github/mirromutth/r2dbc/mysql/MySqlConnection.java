@@ -106,37 +106,4 @@ public final class MySqlConnection implements Connection {
         // TODO: implement this method
         return Mono.empty();
     }
-
-    public static Mono<MySqlConnection> connect(ConnectProperties properties) {
-        requireNonNull(properties, "properties must not be null");
-
-        return Client.connect(properties.getHost(), properties.getPort()).flatMap(client -> client.getSession().flatMap(session -> {
-            int clientCapabilities = calculateCapabilities(session.getServerCapabilities(), properties);
-
-            if ((clientCapabilities & Capability.SSL.getFlag()) != 0) {
-                Mono<FrontendMessage> ssl = Mono.just(new SslRequestMessage(clientCapabilities, (byte) session.getCollation().getId()));
-                return client.exchange(ssl).then(Mono.just(client));
-            } else {
-                return Mono.just(client);
-            }
-        })).map(client -> new MySqlConnection(client, properties));
-    }
-
-    private static int calculateCapabilities(int serverCapabilities, ConnectProperties properties) {
-        int clientCapabilities = serverCapabilities;
-
-        if (!properties.isUseSsl()) {
-            clientCapabilities &= ~Capability.SSL.getFlag();
-        }
-
-        if (properties.getDatabase().isEmpty()) {
-            clientCapabilities &= ~Capability.CONNECT_WITH_DB.getFlag();
-        }
-
-        if (properties.getAttributes().isEmpty()) {
-            clientCapabilities &= ~Capability.CONNECT_ATTRS.getFlag();
-        }
-
-        return clientCapabilities;
-    }
 }

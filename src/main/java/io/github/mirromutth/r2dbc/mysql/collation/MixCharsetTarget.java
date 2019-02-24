@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
+package io.github.mirromutth.r2dbc.mysql.collation;
+
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
 
 import java.nio.charset.Charset;
+import java.util.Arrays;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -34,7 +37,7 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
     }
 
     private MixCharsetTarget(int byteSize, ServerVersion minVersion, Charset fallbackCharset, CharsetTarget... targets) {
-        super(maxByteSize(requireNonNull(targets, "targets must not be null or empty"), byteSize), minVersion);
+        super(maxByteSize(requireNonNull(targets, "targets must not be null"), byteSize), minVersion);
 
         this.fallbackCharset = requireNonNull(fallbackCharset, "fallbackCharset must not be null");
         this.targets = targets;
@@ -53,6 +56,11 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
         return fallbackCharset;
     }
 
+    @Override
+    public boolean isCached() {
+        return false;
+    }
+
     private static int maxByteSize(CharsetTarget[] targets, int defaultByteSize) {
         int result = defaultByteSize;
 
@@ -64,5 +72,44 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
         }
 
         return result;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof MixCharsetTarget)) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+
+        MixCharsetTarget that = (MixCharsetTarget) o;
+
+        if (!fallbackCharset.equals(that.fallbackCharset)) {
+            return false;
+        }
+        // Probably incorrect - comparing Object[] arrays with Arrays.equals
+        return Arrays.equals(targets, that.targets);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + fallbackCharset.hashCode();
+        result = 31 * result + Arrays.hashCode(targets);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "MixCharsetTarget{" +
+            "fallbackCharset=" + fallbackCharset +
+            ", targets=" + Arrays.toString(targets) +
+            ", byteSize=" + byteSize +
+            ", minVersion=" + minVersion +
+            '}';
     }
 }

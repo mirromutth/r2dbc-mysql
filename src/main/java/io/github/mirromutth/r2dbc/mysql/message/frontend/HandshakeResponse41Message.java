@@ -100,11 +100,6 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
     }
 
     @Override
-    public DecodeMode responseDecodeMode() {
-        return DecodeMode.RESPONSE;
-    }
-
-    @Override
     protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, ServerSession session) {
         final ByteBuf buf = bufAllocator.buffer();
         Charset charset = session.getCollation().getCharset();

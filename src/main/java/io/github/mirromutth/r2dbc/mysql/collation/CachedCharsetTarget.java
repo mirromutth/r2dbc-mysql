@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
+package io.github.mirromutth.r2dbc.mysql.collation;
+
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
 
 import java.nio.charset.Charset;
 
@@ -40,6 +42,11 @@ final class CachedCharsetTarget extends AbstractCharsetTarget {
     @Override
     public Charset getCharset() {
         return charset;
+    }
+
+    @Override
+    public boolean isCached() {
+        return true;
     }
 
     @Override

@@ -17,8 +17,10 @@
 package io.github.mirromutth.r2dbc.mysql.util;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants.TERMINAL;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNegative;
@@ -33,31 +35,75 @@ public final class CodecUtils {
     }
 
     private static final int VAR_INT_1_BYTE_LIMIT = 250;
+
     private static final int VAR_INT_2_BYTE_LIMIT = (1 << (Byte.SIZE << 1)) - 1;
+
     private static final int VAR_INT_2_BYTE_CODE = 0xFC;
+
     private static final int VAR_INT_3_BYTE_LIMIT = (1 << (Byte.SIZE * 3)) - 1;
+
     private static final int VAR_INT_3_BYTE_CODE = 0xFD;
+
     private static final int VAR_INT_8_BYTE_CODE = 0xFE;
 
     /**
-     * @param buf     C-style string readable buffer
-     * @param charset the string characters' set
+     * @param buf     C-style string readable buffer.
+     * @param charset the string characters' set.
      * @return The string of C-style.
      */
     public static String readCString(ByteBuf buf, Charset charset) {
         requireNonNull(buf, "buf must not be null");
         requireNonNull(charset, "charset must not be null");
 
-        String result = buf.readCharSequence(buf.bytesBefore(TERMINAL), charset).toString();
-        buf.skipBytes(1);
+        int length = buf.bytesBefore(TERMINAL);
+
+        String result = buf.toString(buf.readerIndex(), length, charset);
+        buf.skipBytes(length + 1); // skip string and terminal by read
+
         return result;
     }
 
+    /**
+     * @param buf C-style string readable buffer.
+     * @return The string of C-style on byte buffer.
+     */
     public static ByteBuf readCStringSlice(ByteBuf buf) {
         requireNonNull(buf, "buf must not be null");
 
         ByteBuf result = buf.readSlice(buf.bytesBefore(TERMINAL));
         buf.skipBytes(1);
+        return result;
+    }
+
+    /**
+     * @param buf a readable buffer include a var integer.
+     * @return A var integer read from buffer.
+     */
+    public static long readVarInt(ByteBuf buf) {
+        requireNonNull(buf, "buf must not be null");
+
+        short firstByte = buf.readUnsignedByte();
+
+        if (firstByte < VAR_INT_2_BYTE_CODE) {
+            return firstByte;
+        } else if (firstByte == VAR_INT_2_BYTE_CODE) {
+            return buf.readUnsignedShortLE();
+        } else if (firstByte == VAR_INT_3_BYTE_CODE) {
+            return buf.readUnsignedMediumLE();
+        } else {
+            return buf.readLongLE();
+        }
+    }
+
+    public static String readVarIntSizedString(ByteBuf buf, Charset charset) {
+        requireNonNull(buf, "buf must not be null");
+        requireNonNull(charset, "charset must not be negative");
+
+        int size = (int) readVarInt(buf); // JVM can NOT support string which length upper than maximum of int32
+
+        String result = buf.toString(buf.readerIndex(), size, charset);
+        buf.skipBytes(size);
+
         return result;
     }
 
@@ -81,7 +127,7 @@ public final class CodecUtils {
      * WARNING: it is MySQL var int (size encoded integer),
      * that is not like var int usually.
      *
-     * @param buf that want write to this {@link ByteBuf}
+     * @param buf   that want write to this {@link ByteBuf}
      * @param value integer that want write
      */
     public static void writeVarInt(ByteBuf buf, int value) {
@@ -100,17 +146,19 @@ public final class CodecUtils {
         }
     }
 
-    public static void writeVarIntSizedString(ByteBuf buf, CharSequence value, Charset charset) {
-        int size = value.length();
-        if (size > 0) {
-            writeVarInt(buf, size);
-            buf.writeCharSequence(value, charset);
-        } else {
-            buf.writeByte(0);
-        }
+    public static void writeVarIntSizedString(ByteBuf buf, String value, Charset charset) {
+        requireNonNull(buf, "buf must not be null");
+        requireNonNull(value, "value must not be null");
+        requireNonNull(charset, "charset must not be null");
+
+        // NEVER use value.length() in here, size must be bytes' size, not string size
+        writeVarIntSizedBytes(buf, value.getBytes(charset));
     }
 
     public static void writeVarIntSizedBytes(ByteBuf buf, byte[] value) {
+        requireNonNull(buf, "buf must not be null");
+        requireNonNull(value, "value must not be null");
+
         int size = value.length;
         if (size > 0) {
             writeVarInt(buf, size);

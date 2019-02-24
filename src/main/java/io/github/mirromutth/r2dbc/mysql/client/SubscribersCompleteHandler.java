@@ -26,6 +26,8 @@ import reactor.core.publisher.MonoSink;
 
 import java.util.Queue;
 
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+
 /**
  * A handler for ensure subscribers complete.
  */
@@ -33,14 +35,14 @@ final class SubscribersCompleteHandler extends ChannelDuplexHandler {
 
     private final EmitterProcessor<FrontendMessage> requestProcessor;
 
-    private final Queue<ResponseReceiver> responseReceivers;
+    private final Queue<MonoSink<Flux<BackendMessage>>> responseReceivers;
 
     SubscribersCompleteHandler(
         EmitterProcessor<FrontendMessage> requestProcessor,
-        Queue<ResponseReceiver> responseReceivers
+        Queue<MonoSink<Flux<BackendMessage>>> responseReceivers
     ) {
-        this.requestProcessor = requestProcessor;
-        this.responseReceivers = responseReceivers;
+        this.requestProcessor = requireNonNull(requestProcessor, "requestProcessor must not be null");
+        this.responseReceivers = requireNonNull(responseReceivers, "responseReceivers must not be null");
     }
 
     @Override
@@ -49,8 +51,8 @@ final class SubscribersCompleteHandler extends ChannelDuplexHandler {
 
         this.requestProcessor.onComplete();
 
-        for (ResponseReceiver responseReceiver = responseReceivers.poll(); responseReceiver != null; responseReceiver = responseReceivers.poll()) {
-            responseReceiver.success(Flux.empty());
+        for (MonoSink<Flux<BackendMessage>> receiver = responseReceivers.poll(); receiver != null; receiver = responseReceivers.poll()) {
+            receiver.success(Flux.empty());
         }
     }
 }

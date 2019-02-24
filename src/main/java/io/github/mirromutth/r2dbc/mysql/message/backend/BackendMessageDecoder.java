@@ -19,203 +19,119 @@ package io.github.mirromutth.r2dbc.mysql.message.backend;
 import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
 import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.exception.ProtocolNotSupportException;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufHolder;
-import io.netty.buffer.ByteBufUtil;
-import io.netty.buffer.CompositeByteBuf;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-import reactor.util.annotation.Nullable;
+import reactor.core.publisher.Mono;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A decoder that reads {@link ByteBuf}s and returns a {@link Flux} of decoded {@link BackendMessage}s.
+ * A decoder that reads native message packets and returns a {@link Mono} of decoded {@link BackendMessage}.
  */
-public final class BackendMessageDecoder implements ByteBufHolder {
+public final class BackendMessageDecoder {
 
-    private static final Logger logger = LoggerFactory.getLogger(BackendMessageDecoder.class);
+    private final AtomicInteger sequenceId;
 
-    private final CompositeByteBuf readBuf;
-    private final CompositeByteBuf envelopeBuf;
-    private volatile ServerSession serverSession;
+    private final ByteBufJoiner joiner;
 
-    public BackendMessageDecoder(ByteBufAllocator bufAllocator) {
-        this(requireNonNull(bufAllocator, "bufAllocator must not be null").compositeBuffer(), bufAllocator.compositeBuffer());
+    private final List<ByteBuf> parts = new ArrayList<>();
+
+    private volatile DecodeMode decodeMode = DecodeMode.CONNECTION;
+
+    private volatile ServerSession serverSession = null;
+
+    public BackendMessageDecoder(ByteBufAllocator bufAllocator, AtomicInteger sequenceId) {
+        this.joiner = ByteBufJoiner.composite(requireNonNull(bufAllocator, "bufAllocator must not be null"));
+        this.sequenceId = requireNonNull(sequenceId, "sequenceId must not be null");
     }
 
-    private BackendMessageDecoder(CompositeByteBuf readBuf, CompositeByteBuf envelopeBuf) {
-        this.readBuf = requireNonNull(readBuf, "readBuf must not be null");
-        this.envelopeBuf = requireNonNull(envelopeBuf, "envelopeBuf must not be null");
-    }
-
-    public Flux<BackendMessage> decode(ByteBuf buf, DecodeMode mode) {
-        requireNonNull(buf, "buf must not be null");
-        requireNonNull(mode, "mode must not be null");
-
-        return Flux.generate(
-            () -> this.readBuf.addComponent(true, buf),
-            (byteBuf, sink) -> {
-                int byteSize = Integer.MAX_VALUE;
-
-                while (byteSize >= ProtocolConstants.MAX_PART_SIZE) {
-                    ByteBuf envelopePart = sliceEnvelopePart(byteBuf);
-
-                    if (envelopePart == null) {
-                        sink.complete();
-                        return byteBuf;
-                    }
-
-                    byteSize = envelopePart.readUnsignedMediumLE();
-                    envelopePart.skipBytes(1);
-
-                    if (envelopePart.readableBytes() > 0) {
-                        this.envelopeBuf.addComponent(true, envelopePart.retain());
-                    }
-                }
-
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Inbound message (header removed):\n{}", ByteBufUtil.prettyHexDump(this.envelopeBuf));
-                }
-
-                try {
-                    switch (mode) {
-                        case HANDSHAKE:
-                            sink.next(AbstractHandshakeMessage.decode(this.envelopeBuf));
-                            break;
-                        case RESPONSE:
-                            sink.next(AbstractResponse.decode(this.envelopeBuf, this.serverSession));
-                            break;
-                    }
-                } finally {
-                    this.envelopeBuf.discardReadComponents();
-                }
-
-                return byteBuf;
-            },
-            CompositeByteBuf::discardReadComponents
-        );
-    }
-
-    public void setServerSession(ServerSession serverSession) {
-        this.serverSession = serverSession;
-    }
-
-    @Nullable
-    private ByteBuf sliceEnvelopePart(ByteBuf buf) {
-        if (buf.readableBytes() < ProtocolConstants.ENVELOPE_HEADER_SIZE) {
-            return null;
-        }
-
-        int envelopeSize = buf.getUnsignedMediumLE(buf.readerIndex()) + ProtocolConstants.ENVELOPE_HEADER_SIZE;
-
-        if (buf.readableBytes() < envelopeSize) {
-            return null;
-        }
-
-        return buf.readSlice(envelopeSize);
-    }
-
-    @Override
-    public ByteBuf content() {
-        return readBuf;
-    }
-
-    @Override
-    public ByteBufHolder copy() {
-        return replace(readBuf.copy());
-    }
-
-    @Override
-    public ByteBufHolder duplicate() {
-        return replace(readBuf.duplicate());
-    }
-
-    @Override
-    public ByteBufHolder retainedDuplicate() {
-        return replace(readBuf.retainedDuplicate());
-    }
-
-    @Override
-    public ByteBufHolder replace(ByteBuf byteBuf) {
-        CompositeByteBuf newReadBuf = this.readBuf.alloc().compositeBuffer();
-
-        if (byteBuf.isReadable() && byteBuf.readableBytes() > 0) {
-            newReadBuf.addComponent(true, byteBuf);
-        }
-
-        return new BackendMessageDecoder(newReadBuf, envelopeBufCopy());
-    }
-
-    @Override
-    public int refCnt() {
-        return readBuf.refCnt();
-    }
-
-    @Override
-    public ByteBufHolder retain() {
-        readBuf.retain();
-        return this;
-    }
-
-    @Override
-    public ByteBufHolder retain(int i) {
-        readBuf.retain(i);
-        return this;
-    }
-
-    @Override
-    public ByteBufHolder touch() {
-        readBuf.touch();
-        return this;
-    }
-
-    @Override
-    public ByteBufHolder touch(Object o) {
-        readBuf.touch(o);
-        return this;
-    }
-
-    @Override
-    public boolean release() {
-        boolean result = readBuf.release();
-
-        if (result) {
-            forceReleaseEnvelope();
-        }
-
-        return result;
-    }
-
-    @Override
-    public boolean release(int i) {
-        boolean result = readBuf.release(i);
-
-        if (result) {
-            forceReleaseEnvelope();
-        }
-
-        return result;
-    }
-
-    private void forceReleaseEnvelope() {
-        int refCnt = envelopeBuf.refCnt();
-
-        if (refCnt > 0) {
-            envelopeBuf.release(refCnt);
-        }
-    }
-
-    private CompositeByteBuf envelopeBufCopy() {
-        CompositeByteBuf envelopeBuf = this.envelopeBuf.alloc().compositeBuffer();
-
+    public Mono<BackendMessage> decode(ByteBuf buf) {
         try {
-            envelopeBuf.addComponent(true, this.envelopeBuf.copy());
-            return envelopeBuf.retain();
+            if (readLastPart(buf)) {
+                sequenceId.set(buf.readUnsignedByte() + 1);
+                ByteBuf joined = joiner.join(parts, buf);
+                try {
+                    buf = null;
+                    parts.clear();
+
+                    switch (decodeMode) {
+                        case CONNECTION:
+                            return Mono.defer(() -> Mono.just(decodeConnection(joined)));
+                        case COMMAND:
+                            return Mono.empty();
+                        case REPLICATION:
+                            return Mono.empty();
+                    }
+
+                    return Mono.empty();
+                } finally {
+                    joined.release();
+                }
+            } else {
+                buf.skipBytes(1); // sequence Id
+                parts.add(buf);
+                buf = null;
+                return Mono.empty();
+            }
         } finally {
-            envelopeBuf.release();
+            if (buf != null) {
+                buf.release();
+            }
         }
+    }
+
+    public void initServerSession(ServerSession serverSession) {
+        if (this.serverSession == null) {
+            this.serverSession = requireNonNull(serverSession, "serverSession must not be null");
+        }
+    }
+
+    public void release() {
+        try {
+            for (ByteBuf part : parts) {
+                part.release();
+            }
+        } finally {
+            parts.clear();
+        }
+    }
+
+    private BackendMessage decodeConnection(ByteBuf buf) {
+        short header = buf.getUnsignedByte(buf.readerIndex());
+        switch (header) {
+            case 0: // Ok
+                try {
+                    return OkMessage.decode(buf, serverSession);
+                } finally {
+                    this.decodeMode = DecodeMode.COMMAND; // connection phase has completed
+                }
+            case 1: // Auth more data
+                return AuthMoreDataMessage.decode(buf);
+            case 9:
+            case 10: // Handshake V9 (not supported) or V10
+                return AbstractHandshakeMessage.decode(buf);
+            case 0xFF: // Error
+                return ErrorMessage.decode(buf);
+            case 0xFE: // Auth exchange message or EOF message
+                int byteSize = buf.readableBytes();
+
+                if (byteSize == 1 || byteSize == 5) { // must be EOF (unsupported EOF 320 message if byte size is 1)
+                    return EofMessage.decode(buf);
+                }
+
+                return AuthChangeMessage.decode(buf);
+        }
+
+        throw new ProtocolNotSupportException("Unknown message header " + header + " on connection phase");
+    }
+
+    private boolean readLastPart(ByteBuf partBuf) {
+        int size = partBuf.readUnsignedMediumLE();
+        return size < ProtocolConstants.MAX_PART_SIZE;
     }
 }

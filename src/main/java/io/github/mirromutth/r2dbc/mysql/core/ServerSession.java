@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.core;
 
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -41,13 +42,14 @@ public final class ServerSession {
         int connectionId,
         ServerVersion serverVersion,
         int serverCapabilities,
+        int clientCapabilities,
         AuthType authType,
         CharCollation collation
     ) {
         this.connectionId = connectionId;
         this.serverVersion = requireNonNull(serverVersion, "serverVersion must not be null");
         this.serverCapabilities = serverCapabilities;
-        this.clientCapabilities = serverCapabilities;
+        this.clientCapabilities = clientCapabilities;
         this.authType = requireNonNull(authType, "authType must not be null");
         this.collation = requireNonNull(collation, "collation must not be null");
     }

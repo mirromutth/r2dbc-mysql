@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
+package io.github.mirromutth.r2dbc.mysql.collation;
+
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requirePositive;

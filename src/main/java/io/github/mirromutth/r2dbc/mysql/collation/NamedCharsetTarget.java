@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
+package io.github.mirromutth.r2dbc.mysql.collation;
+
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
 
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
@@ -42,6 +44,11 @@ final class NamedCharsetTarget extends AbstractCharsetTarget {
     @Override
     public Charset getCharset() throws UnsupportedCharsetException {
         return Charset.forName(charsetName);
+    }
+
+    @Override
+    public boolean isCached() {
+        return false;
     }
 
     @Override

@@ -22,13 +22,19 @@ package io.github.mirromutth.r2dbc.mysql.constant;
 public enum ServerStatus {
 
     IN_TRANS(1),
-    AUTOCOMMIT(2),
+    AUTO_COMMIT(2),
     MORE_RESULTS_EXISTS(8),
     QUERY_NO_GOOD_INDEX_USED(16),
     QUERY_NO_INDEX_USED(32),
     CURSOR_EXISTS(64),
     LAST_ROW_SENT(128),
-    QUERY_WAS_SLOW(2048);
+    DB_DROPPED(256),
+    NO_BACKSLASH_ESCAPES(512),
+    METADATA_CHANGED(1024),
+    QUERY_WAS_SLOW(2048),
+    PS_OUT_PARAMS(4096),
+    IN_TRANS_READONLY(8192),
+    SESSION_STATE_CHANGED(16384);
 
     private final int flag;
 

@@ -21,6 +21,7 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  */
 public enum DecodeMode {
 
-    HANDSHAKE,
-    RESPONSE
+    CONNECTION,
+    COMMAND,
+    REPLICATION
 }

@@ -16,8 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.core;
 
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
@@ -29,5 +31,6 @@ class CharCollationTest {
     void fromId() {
         assertNotNull(CharCollation.fromId(33)); // utf-8 general ci
         assertNotNull(CharCollation.fromId(224)); // utf-8 more 4-bytes unicode ci
+        assertNotEquals(CharCollation.fromId(33), CharCollation.fromId(224));
     }
 }

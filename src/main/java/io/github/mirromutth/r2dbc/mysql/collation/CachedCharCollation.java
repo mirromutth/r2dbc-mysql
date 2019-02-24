@@ -14,16 +14,30 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.exception;
+package io.github.mirromutth.r2dbc.mysql.collation;
 
-import io.r2dbc.spi.R2dbcException;
+import java.nio.charset.Charset;
 
 /**
- * The MySQL server protocol version is not support, check version compatibility on README.
+ * Character collation those use already cached {@link CharsetTarget} of MySQL
  */
-public final class ProtocolNotSupportException extends R2dbcException {
+class CachedCharCollation extends AbstractCharCollation {
 
-    public ProtocolNotSupportException(String message) {
-        super(message);
+    CachedCharCollation(int id, String name, CharsetTarget target) {
+        super(id, name, target);
+    }
+
+    @Override
+    public Charset getCharset() {
+        return target.getCharset();
+    }
+
+    @Override
+    public String toString() {
+        return "CachedCharCollation{" +
+            "id=" + id +
+            ", name='" + name + '\'' +
+            ", target=" + target +
+            '}';
     }
 }

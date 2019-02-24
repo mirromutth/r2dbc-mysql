@@ -64,12 +64,12 @@ public abstract class AbstractHandshakeMessage implements BackendMessage {
 
     static AbstractHandshakeMessage decode(ByteBuf buf) {
         HandshakeHeader handshakeHeader = HandshakeHeader.decode(buf);
-        short protocolVersion = handshakeHeader.getProtocolVersion();
+        short version = handshakeHeader.getProtocolVersion();
 
-        if (protocolVersion == 10) {
+        if (version == 10) {
             return HandshakeV10Message.decode(buf, handshakeHeader);
         }
 
-        throw new ProtocolNotSupportException(protocolVersion);
+        throw new ProtocolNotSupportException("Handshake protocol version " + version + " not support.");
     }
 }
