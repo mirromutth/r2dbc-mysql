@@ -51,31 +51,32 @@ public final class BackendMessageDecoder {
     }
 
     public Mono<BackendMessage> decode(ByteBuf buf) {
+        requireNonNull(buf, "buf must not be null");
+
         try {
             if (readLastPart(buf)) {
                 sequenceId.set(buf.readUnsignedByte() + 1);
                 ByteBuf joined = joiner.join(parts, buf);
-                try {
-                    buf = null;
-                    parts.clear();
 
-                    switch (decodeMode) {
-                        case CONNECTION:
-                            return Mono.defer(() -> Mono.just(decodeConnection(joined)));
-                        case COMMAND:
-                            return Mono.empty();
-                        case REPLICATION:
-                            return Mono.empty();
-                    }
+                buf = null; // success, no need release
+                parts.clear();
 
-                    return Mono.empty();
-                } finally {
-                    joined.release();
+                switch (decodeMode) {
+                    case CONNECTION:
+                        return Mono.defer(() -> Mono.just(decodeConnection(joined))).doFinally(ignored -> joined.release());
+                    case COMMAND:
+                        return Mono.defer(() -> Mono.just(decodeCommand(joined))).doFinally(ignored -> joined.release());
+                    case REPLICATION:
+                        return Mono.defer(() -> Mono.just(decodeReplication(joined))).doFinally(ignored -> joined.release());
                 }
+
+                joined.release();
+
+                return Mono.error(() -> new IllegalStateException("decodeMode is null when decoding!"));
             } else {
                 buf.skipBytes(1); // sequence Id
                 parts.add(buf);
-                buf = null;
+                buf = null; // success, no need release
                 return Mono.empty();
             }
         } finally {
@@ -128,6 +129,16 @@ public final class BackendMessageDecoder {
         }
 
         throw new ProtocolNotSupportException("Unknown message header " + header + " on connection phase");
+    }
+
+    private BackendMessage decodeCommand(ByteBuf buf) {
+        // TODO: implement command phase decode logic
+        throw new IllegalArgumentException("No implementation");
+    }
+
+    private BackendMessage decodeReplication(ByteBuf buf) {
+        // TODO: implement command phase decode logic
+        throw new IllegalArgumentException("No implementation");
     }
 
     private boolean readLastPart(ByteBuf partBuf) {

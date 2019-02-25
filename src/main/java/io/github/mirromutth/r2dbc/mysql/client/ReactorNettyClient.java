@@ -157,10 +157,13 @@ final class ReactorNettyClient implements Client {
             })))
             .then();
 
-        Flux.merge(receive, request).onErrorResume(throwable -> {
-            logger.error("Connection Error", throwable);
-            return close();
-        }).doFinally(s -> this.messageDecoder.release()).subscribe();
+        Flux.merge(receive, request)
+            .doFinally(ignored -> this.messageDecoder.release())
+            .onErrorResume(e -> {
+                logger.error("Connection Error", e);
+                return close();
+            })
+            .subscribe();
     }
 
     @Override
@@ -199,8 +202,10 @@ final class ReactorNettyClient implements Client {
             }
 
             // TODO: implement close
-
-            return Mono.empty();
+            return Mono.<Void>empty()
+                .doOnSuccess(ignored -> connection.dispose())
+                .then(connection.onDispose())
+                .doOnSuccess(ignored -> this.closed = true);
         });
     }
 
@@ -214,7 +219,7 @@ final class ReactorNettyClient implements Client {
 
             connection.dispose();
 
-            return connection.onDispose().doOnSuccess(v -> this.closed = true);
+            return connection.onDispose().doOnSuccess(ignored -> this.closed = true);
         });
     }
 

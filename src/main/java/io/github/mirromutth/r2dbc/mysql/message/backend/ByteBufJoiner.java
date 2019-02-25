@@ -34,7 +34,6 @@ interface ByteBufJoiner {
         requireNonNull(bufAllocator, "bufAllocator must not be null");
 
         return (parts, lastPart) -> {
-
             if (parts.isEmpty()) {
                 return lastPart;
             }
