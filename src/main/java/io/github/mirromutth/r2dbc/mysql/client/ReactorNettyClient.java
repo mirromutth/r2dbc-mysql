@@ -27,6 +27,7 @@ import io.github.mirromutth.r2dbc.mysql.message.backend.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeHeader;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeV10Message;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
+import io.github.mirromutth.r2dbc.mysql.message.frontend.ExitMessage;
 import io.netty.buffer.ByteBufUtil;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -111,7 +112,7 @@ final class ReactorNettyClient implements Client {
 
                     serverSession.onNext(session);
                 } else {
-                    forceClose().subscribe();
+                    close().subscribe();
                 }
             }
         );
@@ -129,7 +130,7 @@ final class ReactorNettyClient implements Client {
             .retain()
             .concatMap(buf -> {
                 if (logger.isTraceEnabled()) {
-                    logger.trace("Inbound: {}", ByteBufUtil.prettyHexDump(buf));
+                    logger.trace("Inbound:\n{}", ByteBufUtil.prettyHexDump(buf));
                 }
                 return messageDecoder.decode(buf);
             })
@@ -149,13 +150,15 @@ final class ReactorNettyClient implements Client {
             })
             .then();
 
-        Mono<Void> request = this.requestProcessor.doOnNext(message -> logger.debug("Request: {}", message))
-            .concatMap(message -> connection.outbound().send(message.encode(connection.outbound().alloc(), this.sequenceId, this.serverSession).doOnNext(buf -> {
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Outbound:\n{}", ByteBufUtil.prettyHexDump(buf));
-                }
-            })))
-            .then();
+        Mono<Void> request = this.requestProcessor.doOnNext(message -> {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Request: {}", message);
+            }
+        }).concatMap(message -> connection.outbound().send(message.encode(connection.outbound().alloc(), this.sequenceId, this.serverSession).doOnNext(buf -> {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Outbound:\n{}", ByteBufUtil.prettyHexDump(buf));
+            }
+        }))).then();
 
         Flux.merge(receive, request)
             .doFinally(ignored -> this.messageDecoder.release())
@@ -201,25 +204,17 @@ final class ReactorNettyClient implements Client {
                 return Mono.empty();
             }
 
-            // TODO: implement close
-            return Mono.<Void>empty()
+            return Mono.just(ExitMessage.getInstance())
+                .doOnNext(message -> {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Request: {}", message);
+                    }
+                })
+                .map(message -> connection.outbound().send(message.encode(connection.outbound().alloc(), sequenceId, serverSession)))
+                .then()
                 .doOnSuccess(ignored -> connection.dispose())
                 .then(connection.onDispose())
                 .doOnSuccess(ignored -> this.closed = true);
-        });
-    }
-
-    private Mono<Void> forceClose() {
-        return Mono.defer(() -> {
-            Connection connection = this.connection.getAndSet(null);
-
-            if (connection == null) { // client is closed or closing
-                return Mono.empty();
-            }
-
-            connection.dispose();
-
-            return connection.onDispose().doOnSuccess(ignored -> this.closed = true);
         });
     }
 

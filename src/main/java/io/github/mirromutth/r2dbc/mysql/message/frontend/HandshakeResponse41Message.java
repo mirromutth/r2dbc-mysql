@@ -18,7 +18,6 @@ package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
-import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
 import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.github.mirromutth.r2dbc.mysql.exception.AuthenticationTooLongException;
@@ -100,9 +99,9 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, ServerSession session) {
+    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable ServerSession session) {
+        Charset charset = requireNonNull(session, "session must not be null").getCollation().getCharset();
         final ByteBuf buf = bufAllocator.buffer();
-        Charset charset = session.getCollation().getCharset();
 
         try {
             buf.writeIntLE(clientCapabilities)

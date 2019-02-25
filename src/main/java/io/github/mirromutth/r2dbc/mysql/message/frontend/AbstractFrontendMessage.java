@@ -22,6 +22,7 @@ import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Flux;
+import reactor.util.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,12 +42,12 @@ abstract class AbstractFrontendMessage implements FrontendMessage {
      * @param session      MySQL server sessions.
      * @return single {@link ByteBuf}, can not be null.
      */
-    protected abstract ByteBuf encodeSingle(ByteBufAllocator bufAllocator, ServerSession session);
+    protected abstract ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable ServerSession session);
 
     @Override
-    public final Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, ServerSession session) {
+    public final Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, @Nullable ServerSession session) {
         requireNonNull(bufAllocator, "bufAllocator must not be null");
-        requireNonNull(session, "session must not be null");
+        requireNonNull(sequenceId, "sequenceId must not be null");
 
         ByteBuf allBodyBuf = encodeSingle(bufAllocator, session);
         List<ByteBuf> envelopes = new ArrayList<>(allBodyBuf.readableBytes() / ProtocolConstants.MAX_PART_SIZE + 1);
