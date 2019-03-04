@@ -31,7 +31,7 @@ public final class EnumUtils {
         try {
             return AuthType.valueOf(nativeName.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new AuthTypeNotSupportException(nativeName, e);
+            throw new AuthTypeNotSupportException(nativeName);
         }
     }
 }

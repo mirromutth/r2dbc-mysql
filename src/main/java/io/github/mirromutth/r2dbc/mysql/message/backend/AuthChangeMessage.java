@@ -28,25 +28,25 @@ import java.util.Arrays;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * Change authentication plugin and scramble message.
+ * Change authentication plugin type and salt message.
  */
 final class AuthChangeMessage implements BackendMessage {
 
     private final AuthType authType;
 
-    private final byte[] scramble;
+    private final byte[] salt;
 
-    private AuthChangeMessage(AuthType authType, byte[] scramble) {
+    private AuthChangeMessage(AuthType authType, byte[] salt) {
         this.authType = requireNonNull(authType, "authType must not be null");
-        this.scramble = requireNonNull(scramble, "providedData must not be null");
+        this.salt = requireNonNull(salt, "salt must not be null");
     }
 
     public AuthType getAuthType() {
         return authType;
     }
 
-    public byte[] getScramble() {
-        return scramble;
+    public byte[] getSalt() {
+        return salt;
     }
 
     static AuthChangeMessage decode(ByteBuf buf) {
@@ -68,13 +68,13 @@ final class AuthChangeMessage implements BackendMessage {
         if (authType != that.authType) {
             return false;
         }
-        return Arrays.equals(scramble, that.scramble);
+        return Arrays.equals(salt, that.salt);
     }
 
     @Override
     public int hashCode() {
         int result = authType.hashCode();
-        result = 31 * result + Arrays.hashCode(scramble);
+        result = 31 * result + Arrays.hashCode(salt);
         return result;
     }
 
@@ -82,7 +82,7 @@ final class AuthChangeMessage implements BackendMessage {
     public String toString() {
         return "AuthChangeMessage{" +
             "authType=" + authType +
-            ", scramble=" + Arrays.toString(scramble) +
+            ", salt=" + Arrays.toString(salt) +
             '}';
     }
 }

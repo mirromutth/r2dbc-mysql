@@ -14,17 +14,32 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.plugin;
+package io.github.mirromutth.r2dbc.mysql.security;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * Generic logic parent class for all authentication plugins.
+ * Generic crypto logic for all authentication types.
  */
-abstract class AbstractAuthPlugin implements AuthPlugin {
+final class AuthCrypto {
 
-    MessageDigest loadDigest(String name) {
+    private AuthCrypto() {
+    }
+
+    static byte[] usualHash(String algorithm, byte[] password, byte[] salt, boolean leftSalt) {
+        MessageDigest digest = loadDigest(algorithm);
+        byte[] oneRound = finalDigests(digest, password);
+        byte[] twoRounds = finalDigests(digest, oneRound);
+
+        if (leftSalt) {
+            return allBytesXor(finalDigests(digest, salt, twoRounds), oneRound);
+        } else {
+            return allBytesXor(finalDigests(digest, twoRounds, salt), oneRound);
+        }
+    }
+
+    private static MessageDigest loadDigest(String name) {
         try {
             return MessageDigest.getInstance(name);
         } catch (NoSuchAlgorithmException e) {
@@ -32,7 +47,7 @@ abstract class AbstractAuthPlugin implements AuthPlugin {
         }
     }
 
-    byte[] finalDigests(MessageDigest digest, byte[]... plains) {
+    private static byte[] finalDigests(MessageDigest digest, byte[]... plains) {
         for (byte[] plain : plains) {
             digest.update(plain);
         }
@@ -42,7 +57,7 @@ abstract class AbstractAuthPlugin implements AuthPlugin {
         return result;
     }
 
-    byte[] allBytesXor(byte[] left, byte[] right) {
+    private static byte[] allBytesXor(byte[] left, byte[] right) {
         int size = left.length;
 
         if (size != right.length) {

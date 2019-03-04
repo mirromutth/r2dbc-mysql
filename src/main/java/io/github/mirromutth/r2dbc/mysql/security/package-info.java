@@ -19,6 +19,6 @@
  */
 
 @NonNullApi
-package io.github.mirromutth.r2dbc.mysql.plugin;
+package io.github.mirromutth.r2dbc.mysql.security;
 
 import reactor.util.annotation.NonNullApi;

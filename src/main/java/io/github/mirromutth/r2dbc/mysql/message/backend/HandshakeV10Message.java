@@ -40,9 +40,9 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
     private static final int RESERVED_SIZE = 10;
 
-    private static final int MIN_SCRAMBLE_SECOND_PART_SIZE = 12;
+    private static final int MIN_SALT_SECOND_PART_SIZE = 12;
 
-    private final byte[] scramble;
+    private final byte[] salt;
 
     private final int serverCapabilities;
 
@@ -57,7 +57,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
     private HandshakeV10Message(
         HandshakeHeader handshakeHeader,
-        byte[] scramble,
+        byte[] salt,
         int serverCapabilities,
         byte collationLow8Bits,
         short serverStatuses,
@@ -65,7 +65,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
     ) {
         super(handshakeHeader);
 
-        this.scramble = requireNonNull(scramble, "scramble must not be null");
+        this.salt = requireNonNull(salt, "salt must not be null");
         this.serverCapabilities = serverCapabilities;
         this.collationLow8Bits = collationLow8Bits;
         this.serverStatuses = serverStatuses;
@@ -74,17 +74,17 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
     static HandshakeV10Message decode(ByteBuf buf, HandshakeHeader handshakeHeader) {
         Builder builder = new Builder().withHandshakeHeader(handshakeHeader);
-        CompositeByteBuf scramble = buf.alloc().compositeBuffer(2);
+        CompositeByteBuf salt = buf.alloc().compositeBuffer(2);
 
         try {
-            // After handshake header, MySQL give scramble first part (should be 8-bytes always).
-            scramble.addComponent(true, CodecUtils.readCStringSlice(buf).retain());
+            // After handshake header, MySQL give salt first part (should be 8-bytes always).
+            salt.addComponent(true, CodecUtils.readCStringSlice(buf).retain());
 
             int serverCapabilities;
             CompositeByteBuf capabilities = buf.alloc().compositeBuffer(2);
 
             try {
-                // After scramble first part, MySQL give the Server Capabilities first part (always 2-bytes).
+                // After salt first part, MySQL give the Server Capabilities first part (always 2-bytes).
                 capabilities.addComponent(true, buf.readRetainedSlice(2));
 
                 // New protocol with 16 bytes to describe server character, but MySQL give lower 8-bits only.
@@ -100,20 +100,20 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
                 capabilities.release();
             }
 
-            return afterCapabilities(builder, buf, serverCapabilities, scramble).build();
+            return afterCapabilities(builder, buf, serverCapabilities, salt).build();
         } finally {
-            scramble.release();
+            salt.release();
         }
     }
 
-    private static Builder afterCapabilities(Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf scramble) {
+    private static Builder afterCapabilities(Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf salt) {
         // Special charset on handshake process, just use ascii.
         Charset charset = StandardCharsets.US_ASCII;
-        short scrambleSize = 0;
+        short saltSize = 0;
         boolean isPluginAuth = (serverCapabilities & Capability.PLUGIN_AUTH.getFlag()) != 0;
 
         if (isPluginAuth) {
-            scrambleSize = buf.readUnsignedByte();
+            saltSize = buf.readUnsignedByte();
         } else {
             buf.skipBytes(1); // if PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
         }
@@ -121,18 +121,18 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         // Reserved field, all bytes are 0x00.
         buf.skipBytes(RESERVED_SIZE);
 
-        int scrambleSecondPartSize = Math.max(
-            MIN_SCRAMBLE_SECOND_PART_SIZE,
-            scrambleSize - scramble.readableBytes() - 1
+        int saltSecondPartSize = Math.max(
+            MIN_SALT_SECOND_PART_SIZE,
+            saltSize - salt.readableBytes() - 1
         );
 
-        ByteBuf scrambleSecondPart = buf.readSlice(scrambleSecondPartSize);
+        ByteBuf saltSecondPart = buf.readSlice(saltSecondPartSize);
 
-        // Always 0x00, and it is not scramble part, ignore.
+        // Always 0x00, and it is not salt part, ignore.
         buf.skipBytes(1);
 
-        // No need release scramble second part, it will release with `scramble`
-        builder.withScramble(ByteBufUtil.getBytes(scramble.addComponent(true, scrambleSecondPart.retain())));
+        // No need release salt second part, it will release with `salt`
+        builder.withSalt(ByteBufUtil.getBytes(salt.addComponent(true, saltSecondPart.retain())));
 
         if (isPluginAuth) {
             if (buf.bytesBefore(TERMINAL) < 0) {
@@ -151,8 +151,8 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         return builder;
     }
 
-    public byte[] getScramble() {
-        return scramble;
+    public byte[] getSalt() {
+        return salt;
     }
 
     public int getServerCapabilities() {
@@ -194,7 +194,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         if (serverStatuses != that.serverStatuses) {
             return false;
         }
-        if (!Arrays.equals(scramble, that.scramble)) {
+        if (!Arrays.equals(salt, that.salt)) {
             return false;
         }
         return authType == that.authType;
@@ -203,7 +203,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
     @Override
     public int hashCode() {
         int result = super.hashCode();
-        result = 31 * result + Arrays.hashCode(scramble);
+        result = 31 * result + Arrays.hashCode(salt);
         result = 31 * result + serverCapabilities;
         result = 31 * result + (int) collationLow8Bits;
         result = 31 * result + (int) serverStatuses;
@@ -214,7 +214,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
     @Override
     public String toString() {
         return "HandshakeV10Message{" +
-            "scramble=" + Arrays.toString(scramble) +
+            "salt=" + Arrays.toString(salt) +
             ", serverCapabilities=" + serverCapabilities +
             ", collationLow8Bits=" + collationLow8Bits +
             ", serverStatuses=" + serverStatuses +
@@ -231,7 +231,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
         private byte collationLow8Bits;
 
-        private byte[] scramble;
+        private byte[] salt;
 
         private int serverCapabilities;
 
@@ -243,7 +243,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         HandshakeV10Message build() {
             return new HandshakeV10Message(
                 handshakeHeader,
-                scramble,
+                salt,
                 serverCapabilities,
                 collationLow8Bits,
                 serverStatuses,
@@ -265,8 +265,8 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
             return this;
         }
 
-        void withScramble(byte[] scramble) {
-            this.scramble = scramble;
+        void withSalt(byte[] salt) {
+            this.salt = salt;
         }
 
         void withServerCapabilities(int serverCapabilities) {

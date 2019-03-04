@@ -47,6 +47,23 @@ public final class AssertUtils {
     }
 
     /**
+     * Checks that a specified byte array is not {@code null} or empty and
+     * throws a customized {@link IllegalArgumentException} if it is.
+     *
+     * @param bytes   the byte array to check for nullity or empty
+     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
+     * @return {@code bytes} if not {@code null} or empty
+     * @throws IllegalArgumentException if {@code obj} is {@code null} or empty
+     */
+    public static byte[] requireNotEmpty(@Nullable byte[] bytes, String message) {
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException(message);
+        }
+
+        return bytes;
+    }
+
+    /**
      * Checks that a specified integer is not negative and
      * throws a customized {@link IllegalArgumentException} if it is.
      *

@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -37,7 +37,7 @@ public final class ExitMessage extends AbstractFrontendMessage {
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable ServerSession session) {
+    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable MySqlSession session) {
         return Unpooled.wrappedBuffer(new byte[] { 0x01 });
     }
 

@@ -16,28 +16,19 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
-import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoProcessor;
-import reactor.netty.resources.ConnectionProvider;
-import reactor.netty.tcp.TcpClient;
-import reactor.util.concurrent.WaitStrategy;
-
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An abstraction that wraps the networking part of exchanging methods.
  */
 public interface Client {
 
-    Flux<BackendMessage> exchange(Publisher<FrontendMessage> requests);
+    Mono<BackendMessage> exchange(FrontendMessage request);
 
     Mono<Void> close();
 
-    ServerSession getSession();
+    MySqlSession getSession();
 }

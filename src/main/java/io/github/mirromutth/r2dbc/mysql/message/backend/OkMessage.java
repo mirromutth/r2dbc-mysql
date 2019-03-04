@@ -17,11 +17,9 @@
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
-import io.github.mirromutth.r2dbc.mysql.constant.ServerStatus;
-import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
-import reactor.util.annotation.Nullable;
 
 import java.nio.charset.Charset;
 
@@ -32,7 +30,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * <p>
  * Note: OK message are also used to indicate EOF and EOF message are deprecated as of MySQL 5.7.5.
  */
-final class OkMessage implements BackendMessage {
+public final class OkMessage implements BackendMessage {
 
     private final long affectedRows;
 
@@ -61,7 +59,7 @@ final class OkMessage implements BackendMessage {
         this.information = requireNonNull(information, "information must not be null");
     }
 
-    static OkMessage decode(ByteBuf buf, ServerSession session) {
+    static OkMessage decode(ByteBuf buf, MySqlSession session) {
         buf.skipBytes(1); // OK message header, 0x00 (or 0xFE maybe?)
 
         long affectedRows = CodecUtils.readVarInt(buf);

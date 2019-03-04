@@ -24,11 +24,11 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import java.nio.ByteOrder;
 
 /**
- * Decode native message packet of MySQL.
+ * Decode native message envelope of MySQL protocol.
  */
-final class PacketDecoder extends LengthFieldBasedFrameDecoder {
+final class EnvelopeDecoder extends LengthFieldBasedFrameDecoder {
 
-    PacketDecoder() {
+    EnvelopeDecoder() {
         super(
             ByteOrder.LITTLE_ENDIAN,
             ProtocolConstants.MAX_PART_SIZE + ProtocolConstants.PART_HEADER_SIZE,

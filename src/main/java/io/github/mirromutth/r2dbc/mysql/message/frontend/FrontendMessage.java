@@ -16,10 +16,9 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -34,8 +33,8 @@ public interface FrontendMessage {
      *
      * @param bufAllocator connection's {@link ByteBufAllocator}
      * @param sequenceId   message sequence id
-     * @param session      MySQL server session
+     * @param session      current MySQL session
      * @return should be instance of {@code Mono<ByteBuf>} or {@code Flux<ByteBuf>} usually.
      */
-    Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, ServerSession session);
+    Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, MySqlSession session);
 }

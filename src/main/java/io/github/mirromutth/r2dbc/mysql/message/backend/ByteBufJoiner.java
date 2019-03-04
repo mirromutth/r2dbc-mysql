@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 
 import java.util.List;
 
@@ -28,19 +29,39 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 interface ByteBufJoiner {
 
+    /**
+     * The implementation is responsible to correctly handle the life-cycle of the given {@link ByteBuf}s, so
+     * call {@link ByteBuf#release()} if a {@link ByteBuf} is fully consumed.
+     *
+     * @param parts All previous {@link ByteBuf}s are relative to the last buffer.
+     * @param lastPart The last buffer.
+     * @return A {@link ByteBuf} holds the all bytes of given {@code parts} and {@code lastPart}
+     */
     ByteBuf join(List<ByteBuf> parts, ByteBuf lastPart);
 
-    static ByteBufJoiner composite(ByteBufAllocator bufAllocator) {
-        requireNonNull(bufAllocator, "bufAllocator must not be null");
-
+    static ByteBufJoiner wrapped() {
         return (parts, lastPart) -> {
-            if (parts.isEmpty()) {
+            int maxIndex = parts.size();
+
+            if (maxIndex <= 0) {
                 return lastPart;
             }
 
-            return bufAllocator.compositeBuffer(parts.size() + 1)
-                .addComponents(true, parts)
-                .addComponent(true, lastPart);
+            try {
+                ByteBuf[] buffers = parts.toArray(new ByteBuf[maxIndex + 1]);
+                buffers[maxIndex] = lastPart;
+                return Unpooled.wrappedBuffer(buffers);
+            } catch (Throwable e) {
+                for (ByteBuf part : parts) { // failed, release all buffers in list
+                    if (part != null) {
+                        part.release();
+                    }
+                }
+
+                throw e; // throw this exception
+            } finally {
+                parts.clear(); // no need release when success or has released by exception caught
+            }
         };
     }
 }

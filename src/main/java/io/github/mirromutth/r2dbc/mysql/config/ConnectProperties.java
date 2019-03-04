@@ -37,12 +37,9 @@ public class ConnectProperties {
 
     private final String username;
 
-    @Nullable
     private final String password;
 
     private final String database;
-
-    private final Map<String, String> attributes;
 
     public ConnectProperties(
         String host,
@@ -50,8 +47,7 @@ public class ConnectProperties {
         boolean useSsl,
         String username,
         @Nullable String password,
-        @Nullable String database,
-        @Nullable Map<String, String> attributes
+        @Nullable String database
     ) {
         this.host = requireNonNull(host, "host must not be null");
         this.port = port;
@@ -59,19 +55,10 @@ public class ConnectProperties {
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
 
-        if (database == null) {
+        if (database == null || database.isEmpty()) {
             this.database = "";
         } else {
-            this.database = database;
-        }
-
-        if (attributes == null || attributes.isEmpty()) {
-            this.attributes = Collections.emptyMap();
-        } else if (attributes.size() == 1) {
-            Map.Entry<String, String> entry = attributes.entrySet().iterator().next();
-            this.attributes = Collections.singletonMap(entry.getKey(), entry.getValue());
-        } else {
-            this.attributes = new LinkedHashMap<>(attributes);
+            this.database = database; // or use `database.intern()`?
         }
     }
 
@@ -91,16 +78,11 @@ public class ConnectProperties {
         return username;
     }
 
-    @Nullable
     public String getPassword() {
         return password;
     }
 
     public String getDatabase() {
         return database;
-    }
-
-    public Map<String, String> getAttributes() {
-        return attributes;
     }
 }

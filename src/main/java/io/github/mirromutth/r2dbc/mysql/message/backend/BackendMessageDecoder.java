@@ -18,11 +18,12 @@ package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
-import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.exception.ProtocolNotSupportException;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,59 +44,63 @@ public final class BackendMessageDecoder {
 
     private volatile DecodeMode decodeMode = DecodeMode.CONNECTION;
 
-    private volatile ServerSession serverSession = null;
+    private volatile MySqlSession session = null;
 
-    public BackendMessageDecoder(ByteBufAllocator bufAllocator, AtomicInteger sequenceId) {
-        this.joiner = ByteBufJoiner.composite(requireNonNull(bufAllocator, "bufAllocator must not be null"));
+    public BackendMessageDecoder(AtomicInteger sequenceId) {
         this.sequenceId = requireNonNull(sequenceId, "sequenceId must not be null");
+        this.joiner = ByteBufJoiner.wrapped();
     }
 
-    public Mono<BackendMessage> decode(ByteBuf buf) {
-        requireNonNull(buf, "buf must not be null");
+    @Nullable
+    public BackendMessage decode(ByteBuf envelope) {
+        requireNonNull(envelope, "envelope must not be null");
 
         try {
-            if (readLastPart(buf)) {
-                sequenceId.set(buf.readUnsignedByte() + 1);
-                ByteBuf joined = joiner.join(parts, buf);
+            if (readLastPart(envelope)) {
+                sequenceId.set(envelope.readUnsignedByte() + 1);
+                ByteBuf joined = joiner.join(parts, envelope);
 
-                buf = null; // success, no need release
-                parts.clear();
+                envelope = null; // success, no need release
 
-                switch (decodeMode) {
-                    case CONNECTION:
-                        return Mono.defer(() -> Mono.just(decodeConnection(joined))).doFinally(ignored -> joined.release());
-                    case COMMAND:
-                        return Mono.defer(() -> Mono.just(decodeCommand(joined))).doFinally(ignored -> joined.release());
-                    case REPLICATION:
-                        return Mono.defer(() -> Mono.just(decodeReplication(joined))).doFinally(ignored -> joined.release());
+                try {
+                    switch (decodeMode) {
+                        case CONNECTION:
+                            return decodeConnection(joined);
+                        case COMMAND:
+                            return decodeCommand(joined);
+                        case REPLICATION:
+                            return decodeReplication(joined);
+                    }
+                } finally {
+                    joined.release();
                 }
 
-                joined.release();
-
-                return Mono.error(() -> new IllegalStateException("decodeMode is null when decoding!"));
+                throw new IllegalStateException("decodeMode is " + this.decodeMode + " which is undefined behavior when decoding!");
             } else {
-                buf.skipBytes(1); // sequence Id
-                parts.add(buf);
-                buf = null; // success, no need release
-                return Mono.empty();
+                envelope.skipBytes(1); // sequence Id
+                parts.add(envelope);
+                envelope = null; // success, no need release
+                return null;
             }
         } finally {
-            if (buf != null) {
-                buf.release();
+            if (envelope != null) {
+                envelope.release();
             }
         }
     }
 
-    public void initServerSession(ServerSession serverSession) {
-        if (this.serverSession == null) {
-            this.serverSession = requireNonNull(serverSession, "serverSession must not be null");
+    public void initSession(MySqlSession session) {
+        if (this.session == null) {
+            this.session = requireNonNull(session, "session must not be null");
         }
     }
 
-    public void release() {
+    public void dispose() {
         try {
             for (ByteBuf part : parts) {
-                part.release();
+                if (part != null) {
+                    part.release();
+                }
             }
         } finally {
             parts.clear();
@@ -106,11 +111,8 @@ public final class BackendMessageDecoder {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
             case 0: // Ok
-                try {
-                    return OkMessage.decode(buf, serverSession);
-                } finally {
-                    this.decodeMode = DecodeMode.COMMAND; // connection phase has completed
-                }
+                this.decodeMode = DecodeMode.COMMAND; // connection phase has completed
+                return OkMessage.decode(buf, session);
             case 1: // Auth more data
                 return AuthMoreDataMessage.decode(buf);
             case 9:

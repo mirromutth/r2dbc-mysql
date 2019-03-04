@@ -14,17 +14,11 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.plugin;
-
-import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-import reactor.util.annotation.Nullable;
-
 /**
- * MySQL Plugin interface for handshake authentication
+ * Configurations for MySQL client.
  */
-public interface AuthPlugin {
 
-    AuthType getType();
+@NonNullApi
+package io.github.mirromutth.r2dbc.mysql.config;
 
-    byte[] encrypt(@Nullable byte[] password, byte[] scramble);
-}
+import reactor.util.annotation.NonNullApi;

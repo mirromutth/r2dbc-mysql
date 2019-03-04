@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.message.frontend;
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
-import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.exception.AuthenticationTooLongException;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
@@ -37,7 +37,8 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * A handshake response message sent by clients those supporting
  * {@link Capability#PROTOCOL_41} if the server announced it in
  * it's {@code HandshakeV10Message}, otherwise talking to an old
- * server should use the {@code HandshakeResponse320Message}.
+ * server should use the handshake 320 response message, but
+ * protocol 320 should be deprecated on MySQL 5.x.
  */
 public final class HandshakeResponse41Message extends AbstractFrontendMessage {
 
@@ -67,26 +68,15 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
         String username,
         byte[] authentication,
         AuthType authType,
-        @Nullable String database,
-        @Nullable Map<String, String> attributes
+        String database,
+        Map<String, String> attributes
     ) {
         this.collationLow8Bits = collationLow8Bits;
         this.username = requireNonNull(username, "username must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
-
-        if (database == null) {
-            this.database = "";
-        } else {
-            this.database = database;
-        }
-
+        this.database = requireNonNull(database, "database must not be null");
         this.authType = requireNonNull(authType, "authType must not be null");
-
-        if (attributes == null || attributes.isEmpty()) {
-            this.attributes = Collections.emptyMap();
-        } else {
-            this.attributes = attributes;
-        }
+        this.attributes = requireNonNull(attributes, "attributes must not be null");
 
         // must calculate client capabilities after other properties set.
         this.clientCapabilities = calculateCapabilities(clientCapabilities);
@@ -99,7 +89,7 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable ServerSession session) {
+    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable MySqlSession session) {
         Charset charset = requireNonNull(session, "session must not be null").getCollation().getCharset();
         final ByteBuf buf = bufAllocator.buffer();
 

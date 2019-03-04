@@ -23,7 +23,7 @@ import io.r2dbc.spi.R2dbcException;
  */
 public final class AuthTypeNotSupportException extends R2dbcException {
 
-    public AuthTypeNotSupportException(String nativeName, Throwable e) {
-        super("Authentication plugin type \"" + nativeName + "\" not support", e);
+    public AuthTypeNotSupportException(String nativeName) {
+        super("Authentication plugin type \"" + nativeName + "\" not support");
     }
 }

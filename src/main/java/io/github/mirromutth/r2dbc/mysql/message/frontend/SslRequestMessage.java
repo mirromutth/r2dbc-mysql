@@ -17,9 +17,8 @@
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
-import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
-import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.util.annotation.Nullable;
@@ -50,7 +49,7 @@ public final class SslRequestMessage extends AbstractFrontendMessage {
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable ServerSession session) {
+    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable MySqlSession session) {
         ByteBuf buf = bufAllocator.buffer();
 
         try {

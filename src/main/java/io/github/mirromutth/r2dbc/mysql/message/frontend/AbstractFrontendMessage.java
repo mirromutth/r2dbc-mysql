@@ -17,10 +17,10 @@
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
-import io.github.mirromutth.r2dbc.mysql.message.EnvelopeHeader;
-import io.github.mirromutth.r2dbc.mysql.core.ServerSession;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import reactor.core.publisher.Flux;
 import reactor.util.annotation.Nullable;
 
@@ -36,16 +36,16 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 abstract class AbstractFrontendMessage implements FrontendMessage {
 
     /**
-     * Encode to single {@link ByteBuf} without {@link EnvelopeHeader}
+     * Encode to single {@link ByteBuf} without packet header
      *
      * @param bufAllocator {@link ByteBuf} allocator that from netty connection usually.
-     * @param session      MySQL server sessions.
+     * @param session      current MySQL session.
      * @return single {@link ByteBuf}, can not be null.
      */
-    protected abstract ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable ServerSession session);
+    protected abstract ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable MySqlSession session);
 
     @Override
-    public final Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, @Nullable ServerSession session) {
+    public final Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, @Nullable MySqlSession session) {
         requireNonNull(bufAllocator, "bufAllocator must not be null");
         requireNonNull(sequenceId, "sequenceId must not be null");
 
@@ -54,18 +54,11 @@ abstract class AbstractFrontendMessage implements FrontendMessage {
 
         while (allBodyBuf.readableBytes() >= ProtocolConstants.MAX_PART_SIZE) {
             ByteBuf headerBuf = bufAllocator.buffer(4).writeMediumLE(ProtocolConstants.MAX_PART_SIZE).writeByte(sequenceId.getAndIncrement());
-            ByteBuf bodyBuf = allBodyBuf.readRetainedSlice(ProtocolConstants.MAX_PART_SIZE);
-            ByteBuf envelopeBuf = bufAllocator.compositeBuffer(2)
-                .addComponent(true, headerBuf)
-                .addComponent(true, bodyBuf);
-            envelopes.add(envelopeBuf);
+            envelopes.add(Unpooled.wrappedBuffer(headerBuf, allBodyBuf.readRetainedSlice(ProtocolConstants.MAX_PART_SIZE)));
         }
 
         ByteBuf headerBuf = bufAllocator.buffer(4).writeMediumLE(allBodyBuf.readableBytes()).writeByte(sequenceId.getAndIncrement());
-        ByteBuf envelopeBuf = bufAllocator.compositeBuffer(2)
-            .addComponent(true, headerBuf)
-            .addComponent(true, allBodyBuf);
-        envelopes.add(envelopeBuf);
+        envelopes.add(Unpooled.wrappedBuffer(headerBuf, allBodyBuf));
 
         return Flux.fromIterable(envelopes);
     }
