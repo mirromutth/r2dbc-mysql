@@ -37,4 +37,12 @@ public interface FrontendMessage {
      * @return should be instance of {@code Mono<ByteBuf>} or {@code Flux<ByteBuf>} usually.
      */
     Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, MySqlSession session);
+
+    /**
+     * Most frontend messages can be exchanged for backend messages, but not all.
+     * Like {@link ExitMessage} or
+     *
+     * @return {@code true} if this front end message can be exchanged for backend messages.
+     */
+    boolean isExchanged();
 }

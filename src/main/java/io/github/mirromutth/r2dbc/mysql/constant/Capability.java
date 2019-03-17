@@ -27,6 +27,8 @@ public enum Capability {
     CONNECT_WITH_DB(8),
     COMPRESS(32),
     LOCAL_FILES(128),
+
+    // WARNING: should ALWAYS enable this option before newer protocol comes out
     PROTOCOL_41(512),
     INTERACTIVE(1024),
     SSL(2048),
@@ -34,14 +36,21 @@ public enum Capability {
     RESERVED(16384),
     SECURE_CONNECTION(32768),
     MULTI_STATEMENTS(65536),
-    MULTI_RESULTS(131072),
-    PS_MULTI_RESULTS(262144),
-    PLUGIN_AUTH(524288),
-    CONNECT_ATTRS(1048576),
-    PLUGIN_AUTH_VAR_INT_SIZED_DATA(2097152), // can use var int sized bytes to encode client data
-    CAN_HANDLE_EXPIRED_PASSWORD(4194304),
-    SESSION_TRACK(8388608),
-    DEPRECATE_EOF(16777216);
+    MULTI_RESULTS(1 << 17),
+    PS_MULTI_RESULTS(1 << 18),
+    PLUGIN_AUTH(1 << 19),
+    CONNECT_ATTRS(1 << 20),
+    PLUGIN_AUTH_VAR_INT_SIZED_DATA(1 << 21), // can use var int sized bytes to encode client data
+    CAN_HANDLE_EXPIRED_PASSWORD(1 << 22),
+    SESSION_TRACK(1 << 23),
+
+    // WARNING: should ALWAYS enable this option. MySQL recommends deprecating EOF messages
+    DEPRECATE_EOF(1 << 24),
+    // WARNING: means server MAYBE have NOT metadata in response, should NEVER enable this option
+    OPTIONAL_RESULT_SET_METADATA(1 << 25),
+
+    SSL_VERIFY_SERVER_CERT(1 << 30),
+    REMEMBER_OPTIONS(1 << 31);
 
     private final int flag;
 

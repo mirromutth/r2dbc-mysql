@@ -19,6 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.core;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.security.AuthStateMachine;
+import io.github.mirromutth.r2dbc.mysql.util.EmptyArrays;
 import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -39,6 +40,8 @@ public final class MySqlSession {
     private final String database;
 
     private volatile int clientCapabilities;
+
+    private volatile int serverStatuses;
 
     /**
      * It would be null after connection phase completed.
@@ -69,12 +72,6 @@ public final class MySqlSession {
      */
     @Nullable
     private volatile byte[] salt;
-
-    /**
-     * It would be null after connection phase completed.
-     */
-    @Nullable
-    private volatile byte[] authMoreData;
 
     public MySqlSession(
         int connectionId,
@@ -129,6 +126,14 @@ public final class MySqlSession {
         return clientCapabilities;
     }
 
+    public int getServerStatuses() {
+        return serverStatuses;
+    }
+
+    public void setServerStatuses(int serverStatuses) {
+        this.serverStatuses = serverStatuses;
+    }
+
     @Nullable
     public String getUsername() {
         return username;
@@ -145,17 +150,18 @@ public final class MySqlSession {
     }
 
     @Nullable
-    public byte[] getAuthMoreData() {
-        return authMoreData;
-    }
-
-    public void setAuthMoreData(byte[] authMoreData) {
-        this.authMoreData = requireNonNull(authMoreData, "authMoreData must not be null");
-    }
-
-    @Nullable
     public AuthType getAuthType() {
         return authType;
+    }
+
+    public boolean hasNext() {
+        AuthStateMachine authStateMachine = this.authStateMachine;
+
+        if (authStateMachine == null) {
+            return false;
+        }
+
+        return authStateMachine.hasNext();
     }
 
     /**
@@ -183,6 +189,5 @@ public final class MySqlSession {
         this.salt = null;
         this.authType = null;
         this.authStateMachine = null;
-        this.authMoreData = null;
     }
 }

@@ -42,6 +42,11 @@ public interface AuthStateMachine {
     }
 
     /**
+     * @return true if {@code this} is state machine and it also has next authentication.
+     */
+    boolean hasNext();
+
+    /**
      * Generate current authentication and make changes to the authentication status.
      *
      * @param session current MySQL session.

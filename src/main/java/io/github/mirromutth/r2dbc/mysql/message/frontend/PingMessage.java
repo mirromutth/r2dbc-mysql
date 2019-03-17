@@ -23,16 +23,16 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 /**
- * The request message tells the MySQL client to exit.
+ * The request message check alive of MySQL server.
  */
-public final class ExitMessage extends AbstractFrontendMessage implements CommandMessage {
+public final class PingMessage extends AbstractFrontendMessage implements CommandMessage {
 
-    private static final ExitMessage INSTANCE = new ExitMessage();
+    private static final PingMessage INSTANCE = new PingMessage();
 
-    private ExitMessage() {
+    private PingMessage() {
     }
 
-    public static ExitMessage getInstance() {
+    public static PingMessage getInstance() {
         return INSTANCE;
     }
 
@@ -42,17 +42,12 @@ public final class ExitMessage extends AbstractFrontendMessage implements Comman
     }
 
     @Override
-    public boolean isExchanged() {
-        return false;
-    }
-
-    @Override
     protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
-        return Unpooled.wrappedBuffer(new byte[] { 0x01 });
+        return Unpooled.wrappedBuffer(new byte[] { 0x0E });
     }
 
     @Override
     public String toString() {
-        return "ExitMessage{}";
+        return "PingMessage{}";
     }
 }

@@ -14,23 +14,15 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.client;
-
-import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
-import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.util.function.Function;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * An abstraction that wraps the networking part of exchanging methods.
+ * Backend message decoder mode.
+ * <p>
+ * Replication phase is not supported for now.
  */
-public interface Client {
+public enum ProtocolLifecycle {
 
-    Flux<BackendMessage> exchange(FrontendMessage request);
-
-    int getConnectionId();
-
-    Mono<Void> close();
+    CONNECTION,
+    COMMAND
 }

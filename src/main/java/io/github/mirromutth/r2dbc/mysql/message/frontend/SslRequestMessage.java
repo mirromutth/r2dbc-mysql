@@ -21,7 +21,6 @@ import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import reactor.util.annotation.Nullable;
 
 /**
  * The ssl request message.
@@ -49,8 +48,8 @@ public final class SslRequestMessage extends AbstractFrontendMessage {
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable MySqlSession session) {
-        ByteBuf buf = bufAllocator.buffer();
+    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
+        final ByteBuf buf = bufAllocator.buffer();
 
         try {
             if ((clientCapabilities & Capability.PROTOCOL_41.getFlag()) != 0) {
@@ -62,9 +61,10 @@ public final class SslRequestMessage extends AbstractFrontendMessage {
                 buf.writeShortLE(clientCapabilities & 0xFFFF).writeMediumLE(ProtocolConstants.MAX_PART_SIZE);
             }
 
-            return buf.retain();
-        } finally {
+            return buf;
+        } catch (Throwable e) {
             buf.release();
+            throw e;
         }
     }
 }

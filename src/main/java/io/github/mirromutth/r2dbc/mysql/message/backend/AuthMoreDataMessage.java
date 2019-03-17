@@ -26,7 +26,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * Authentication more data request, means continue send auth change response message if is exists.
  */
-final class AuthMoreDataMessage implements BackendMessage {
+public final class AuthMoreDataMessage implements BackendMessage {
 
     private final byte[] authMethodData;
 

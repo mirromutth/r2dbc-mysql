@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.exception;
-
-import io.r2dbc.spi.R2dbcException;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Authentication is too long when MySQL server not support var int sized authentication.
+ * Command type for command phase which used to decoding state machine.
  */
-public final class AuthenticationTooLongException extends R2dbcException {
+public enum CommandType {
 
-    public AuthenticationTooLongException(int size) {
-        super("authentication too long, server not support size " + size);
-    }
+    STATEMENT_EXECUTE,
+    STATEMENT_PREPARE,
+    STATEMENT_SIMPLE,
+
+    /**
+     * Like ping, debug, init db, or some requests which response is only OK, Error,
+     * or no response if {@code FrontendMessage.isExchanged()} returns false.
+     */
+    UTILITIES_SIMPLE
 }

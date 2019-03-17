@@ -16,12 +16,19 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
+import reactor.util.annotation.Nullable;
+
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+
 /**
  * A constant utility that is contains all {@link CharCollation}s.
  */
 final class CharCollations {
 
-    private static final int MULTI_BYTES_FALLBACK = 33; // utf8_general_ci is fallback collation of multi-bytes charset
+    private static final CharCollation UTF8MB4_GENERAL_CI = createCollation(45, "utf8mb4_general_ci", CharsetTargets.UTF_8_MB4);
+
+    private static final CharCollation UTF8MB4_0900_AI_CI = createCollation(255, "utf8mb4_0900_ai_ci", CharsetTargets.UTF_8_MB4);
 
     private static final CharCollations INSTANCE = new CharCollations();
 
@@ -86,7 +93,7 @@ final class CharCollations {
             createCollation(215, "utf8_vietnamese_ci", CharsetTargets.UTF_8),
             createCollation(223, "utf8_general_mysql500_ci", CharsetTargets.UTF_8),
 
-            createCollation(45, "utf8mb4_general_ci", CharsetTargets.UTF_8_MB4),
+            UTF8MB4_GENERAL_CI,
             createCollation(46, "utf8mb4_bin", CharsetTargets.UTF_8_MB4),
             createCollation(224, "utf8mb4_unicode_ci", CharsetTargets.UTF_8_MB4),
             createCollation(225, "utf8mb4_icelandic_ci", CharsetTargets.UTF_8_MB4),
@@ -112,7 +119,7 @@ final class CharCollations {
             createCollation(245, "utf8mb4_croatian_ci", CharsetTargets.UTF_8_MB4),
             createCollation(246, "utf8mb4_unicode_520_ci", CharsetTargets.UTF_8_MB4),
             createCollation(247, "utf8mb4_vietnamese_ci", CharsetTargets.UTF_8_MB4),
-            createCollation(255, "utf8mb4_0900_ai_ci", CharsetTargets.UTF_8_MB4),
+            UTF8MB4_0900_AI_CI,
 
             createCollation(54, "utf16_general_ci", CharsetTargets.UTF_16),
             createCollation(55, "utf16_bin", CharsetTargets.UTF_16),
@@ -182,17 +189,22 @@ final class CharCollations {
         for (CharCollation collation : universe) {
             this.universe[collation.getId()] = collation;
         }
-
-        CharCollation multiFallback = this.universe[MULTI_BYTES_FALLBACK];
-
-        if (multiFallback == null || multiFallback.getByteSize() <= 1) {
-            throw new IllegalStateException("have no fallback for multi-bytes encoding");
-        }
     }
 
+    CharCollation defaultCollation(ServerVersion version) {
+        requireNonNull(version, "version must not be null");
+
+        if (version.compareTo(8, 0, 1) >= 0) {
+            return UTF8MB4_0900_AI_CI;
+        }
+
+        return UTF8MB4_GENERAL_CI;
+    }
+
+    @Nullable
     CharCollation fromId(int id) {
         if (id < 0 || id >= this.universe.length) {
-            return this.universe[MULTI_BYTES_FALLBACK];
+            return null;
         }
 
         return this.universe[id];

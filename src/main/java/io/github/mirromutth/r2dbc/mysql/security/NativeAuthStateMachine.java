@@ -43,6 +43,14 @@ final class NativeAuthStateMachine implements AuthStateMachine {
     }
 
     /**
+     * "mysql_native_password" is not state machine, has no any more data.
+     */
+    @Override
+    public boolean hasNext() {
+        return false;
+    }
+
+    /**
      * SHA1(password) all bytes xor SHA1( "random data from MySQL server" + SHA1(SHA1(password)) )
      *
      * @param session used to get password and salt.

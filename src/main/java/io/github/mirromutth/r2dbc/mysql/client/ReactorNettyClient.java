@@ -18,16 +18,22 @@ package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
+import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
+import io.github.mirromutth.r2dbc.mysql.message.MessageCodec;
 import io.github.mirromutth.r2dbc.mysql.message.backend.AbstractHandshakeMessage;
+import io.github.mirromutth.r2dbc.mysql.message.backend.AuthMoreDataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
-import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessageDecoder;
+import io.github.mirromutth.r2dbc.mysql.message.backend.CompleteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeHeader;
 import io.github.mirromutth.r2dbc.mysql.message.backend.HandshakeV10Message;
+import io.github.mirromutth.r2dbc.mysql.message.backend.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.ExitMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
+import io.github.mirromutth.r2dbc.mysql.message.frontend.HandshakeResponse41Message;
 import io.netty.buffer.ByteBufUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,15 +45,19 @@ import reactor.core.publisher.MonoProcessor;
 import reactor.core.publisher.MonoSink;
 import reactor.core.publisher.SynchronousSink;
 import reactor.netty.Connection;
+import reactor.netty.NettyOutbound;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.concurrent.Queues;
 import reactor.util.concurrent.WaitStrategy;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -58,19 +68,20 @@ final class ReactorNettyClient implements Client {
 
     private static final Logger logger = LoggerFactory.getLogger(ReactorNettyClient.class);
 
+    private static final Map<String, String> clientAttrs = calculateAttrs();
+
     private final AtomicReference<Connection> connection;
 
-    private final BackendMessageDecoder messageDecoder;
-
-    private final AtomicInteger sequenceId = new AtomicInteger();
+    private final MessageCodec messageCodec = new MessageCodec();
 
     private final EmitterProcessor<FrontendMessage> requestProcessor = EmitterProcessor.create(false);
 
     private final FluxSink<FrontendMessage> requests = requestProcessor.sink();
 
-    private final Queue<MonoSink<BackendMessage>> responseReceivers = Queues.<MonoSink<BackendMessage>>unbounded().get();
+    private final Queue<MonoSink<Flux<BackendMessage>>> responseReceivers = Queues.<MonoSink<Flux<BackendMessage>>>unbounded().get();
 
-    // it will always not null if the client initialized, so do not add @Nullable
+    private final AtomicBoolean initialized = new AtomicBoolean();
+
     private volatile MySqlSession session;
 
     private volatile boolean closed = false;
@@ -78,45 +89,15 @@ final class ReactorNettyClient implements Client {
     private ReactorNettyClient(
         Connection connection,
         ConnectProperties connectProperties,
-        MonoProcessor<MySqlSession> sessionProcessor
+        MonoProcessor<Void> handshakeProcessor
     ) {
         requireNonNull(connection, "connection must not be null");
-        requireNonNull(sessionProcessor, "sessionProcessor must not be null");
+        requireNonNull(handshakeProcessor, "handshakeProcessor must not be null");
 
         connection.addHandler(new EnvelopeDecoder())
             .addHandler(new SubscribersCompleteHandler(this.requestProcessor, this.responseReceivers));
 
-        this.messageDecoder = new BackendMessageDecoder(this.sequenceId);
         this.connection = new AtomicReference<>(connection);
-
-        BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleHandshake = handleBackendMessage(
-            AbstractHandshakeMessage.class,
-            (message, sink) -> {
-                if (message instanceof HandshakeV10Message) {
-                    HandshakeV10Message messageV10 = (HandshakeV10Message) message;
-                    HandshakeHeader header = messageV10.getHandshakeHeader();
-
-                    int serverCapabilities = messageV10.getServerCapabilities();
-
-                    MySqlSession session = new MySqlSession(
-                        header.getConnectionId(),
-                        header.getServerVersion(),
-                        serverCapabilities,
-                        CharCollation.fromId(messageV10.getCollationLow8Bits() & 0xFF),
-                        connectProperties.getDatabase(),
-                        calculateCapabilities(serverCapabilities, connectProperties),
-                        connectProperties.getUsername(),
-                        connectProperties.getPassword(),
-                        messageV10.getSalt(),
-                        messageV10.getAuthType()
-                    );
-
-                    sessionProcessor.onNext(session);
-                } else {
-                    close().subscribe();
-                }
-            }
-        );
 
         BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleError = handleBackendMessage(
             ErrorMessage.class,
@@ -126,34 +107,94 @@ final class ReactorNettyClient implements Client {
             }
         );
 
-        // TODO: implement receive
+        BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleHandshake = handleBackendMessage(
+            AbstractHandshakeMessage.class,
+            (message, sink) -> {
+                if (message instanceof HandshakeV10Message) {
+                    HandshakeV10Message messageV10 = (HandshakeV10Message) message;
+                    HandshakeHeader header = messageV10.getHandshakeHeader();
+                    ServerVersion version = header.getServerVersion();
+                    int serverCapabilities = messageV10.getServerCapabilities();
+
+                    MySqlSession session = new MySqlSession(
+                        header.getConnectionId(),
+                        version,
+                        serverCapabilities,
+                        CharCollation.defaultCollation(version),
+                        connectProperties.getDatabase(),
+                        calculateCapabilities(serverCapabilities, connectProperties),
+                        connectProperties.getUsername(),
+                        connectProperties.getPassword(),
+                        messageV10.getSalt(),
+                        messageV10.getAuthType()
+                    );
+
+                    initSession(connection, session);
+                } else {
+                    close().subscribe();
+                }
+            }
+        );
+
+        BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleAuthMoreData = handleBackendMessage(
+            AuthMoreDataMessage.class,
+            (message, sink) -> {
+                switch (message.getAuthMethodData()[0]) {
+                    case 3: // success, ignored
+                        break;
+                    case 4:
+                        session.nextAuthentication(); // TODO: implement full authentication
+                        break;
+                }
+            }
+        );
+
+        BiConsumer<BackendMessage, SynchronousSink<BackendMessage>> handleOk = handleBackendMessage(
+            OkMessage.class,
+            (message, sink) -> {
+                session.setServerStatuses(message.getServerStatuses());
+
+                boolean initialized = this.initialized.get();
+                if (!initialized && this.initialized.compareAndSet(false, true)) {
+                    session.clearAuthentication();
+                    handshakeProcessor.onComplete();
+                } else {
+                    sink.next(message);
+                }
+            }
+        );
+
+        // TODO: fill missing handlers to receiver
         Mono<Void> receive = connection.inbound().receive()
             .retain()
-            .map(buf -> {
+            .doOnNext(buf -> {
                 if (logger.isTraceEnabled()) {
                     logger.trace("Inbound:\n{}", ByteBufUtil.prettyHexDump(buf));
                 }
-                return messageDecoder.decode(buf);
             })
+            .concatMap(buf -> this.messageCodec.decode(buf, this.session))
             .doOnNext(message -> {
                 if (logger.isTraceEnabled()) {
                     logger.trace("Response: {}", message);
                 }
             })
             .handle(handleHandshake)
+            .handle(handleAuthMoreData)
+            .handle(handleOk)
             .handle(handleError)
-            .doOnNext(message -> {
-                MonoSink<BackendMessage> receiver = this.responseReceivers.poll();
+            .windowUntil(message -> message instanceof CompleteMessage)
+            .doOnNext(messages -> {
+                MonoSink<Flux<BackendMessage>> receiver = this.responseReceivers.poll();
 
                 if (receiver != null) {
-                    receiver.success(message);
+                    receiver.success(messages);
                 }
             })
             .doOnComplete(() -> {
-                MonoSink<BackendMessage> receiver = this.responseReceivers.poll();
+                MonoSink<Flux<BackendMessage>> receiver = this.responseReceivers.poll();
 
                 if (receiver != null) {
-                    receiver.success();
+                    receiver.success(Flux.empty());
                 }
             })
             .then();
@@ -162,14 +203,10 @@ final class ReactorNettyClient implements Client {
             if (logger.isDebugEnabled()) {
                 logger.debug("Request: {}", message);
             }
-        }).concatMap(message -> connection.outbound().send(message.encode(connection.outbound().alloc(), this.sequenceId, this.session).doOnNext(buf -> {
-            if (logger.isTraceEnabled()) {
-                logger.trace("Outbound:\n{}", ByteBufUtil.prettyHexDump(buf));
-            }
-        }))).then();
+        }).concatMap(message -> send(connection, message)).then();
 
         Flux.merge(receive, request)
-            .doFinally(ignored -> this.messageDecoder.dispose())
+            .doFinally(ignored -> this.messageCodec.dispose())
             .onErrorResume(e -> {
                 logger.error("Connection Error", e);
                 return close();
@@ -178,19 +215,30 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
-    public Mono<BackendMessage> exchange(FrontendMessage request) {
+    public Flux<BackendMessage> exchange(FrontendMessage request) {
         requireNonNull(request, "request must not be null");
 
-        return Mono.create(sink -> {
+        return Mono.<Flux<BackendMessage>>create(sink -> {
             if (this.closed) {
-                sink.error(new IllegalStateException("Cannot exchange message because the connection is closed"));
+                sink.error(new IllegalStateException("Cannot exchange messages because the connection is closed"));
+                return;
             }
 
-            synchronized (this) {
-                this.responseReceivers.add(sink);
+            if (request.isExchanged()) {
+                synchronized (this) {
+                    this.responseReceivers.add(sink);
+                    this.requests.next(request);
+                }
+            } else {
                 this.requests.next(request);
+                sink.success(Flux.empty());
             }
-        });
+        }).flatMapMany(Function.identity());
+    }
+
+    @Override
+    public int getConnectionId() {
+        return session.getConnectionId();
     }
 
     @Override
@@ -208,7 +256,7 @@ final class ReactorNettyClient implements Client {
                         logger.debug("Request: {}", message);
                     }
                 })
-                .map(message -> connection.outbound().send(message.encode(connection.outbound().alloc(), sequenceId, session)))
+                .flatMapMany(message -> send(connection, message))
                 .then()
                 .doOnSuccess(ignored -> connection.dispose())
                 .then(connection.onDispose())
@@ -216,16 +264,34 @@ final class ReactorNettyClient implements Client {
         });
     }
 
-    @Override
-    public MySqlSession getSession() {
-        return session;
+    private void initSession(Connection connection, MySqlSession session) {
+        byte[] authentication = requireNonNull(session.nextAuthentication(), "authentication must not be null at first authentication");
+        String username = requireNonNull(session.getUsername(), "username must not be null at authentication phase");
+        AuthType authType = requireNonNull(session.getAuthType(), "authType must not be null at authentication phase");
+        byte collationLow8Bits = (byte) (session.getCollation().getId() & 0xFF);
+
+        this.session = session;
+
+        FrontendMessage message = new HandshakeResponse41Message(
+            session.getClientCapabilities(),
+            collationLow8Bits,
+            username,
+            authentication,
+            authType,
+            session.getDatabase(),
+            clientAttrs
+        );
+
+        send(connection, message).then().subscribe();
     }
 
-    private ReactorNettyClient initSession(MySqlSession session) {
-        this.session = session;
-        this.messageDecoder.initSession(session);
-
-        return this;
+    private NettyOutbound send(Connection connection, FrontendMessage message) {
+        NettyOutbound outbound = connection.outbound();
+        return outbound.send(messageCodec.encode(message, outbound.alloc(), this.session).doOnNext(buf -> {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Outbound:\n{}", ByteBufUtil.prettyHexDump(buf));
+            }
+        }));
     }
 
     static Mono<ReactorNettyClient> connect(ConnectProperties connectProperties) {
@@ -240,11 +306,11 @@ final class ReactorNettyClient implements Client {
             .host(connectProperties.getHost())
             .port(connectProperties.getPort());
 
-        MonoProcessor<MySqlSession> session = MonoProcessor.create(WaitStrategy.sleeping());
+        MonoProcessor<Void> handshake = MonoProcessor.create(WaitStrategy.sleeping());
 
         return client.connect()
-            .map(conn -> new ReactorNettyClient(conn, connectProperties, session))
-            .flatMap(c -> session.map(c::initSession));
+            .map(conn -> new ReactorNettyClient(conn, connectProperties, handshake))
+            .flatMap(c -> handshake.then(Mono.just(c)));
     }
 
     @SuppressWarnings("unchecked")
@@ -265,14 +331,35 @@ final class ReactorNettyClient implements Client {
         // use protocol 41 and deprecate EOF message
         int clientCapabilities = serverCapabilities | Capability.PROTOCOL_41.getFlag() | Capability.DEPRECATE_EOF.getFlag();
 
-        if (!properties.isUseSsl()) {
+        // server should always return metadata
+        clientCapabilities &= ~Capability.OPTIONAL_RESULT_SET_METADATA.getFlag();
+        // TODO: maybe need implement compress logic?
+        clientCapabilities &= ~Capability.COMPRESS.getFlag();
+
+        if (properties.isUseSsl()) {
+            clientCapabilities |= Capability.SSL.getFlag();
+        } else {
             clientCapabilities &= ~Capability.SSL.getFlag();
+            clientCapabilities &= ~Capability.SSL_VERIFY_SERVER_CERT.getFlag();
         }
 
         if (properties.getDatabase().isEmpty()) {
             clientCapabilities &= ~Capability.CONNECT_WITH_DB.getFlag();
+        } else {
+            clientCapabilities |= Capability.CONNECT_WITH_DB.getFlag();
+        }
+
+        if (clientAttrs.isEmpty()) {
+            clientCapabilities &= ~Capability.CONNECT_ATTRS.getFlag();
+        } else {
+            clientCapabilities |= Capability.CONNECT_ATTRS.getFlag();
         }
 
         return clientCapabilities;
+    }
+
+    private static Map<String, String> calculateAttrs() {
+        // maybe write some OS or JVM message in here?
+        return Collections.emptyMap();
     }
 }

@@ -35,11 +35,11 @@ final class SubscribersCompleteHandler extends ChannelDuplexHandler {
 
     private final EmitterProcessor<FrontendMessage> requestProcessor;
 
-    private final Queue<MonoSink<BackendMessage>> responseReceivers;
+    private final Queue<MonoSink<Flux<BackendMessage>>> responseReceivers;
 
     SubscribersCompleteHandler(
         EmitterProcessor<FrontendMessage> requestProcessor,
-        Queue<MonoSink<BackendMessage>> responseReceivers
+        Queue<MonoSink<Flux<BackendMessage>>> responseReceivers
     ) {
         this.requestProcessor = requireNonNull(requestProcessor, "requestProcessor must not be null");
         this.responseReceivers = requireNonNull(responseReceivers, "responseReceivers must not be null");
@@ -51,8 +51,8 @@ final class SubscribersCompleteHandler extends ChannelDuplexHandler {
 
         this.requestProcessor.onComplete();
 
-        for (MonoSink<BackendMessage> receiver = responseReceivers.poll(); receiver != null; receiver = responseReceivers.poll()) {
-            receiver.success();
+        for (MonoSink<Flux<BackendMessage>> receiver = responseReceivers.poll(); receiver != null; receiver = responseReceivers.poll()) {
+            receiver.success(Flux.empty());
         }
     }
 }

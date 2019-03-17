@@ -36,6 +36,12 @@ final class Sha256AuthStateMachine implements AuthStateMachine {
     private Sha256AuthStateMachine() {
     }
 
+    @Override
+    public boolean hasNext() {
+        // TODO: "sha256_password" is not state machine?
+        return false;
+    }
+
     @NonNull
     @Override
     public byte[] nextAuthentication(MySqlSession session) {

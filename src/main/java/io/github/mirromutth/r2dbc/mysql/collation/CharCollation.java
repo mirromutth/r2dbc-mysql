@@ -16,6 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
+import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
+
 import java.nio.charset.Charset;
 
 /**
@@ -31,7 +33,17 @@ public interface CharCollation {
 
     Charset getCharset();
 
-    static CharCollation fromId(int id) {
-        return CharCollations.getInstance().fromId(id);
+    static CharCollation defaultCollation(ServerVersion version) {
+        return CharCollations.getInstance().defaultCollation(version);
+    }
+
+    static CharCollation fromId(int id, ServerVersion version) {
+        CharCollation result = CharCollations.getInstance().fromId(id);
+
+        if (result == null) {
+            return defaultCollation(version);
+        }
+
+        return result;
     }
 }

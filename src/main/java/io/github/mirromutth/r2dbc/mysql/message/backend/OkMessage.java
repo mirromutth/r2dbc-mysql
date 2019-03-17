@@ -30,7 +30,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * <p>
  * Note: OK message are also used to indicate EOF and EOF message are deprecated as of MySQL 5.7.5.
  */
-public final class OkMessage implements BackendMessage {
+public final class OkMessage implements CompleteMessage {
 
     private final long affectedRows;
 
@@ -41,7 +41,7 @@ public final class OkMessage implements BackendMessage {
 
     private final short serverStatuses;
 
-    private final short warnings;
+    private final int warnings;
 
     private final String information;
 
@@ -49,7 +49,7 @@ public final class OkMessage implements BackendMessage {
         long affectedRows,
         long lastInsertId,
         short serverStatuses,
-        short warnings,
+        int warnings,
         String information
     ) {
         this.affectedRows = affectedRows;
@@ -59,23 +59,32 @@ public final class OkMessage implements BackendMessage {
         this.information = requireNonNull(information, "information must not be null");
     }
 
+    @Override
+    public boolean isSuccess() {
+        return true;
+    }
+
     static OkMessage decode(ByteBuf buf, MySqlSession session) {
         buf.skipBytes(1); // OK message header, 0x00 (or 0xFE maybe?)
 
         long affectedRows = CodecUtils.readVarInt(buf);
         long lastInsertId = CodecUtils.readVarInt(buf);
         short serverStatuses = buf.readShortLE();
-        short warnings = buf.readShortLE();
+        int warnings = buf.readUnsignedShortLE();
 
         int capabilities = session.getClientCapabilities();
         Charset charset = session.getCollation().getCharset();
 
-        if ((capabilities & Capability.SESSION_TRACK.getFlag()) != 0) {
-            String information = CodecUtils.readVarIntSizedString(buf, charset);
-            // ignore session state information, it is not human readable and useless for client
-            return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);
-        } else {
-            return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, buf.toString(charset));
+        if (buf.isReadable()) {
+            if ((capabilities & Capability.SESSION_TRACK.getFlag()) != 0) {
+                String information = CodecUtils.readVarIntSizedString(buf, charset);
+                // ignore session state information, it is not human readable and useless for client
+                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);
+            } else {
+                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, buf.toString(charset));
+            }
+        } else { // maybe have no human-readable message
+            return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, "");
         }
     }
 
@@ -91,8 +100,12 @@ public final class OkMessage implements BackendMessage {
         return serverStatuses;
     }
 
-    public short getWarnings() {
+    public int getWarnings() {
         return warnings;
+    }
+
+    public boolean hasWarnings() {
+        return warnings > 0;
     }
 
     public String getInformation() {
@@ -130,7 +143,7 @@ public final class OkMessage implements BackendMessage {
         int result = (int) (affectedRows ^ (affectedRows >>> 32));
         result = 31 * result + (int) (lastInsertId ^ (lastInsertId >>> 32));
         result = 31 * result + (int) serverStatuses;
-        result = 31 * result + (int) warnings;
+        result = 31 * result + warnings;
         result = 31 * result + information.hashCode();
         return result;
     }

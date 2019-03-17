@@ -20,15 +20,11 @@ import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.constant.Capability;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.exception.AuthenticationTooLongException;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.CompositeByteBuf;
-import reactor.util.annotation.Nullable;
 
 import java.nio.charset.Charset;
-import java.util.Collections;
 import java.util.Map;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -39,6 +35,9 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * it's {@code HandshakeV10Message}, otherwise talking to an old
  * server should use the handshake 320 response message, but
  * protocol 320 should be deprecated on MySQL 5.x.
+ * <p>
+ * Should make sure {@link #clientCapabilities} is right before construct this instance,
+ * e.g. {@link Capability#CONNECT_ATTRS}, {@link Capability#CONNECT_WITH_DB} or other capabilities.
  */
 public final class HandshakeResponse41Message extends AbstractFrontendMessage {
 
@@ -71,31 +70,29 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
         String database,
         Map<String, String> attributes
     ) {
+        this.clientCapabilities = clientCapabilities;
         this.collationLow8Bits = collationLow8Bits;
         this.username = requireNonNull(username, "username must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
         this.authType = requireNonNull(authType, "authType must not be null");
         this.attributes = requireNonNull(attributes, "attributes must not be null");
-
-        // must calculate client capabilities after other properties set.
-        this.clientCapabilities = calculateCapabilities(clientCapabilities);
-        this.varIntSizedAuth = (this.clientCapabilities & Capability.PLUGIN_AUTH_VAR_INT_SIZED_DATA.getFlag()) != 0;
+        this.varIntSizedAuth = (clientCapabilities & Capability.PLUGIN_AUTH_VAR_INT_SIZED_DATA.getFlag()) != 0;
 
         // authentication can not longer than 255 if server is not support use var int encode authentication
         if (!this.varIntSizedAuth && authentication.length > ONE_BYTE_MAX_INT) {
-            throw new AuthenticationTooLongException(authentication.length);
+            throw new IllegalArgumentException("authentication too long, server not support size " + authentication.length);
         }
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable MySqlSession session) {
-        Charset charset = requireNonNull(session, "session must not be null").getCollation().getCharset();
+    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
+        Charset charset = session.getCollation().getCharset();
         final ByteBuf buf = bufAllocator.buffer();
 
         try {
             buf.writeIntLE(clientCapabilities)
-                .writeIntLE(ProtocolConstants.MAX_PART_SIZE)
+                .writeIntLE(ProtocolConstants.MAX_PART_SIZE + 1) // 16777216, means include sequence id or exclusive logic in MySQL.
                 .writeByte(collationLow8Bits)
                 .writeZero(FILTER_SIZE);
 
@@ -115,15 +112,16 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
                 CodecUtils.writeCString(buf, authType.getNativeName(), charset);
             }
 
-            return writeAttrsWithRetained(buf, charset);
-        } finally {
+            return writeAttrs(buf, charset);
+        } catch (Throwable e) {
             buf.release();
+            throw e;
         }
     }
 
-    private ByteBuf writeAttrsWithRetained(ByteBuf buf, Charset charset) {
+    private ByteBuf writeAttrs(ByteBuf buf, Charset charset) {
         if (attributes.isEmpty()) { // no need write attributes
-            return buf.retain();
+            return buf;
         }
 
         final ByteBuf attributesBuf = buf.alloc().buffer();
@@ -135,36 +133,11 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
                 CodecUtils.writeVarIntSizedString(attributesBuf, entry.getValue(), charset);
             }
 
-            // write attributesBuf to buf after write attributesBuf size by var int encoded
-            CodecUtils.writeVarInt(buf, attributesBuf.readableBytes());
+            CodecUtils.writeVarIntSizedBytes(buf, attributesBuf);
 
-            CompositeByteBuf finalBuf = buf.alloc().compositeBuffer(2);
-
-            try {
-                return finalBuf.addComponent(true, buf.retain())
-                    .addComponent(true, attributesBuf.retain())
-                    .retain();
-            } finally {
-                finalBuf.release();
-            }
+            return buf;
         } finally {
             attributesBuf.release();
         }
-    }
-
-    private int calculateCapabilities(int capabilities) {
-        if (database.isEmpty()) {
-            capabilities &= ~Capability.CONNECT_WITH_DB.getFlag();
-        } else {
-            capabilities |= Capability.CONNECT_WITH_DB.getFlag();
-        }
-
-        if (attributes.isEmpty()) {
-            capabilities &= ~Capability.CONNECT_ATTRS.getFlag();
-        } else {
-            capabilities |= Capability.CONNECT_ATTRS.getFlag();
-        }
-
-        return capabilities;
     }
 }

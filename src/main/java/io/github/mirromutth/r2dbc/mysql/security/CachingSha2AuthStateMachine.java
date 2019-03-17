@@ -20,25 +20,13 @@ import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import reactor.util.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNotEmpty;
 import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
 
 /**
  * A MySQL authentication state machine which would use when authentication type is "caching_sha2_password".
- *
- * <p>
- * {@link AuthState#COMPLETED} means succeeded or failed
- * <ol>
- * <li>initialize status is {@link AuthState#INITIALIZED}</li>
- * <li>after handshake send salt: {@link AuthState#INITIALIZED} -> {@link AuthState#FAST_AUTH}</li>
- * <li>auth more data 0x03: {@link AuthState#FAST_AUTH} -> {@link AuthState#COMPLETED} (success)</li>
- * <li>auth more data 0x04 with secure connection: {@link AuthState#FAST_AUTH} -> {@link AuthState#FULL_AUTH_SECURED}</li>
- * <li>auth more data 0x04 without secure connection: {@link AuthState#FAST_AUTH} -> {@link AuthState#FULL_AUTH_RSA}</li>
- * <li>...need more data to analysis full authentication mode</li>
- * </ol>
  */
 final class CachingSha2AuthStateMachine implements AuthStateMachine {
 
@@ -46,47 +34,40 @@ final class CachingSha2AuthStateMachine implements AuthStateMachine {
 
     private static final boolean IS_LEFT_SALT = false;
 
-    private volatile AuthState authState = AuthState.INITIALIZED;
+    private final AtomicReference<AuthState> authState = new AtomicReference<>(AuthState.FAST_AUTH);
 
     CachingSha2AuthStateMachine() {
+    }
+
+    @Override
+    public boolean hasNext() {
+        return this.authState.get() != AuthState.COMPLETED;
     }
 
     @Override
     public byte[] nextAuthentication(MySqlSession session) {
         requireNonNull(session, "session must not be null");
 
-        switch (this.authState) {
-            case INITIALIZED:
-                byte[] result = challenge(session.getPassword(), session.getSalt());
-                this.authState = AuthState.FAST_AUTH;
-                return result;
-            case FAST_AUTH:
-                byte[] authMoreData = requireNotEmpty(session.getAuthMoreData(), "authMoreData must not be null or empty when check fast authentication");
-
-                switch (authMoreData[0]) {
-                    case 3: // fast auth success
-                        this.authState = AuthState.COMPLETED;
-                        return null; // have no authentication for next
-                    case 4:
-                        // TODO: implement full authentication mode, just use password (plaintext or RSA encrypted)
-
+        while (true) {
+            AuthState authState = this.authState.get();
+            if (this.authState.compareAndSet(authState, authState.next())) {
+                switch (authState) {
+                    case FAST_AUTH:
+                        return challenge(session.getPassword(), session.getSalt());
+                    case FULL_AUTH:
+                        // TODO: implement full authentication mode
                         break;
                 }
 
-                throw new IllegalArgumentException("unknown authentication more data: " + Arrays.toString(authMoreData));
-            case FULL_AUTH_SECURED:
-                // TODO: implement full authentication mode after sent password which is plaintext with secure connection
                 break;
-            case FULL_AUTH_RSA:
-                // TODO: implement full authentication mode after sent password which has RSA encrypted
-                break;
+            }
         }
 
         return null; // authentication is completed
     }
 
     /**
-     * SHA256(password) all bytes xor SHA256( SHA256(SHA256(password)) + "random data from MySQL server" )
+     * SHA256(password) all bytes xor SHA256( SHA256(   ~SHA256(password)) + "random data from MySQL server" )
      *
      * @param password user password
      * @param salt     random data from MySQL server, it could be null if password is null or empty
@@ -103,10 +84,28 @@ final class CachingSha2AuthStateMachine implements AuthStateMachine {
     }
 
     private enum AuthState {
-        INITIALIZED,
-        FAST_AUTH,
-        FULL_AUTH_SECURED,
-        FULL_AUTH_RSA,
-        COMPLETED
+        FAST_AUTH {
+
+            @Override
+            AuthState next() {
+                return AuthState.FULL_AUTH;
+            }
+        },
+        FULL_AUTH {
+
+            @Override
+            AuthState next() {
+                return AuthState.COMPLETED;
+            }
+        },
+        COMPLETED {
+
+            @Override
+            AuthState next() {
+                return AuthState.COMPLETED;
+            }
+        };
+
+        abstract AuthState next();
     }
 }

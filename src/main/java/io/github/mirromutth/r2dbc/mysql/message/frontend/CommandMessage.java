@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.constant;
+package io.github.mirromutth.r2dbc.mysql.message.frontend;
+
+import io.github.mirromutth.r2dbc.mysql.constant.CommandType;
 
 /**
- * Backend message decoder mode
+ * Any message that can be sent during the command phase should implement this interface.
  */
-public enum DecodeMode {
+public interface CommandMessage extends FrontendMessage {
 
-    CONNECTION,
-    COMMAND,
-    REPLICATION
+    CommandType getCommandType();
 }

@@ -40,16 +40,16 @@ abstract class AbstractFrontendMessage implements FrontendMessage {
      *
      * @param bufAllocator {@link ByteBuf} allocator that from netty connection usually.
      * @param session      current MySQL session.
-     * @return single {@link ByteBuf}, can not be null.
+     * @return single {@link ByteBuf}, can not be null, maybe read only.
      */
-    protected abstract ByteBuf encodeSingle(ByteBufAllocator bufAllocator, @Nullable MySqlSession session);
+    protected abstract ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session);
 
     @Override
-    public final Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, @Nullable MySqlSession session) {
+    public final Flux<ByteBuf> encode(ByteBufAllocator bufAllocator, AtomicInteger sequenceId, MySqlSession session) {
         requireNonNull(bufAllocator, "bufAllocator must not be null");
         requireNonNull(sequenceId, "sequenceId must not be null");
 
-        ByteBuf allBodyBuf = encodeSingle(bufAllocator, session);
+        ByteBuf allBodyBuf = encodeSingle(bufAllocator, session); // maybe read only buffer
         List<ByteBuf> envelopes = new ArrayList<>(allBodyBuf.readableBytes() / ProtocolConstants.MAX_PART_SIZE + 1);
 
         while (allBodyBuf.readableBytes() >= ProtocolConstants.MAX_PART_SIZE) {
@@ -61,5 +61,10 @@ abstract class AbstractFrontendMessage implements FrontendMessage {
         envelopes.add(Unpooled.wrappedBuffer(headerBuf, allBodyBuf));
 
         return Flux.fromIterable(envelopes);
+    }
+
+    @Override
+    public boolean isExchanged() {
+        return true;
     }
 }

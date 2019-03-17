@@ -26,23 +26,23 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * MySQL error message, sql state will be a property independently.
  */
-public final class ErrorMessage implements BackendMessage {
+public final class ErrorMessage implements CompleteMessage {
 
     private static final int SQL_STATE_SIZE = 5;
 
-    private final short errorCode;
+    private final int errorCode;
 
     private final String sqlState;
 
     private final String errorMessage;
 
-    private ErrorMessage(short errorCode, String sqlState, String errorMessage) {
+    private ErrorMessage(int errorCode, String sqlState, String errorMessage) {
         this.errorCode = errorCode;
         this.sqlState = requireNonNull(sqlState, "sqlState must not be null");
         this.errorMessage = requireNonNull(errorMessage, "errorMessage must not be null");
     }
 
-    public short getErrorCode() {
+    public int getErrorCode() {
         return errorCode;
     }
 
@@ -54,9 +54,14 @@ public final class ErrorMessage implements BackendMessage {
         return errorMessage;
     }
 
+    @Override
+    public boolean isSuccess() {
+        return false;
+    }
+
     static ErrorMessage decode(ByteBuf buf) {
         buf.skipBytes(1); // 0xFF, error message header
-        short errorCode = buf.readShortLE();
+        int errorCode = buf.readUnsignedShortLE(); // error code should be unsigned
         buf.skipBytes(1); // constant '#'
         String sqlState = buf.toString(buf.readerIndex(), SQL_STATE_SIZE, StandardCharsets.US_ASCII);
         buf.skipBytes(SQL_STATE_SIZE); // skip fixed string length by read
@@ -85,7 +90,7 @@ public final class ErrorMessage implements BackendMessage {
 
     @Override
     public int hashCode() {
-        int result = (int) errorCode;
+        int result = errorCode;
         result = 31 * result + sqlState.hashCode();
         result = 31 * result + errorMessage.hashCode();
         return result;

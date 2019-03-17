@@ -14,23 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
-
-import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 /**
- * Test cases for {@link CharCollation}
+ * The message means exchange is completed.
  */
-class CharCollationTest {
+public interface CompleteMessage extends BackendMessage {
 
-    @Test
-    void fromId() {
-        assertNotNull(CharCollation.fromId(33)); // utf-8 general ci
-        assertNotNull(CharCollation.fromId(224)); // utf-8 more 4-bytes unicode ci
-        assertNotEquals(CharCollation.fromId(33), CharCollation.fromId(224));
-    }
+    boolean isSuccess();
 }

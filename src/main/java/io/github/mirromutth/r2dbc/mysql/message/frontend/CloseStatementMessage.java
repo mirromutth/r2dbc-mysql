@@ -20,20 +20,18 @@ import io.github.mirromutth.r2dbc.mysql.constant.CommandType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.Unpooled;
 
 /**
- * The request message tells the MySQL client to exit.
+ * The message tell MySQL server to close the statement specified by id.
  */
-public final class ExitMessage extends AbstractFrontendMessage implements CommandMessage {
+public final class CloseStatementMessage extends AbstractFrontendMessage implements CommandMessage {
 
-    private static final ExitMessage INSTANCE = new ExitMessage();
+    private static final byte STATEMENT_CLOSE_FLAG = 0x19;
 
-    private ExitMessage() {
-    }
+    private final int statementId;
 
-    public static ExitMessage getInstance() {
-        return INSTANCE;
+    public CloseStatementMessage(int statementId) {
+        this.statementId = statementId;
     }
 
     @Override
@@ -48,11 +46,13 @@ public final class ExitMessage extends AbstractFrontendMessage implements Comman
 
     @Override
     protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
-        return Unpooled.wrappedBuffer(new byte[] { 0x01 });
-    }
+        final ByteBuf buf = bufAllocator.buffer();
 
-    @Override
-    public String toString() {
-        return "ExitMessage{}";
+        try {
+            return buf.writeByte(STATEMENT_CLOSE_FLAG).writeIntLE(statementId);
+        } catch (Throwable e) {
+            buf.release();
+            throw e;
+        }
     }
 }

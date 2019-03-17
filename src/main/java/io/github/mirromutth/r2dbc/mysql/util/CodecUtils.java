@@ -167,4 +167,17 @@ public final class CodecUtils {
             buf.writeByte(0);
         }
     }
+
+    public static void writeVarIntSizedBytes(ByteBuf buf, ByteBuf value) {
+        requireNonNull(buf, "buf must not be null");
+        requireNonNull(value, "value must not be null");
+
+        int size = value.readableBytes();
+        if (size > 0) {
+            writeVarInt(buf, size);
+            buf.writeBytes(value);
+        } else {
+            buf.writeByte(0);
+        }
+    }
 }

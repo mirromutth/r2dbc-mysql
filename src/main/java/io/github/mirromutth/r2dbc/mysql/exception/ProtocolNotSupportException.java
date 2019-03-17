@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.exception;
 import io.r2dbc.spi.R2dbcException;
 
 /**
- * The MySQL server protocol version is not support, check version compatibility on README.
+ * The MySQL server protocol or message is not support, check version compatibility on README.
  */
 public final class ProtocolNotSupportException extends R2dbcException {
 

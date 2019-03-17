@@ -18,10 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
-import io.github.mirromutth.r2dbc.mysql.constant.Capability;
-import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
-import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
-import io.github.mirromutth.r2dbc.mysql.message.frontend.SslRequestMessage;
+import io.github.mirromutth.r2dbc.mysql.message.frontend.PingMessage;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
 import reactor.core.publisher.Mono;
@@ -48,9 +45,12 @@ public final class MySqlConnection implements Connection {
         return Mono.empty();
     }
 
+    public Mono<Void> ping() {
+        return client.exchange(PingMessage.getInstance()).then();
+    }
+
     @Override
     public Mono<Void> close() {
-        // TODO: exchange close message to MySQL server
         return client.close();
     }
 
@@ -77,7 +77,7 @@ public final class MySqlConnection implements Connection {
     public MySqlStatement createStatement(String sql) {
         requireNonNull(sql, "sql must not be null");
         // TODO: implement this method
-        return new SimpleQueryMySqlStatement();
+        return new SimpleQueryMySqlStatement(client, sql);
     }
 
     @Override

@@ -16,12 +16,12 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DecodeMode;
+import io.github.mirromutth.r2dbc.mysql.constant.CommandType;
+import io.github.mirromutth.r2dbc.mysql.constant.ProtocolLifecycle;
 import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.exception.ProtocolNotSupportException;
 import io.netty.buffer.ByteBuf;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
@@ -36,23 +36,14 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class BackendMessageDecoder {
 
-    private final AtomicInteger sequenceId;
-
-    private final ByteBufJoiner joiner;
+    private final ByteBufJoiner joiner = ByteBufJoiner.wrapped();
 
     private final List<ByteBuf> parts = new ArrayList<>();
 
-    private volatile DecodeMode decodeMode = DecodeMode.CONNECTION;
-
-    private volatile MySqlSession session = null;
-
-    public BackendMessageDecoder(AtomicInteger sequenceId) {
-        this.sequenceId = requireNonNull(sequenceId, "sequenceId must not be null");
-        this.joiner = ByteBufJoiner.wrapped();
-    }
-
     @Nullable
-    public BackendMessage decode(ByteBuf envelope) {
+    public BackendMessage decode(ByteBuf envelope, ProtocolLifecycle lifecycle, AtomicInteger sequenceId, @Nullable CommandType commandType, MySqlSession session) {
+        requireNonNull(lifecycle, "lifecycle must not be null");
+        requireNonNull(sequenceId, "sequenceId must not be null");
         requireNonNull(envelope, "envelope must not be null");
 
         try {
@@ -63,19 +54,18 @@ public final class BackendMessageDecoder {
                 envelope = null; // success, no need release
 
                 try {
-                    switch (decodeMode) {
+                    switch (lifecycle) {
                         case CONNECTION:
-                            return decodeConnection(joined);
+                            return decodeConnection(joined, session);
                         case COMMAND:
-                            return decodeCommand(joined);
-                        case REPLICATION:
-                            return decodeReplication(joined);
+                            requireNonNull(commandType, "commandType must not be null at decoding in command phase");
+                            return decodeCommand(joined, commandType, session);
                     }
                 } finally {
                     joined.release();
                 }
 
-                throw new IllegalStateException("decodeMode is " + this.decodeMode + " which is undefined behavior when decoding!");
+                throw new IllegalStateException("MySQL protocol lifecycle is " + lifecycle + " which is undefined behavior when decoding!");
             } else {
                 envelope.skipBytes(1); // sequence Id
                 parts.add(envelope);
@@ -86,12 +76,6 @@ public final class BackendMessageDecoder {
             if (envelope != null) {
                 envelope.release();
             }
-        }
-    }
-
-    public void initSession(MySqlSession session) {
-        if (this.session == null) {
-            this.session = requireNonNull(session, "session must not be null");
         }
     }
 
@@ -107,12 +91,11 @@ public final class BackendMessageDecoder {
         }
     }
 
-    private BackendMessage decodeConnection(ByteBuf buf) {
+    private BackendMessage decodeConnection(ByteBuf buf, MySqlSession session) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
             case 0: // Ok
-                this.decodeMode = DecodeMode.COMMAND; // connection phase has completed
-                return OkMessage.decode(buf, session);
+                return OkMessage.decode(buf, requireNonNull(session, "session must not be null"));
             case 1: // Auth more data
                 return AuthMoreDataMessage.decode(buf);
             case 9:
@@ -124,6 +107,7 @@ public final class BackendMessageDecoder {
                 int byteSize = buf.readableBytes();
 
                 if (byteSize == 1 || byteSize == 5) { // must be EOF (unsupported EOF 320 message if byte size is 1)
+                    // Should decode EOF because connection phase has no completed.
                     return EofMessage.decode(buf);
                 }
 
@@ -133,14 +117,27 @@ public final class BackendMessageDecoder {
         throw new ProtocolNotSupportException("Unknown message header " + header + " on connection phase");
     }
 
-    private BackendMessage decodeCommand(ByteBuf buf) {
-        // TODO: implement command phase decode logic
-        throw new IllegalArgumentException("No implementation");
-    }
+    private BackendMessage decodeCommand(ByteBuf buf, CommandType type, MySqlSession session) {
+        switch (type) {
+            case STATEMENT_PREPARE:
+                // TODO: implement prepare statement
+                break;
+            case STATEMENT_EXECUTE: case STATEMENT_SIMPLE:
+                // TODO: implement result set
+                break;
+            case UTILITIES_SIMPLE:
+                short header = buf.getUnsignedByte(buf.readerIndex());
+                switch (header) {
+                    case 0: // Ok
+                        return OkMessage.decode(buf, requireNonNull(session, "session must not be null"));
+                    case 0xFF: // Error
+                        return ErrorMessage.decode(buf);
+                }
 
-    private BackendMessage decodeReplication(ByteBuf buf) {
-        // TODO: implement command phase decode logic
-        throw new IllegalArgumentException("No implementation");
+                throw new ProtocolNotSupportException("Unknown message header " + header + " on command phase and command type " + type);
+        }
+
+        throw new ProtocolNotSupportException("Unsupported command type " + type);
     }
 
     private boolean readLastPart(ByteBuf partBuf) {

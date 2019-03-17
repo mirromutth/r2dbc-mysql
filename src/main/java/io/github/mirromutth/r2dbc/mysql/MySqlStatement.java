@@ -42,12 +42,4 @@ public interface MySqlStatement extends Statement {
 
     @Override
     Flux<? extends MySqlResult> execute();
-
-    /**
-     * {@inheritDoc}
-     *
-     * @throws IllegalStateException if this {@link Statement} already has a {@code RETURNING clause} or isn't a {@code DELETE}, {@code INSERT}, or {@code UPDATE} command.
-     */
-    @Override
-    MySqlStatement returnGeneratedValues(String... columns);
 }
