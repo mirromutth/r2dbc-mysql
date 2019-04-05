@@ -47,6 +47,23 @@ public final class AssertUtils {
     }
 
     /**
+     * Checks that a specified {@link String} is not {@code null} or empty and
+     * throws a customized {@link IllegalArgumentException} if it is.
+     *
+     * @param string  the {@link String} to check for nullity or empty
+     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
+     * @return {@code string} if not {@code null} or empty
+     * @throws IllegalArgumentException if {@code string} is {@code null} or empty
+     */
+    public static String requireNotEmpty(@Nullable String string, String message) {
+        if (string == null || string.isEmpty()) {
+            throw new IllegalArgumentException(message);
+        }
+
+        return string;
+    }
+
+    /**
      * Checks that a specified byte array is not {@code null} or empty and
      * throws a customized {@link IllegalArgumentException} if it is.
      *

@@ -54,4 +54,8 @@ public final class SimpleQueryMessage extends AbstractFrontendMessage implements
             throw e;
         }
     }
+
+    public String getSql() {
+        return this.sql;
+    }
 }
