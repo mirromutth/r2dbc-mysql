@@ -25,28 +25,13 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  * <p>
  * Old Password Authentication will NEVER support, the hashing algorithm has broken that
  * is used for this authentication type (as shown in CVE-2000-0981).
- * <p>
- * Can NOT promise the {@link #name()} always equals than {@link #nativeName} in uppercase.
  */
-public enum AuthType {
+public final class AuthType {
 
-    MYSQL_NATIVE_PASSWORD("mysql_native_password"),
-    SHA256_PASSWORD("sha256_password"),
-    CACHING_SHA2_PASSWORD("caching_sha2_password");
-
-    private final String nativeName;
-
-    AuthType(String nativeName) {
-        this.nativeName = nativeName;
+    private AuthType() {
     }
 
-    /**
-     * Do NOT use it outer than {@code r2dbc-mysql}, because it is native name of MySQL,
-     * we can NOT promise it will be never changes.
-     *
-     * @return this plugin native name
-     */
-    public String getNativeName() {
-        return nativeName;
-    }
+    public static final String MYSQL_NATIVE_PASSWORD = "mysql_native_password";
+    public static final String SHA256_PASSWORD = "sha256_password";
+    public static final String CACHING_SHA2_PASSWORD = "caching_sha2_password";
 }

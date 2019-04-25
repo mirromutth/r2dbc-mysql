@@ -59,7 +59,7 @@ public final class ErrorMessage implements CompleteMessage {
         return false;
     }
 
-    static ErrorMessage decode(ByteBuf buf) {
+    public static ErrorMessage decode(ByteBuf buf) {
         buf.skipBytes(1); // 0xFF, error message header
         int errorCode = buf.readUnsignedShortLE(); // error code should be unsigned
         buf.skipBytes(1); // constant '#'

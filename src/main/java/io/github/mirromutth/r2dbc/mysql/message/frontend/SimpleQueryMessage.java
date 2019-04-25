@@ -16,8 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.CommandType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.message.backend.DecodeContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
@@ -26,7 +26,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * The message include a plain text SQL query without any parameter.
  */
-public final class SimpleQueryMessage extends AbstractFrontendMessage implements CommandMessage {
+public final class SimpleQueryMessage extends AbstractFrontendMessage {
 
     private static final byte QUERY_FLAG = 3;
 
@@ -34,11 +34,6 @@ public final class SimpleQueryMessage extends AbstractFrontendMessage implements
 
     public SimpleQueryMessage(String sql) {
         this.sql = requireNonNull(sql, "sql must not be null");
-    }
-
-    @Override
-    public CommandType getCommandType() {
-        return CommandType.STATEMENT_SIMPLE;
     }
 
     @Override
@@ -57,5 +52,10 @@ public final class SimpleQueryMessage extends AbstractFrontendMessage implements
 
     public String getSql() {
         return this.sql;
+    }
+  
+    @Override
+    public DecodeContext decodeContext() {
+        return DecodeContext.textResult();
     }
 }

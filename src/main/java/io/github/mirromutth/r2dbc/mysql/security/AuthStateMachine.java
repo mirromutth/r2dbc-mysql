@@ -16,11 +16,13 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.exception.AuthTypeNotSupportException;
 import reactor.util.annotation.Nullable;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.CACHING_SHA2_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.MYSQL_NATIVE_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.SHA256_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -28,18 +30,20 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public interface AuthStateMachine {
 
-    static AuthStateMachine build(AuthType type) {
+    static AuthStateMachine build(String type) {
         switch (requireNonNull(type, "type must not be null")) {
+            case CACHING_SHA2_PASSWORD:
+                return new CachingSha2AuthStateMachine();
             case MYSQL_NATIVE_PASSWORD:
                 return NativeAuthStateMachine.getInstance();
             case SHA256_PASSWORD:
                 return Sha256AuthStateMachine.getInstance();
-            case CACHING_SHA2_PASSWORD:
-                return new CachingSha2AuthStateMachine();
         }
 
-        throw new AuthTypeNotSupportException(type.getNativeName());
+        throw new AuthTypeNotSupportException(type);
     }
+
+    String getType();
 
     /**
      * @return true if {@code this} is state machine and it also has next authentication.

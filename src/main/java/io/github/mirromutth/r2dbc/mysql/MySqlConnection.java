@@ -17,7 +17,6 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.PingMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.SimpleQueryMessage;
 import io.r2dbc.spi.Connection;
@@ -33,17 +32,12 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNotEmpty;
 /**
  * An implementation of {@link Connection} for connecting to the MySQL database.
  */
-public final class MySqlConnection implements Connection {
+final class MySqlConnection implements Connection {
 
     private final Client client;
 
-    private final AtomicBoolean autoCommit = new AtomicBoolean(true);
-
-    MySqlConnection(Client client, ConnectProperties properties) {
-        requireNonNull(client, "client must not be null");
-        requireNonNull(properties, "properties must not be null");
-
-        this.client = client;
+    private MySqlConnection(Client client) {
+        this.client = requireNonNull(client, "client must not be null");
     }
 
     @Override

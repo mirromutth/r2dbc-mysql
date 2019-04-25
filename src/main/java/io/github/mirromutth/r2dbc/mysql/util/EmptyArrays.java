@@ -21,5 +21,5 @@ package io.github.mirromutth.r2dbc.mysql.util;
  */
 public final class EmptyArrays {
 
-    public static final byte[] EMPTY_BYTES = new byte[0];
+    public static final byte[] EMPTY_BYTES = {};
 }

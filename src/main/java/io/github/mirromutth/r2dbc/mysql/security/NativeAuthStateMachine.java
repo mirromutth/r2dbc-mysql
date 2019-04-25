@@ -21,6 +21,7 @@ import reactor.util.annotation.NonNull;
 
 import java.nio.charset.StandardCharsets;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.MYSQL_NATIVE_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
 
@@ -70,5 +71,10 @@ final class NativeAuthStateMachine implements AuthStateMachine {
         byte[] salt = requireNonNull(session.getSalt(), "salt must not be null when password exists");
 
         return AuthCrypto.usualHash(ALGORITHM, password.getBytes(StandardCharsets.UTF_8), salt, IS_LEFT_SALT);
+    }
+
+    @Override
+    public String getType() {
+        return MYSQL_NATIVE_PASSWORD;
     }
 }

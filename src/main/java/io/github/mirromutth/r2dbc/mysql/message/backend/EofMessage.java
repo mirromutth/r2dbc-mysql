@@ -35,7 +35,7 @@ final class EofMessage implements BackendMessage {
     }
 
     static EofMessage decode(ByteBuf buf) {
-        buf.skipBytes(1); // skip generic header 0xEF of EOF messages
+        buf.skipBytes(1); // skip generic header 0xFE of EOF messages
         short warnings = buf.readShortLE();
         return new EofMessage(warnings, buf.readShortLE());
     }

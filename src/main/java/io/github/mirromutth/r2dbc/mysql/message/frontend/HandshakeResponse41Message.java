@@ -16,9 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-import io.github.mirromutth.r2dbc.mysql.constant.Capability;
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
+import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
+import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
@@ -28,16 +27,17 @@ import java.nio.charset.Charset;
 import java.util.Map;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requirePositive;
 
 /**
  * A handshake response message sent by clients those supporting
- * {@link Capability#PROTOCOL_41} if the server announced it in
+ * {@link Capabilities#PROTOCOL_41} if the server announced it in
  * it's {@code HandshakeV10Message}, otherwise talking to an old
  * server should use the handshake 320 response message, but
  * protocol 320 should be deprecated on MySQL 5.x.
  * <p>
  * Should make sure {@link #clientCapabilities} is right before construct this instance,
- * e.g. {@link Capability#CONNECT_ATTRS}, {@link Capability#CONNECT_WITH_DB} or other capabilities.
+ * e.g. {@link Capabilities#CONNECT_ATTRS}, {@link Capabilities#CONNECT_WITH_DB} or other capabilities.
  */
 public final class HandshakeResponse41Message extends AbstractFrontendMessage {
 
@@ -47,13 +47,13 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
 
     private final int clientCapabilities;
 
-    private final byte collationLow8Bits;
+    private final int collationId;
 
     private final String username;
 
     private final byte[] authentication;
 
-    private final AuthType authType;
+    private final String authType;
 
     private final String database;
 
@@ -63,21 +63,21 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
 
     public HandshakeResponse41Message(
         int clientCapabilities,
-        byte collationLow8Bits,
+        int collationId,
         String username,
         byte[] authentication,
-        AuthType authType,
+        String authType,
         String database,
         Map<String, String> attributes
     ) {
         this.clientCapabilities = clientCapabilities;
-        this.collationLow8Bits = collationLow8Bits;
+        this.collationId = requirePositive(collationId, "collationId must be a positive integer");
         this.username = requireNonNull(username, "username must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
         this.authType = requireNonNull(authType, "authType must not be null");
         this.attributes = requireNonNull(attributes, "attributes must not be null");
-        this.varIntSizedAuth = (clientCapabilities & Capability.PLUGIN_AUTH_VAR_INT_SIZED_DATA.getFlag()) != 0;
+        this.varIntSizedAuth = (clientCapabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0;
 
         // authentication can not longer than 255 if server is not support use var int encode authentication
         if (!this.varIntSizedAuth && authentication.length > ONE_BYTE_MAX_INT) {
@@ -92,8 +92,8 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
 
         try {
             buf.writeIntLE(clientCapabilities)
-                .writeIntLE(ProtocolConstants.MAX_PART_SIZE + 1) // 16777216, means include sequence id or exclusive logic in MySQL.
-                .writeByte(collationLow8Bits)
+                .writeIntLE(Envelopes.MAX_PART_SIZE + 1) // 16777216, means include sequence id or exclusive logic in MySQL.
+                .writeByte(collationId)
                 .writeZero(FILTER_SIZE);
 
             CodecUtils.writeCString(buf, username, charset);
@@ -109,7 +109,7 @@ public final class HandshakeResponse41Message extends AbstractFrontendMessage {
             }
 
             if (authType != null) {
-                CodecUtils.writeCString(buf, authType.getNativeName(), charset);
+                CodecUtils.writeCString(buf, authType, charset);
             }
 
             return writeAttrs(buf, charset);

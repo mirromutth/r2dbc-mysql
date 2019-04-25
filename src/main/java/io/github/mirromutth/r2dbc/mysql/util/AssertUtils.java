@@ -64,20 +64,20 @@ public final class AssertUtils {
     }
 
     /**
-     * Checks that a specified byte array is not {@code null} or empty and
+     * Checks that a specified integer is not negative and
      * throws a customized {@link IllegalArgumentException} if it is.
      *
-     * @param bytes   the byte array to check for nullity or empty
+     * @param x       the specified integer to check for negatively
      * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
-     * @return {@code bytes} if not {@code null} or empty
-     * @throws IllegalArgumentException if {@code obj} is {@code null} or empty
+     * @return {@code x} if not negative
+     * @throws IllegalArgumentException if {@code x} is negative
      */
-    public static byte[] requireNotEmpty(@Nullable byte[] bytes, String message) {
-        if (bytes == null || bytes.length == 0) {
+    public static int requireNonNegative(int x, String message) {
+        if (x < 0) {
             throw new IllegalArgumentException(message);
         }
 
-        return bytes;
+        return x;
     }
 
     /**
@@ -89,7 +89,7 @@ public final class AssertUtils {
      * @return {@code x} if not negative
      * @throws IllegalArgumentException if {@code x} is negative
      */
-    public static int requireNonNegative(int x, String message) {
+    public static long requireNonNegative(long x, String message) {
         if (x < 0) {
             throw new IllegalArgumentException(message);
         }
@@ -108,6 +108,23 @@ public final class AssertUtils {
      */
     public static int requirePositive(int x, String message) {
         if (x <= 0) {
+            throw new IllegalArgumentException(message);
+        }
+
+        return x;
+    }
+
+    /**
+     * Checks that a specified integer is positive and throws a
+     * customized {@link IllegalArgumentException} if it is not.
+     *
+     * @param x       the specified integer to check for positively
+     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
+     * @return {@code x} if positive
+     * @throws IllegalArgumentException if {@code x} is not positive
+     */
+    public static long requirePositive(long x, String message) {
+        if (x <= 0L) {
             throw new IllegalArgumentException(message);
         }
 

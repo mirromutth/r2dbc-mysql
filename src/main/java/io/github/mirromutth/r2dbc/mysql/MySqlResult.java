@@ -31,16 +31,25 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlResult implements Result {
 
+    private final MySqlRowMetadata rowMetadata;
+
+    private final Flux<MySqlRow> rows;
+
+    public MySqlResult(MySqlRowMetadata rowMetadata, Flux<MySqlRow> rows) {
+        this.rowMetadata = requireNonNull(rowMetadata, "rowMetadata must not be null");
+        this.rows = requireNonNull(rows, "rows must not be null");
+    }
+
     @Override
     public Mono<Integer> getRowsUpdated() {
         // TODO: implement this method
         return Mono.empty();
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     @Override
     public <T> Flux<T> map(BiFunction<Row, RowMetadata, ? extends T> f) {
         requireNonNull(f, "f must not be null");
-        // TODO: implement this method
-        return Flux.empty();
+        return rows.map(row -> f.apply(row, rowMetadata));
     }
 }

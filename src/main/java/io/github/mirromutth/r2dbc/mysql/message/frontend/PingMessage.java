@@ -25,7 +25,7 @@ import io.netty.buffer.Unpooled;
 /**
  * The request message check alive of MySQL server.
  */
-public final class PingMessage extends AbstractFrontendMessage implements CommandMessage {
+public final class PingMessage extends AbstractFrontendMessage {
 
     private static final PingMessage INSTANCE = new PingMessage();
 
@@ -34,11 +34,6 @@ public final class PingMessage extends AbstractFrontendMessage implements Comman
 
     public static PingMessage getInstance() {
         return INSTANCE;
-    }
-
-    @Override
-    public CommandType getCommandType() {
-        return CommandType.UTILITIES_SIMPLE;
     }
 
     @Override

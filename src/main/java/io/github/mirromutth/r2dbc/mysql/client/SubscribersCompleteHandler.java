@@ -16,43 +16,32 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
-import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import reactor.core.publisher.EmitterProcessor;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.MonoSink;
 
-import java.util.Queue;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A handler for ensure subscribers complete.
+ * A handler for clean processing context.
  */
 final class SubscribersCompleteHandler extends ChannelDuplexHandler {
 
-    private final EmitterProcessor<FrontendMessage> requestProcessor;
+    private final AtomicReference<MessageContext> processing;
 
-    private final Queue<MonoSink<Flux<BackendMessage>>> responseReceivers;
-
-    SubscribersCompleteHandler(
-        EmitterProcessor<FrontendMessage> requestProcessor,
-        Queue<MonoSink<Flux<BackendMessage>>> responseReceivers
-    ) {
-        this.requestProcessor = requireNonNull(requestProcessor, "requestProcessor must not be null");
-        this.responseReceivers = requireNonNull(responseReceivers, "responseReceivers must not be null");
+    SubscribersCompleteHandler(AtomicReference<MessageContext> processing) {
+        this.processing = requireNonNull(processing, "processing must not be null");
     }
 
     @Override
     public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
         super.channelUnregistered(ctx);
 
-        this.requestProcessor.onComplete();
+        MessageContext context = processing.getAndSet(null);
 
-        for (MonoSink<Flux<BackendMessage>> receiver = responseReceivers.poll(); receiver != null; receiver = responseReceivers.poll()) {
-            receiver.success(Flux.empty());
+        if (context != null) {
+            context.error(new IllegalStateException("connection is unregistered"));
         }
     }
 }

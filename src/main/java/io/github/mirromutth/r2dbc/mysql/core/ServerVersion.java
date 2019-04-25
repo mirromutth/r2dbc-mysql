@@ -26,7 +26,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class ServerVersion implements Comparable<ServerVersion> {
 
-    private static final ServerVersion NONE = new ServerVersion(0, 0, 0);
+    public static final ServerVersion NONE = new ServerVersion(0, 0, 0);
 
     private final int major;
 

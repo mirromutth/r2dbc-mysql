@@ -17,15 +17,18 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
+import io.github.mirromutth.r2dbc.mysql.message.frontend.CommandMessage;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.function.Function;
 
 /**
  * An abstraction that wraps the networking part of exchanging methods.
  */
+@ThreadSafe
 public interface Client {
 
     Flux<BackendMessage> exchange(FrontendMessage request);

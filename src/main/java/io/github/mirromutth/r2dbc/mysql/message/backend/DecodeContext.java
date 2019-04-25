@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.constant;
+package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 /**
- * Backend message decoder mode.
- * <p>
- * Replication phase is not supported for now.
+ * Decode context with static creators.
  */
-public enum ProtocolLifecycle {
+public interface DecodeContext {
 
-    CONNECTION,
-    COMMAND
+    static DecodeContext normal() {
+        return NormalDecodeContext.INSTANCE;
+    }
+
+    static DecodeContext textResult() {
+        return new TextResultDecodeContext();
+    }
 }

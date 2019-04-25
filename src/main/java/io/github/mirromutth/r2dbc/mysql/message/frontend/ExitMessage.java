@@ -16,7 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.CommandType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -25,7 +24,7 @@ import io.netty.buffer.Unpooled;
 /**
  * The request message tells the MySQL client to exit.
  */
-public final class ExitMessage extends AbstractFrontendMessage implements CommandMessage {
+public final class ExitMessage extends AbstractFrontendMessage {
 
     private static final ExitMessage INSTANCE = new ExitMessage();
 
@@ -37,18 +36,13 @@ public final class ExitMessage extends AbstractFrontendMessage implements Comman
     }
 
     @Override
-    public CommandType getCommandType() {
-        return CommandType.UTILITIES_SIMPLE;
-    }
-
-    @Override
     public boolean isExchanged() {
         return false;
     }
 
     @Override
     protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
-        return Unpooled.wrappedBuffer(new byte[] { 0x01 });
+        return bufAllocator.buffer(1).writeByte(0x01);
     }
 
     @Override

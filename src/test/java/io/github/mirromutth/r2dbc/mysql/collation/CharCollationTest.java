@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CharCollationTest {
 
-    private final ServerVersion version = ServerVersion.create(0, 0, 0);
+    private final ServerVersion version = ServerVersion.NONE;
 
     @Test
     void fromId() {
@@ -42,9 +42,9 @@ class CharCollationTest {
 
     @Test
     void defaultCollation() {
-        assertNotNull(CharCollation.defaultCollation(ServerVersion.create(0, 0, 0)));
+        assertNotNull(CharCollation.defaultCollation(ServerVersion.NONE));
         assertNotNull(CharCollation.defaultCollation(ServerVersion.create(99, 0, 0)));
-        assertTrue(CharCollation.defaultCollation(ServerVersion.create(0, 0, 0)).getByteSize() > 1);
+        assertTrue(CharCollation.defaultCollation(ServerVersion.NONE).getByteSize() > 1);
         assertTrue(CharCollation.defaultCollation(ServerVersion.create(99, 0, 0)).getByteSize() > 1);
     }
 }

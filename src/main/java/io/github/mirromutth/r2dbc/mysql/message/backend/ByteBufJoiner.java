@@ -17,15 +17,12 @@
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.util.List;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-
 /**
- * A {@link ByteBuf} joiner for {@link BackendMessageDecoder}.
+ * A {@link ByteBuf} joiner for {@link ConnectionMessageDecoder}.
  */
 interface ByteBufJoiner {
 
@@ -52,10 +49,12 @@ interface ByteBufJoiner {
                 buffers[maxIndex] = lastPart;
                 return Unpooled.wrappedBuffer(buffers);
             } catch (Throwable e) {
-                for (ByteBuf part : parts) { // failed, release all buffers in list
-                    if (part != null) {
-                        part.release();
-                    }
+                // Failed, release all buffers in list
+                // Use the old-style for loop, see: https://github.com/netty/netty/issues/2642
+                int size = parts.size();
+
+                for (int i = 0; i < size; ++i) {
+                    parts.get(i).release();
                 }
 
                 throw e; // throw this exception

@@ -15,7 +15,7 @@
  */
 
 /**
- * Constants, maybe enum class if their collection is enumerable.
+ * Constants of the MySQL Client/Server Protocol.
  */
 
 @NonNullApi
