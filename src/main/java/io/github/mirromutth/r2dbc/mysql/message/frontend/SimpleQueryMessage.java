@@ -50,6 +50,10 @@ public final class SimpleQueryMessage extends AbstractFrontendMessage {
         }
     }
 
+    public String getSql() {
+        return this.sql;
+    }
+  
     @Override
     public DecodeContext decodeContext() {
         return DecodeContext.textResult();

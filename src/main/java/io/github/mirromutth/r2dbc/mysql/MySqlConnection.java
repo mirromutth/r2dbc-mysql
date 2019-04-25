@@ -18,11 +18,16 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.PingMessage;
+import io.github.mirromutth.r2dbc.mysql.message.frontend.SimpleQueryMessage;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNotEmpty;
 
 /**
  * An implementation of {@link Connection} for connecting to the MySQL database.
@@ -37,23 +42,29 @@ final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> beginTransaction() {
-        // TODO: implement this method
-        return Mono.empty();
+        return Mono.defer(() -> {
+
+            Mono<Void> prepare = Mono.empty();
+            if (this.autoCommit.get()) {
+                prepare = executeVoid("SET autocommit=0").doOnSuccess(ignore -> this.autoCommit.set(false));
+            }
+
+            return prepare.then(executeVoid("START TRANSACTION"));
+        });
     }
 
     public Mono<Void> ping() {
-        return client.exchange(PingMessage.getInstance()).then();
+        return this.client.exchange(PingMessage.getInstance()).then();
     }
 
     @Override
     public Mono<Void> close() {
-        return client.close();
+        return this.client.close();
     }
 
     @Override
     public Mono<Void> commitTransaction() {
-        // TODO: implement this method
-        return Mono.empty();
+        return executeVoid("COMMIT");
     }
 
     @Override
@@ -64,40 +75,50 @@ final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> createSavepoint(String name) {
-        requireNonNull(name, "name must not be null");
-        // TODO: implement this method
-        return Mono.empty();
+        assertValidSavepointName(name);
+        return executeVoid(String.format("SAVEPOINT `%s`", name));
     }
 
     @Override
     public MySqlStatement createStatement(String sql) {
-        return new SimpleQueryMySqlStatement(client, requireNonNull(sql, "sql must not be null"));
+        requireNonNull(sql, "sql must not be null");
+        // TODO: implement this method
+        return new SimpleQueryMySqlStatement(this.client, sql);
     }
 
     @Override
     public Mono<Void> releaseSavepoint(String name) {
-        requireNonNull(name, "name must not be null");
-        // TODO: implement this method
-        return Mono.empty();
+        assertValidSavepointName(name);
+        return executeVoid(String.format("RELEASE SAVEPOINT `%s`", name));
     }
 
     @Override
     public Mono<Void> rollbackTransaction() {
-        // TODO: implement this method
-        return Mono.empty();
+        return executeVoid("ROLLBACK");
     }
 
     @Override
     public Mono<Void> rollbackTransactionToSavepoint(String name) {
-        requireNonNull(name, "name must not be null");
-        // TODO: implement this method
-        return Mono.empty();
+        assertValidSavepointName(name);
+        return executeVoid(String.format("ROLLBACK TO SAVEPOINT `%s`", name));
     }
 
     @Override
     public Mono<Void> setTransactionIsolationLevel(IsolationLevel isolationLevel) {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
-        // TODO: implement this method
-        return Mono.empty();
+        return executeVoid(String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()));
+    }
+
+    private Mono<Void> executeVoid(String sql) {
+        return Flux.defer(() -> this.client.exchange(new SimpleQueryMessage(sql)))
+            .then();
+    }
+
+    private static void assertValidSavepointName(String name) {
+        requireNotEmpty(name, "Savepoint name must not be empty");
+
+        if (name.indexOf('`') != -1) {
+            throw new IllegalArgumentException("Savepoint name must not contain backticks");
+        }
     }
 }
