@@ -28,11 +28,10 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class NamedCharsetTarget extends AbstractCharsetTarget {
 
-
     private final String charsetName;
 
     NamedCharsetTarget(int byteSize, String charsetName) {
-        this(byteSize, charsetName, ServerVersion.create(0, 0, 0));
+        this(byteSize, charsetName, ServerVersion.NONE);
     }
 
     private NamedCharsetTarget(int byteSize, String charsetName, ServerVersion minVersion) {

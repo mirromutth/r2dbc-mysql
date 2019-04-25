@@ -16,83 +16,102 @@
 
 package io.github.mirromutth.r2dbc.mysql.message;
 
-import io.github.mirromutth.r2dbc.mysql.constant.CommandType;
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolLifecycle;
+import io.github.mirromutth.r2dbc.mysql.constant.ProtocolPhase;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
-import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessageDecoder;
-import io.github.mirromutth.r2dbc.mysql.message.backend.CompleteMessage;
-import io.github.mirromutth.r2dbc.mysql.message.frontend.CommandMessage;
+import io.github.mirromutth.r2dbc.mysql.message.backend.DecodeContext;
+import io.github.mirromutth.r2dbc.mysql.message.backend.MessageDecoder;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.concurrent.Queues;
 
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * Encode and decode state machine.
+ * Encode and decode messages with codec contexts.
  *
- * @see BackendMessageDecoder
+ * @see MessageDecoder
  * @see FrontendMessage#encode(ByteBufAllocator, AtomicInteger, MySqlSession)
  */
-public final class MessageCodec {
+public final class MessageCodec implements Disposable {
 
     private final AtomicInteger sequenceId = new AtomicInteger();
 
-    private final BackendMessageDecoder decoder = new BackendMessageDecoder();
+    private final AtomicReference<MessageDecoder> decoder = new AtomicReference<>(MessageDecoder.create(ProtocolPhase.CONNECTION));
 
-    private final AtomicReference<ProtocolLifecycle> lifecycle = new AtomicReference<>(ProtocolLifecycle.CONNECTION);
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public Mono<BackendMessage> decode(ByteBuf envelope, DecodeContext context, MySqlSession session) {
+        requireNonNull(envelope, "envelope must not be null");
+        requireNonNull(context, "context must not be null");
+        requireNonNull(session, "session must not be null");
 
-    private final Queue<CommandType> commands = Queues.<CommandType>unbounded().get();
+        MessageDecoder decoder = this.decoder.get();
 
-    public Mono<BackendMessage> decode(ByteBuf envelope, MySqlSession session) {
-        BackendMessage message = decoder.decode(envelope, lifecycle.get(), sequenceId, commands.peek(), session);
+        if (decoder == null) {
+            throw new IllegalStateException("MessageCodec is disposed");
+        }
+
+        BackendMessage message = decoder.decode(envelope, sequenceId, context, session);
 
         if (message == null) {
             return Mono.empty();
-        }
-
-        if (message instanceof CompleteMessage) {
-            processComplete();
         }
 
         return Mono.just(message);
     }
 
     public Flux<ByteBuf> encode(FrontendMessage message, ByteBufAllocator bufAllocator, MySqlSession session) {
-        requireNonNull(message, "message must not be null");
+        return requireNonNull(message, "message must not be null").encode(bufAllocator, sequenceId, session);
+    }
 
-        if (this.lifecycle.get() == ProtocolLifecycle.COMMAND) {
-            if (!(message instanceof CommandMessage)) {
-                throw new IllegalArgumentException("message must be a command on command phase.");
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void changePhase(ProtocolPhase phase) {
+        requireNonNull(phase, "phase must not be null");
+        MessageDecoder newDecoder = null;
+
+        while (true) {
+            MessageDecoder decoder = this.decoder.get();
+
+            if (decoder.protocolPhase() == phase) {
+                if (newDecoder != null) {
+                    newDecoder.dispose();
+                }
+                return;
             }
 
-            if (message.isExchanged()) {
-                commands.add(((CommandMessage) message).getCommandType());
+            if (newDecoder == null) {
+                newDecoder = MessageDecoder.create(phase);
+            }
+
+            if (this.decoder.compareAndSet(decoder, newDecoder)) {
+                return;
             }
         }
-
-        return message.encode(bufAllocator, sequenceId, session);
     }
 
+    @Override
     public void dispose() {
-        decoder.dispose();
+        MessageDecoder decoder = this.decoder.getAndSet(null);
+
+        if (decoder != null) {
+            decoder.dispose();
+        }
     }
 
-    private void processComplete() {
-        ProtocolLifecycle lifecycle = this.lifecycle.get();
+    @Override
+    public boolean isDisposed() {
+        MessageDecoder decoder = this.decoder.get();
 
-        if (lifecycle == ProtocolLifecycle.CONNECTION) {
-            this.lifecycle.compareAndSet(ProtocolLifecycle.CONNECTION, ProtocolLifecycle.COMMAND);
-        } else if (lifecycle == ProtocolLifecycle.COMMAND) {
-            this.commands.remove();
+        if (decoder == null) {
+            return true;
+        } else {
+            return decoder.isDisposed();
         }
     }
 }

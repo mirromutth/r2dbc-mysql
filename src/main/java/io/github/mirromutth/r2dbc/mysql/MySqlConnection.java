@@ -17,7 +17,6 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
 import io.github.mirromutth.r2dbc.mysql.message.frontend.PingMessage;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
@@ -28,15 +27,12 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * An implementation of {@link Connection} for connecting to the MySQL database.
  */
-public final class MySqlConnection implements Connection {
+final class MySqlConnection implements Connection {
 
     private final Client client;
 
-    private MySqlConnection(Client client, ConnectProperties properties) {
-        requireNonNull(client, "client must not be null");
-        requireNonNull(properties, "properties must not be null");
-
-        this.client = client;
+    private MySqlConnection(Client client) {
+        this.client = requireNonNull(client, "client must not be null");
     }
 
     @Override
@@ -75,9 +71,7 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public MySqlStatement createStatement(String sql) {
-        requireNonNull(sql, "sql must not be null");
-        // TODO: implement this method
-        return new SimpleQueryMySqlStatement(client, sql);
+        return new SimpleQueryMySqlStatement(client, requireNonNull(sql, "sql must not be null"));
     }
 
     @Override

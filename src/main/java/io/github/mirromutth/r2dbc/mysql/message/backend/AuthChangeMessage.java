@@ -16,9 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
-import io.github.mirromutth.r2dbc.mysql.util.EnumUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
@@ -32,16 +30,16 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class AuthChangeMessage implements BackendMessage {
 
-    private final AuthType authType;
+    private final String authType;
 
     private final byte[] salt;
 
-    private AuthChangeMessage(AuthType authType, byte[] salt) {
+    private AuthChangeMessage(String authType, byte[] salt) {
         this.authType = requireNonNull(authType, "authType must not be null");
         this.salt = requireNonNull(salt, "salt must not be null");
     }
 
-    public AuthType getAuthType() {
+    public String getAuthType() {
         return authType;
     }
 
@@ -50,7 +48,7 @@ final class AuthChangeMessage implements BackendMessage {
     }
 
     static AuthChangeMessage decode(ByteBuf buf) {
-        AuthType authType = EnumUtils.authType(CodecUtils.readCString(buf, StandardCharsets.US_ASCII));
+        String authType = CodecUtils.readCString(buf, StandardCharsets.US_ASCII);
         return new AuthChangeMessage(authType, ByteBufUtil.getBytes(buf));
     }
 

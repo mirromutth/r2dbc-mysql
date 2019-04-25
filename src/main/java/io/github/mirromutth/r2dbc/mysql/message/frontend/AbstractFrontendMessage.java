@@ -16,16 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
+import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.message.backend.DecodeContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import reactor.core.publisher.Flux;
-import reactor.util.annotation.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -49,22 +47,39 @@ abstract class AbstractFrontendMessage implements FrontendMessage {
         requireNonNull(bufAllocator, "bufAllocator must not be null");
         requireNonNull(sequenceId, "sequenceId must not be null");
 
-        ByteBuf allBodyBuf = encodeSingle(bufAllocator, session); // maybe read only buffer
-        List<ByteBuf> envelopes = new ArrayList<>(allBodyBuf.readableBytes() / ProtocolConstants.MAX_PART_SIZE + 1);
+        return Flux.create(sink -> {
+            try {
+                ByteBuf allBodyBuf = encodeSingle(bufAllocator, session); // maybe read only buffer
 
-        while (allBodyBuf.readableBytes() >= ProtocolConstants.MAX_PART_SIZE) {
-            ByteBuf headerBuf = bufAllocator.buffer(4).writeMediumLE(ProtocolConstants.MAX_PART_SIZE).writeByte(sequenceId.getAndIncrement());
-            envelopes.add(Unpooled.wrappedBuffer(headerBuf, allBodyBuf.readRetainedSlice(ProtocolConstants.MAX_PART_SIZE)));
-        }
+                while (allBodyBuf.readableBytes() >= Envelopes.MAX_PART_SIZE) {
+                    ByteBuf headerBuf = bufAllocator.buffer(Envelopes.PART_HEADER_SIZE)
+                        .writeMediumLE(Envelopes.MAX_PART_SIZE)
+                        .writeByte(sequenceId.getAndIncrement());
 
-        ByteBuf headerBuf = bufAllocator.buffer(4).writeMediumLE(allBodyBuf.readableBytes()).writeByte(sequenceId.getAndIncrement());
-        envelopes.add(Unpooled.wrappedBuffer(headerBuf, allBodyBuf));
+                    sink.next(Unpooled.wrappedBuffer(headerBuf, allBodyBuf.readRetainedSlice(Envelopes.MAX_PART_SIZE)));
+                }
 
-        return Flux.fromIterable(envelopes);
+                // should encode a empty envelope to server even body is empty (like complete frame)
+
+                ByteBuf headerBuf = bufAllocator.buffer(Envelopes.PART_HEADER_SIZE)
+                    .writeMediumLE(allBodyBuf.readableBytes())
+                    .writeByte(sequenceId.getAndIncrement());
+
+                sink.next(Unpooled.wrappedBuffer(headerBuf, allBodyBuf));
+                sink.complete();
+            } catch (Throwable e) {
+                sink.error(e);
+            }
+        });
     }
 
     @Override
     public boolean isExchanged() {
         return true;
+    }
+
+    @Override
+    public DecodeContext decodeContext() {
+        return DecodeContext.normal();
     }
 }

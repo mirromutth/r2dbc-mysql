@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.message.backend.DecodeContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Flux;
@@ -40,9 +41,11 @@ public interface FrontendMessage {
 
     /**
      * Most frontend messages can be exchanged for backend messages, but not all.
-     * Like {@link ExitMessage} or
+     * Like {@link ExitMessage}, {@link CloseStatementMessage}, etc.
      *
      * @return {@code true} if this front end message can be exchanged for backend messages.
      */
     boolean isExchanged();
+
+    DecodeContext decodeContext();
 }

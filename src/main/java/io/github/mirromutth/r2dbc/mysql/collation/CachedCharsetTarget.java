@@ -30,7 +30,7 @@ final class CachedCharsetTarget extends AbstractCharsetTarget {
     private final Charset charset;
 
     CachedCharsetTarget(int byteSize, Charset charset) {
-        this(byteSize, charset, ServerVersion.create(0, 0, 0));
+        this(byteSize, charset, ServerVersion.NONE);
     }
 
     private CachedCharsetTarget(int byteSize, Charset charset, ServerVersion minVersion) {

@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.Capability;
+import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
@@ -31,6 +31,8 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * Note: OK message are also used to indicate EOF and EOF message are deprecated as of MySQL 5.7.5.
  */
 public final class OkMessage implements CompleteMessage {
+
+    static final int MIN_SIZE = 7;
 
     private final long affectedRows;
 
@@ -64,19 +66,19 @@ public final class OkMessage implements CompleteMessage {
         return true;
     }
 
-    static OkMessage decode(ByteBuf buf, MySqlSession session) {
-        buf.skipBytes(1); // OK message header, 0x00 (or 0xFE maybe?)
+    public static OkMessage decode(ByteBuf buf, MySqlSession session) {
+        buf.skipBytes(1); // OK message header, 0x00 or 0xFE
 
         long affectedRows = CodecUtils.readVarInt(buf);
         long lastInsertId = CodecUtils.readVarInt(buf);
         short serverStatuses = buf.readShortLE();
         int warnings = buf.readUnsignedShortLE();
 
-        int capabilities = session.getClientCapabilities();
-        Charset charset = session.getCollation().getCharset();
-
         if (buf.isReadable()) {
-            if ((capabilities & Capability.SESSION_TRACK.getFlag()) != 0) {
+            int capabilities = session.getClientCapabilities();
+            Charset charset = session.getCollation().getCharset();
+
+            if ((capabilities & Capabilities.SESSION_TRACK) != 0) {
                 String information = CodecUtils.readVarIntSizedString(buf, charset);
                 // ignore session state information, it is not human readable and useless for client
                 return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);

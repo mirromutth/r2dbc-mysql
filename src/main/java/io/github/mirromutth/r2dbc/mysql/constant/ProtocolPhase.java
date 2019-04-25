@@ -17,22 +17,15 @@
 package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Global constants for MySQL protocol, do NOT use it outer than {@code r2dbc-mysql},
- * we can NOT promise it will never be changes.
+ * MySQL connection protocol phase.
  */
-public final class ProtocolConstants {
+public enum ProtocolPhase {
 
-    private ProtocolConstants() {
-    }
+    CONNECTION,
+    COMMAND,
 
     /**
-     * The length of the byte size field, it is 3 bytes.
+     * Maybe not support.
      */
-    public static final int SIZE_FIELD_SIZE = 3;
-
-    public static final int PART_HEADER_SIZE = SIZE_FIELD_SIZE + 1;
-
-    public static final int MAX_PART_SIZE = ~(-(1 << (SIZE_FIELD_SIZE << 3)));
-
-    public static final byte TERMINAL = 0;
+    REPLICATION
 }

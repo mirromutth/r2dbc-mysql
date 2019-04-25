@@ -24,7 +24,7 @@ import io.netty.buffer.ByteBufAllocator;
 /**
  * The message tell MySQL server to close the statement specified by id.
  */
-public final class CloseStatementMessage extends AbstractFrontendMessage implements CommandMessage {
+public final class CloseStatementMessage extends AbstractFrontendMessage {
 
     private static final byte STATEMENT_CLOSE_FLAG = 0x19;
 
@@ -32,11 +32,6 @@ public final class CloseStatementMessage extends AbstractFrontendMessage impleme
 
     public CloseStatementMessage(int statementId) {
         this.statementId = statementId;
-    }
-
-    @Override
-    public CommandType getCommandType() {
-        return CommandType.UTILITIES_SIMPLE;
     }
 
     @Override

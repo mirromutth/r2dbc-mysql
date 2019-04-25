@@ -14,24 +14,11 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.util;
-
-import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-import io.github.mirromutth.r2dbc.mysql.exception.AuthTypeNotSupportException;
-
 /**
- * The utility for convert native code/flag/name to enumerable class.
+ * Data converters for the type that the service provider understands.
  */
-public final class EnumUtils {
 
-    private EnumUtils() {
-    }
+@NonNullApi
+package io.github.mirromutth.r2dbc.mysql.converter;
 
-    public static AuthType authType(String nativeName) {
-        try {
-            return AuthType.valueOf(nativeName.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new AuthTypeNotSupportException(nativeName);
-        }
-    }
-}
+import reactor.util.annotation.NonNullApi;

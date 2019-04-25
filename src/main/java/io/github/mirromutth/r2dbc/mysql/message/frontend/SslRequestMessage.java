@@ -16,8 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.frontend;
 
-import io.github.mirromutth.r2dbc.mysql.constant.Capability;
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
+import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
+import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -34,13 +34,13 @@ public final class SslRequestMessage extends AbstractFrontendMessage {
     private final byte collationLow8Bits;
 
     /**
-     * @param clientCapabilities client capabilities, see {@link Capability}
+     * @param clientCapabilities client capabilities, see {@link Capabilities}
      * @param collationLow8Bits 0 if server not support protocol 41 or has been not give collation
      */
     public SslRequestMessage(int clientCapabilities, byte collationLow8Bits) {
         this.clientCapabilities = clientCapabilities;
 
-        if ((clientCapabilities & Capability.PROTOCOL_41.getFlag()) != 0) {
+        if ((clientCapabilities & Capabilities.PROTOCOL_41) != 0) {
             this.collationLow8Bits = collationLow8Bits;
         } else {
             this.collationLow8Bits = 0;
@@ -52,13 +52,13 @@ public final class SslRequestMessage extends AbstractFrontendMessage {
         final ByteBuf buf = bufAllocator.buffer();
 
         try {
-            if ((clientCapabilities & Capability.PROTOCOL_41.getFlag()) != 0) {
+            if ((clientCapabilities & Capabilities.PROTOCOL_41) != 0) {
                 buf.writeIntLE(clientCapabilities)
-                    .writeIntLE(ProtocolConstants.MAX_PART_SIZE)
+                    .writeIntLE(Envelopes.MAX_PART_SIZE)
                     .writeByte(collationLow8Bits)
                     .writeZero(FILTER_SIZE);
             } else {
-                buf.writeShortLE(clientCapabilities & 0xFFFF).writeMediumLE(ProtocolConstants.MAX_PART_SIZE);
+                buf.writeShortLE(clientCapabilities & 0xFFFF).writeMediumLE(Envelopes.MAX_PART_SIZE);
             }
 
             return buf;

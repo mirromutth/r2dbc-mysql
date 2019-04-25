@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants;
+import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
@@ -31,9 +31,9 @@ final class EnvelopeDecoder extends LengthFieldBasedFrameDecoder {
     EnvelopeDecoder() {
         super(
             ByteOrder.LITTLE_ENDIAN,
-            ProtocolConstants.MAX_PART_SIZE + ProtocolConstants.PART_HEADER_SIZE,
+            Envelopes.MAX_PART_SIZE + Envelopes.PART_HEADER_SIZE,
             0,
-            ProtocolConstants.SIZE_FIELD_SIZE,
+            Envelopes.SIZE_FIELD_SIZE,
             1, // byte size of sequence Id field
             0, // do NOT strip header
             true
@@ -48,7 +48,7 @@ final class EnvelopeDecoder extends LengthFieldBasedFrameDecoder {
      */
     @Override
     protected long getUnadjustedFrameLength(ByteBuf buf, int offset, int length, ByteOrder order) {
-        if (length != ProtocolConstants.SIZE_FIELD_SIZE || order != ByteOrder.LITTLE_ENDIAN) {
+        if (length != Envelopes.SIZE_FIELD_SIZE || order != ByteOrder.LITTLE_ENDIAN) {
             // impossible length or order, only BUG or hack of reflect
             throw new DecoderException("unsupported lengthFieldLength: " + length + " (only 3) or byteOrder: " + order + " (only LITTLE_ENDIAN)");
         }

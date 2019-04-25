@@ -17,9 +17,8 @@
 package io.github.mirromutth.r2dbc.mysql.message.backend;
 
 import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
-import io.github.mirromutth.r2dbc.mysql.constant.Capability;
+import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
-import io.github.mirromutth.r2dbc.mysql.util.EnumUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.CompositeByteBuf;
@@ -28,7 +27,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.ProtocolConstants.TERMINAL;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -36,7 +34,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class HandshakeV10Message extends AbstractHandshakeMessage implements BackendMessage {
 
-    private static final AuthType DEFAULT_AUTH_TYPE = AuthType.MYSQL_NATIVE_PASSWORD;
+    private static final String DEFAULT_AUTH_TYPE = AuthType.MYSQL_NATIVE_PASSWORD;
 
     private static final int RESERVED_SIZE = 10;
 
@@ -48,12 +46,13 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
     /**
      * Character collation, MySQL give lower 8-bits only.
+     * Try NOT use this.
      */
     private final byte collationLow8Bits;
 
     private final short serverStatuses;
 
-    private final AuthType authType; // default is mysql_native_password
+    private final String authType; // default is mysql_native_password
 
     private HandshakeV10Message(
         HandshakeHeader handshakeHeader,
@@ -61,7 +60,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         int serverCapabilities,
         byte collationLow8Bits,
         short serverStatuses,
-        AuthType authType
+        String authType
     ) {
         super(handshakeHeader);
 
@@ -110,7 +109,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         // Special charset on handshake process, just use ascii.
         Charset charset = StandardCharsets.US_ASCII;
         short saltSize = 0;
-        boolean isPluginAuth = (serverCapabilities & Capability.PLUGIN_AUTH.getFlag()) != 0;
+        boolean isPluginAuth = (serverCapabilities & Capabilities.PLUGIN_AUTH) != 0;
 
         if (isPluginAuth) {
             saltSize = buf.readUnsignedByte();
@@ -135,14 +134,14 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         builder.withSalt(ByteBufUtil.getBytes(salt.addComponent(true, saltSecondPart.retain())));
 
         if (isPluginAuth) {
-            if (buf.bytesBefore(TERMINAL) < 0) {
+            if (CodecUtils.hasNextCString(buf)) {
+                builder.withAuthType(CodecUtils.readCString(buf, charset));
+            } else {
                 // It is MySQL bug 59453, auth type native name has no terminal character in
                 // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
                 // And MySQL only support "mysql_native_password" in those versions,
                 // maybe just use constant AuthType.MYSQL_NATIVE_PASSWORD without read?
-                builder.withAuthType(EnumUtils.authType(buf.toString(charset)));
-            } else {
-                builder.withAuthType(EnumUtils.authType(CodecUtils.readCString(buf, charset)));
+                builder.withAuthType(buf.toString(charset));
             }
         } else {
             builder.withAuthType(DEFAULT_AUTH_TYPE);
@@ -159,15 +158,11 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         return serverCapabilities;
     }
 
-    public byte getCollationLow8Bits() {
-        return collationLow8Bits;
-    }
-
     public short getServerStatuses() {
         return serverStatuses;
     }
 
-    public AuthType getAuthType() {
+    public String getAuthType() {
         return authType;
     }
 
@@ -197,7 +192,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         if (!Arrays.equals(salt, that.salt)) {
             return false;
         }
-        return authType == that.authType;
+        return authType.equals(that.authType);
     }
 
     @Override
@@ -207,7 +202,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
         result = 31 * result + serverCapabilities;
         result = 31 * result + (int) collationLow8Bits;
         result = 31 * result + (int) serverStatuses;
-        result = 31 * result + (authType != null ? authType.hashCode() : 0);
+        result = 31 * result + authType.hashCode();
         return result;
     }
 
@@ -227,7 +222,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
 
         private HandshakeHeader handshakeHeader;
 
-        private AuthType authType; // null if PLUGIN_AUTH flag not exists in serverCapabilities
+        private String authType; // null if PLUGIN_AUTH flag not exists in serverCapabilities
 
         private byte collationLow8Bits;
 
@@ -251,7 +246,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage implemen
             );
         }
 
-        void withAuthType(AuthType authType) {
+        void withAuthType(String authType) {
             this.authType = authType;
         }
 

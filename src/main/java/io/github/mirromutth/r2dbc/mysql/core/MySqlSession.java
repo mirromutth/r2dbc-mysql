@@ -17,9 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.core;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import io.github.mirromutth.r2dbc.mysql.constant.AuthType;
 import io.github.mirromutth.r2dbc.mysql.security.AuthStateMachine;
-import io.github.mirromutth.r2dbc.mysql.util.EmptyArrays;
 import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -29,25 +27,21 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlSession {
 
-    private final int connectionId;
+    private final boolean useSsl;
 
-    private final ServerVersion serverVersion;
+    private volatile int connectionId = -1;
 
-    private final int serverCapabilities;
+    private volatile ServerVersion serverVersion = ServerVersion.NONE;
 
-    private final CharCollation collation;
+    private volatile int serverCapabilities = 0;
+
+    private volatile CharCollation collation = CharCollation.defaultCollation(ServerVersion.NONE);
 
     private final String database;
 
-    private volatile int clientCapabilities;
+    private volatile int clientCapabilities = 0;
 
-    private volatile int serverStatuses;
-
-    /**
-     * It would be null after connection phase completed.
-     */
-    @Nullable
-    private volatile AuthType authType;
+    private volatile int serverStatuses = 0;
 
     /**
      * It would be null after connection phase completed.
@@ -73,49 +67,47 @@ public final class MySqlSession {
     @Nullable
     private volatile byte[] salt;
 
-    public MySqlSession(
-        int connectionId,
-        ServerVersion serverVersion,
-        int serverCapabilities,
-        CharCollation collation,
-        String database,
-        int clientCapabilities,
-        String username,
-        @Nullable String password,
-        byte[] salt,
-        AuthType authType
-    ) {
-        this.connectionId = connectionId;
-        this.serverVersion = requireNonNull(serverVersion, "serverVersion must not be null");
-        this.serverCapabilities = serverCapabilities;
-        this.collation = requireNonNull(collation, "collation must not be null");
+    public MySqlSession(boolean useSsl, String database, String username, @Nullable String password) {
+        this.useSsl = useSsl;
         this.database = requireNonNull(database, "database must not be null");
-        this.clientCapabilities = clientCapabilities;
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
-        this.salt = requireNonNull(salt, "salt must not be null");
-        this.authType = requireNonNull(authType, "authType must not be null");
-        this.authStateMachine = AuthStateMachine.build(authType);
+    }
+
+    public boolean isUseSsl() {
+        return useSsl;
     }
 
     public int getConnectionId() {
         return connectionId;
     }
 
+    public void setConnectionId(int connectionId) {
+        this.connectionId = connectionId;
+    }
+
     public ServerVersion getServerVersion() {
         return serverVersion;
+    }
+
+    public void setServerVersion(ServerVersion serverVersion) {
+        this.serverVersion = serverVersion;
     }
 
     public int getServerCapabilities() {
         return serverCapabilities;
     }
 
-    public void setClientCapabilities(int clientCapabilities) {
-        this.clientCapabilities = clientCapabilities;
+    public void setServerCapabilities(int serverCapabilities) {
+        this.serverCapabilities = serverCapabilities;
     }
 
     public CharCollation getCollation() {
         return collation;
+    }
+
+    public void setCollation(CharCollation collation) {
+        this.collation = collation;
     }
 
     public String getDatabase() {
@@ -124,6 +116,10 @@ public final class MySqlSession {
 
     public int getClientCapabilities() {
         return clientCapabilities;
+    }
+
+    public void setClientCapabilities(int clientCapabilities) {
+        this.clientCapabilities = clientCapabilities;
     }
 
     public int getServerStatuses() {
@@ -149,9 +145,12 @@ public final class MySqlSession {
         return salt;
     }
 
-    @Nullable
-    public AuthType getAuthType() {
-        return authType;
+    public void setSalt(@Nullable byte[] salt) {
+        this.salt = salt;
+    }
+
+    public void setAuthStateMachine(@Nullable AuthStateMachine authStateMachine) {
+        this.authStateMachine = authStateMachine;
     }
 
     public boolean hasNext() {
@@ -187,7 +186,6 @@ public final class MySqlSession {
         this.username = null;
         this.password = null;
         this.salt = null;
-        this.authType = null;
         this.authStateMachine = null;
     }
 }

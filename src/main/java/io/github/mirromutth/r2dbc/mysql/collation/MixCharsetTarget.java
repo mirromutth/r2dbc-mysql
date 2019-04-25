@@ -33,7 +33,7 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
     private final CharsetTarget[] targets;
 
     MixCharsetTarget(int byteSize, Charset fallbackCharset, CharsetTarget... targets) {
-        this(byteSize, ServerVersion.create(0, 0, 0), fallbackCharset, targets);
+        this(byteSize, ServerVersion.NONE, fallbackCharset, targets);
     }
 
     private MixCharsetTarget(int byteSize, ServerVersion minVersion, Charset fallbackCharset, CharsetTarget... targets) {
