@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.converter;
 
+import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
@@ -32,13 +33,13 @@ final class ByteConverter extends AbstractPrimitiveConverter<Byte> {
     }
 
     @Override
-    public Byte read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super Byte> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public Byte read(ByteBuf buf, short definitions, int precision, int collationId, Class<? super Byte> target, MySqlSession session) {
+        return (byte) IntegerConverter.parse(buf);
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned, int precision) {
+    boolean doCanRead(ColumnType type, short definitions, int precision) {
+        boolean isUnsigned = (definitions & ColumnDefinitions.UNSIGNED) != 0;
         return (!isUnsigned && ColumnType.TINYINT == type) || (ColumnType.BIT == type && precision <= Byte.SIZE);
     }
 }

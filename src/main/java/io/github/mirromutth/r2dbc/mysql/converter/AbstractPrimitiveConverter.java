@@ -40,13 +40,13 @@ abstract class AbstractPrimitiveConverter<T> implements Converter<T, Class<? sup
     }
 
     @Override
-    public final boolean canRead(ColumnType type, boolean isUnsigned, int precision, int collationId, Type target, MySqlSession session) {
+    public final boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
         if (!(target instanceof Class<?>)) {
             return false;
         }
 
-        return (primitiveClass == target || ((Class<?>) target).isAssignableFrom(boxedClass)) && doCanRead(type, isUnsigned, precision);
+        return (primitiveClass == target || ((Class<?>) target).isAssignableFrom(boxedClass)) && doCanRead(type, definitions, precision);
     }
 
-    abstract boolean doCanRead(ColumnType type, boolean isUnsigned, int precision);
+    abstract boolean doCanRead(ColumnType type, short definitions, int precision);
 }

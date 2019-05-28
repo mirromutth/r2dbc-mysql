@@ -12,6 +12,12 @@ This implementation is NOT OFFICIAL, official implementations are all in
 ### MySQL
 
 - At least higher than or equal to `5.6.x GA`, low version will not be guaranteed.
+- For now, ssl not supported (**I need some help for SSL support, see please**)
+
+## Notice
+
+- Since the MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this connector does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`, and do NOT know what is MySQL connection session time zone. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
+- Do not turn on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
 
 ## License
 

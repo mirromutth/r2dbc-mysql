@@ -17,8 +17,11 @@
 package io.github.mirromutth.r2dbc.mysql.core;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import io.github.mirromutth.r2dbc.mysql.security.AuthStateMachine;
 import reactor.util.annotation.Nullable;
+
+import java.time.ZoneId;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -27,7 +30,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlSession {
 
-    private final boolean useSsl;
+    private volatile boolean useSsl;
 
     private volatile int connectionId = -1;
 
@@ -38,6 +41,8 @@ public final class MySqlSession {
     private volatile CharCollation collation = CharCollation.defaultCollation(ServerVersion.NONE);
 
     private final String database;
+
+    private final ZeroDateOption zeroDateOption;
 
     private volatile int clientCapabilities = 0;
 
@@ -67,15 +72,26 @@ public final class MySqlSession {
     @Nullable
     private volatile byte[] salt;
 
-    public MySqlSession(boolean useSsl, String database, String username, @Nullable String password) {
+    public MySqlSession(
+        boolean useSsl,
+        String database,
+        ZeroDateOption zeroDateOption,
+        String username,
+        @Nullable String password
+    ) {
         this.useSsl = useSsl;
         this.database = requireNonNull(database, "database must not be null");
+        this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
     }
 
     public boolean isUseSsl() {
         return useSsl;
+    }
+
+    public void setUseSsl(boolean useSsl) {
+        this.useSsl = useSsl;
     }
 
     public int getConnectionId() {
@@ -114,6 +130,10 @@ public final class MySqlSession {
         return database;
     }
 
+    public ZeroDateOption getZeroDateOption() {
+        return zeroDateOption;
+    }
+
     public int getClientCapabilities() {
         return clientCapabilities;
     }
@@ -149,7 +169,18 @@ public final class MySqlSession {
         this.salt = salt;
     }
 
-    public void setAuthStateMachine(@Nullable AuthStateMachine authStateMachine) {
+    @Nullable
+    public String getAuthType() {
+        AuthStateMachine machine = this.authStateMachine;
+
+        if (machine == null) {
+            return null;
+        }
+
+        return machine.getType();
+    }
+
+    public void setAuthStateMachine(AuthStateMachine authStateMachine) {
         this.authStateMachine = authStateMachine;
     }
 

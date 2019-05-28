@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
-import io.github.mirromutth.r2dbc.mysql.message.backend.ColumnMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.ColumnMetadataMessage;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import reactor.util.annotation.NonNull;
@@ -33,7 +33,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requirePositive;
  */
 final class MySqlColumnMetadata implements ColumnMetadata {
 
-    private final int ordinal;
+    private final int index;
 
     @Nullable
     private final ColumnType type;
@@ -42,7 +42,7 @@ final class MySqlColumnMetadata implements ColumnMetadata {
 
     private final String name;
 
-    private final boolean isUnsigned;
+    private final short definitions;
 
     private final Nullability nullability;
 
@@ -52,11 +52,12 @@ final class MySqlColumnMetadata implements ColumnMetadata {
 
     private final int collationId;
 
-    private MySqlColumnMetadata(int ordinal, int nativeType, String name, boolean isUnsigned, boolean isNotNull, int precision, int decimals, int collationId) {
-        this.ordinal = requireNonNegative(ordinal, "ordinal must not be negative");
+    private MySqlColumnMetadata(int index, int nativeType, String name, short definitions, boolean isNotNull, int precision, int decimals, int collationId) {
+        this.index = requireNonNegative(index, "index must not be negative");
         this.nativeType = requireNonNegative(nativeType, "nativeType must not be negative");
+        this.type = ColumnType.valueOfNativeType(nativeType);
         this.name = requireNonNull(name, "name must not be null");
-        this.isUnsigned = isUnsigned;
+        this.definitions = definitions;
 
         if (isNotNull) {
             this.nullability = Nullability.NON_NULL;
@@ -66,17 +67,15 @@ final class MySqlColumnMetadata implements ColumnMetadata {
 
         this.precision = requireNonNegative(precision, "precision must not be negative");
         this.decimals = requireNonNegative(decimals, "decimals must not be negative");
-        this.type = ColumnType.valueOfNativeType(nativeType);
         this.collationId = requirePositive(collationId, "collationId must be a positive integer");
     }
 
-
-    static MySqlColumnMetadata create(int ordinal, ColumnMetadataMessage message) {
+    static MySqlColumnMetadata create(int index, ColumnMetadataMessage message) {
         return new MySqlColumnMetadata(
-            ordinal,
+            index,
             message.getType(),
             message.getName(),
-            (message.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0,
+            message.getDefinitions(),
             (message.getDefinitions() & ColumnDefinitions.NOT_NULL) != 0,
             message.getSize(),
             message.getDecimals(),
@@ -84,8 +83,8 @@ final class MySqlColumnMetadata implements ColumnMetadata {
         );
     }
 
-    int getOrdinal() {
-        return ordinal;
+    int getIndex() {
+        return index;
     }
 
     @Nullable
@@ -93,8 +92,8 @@ final class MySqlColumnMetadata implements ColumnMetadata {
         return type;
     }
 
-    public boolean isUnsigned() {
-        return isUnsigned;
+    public short getDefinitions() {
+        return definitions;
     }
 
     @Override
@@ -103,7 +102,7 @@ final class MySqlColumnMetadata implements ColumnMetadata {
             return null;
         }
 
-        return type.getJavaType(isUnsigned, precision);
+        return type.getJavaType(definitions, precision);
     }
 
     @Override
@@ -151,13 +150,13 @@ final class MySqlColumnMetadata implements ColumnMetadata {
 
         MySqlColumnMetadata that = (MySqlColumnMetadata) o;
 
-        if (ordinal != that.ordinal) {
+        if (index != that.index) {
             return false;
         }
         if (nativeType != that.nativeType) {
             return false;
         }
-        if (isUnsigned != that.isUnsigned) {
+        if (definitions != that.definitions) {
             return false;
         }
         if (precision != that.precision) {
@@ -173,15 +172,14 @@ final class MySqlColumnMetadata implements ColumnMetadata {
             return false;
         }
         return nullability == that.nullability;
-
     }
 
     @Override
     public int hashCode() {
-        int result = ordinal;
+        int result = index;
         result = 31 * result + nativeType;
         result = 31 * result + name.hashCode();
-        result = 31 * result + (isUnsigned ? 1 : 0);
+        result = 31 * result + (int) definitions;
         result = 31 * result + nullability.hashCode();
         result = 31 * result + precision;
         result = 31 * result + decimals;
@@ -192,10 +190,10 @@ final class MySqlColumnMetadata implements ColumnMetadata {
     @Override
     public String toString() {
         return "MySqlColumnMetadata{" +
-            "ordinal=" + ordinal +
+            "index=" + index +
             ", nativeType=" + nativeType +
-            ", name=`" + name + '`' +
-            ", isUnsigned=" + isUnsigned +
+            ", name='" + name + '\'' +
+            ", definitions=" + definitions +
             ", nullability=" + nullability +
             ", precision=" + precision +
             ", decimals=" + decimals +

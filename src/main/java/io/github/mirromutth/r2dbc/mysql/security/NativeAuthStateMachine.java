@@ -21,7 +21,7 @@ import reactor.util.annotation.NonNull;
 
 import java.nio.charset.StandardCharsets;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.MYSQL_NATIVE_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
 
@@ -48,6 +48,11 @@ final class NativeAuthStateMachine implements AuthStateMachine {
      */
     @Override
     public boolean hasNext() {
+        return false;
+    }
+
+    @Override
+    public boolean isSslNecessary() {
         return false;
     }
 

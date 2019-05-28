@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.converter;
 
+import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
@@ -32,17 +33,12 @@ final class ShortConverter extends AbstractPrimitiveConverter<Short> {
     }
 
     @Override
-    public Short read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super Short> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public Short read(ByteBuf buf, short definitions, int precision, int collationId, Class<? super Short> target, MySqlSession session) {
+        return (short) IntegerConverter.parse(buf);
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned, int precision) {
-        if (isUnsigned) {
-            return ColumnType.TINYINT == type;
-        } else {
-            return ColumnType.SMALLINT == type;
-        }
+    boolean doCanRead(ColumnType type, short definitions, int precision) {
+        return (definitions & ColumnDefinitions.UNSIGNED) != 0 ? ColumnType.TINYINT == type : ColumnType.SMALLINT == type;
     }
 }

@@ -21,6 +21,7 @@ import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -38,13 +39,12 @@ final class BigDecimalConverter extends AbstractClassedConverter<BigDecimal> {
     }
 
     @Override
-    public BigDecimal read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super BigDecimal> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public BigDecimal read(ByteBuf buf, short definitions, int precision, int collationId, Class<? super BigDecimal> target, MySqlSession session) {
+        return new BigDecimal(buf.toString(StandardCharsets.US_ASCII));
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned) {
+    boolean doCanRead(ColumnType type, short definitions) {
         return DECIMAL_TYPES.contains(type);
     }
 }

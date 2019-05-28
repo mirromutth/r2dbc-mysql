@@ -20,30 +20,54 @@ import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
+import java.lang.reflect.Type;
 import java.time.Year;
 
 /**
  * Converter for {@link Year}.
- *
- * WARNING: MySQL converts values in the ranges 0 to 69 and 70 to 99 of YEAR(2) to
- * YEAR(4) values in the ranges 2000 to 2069 and 1970 to 1999.
+ * <p>
+ * Note: MySQL converts values in the ranges 0 to 69 and 70 to 99 of YEAR(2) to
+ * YEAR(4) values in the ranges 2000 to 2069 and 1970 to 1999. (maybe don't need
+ * support because this is an deprecated feature?)
  */
-final class YearConverter extends AbstractClassedConverter<Year> {
+final class YearConverter implements Converter<Object, Class<?>> {
 
     static final YearConverter INSTANCE = new YearConverter();
 
     private YearConverter() {
-        super(Year.class);
     }
 
     @Override
-    public Year read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super Year> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
+        if (ColumnType.YEAR != type || !(target instanceof Class<?>)) {
+            return false;
+        }
+
+        Class<?> targetClass = (Class<?>) target;
+        return Integer.TYPE == targetClass || targetClass.isAssignableFrom(Integer.class) || targetClass.isAssignableFrom(Year.class);
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned) {
-        return ColumnType.YEAR == type;
+    public Object read(ByteBuf buf, short definitions, int precision, int collationId, Class<?> target, MySqlSession session) {
+        int year = processYear(IntegerConverter.parse(buf), precision);
+
+        if (Integer.TYPE == target || target.isAssignableFrom(Integer.class)) {
+            return year;
+        } else {
+            // Must be Year.class
+            return Year.of(year);
+        }
+    }
+
+    private int processYear(int year, int precision) {
+        if (precision == 2 && year < 100 && year >= 0) {
+            if (year < 70) {
+                return 2000 + year;
+            } else {
+                return 1900 + year;
+            }
+        } else {
+            return year;
+        }
     }
 }

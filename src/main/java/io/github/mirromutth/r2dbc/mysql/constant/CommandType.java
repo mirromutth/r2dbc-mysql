@@ -27,7 +27,7 @@ public enum CommandType {
 
     /**
      * Like ping, debug, init db, or some requests which response is only OK, Error,
-     * or no response if {@code FrontendMessage.isExchanged()} returns false.
+     * or no response if it is NOT {@code ExchangeableMessage}.
      */
     UTILITIES_SIMPLE
 }

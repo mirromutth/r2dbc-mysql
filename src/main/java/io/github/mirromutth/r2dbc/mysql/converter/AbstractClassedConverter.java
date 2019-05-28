@@ -33,13 +33,13 @@ abstract class AbstractClassedConverter<T> implements Converter<T, Class<? super
     }
 
     @Override
-    public final boolean canRead(ColumnType type, boolean isUnsigned, int precision, int collationId, Type target, MySqlSession session) {
+    public final boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
         if (!(target instanceof Class<?>)) {
             return false;
         }
 
-        return ((Class<?>) target).isAssignableFrom(clazz) && doCanRead(type, isUnsigned);
+        return ((Class<?>) target).isAssignableFrom(clazz) && doCanRead(type, definitions);
     }
 
-    abstract boolean doCanRead(ColumnType type, boolean isUnsigned);
+    abstract boolean doCanRead(ColumnType type, short definitions);
 }

@@ -20,6 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.Objects;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -91,8 +92,20 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
         if (!fallbackCharset.equals(that.fallbackCharset)) {
             return false;
         }
-        // Probably incorrect - comparing Object[] arrays with Arrays.equals
-        return Arrays.equals(targets, that.targets);
+
+        int size = targets.length;
+
+        if (size != that.targets.length) {
+            return false;
+        }
+
+        for (int i = 0; i < size; ++i) {
+            if (!Objects.equals(targets[i], that.targets[i])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     @Override

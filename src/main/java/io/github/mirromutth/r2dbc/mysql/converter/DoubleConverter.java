@@ -20,6 +20,8 @@ import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * Converter for {@link double}.
  */
@@ -32,13 +34,12 @@ final class DoubleConverter extends AbstractPrimitiveConverter<Double> {
     }
 
     @Override
-    public Double read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super Double> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public Double read(ByteBuf buf, short definitions, int precision, int collationId, Class<? super Double> target, MySqlSession session) {
+        return Double.parseDouble(buf.toString(StandardCharsets.US_ASCII));
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned, int precision) {
+    boolean doCanRead(ColumnType type, short definitions, int precision) {
         return ColumnType.DOUBLE == type || (precision < 16 && BigDecimalConverter.DECIMAL_TYPES.contains(type));
     }
 }

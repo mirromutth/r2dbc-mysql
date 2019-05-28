@@ -20,12 +20,10 @@ import reactor.util.annotation.Nullable;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Year;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,176 +34,176 @@ public enum ColumnType {
 
     DECIMAL(0) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return BigDecimal.class;
         }
     },
     TINYINT(1) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            if (isUnsigned) {
-                return short.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
+                return Short.TYPE;
             } else {
-                return byte.class;
+                return Byte.TYPE;
             }
         }
     },
     SMALLINT(2) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            if (isUnsigned) {
-                return int.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
+                return Integer.TYPE;
             } else {
-                return short.class;
+                return Short.TYPE;
             }
         }
     },
     INT(3) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            if (isUnsigned) {
-                return long.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
+                return Long.TYPE;
             } else {
-                return int.class;
+                return Integer.TYPE;
             }
         }
     },
     FLOAT(4) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            return float.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            return Float.TYPE;
         }
     },
     DOUBLE(5) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            return double.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            return Double.TYPE;
         }
     },
     NULL(6), // Maybe bug if value is not null?
     TIMESTAMP(7) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            return Instant.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            return LocalDateTime.class;
         }
     },
     BIGINT(8) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            if (isUnsigned) {
+        public Class<?> getJavaType(short definitions, int precision) {
+            if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
                 return BigInteger.class;
             } else {
-                return long.class;
+                return Long.TYPE;
             }
         }
     },
     MEDIUMINT(9) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            return int.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            return Integer.TYPE;
         }
     },
     DATE(10) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return LocalDate.class;
         }
     },
     TIME(11) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return LocalTime.class;
         }
     },
     DATETIME(12) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return LocalDateTime.class;
         }
     },
     YEAR(13) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            return Year.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            return Integer.TYPE;
         }
     },
     // NEW_DATE (14) is internal type of MySQL server, do NOT support this type.
     VARCHAR(15) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return String.class;
         }
     },
     BIT(16) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             // maybe use BitSet?
             return byte[].class;
         }
     },
     TIMESTAMP2(17) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
-            return Instant.class;
+        public Class<?> getJavaType(short definitions, int precision) {
+            return LocalDateTime.class;
         }
     },
     // DATETIME2 (18) and TIME2 (19) are internal types, do NOT support them.
     JSON(245),
     NEW_DECIMAL(246) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return BigDecimal.class;
         }
     },
     ENUMERABLE(247) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return String.class;
         }
     },
     SET(248) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return String[].class;
         }
     },
     TINY_BLOB(249) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return byte[].class;
         }
     },
     MEDIUM_BLOB(250) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return byte[].class;
         }
     },
     LONG_BLOB(251) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return byte[].class;
         }
     },
     BLOB(252) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return byte[].class;
         }
     },
     VAR_STRING(253) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return String.class;
         }
     },
     STRING(254) {
         @Override
-        public Class<?> getJavaType(boolean isUnsigned, int precision) {
+        public Class<?> getJavaType(short definitions, int precision) {
             return String.class;
         }
     },
-    GEOMETRY(255); // maybe not support or just return a String
+    GEOMETRY(255); // Not support for now
 
     private static final Map<Integer, ColumnType> NATIVE_TYPE_KEYED = buildMap();
 
@@ -220,7 +218,7 @@ public enum ColumnType {
     }
 
     @Nullable
-    public Class<?> getJavaType(boolean isUnsigned, int precision) {
+    public Class<?> getJavaType(short definitions, int precision) {
         return null;
     }
 

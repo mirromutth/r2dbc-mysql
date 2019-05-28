@@ -16,13 +16,18 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.github.mirromutth.r2dbc.mysql.core.LazyLoad;
+import io.github.mirromutth.r2dbc.mysql.message.server.ColumnMetadataMessage;
 import io.r2dbc.spi.RowMetadata;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -31,32 +36,45 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class MySqlRowMetadata implements RowMetadata {
 
-    private final List<MySqlColumnMetadata> columns;
+    private final MySqlColumnMetadata[] columns;
 
     private final Map<String, MySqlColumnMetadata> nameKeyedColumns;
 
-    private final List<MySqlColumnMetadata> immutableColumns;
+    private final LazyLoad<List<MySqlColumnMetadata>> immutableColumns;
 
-    MySqlRowMetadata(List<MySqlColumnMetadata> columns) {
-        List<MySqlColumnMetadata> wrappedColumns = wrapColumns(requireNonNull(columns, "columns must not be null"));
+    private final LazyLoad<Set<String>> immutableColumnNames;
 
-        this.columns = wrappedColumns;
-        this.nameKeyedColumns = convertColumnMap(wrappedColumns);
-        this.immutableColumns = readOnlyColumns(wrappedColumns);
+    private MySqlRowMetadata(MySqlColumnMetadata[] columns) {
+        this.columns = requireNonNull(columns, "columns must not be null");
+        this.nameKeyedColumns = convertColumnMap(columns);
+        this.immutableColumns = LazyLoad.of(() -> {
+            switch (this.columns.length) {
+                case 0:
+                    return Collections.emptyList();
+                case 1:
+                    return Collections.singletonList(this.columns[0]);
+                default:
+                    return Collections.unmodifiableList(Arrays.asList(this.columns));
+            }
+        });
+        this.immutableColumnNames = LazyLoad.of(() -> {
+            switch (this.columns.length) {
+                case 0:
+                    return Collections.emptySet();
+                case 1:
+                    return Collections.singleton(this.columns[0].getName());
+                default:
+                    return Collections.unmodifiableSet(columnNames(this.columns));
+            }
+        });
     }
 
     @Override
     public MySqlColumnMetadata getColumnMetadata(Object identifier) {
-        if (requireNonNull(identifier, "identifier must not be null") instanceof Integer) {
-            int index = (Integer) identifier;
+        requireNonNull(identifier, "identifier must not be null");
 
-            if (index >= columns.size() || index < 0) {
-                // List will throw IndexOutOfBoundsException, it maybe NOT ArrayIndexOutOfBoundsException,
-                // should throw ArrayIndexOutOfBoundsException in this method (for r2dbc SPI).
-                throw new ArrayIndexOutOfBoundsException(index);
-            }
-
-            return columns.get(index);
+        if (identifier instanceof Integer) {
+            return columns[(Integer) identifier];
         } else if (identifier instanceof String) {
             MySqlColumnMetadata column = nameKeyedColumns.get(identifier);
 
@@ -72,7 +90,12 @@ final class MySqlRowMetadata implements RowMetadata {
 
     @Override
     public List<MySqlColumnMetadata> getColumnMetadatas() {
-        return immutableColumns;
+        return immutableColumns.get();
+    }
+
+    @Override
+    public Set<String> getColumnNames() {
+        return immutableColumnNames.get();
     }
 
     @Override
@@ -86,59 +109,56 @@ final class MySqlRowMetadata implements RowMetadata {
 
         MySqlRowMetadata that = (MySqlRowMetadata) o;
 
-        return columns.equals(that.columns);
-
+        return Arrays.equals(columns, that.columns);
     }
 
     @Override
     public int hashCode() {
-        return columns.hashCode();
+        return Arrays.hashCode(columns);
     }
 
     @Override
     public String toString() {
         return "MySqlRowMetadata{" +
-            "columns=" + columns +
+            "columns=" + Arrays.toString(columns) +
             '}';
     }
 
-    private static List<MySqlColumnMetadata> wrapColumns(List<MySqlColumnMetadata> columns) {
-        switch (columns.size()) {
-            case 0:
-                return Collections.emptyList();
-            case 1:
-                return Collections.singletonList(columns.get(0));
-            default:
-                return columns;
-        }
-    }
+    static MySqlRowMetadata create(ColumnMetadataMessage[] columns) {
+        int size = columns.length;
+        MySqlColumnMetadata[] metadata = new MySqlColumnMetadata[size];
 
-    private static List<MySqlColumnMetadata> readOnlyColumns(List<MySqlColumnMetadata> wrappedColumns) {
-        if (wrappedColumns.size() < 2) {
-            // it is EmptyList or SingletonList, also read only
-            return wrappedColumns;
+        for (int i = 0; i < size; ++i) {
+            metadata[i] = MySqlColumnMetadata.create(i, columns[i]);
         }
 
-        return Collections.unmodifiableList(wrappedColumns);
+        return new MySqlRowMetadata(metadata);
     }
 
-    @SuppressWarnings("ForLoopReplaceableByForEach")
-    private static Map<String, MySqlColumnMetadata> convertColumnMap(List<MySqlColumnMetadata> columns) {
-        int size = columns.size();
+    private static Set<String> columnNames(MySqlColumnMetadata[] columns) {
+        // ceil(size / 0.75) = ceil(size / 3 * 4) = ceil(size / 3) * 4 = floor((size + 3 - 1) / 3) * 4
+        Set<String> names = new LinkedHashSet<>(((columns.length + 2) / 3) * 4, 0.75f);
+
+        for (MySqlColumnMetadata column : columns) {
+            names.add(column.getName());
+        }
+
+        return names;
+    }
+
+    private static Map<String, MySqlColumnMetadata> convertColumnMap(MySqlColumnMetadata[] columns) {
+        int size = columns.length;
 
         switch (size) {
             case 0:
                 return Collections.emptyMap();
             case 1:
-                MySqlColumnMetadata first = columns.get(0);
+                MySqlColumnMetadata first = columns[0];
                 return Collections.singletonMap(first.getName(), first);
             default:
                 // ceil(size / 0.75) = ceil(size / 3 * 4) = ceil(size / 3) * 4 = floor((size + 3 - 1) / 3) * 4
                 Map<String, MySqlColumnMetadata> result = new HashMap<>(((size + 2) / 3) * 4, 0.75f);
-
-                // Use the old-style for loop, see: https://github.com/netty/netty/issues/2642
-                for (int i = 0; i < size; ++i) {
-                    MySqlColumnMetadata column = columns.get(i);
+                for (MySqlColumnMetadata column : columns) {
                     result.put(column.getName(), column);
                 }
 

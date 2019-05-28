@@ -20,27 +20,43 @@ import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
+import java.lang.reflect.Type;
 import java.time.LocalDate;
 
 /**
  * Converter for {@link LocalDate}.
  */
-final class LocalDateConverter extends AbstractClassedConverter<LocalDate> {
+final class LocalDateConverter implements Converter<LocalDate, Class<LocalDate>> {
 
     static final LocalDateConverter INSTANCE = new LocalDateConverter();
 
     private LocalDateConverter() {
-        super(LocalDate.class);
     }
 
     @Override
-    public LocalDate read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super LocalDate> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public LocalDate read(ByteBuf buf, short definitions, int precision, int collationId, Class<LocalDate> target, MySqlSession session) {
+        int readerIndex = buf.readerIndex();
+        LocalDate date = JavaTimeHelper.readDate(buf);
+
+        if (date == null) {
+            buf.readerIndex(readerIndex); // Reset reader index for read a string for whole buffer.
+            return JavaTimeHelper.processZero(buf, session.getZeroDateOption(), Holder::getRound);
+        }
+
+        return date;
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned) {
-        return ColumnType.DATE == type;
+    public boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
+        return ColumnType.DATE == type && LocalDate.class == target;
+    }
+
+    static final class Holder {
+
+        private static final LocalDate ROUND = LocalDate.of(1, 1, 1);
+
+        static LocalDate getRound() {
+            return ROUND;
+        }
     }
 }

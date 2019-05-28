@@ -17,44 +17,34 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.converter.Converters;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.IllegalReferenceCountException;
-import io.netty.util.ReferenceCounted;
+import io.netty.util.AbstractReferenceCounted;
 import io.r2dbc.spi.Row;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requirePositive;
 
 /**
  * An implementation of {@link Row} for MySQL database.
  */
-final class MySqlRow implements Row, ReferenceCounted {
+public final class MySqlRow extends AbstractReferenceCounted implements Row {
 
     /**
      * WARNING: elements maybe null.
      */
-    private final List<ByteBuf> fields;
+    private final ByteBuf[] fields;
 
     private final MySqlRowMetadata rowMetadata;
 
     private final Converters converters;
 
-    private final MySqlSession session;
-
-    private final AtomicInteger refCnt = new AtomicInteger(1);
-
-    public MySqlRow(List<ByteBuf> fields, MySqlRowMetadata rowMetadata, Converters converters, MySqlSession session) {
+    MySqlRow(ByteBuf[] fields, MySqlRowMetadata rowMetadata, Converters converters) {
         this.fields = requireNonNull(fields, "fields must not be null");
         this.rowMetadata = requireNonNull(rowMetadata, "rowMetadata must not be null");
         this.converters = requireNonNull(converters, "converters must not be null");
-        this.session = requireNonNull(session, "session must not be null");
     }
 
     @Override
@@ -65,7 +55,7 @@ final class MySqlRow implements Row, ReferenceCounted {
     /**
      * @param identifier must be {@link Integer} or {@link String}, means field ordinal or field name.
      * @param type must be {@link ParameterizedType} linked {@code T}
-     * @param <T> generic type, like {@code Set<String>}, {@code List<String>} or JSON-Serializable type when JSON serializer not be null.
+     * @param <T> generic type, like {@code Set<String>}, {@code List<String>} or JSON-Serializable type when JSON serializer valid.
      * @return {@code type} specified generic instance.
      */
     @Nullable
@@ -74,78 +64,32 @@ final class MySqlRow implements Row, ReferenceCounted {
     }
 
     @Override
-    public int refCnt() {
-        return refCnt.get();
-    }
-
-    @Override
-    public MySqlRow retain() {
-        return retain0(1);
-    }
-
-    @Override
-    public MySqlRow retain(int increment) {
-        return retain0(requirePositive(increment, "increment must be a positive integer"));
-    }
-
-    @SuppressWarnings("ForLoopReplaceableByForEach")
-    @Override
-    public MySqlRow touch() {
-        // Use the old-style for loop, see: https://github.com/netty/netty/issues/2642
-        int size = fields.size();
-
-        for (int i = 0; i < size; ++i) {
-            fields.get(i).touch();
+    public MySqlRow touch(@Nullable Object hint) {
+        for (ByteBuf field : fields) {
+            field.touch(hint);
         }
 
         return this;
     }
 
-    @SuppressWarnings("ForLoopReplaceableByForEach")
-    @Override
-    public MySqlRow touch(Object hint) {
-        // Use the old-style for loop, see: https://github.com/netty/netty/issues/2642
-        int size = fields.size();
-
-        for (int i = 0; i < size; ++i) {
-            fields.get(i).touch(hint);
-        }
-
-        return this;
+    MySqlRowMetadata getRowMetadata() {
+        return rowMetadata;
     }
 
-    @Override
-    public boolean release() {
-        return release0(1);
-    }
-
-    @Override
-    public boolean release(int decrement) {
-        return release0(requirePositive(decrement, "decrement must be a positive integer"));
-    }
-
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     @Nullable
     private <T> T getByType(Object identifier, Type type) {
         requireNonNull(type, "type must not be null");
 
         MySqlColumnMetadata columnMetadata = rowMetadata.getColumnMetadata(identifier);
-        ByteBuf field;
-
-        if (identifier instanceof Integer) {
-            field = fields.get((Integer) identifier);
-        } else {
-            field = fields.get(columnMetadata.getOrdinal());
-        }
+        ByteBuf field = fields[columnMetadata.getIndex()];
 
         return converters.read(
             field,
             columnMetadata.getType(),
-            columnMetadata.isUnsigned(),
+            columnMetadata.getDefinitions(),
             columnMetadata.getCollationId(),
             columnMetadata.getPrecision(),
-            chooseTarget(columnMetadata, type),
-            session
+            chooseTarget(columnMetadata, type)
         );
     }
 
@@ -164,40 +108,10 @@ final class MySqlRow implements Row, ReferenceCounted {
         return targetType;
     }
 
-    @SuppressWarnings("ForLoopReplaceableByForEach")
-    private void freeAll() {
-        // Use the old-style for loop, see: https://github.com/netty/netty/issues/2642
-        int size = fields.size();
-
-        for (int i = 0; i < size; ++i) {
-            fields.get(i).release();
+    @Override
+    protected void deallocate() {
+        for (ByteBuf field : fields) {
+            field.release();
         }
-    }
-
-    private MySqlRow retain0(int increment) {
-        int oldRef = this.refCnt.getAndAdd(increment);
-
-        if (oldRef <= 0 || oldRef + increment < oldRef) {
-            this.refCnt.getAndAdd(-increment);
-            throw new IllegalReferenceCountException(oldRef, increment);
-        }
-
-        return this;
-    }
-
-    private boolean release0(int decrement) {
-        int oldRef = this.refCnt.getAndAdd(-decrement);
-
-        if (oldRef == decrement) {
-            freeAll();
-            return true;
-        }
-
-        if (oldRef < decrement || oldRef - decrement > oldRef) {
-            this.refCnt.getAndAdd(decrement);
-            throw new IllegalReferenceCountException(oldRef, -decrement);
-        }
-
-        return false;
     }
 }

@@ -121,7 +121,7 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     @Override
     public String toString() {
-        return "MySQL<" + major + '.' + minor + '.' + patch + '>';
+        return String.format("%d.%d.%d", major, minor, patch);
     }
 
     private static int readIntBeforePoint(ByteBuf version) {
@@ -142,7 +142,7 @@ public final class ServerVersion implements Comparable<ServerVersion> {
             byte current = version.readByte();
 
             if (current < '0' || current > '9') { // C style condition, maybe should use `!Character.isDigit(current)`?
-                throw new NumberFormatException("can not parse digit " + (char) current);
+                throw new NumberFormatException("unknown character '" + ((char) current) + "' for parse server version");
             }
 
             result = result * 10 + (current - '0');

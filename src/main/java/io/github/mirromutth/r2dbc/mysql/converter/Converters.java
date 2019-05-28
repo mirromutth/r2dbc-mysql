@@ -30,10 +30,12 @@ import java.lang.reflect.Type;
 public interface Converters {
 
     @Nullable
-    <T> T read(@Nullable ByteBuf buf, @Nullable ColumnType columnType, boolean isUnsigned, int precision, int collationId, Type targetType, MySqlSession session);
+    <T> T read(@Nullable ByteBuf buf, @Nullable ColumnType columnType, short definitions, int precision, int collationId, Type targetType);
 
-    static Converters create(MySqlJson mySqlJson) {
+    static Converters text(MySqlJson mySqlJson, MySqlSession session) {
         return new DefaultConverters(
+            session,
+
             StringConverter.INSTANCE,
 
             ByteConverter.INSTANCE,
@@ -46,28 +48,20 @@ public interface Converters {
             DoubleConverter.INSTANCE,
             BigDecimalConverter.INSTANCE,
 
-            BooleanConverter.INSTANCE,
-            BitSetConverter.INSTANCE,
+            BitsConverter.INSTANCE,
 
-            InstantConverter.INSTANCE,
             LocalDateTimeConverter.INSTANCE,
-            ZonedDateTimeConverter.INSTANCE,
-            OffsetDateTimeConverter.INSTANCE,
-
             LocalDateConverter.INSTANCE,
-            YearConverter.INSTANCE,
-
             LocalTimeConverter.INSTANCE,
-            OffsetTimeConverter.INSTANCE,
-
-            ByteArrayConverter.INSTANCE,
-            ByteBufConverter.INSTANCE,
-            BoxedByteArrayConverter.INSTANCE,
+            YearConverter.INSTANCE,
 
             EnumConverter.INSTANCE,
             SetConverter.INSTANCE,
 
-            new JsonConverter(mySqlJson)
+            new JsonConverter(mySqlJson),
+
+            // binary converter must be last element.
+            BinaryConverter.INSTANCE
         );
     }
 }

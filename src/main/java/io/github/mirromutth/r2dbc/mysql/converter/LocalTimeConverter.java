@@ -20,27 +20,29 @@ import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
+import java.lang.reflect.Type;
 import java.time.LocalTime;
 
 /**
  * Converter for {@link LocalTime}.
+ * <p>
+ * Can not support {@code OffsetTime} because of {@code ZoneId} can not be
+ * convert to {@code ZoneOffset} with time only.
  */
-final class LocalTimeConverter extends AbstractClassedConverter<LocalTime> {
+final class LocalTimeConverter implements Converter<LocalTime, Class<LocalTime>> {
 
     static final LocalTimeConverter INSTANCE = new LocalTimeConverter();
 
     private LocalTimeConverter() {
-        super(LocalTime.class);
     }
 
     @Override
-    public LocalTime read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super LocalTime> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public LocalTime read(ByteBuf buf, short definitions, int precision, int collationId, Class<LocalTime> target, MySqlSession session) {
+        return JavaTimeHelper.readTime(buf);
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned) {
-        return ColumnType.TIME == type;
+    public boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
+        return ColumnType.TIME == type && LocalTime.class == target;
     }
 }

@@ -22,7 +22,7 @@ import reactor.util.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.CACHING_SHA2_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
 
@@ -43,6 +43,11 @@ final class CachingSha2AuthStateMachine implements AuthStateMachine {
     @Override
     public boolean hasNext() {
         return this.authState.get() != AuthState.COMPLETED;
+    }
+
+    @Override
+    public boolean isSslNecessary() {
+        return true;
     }
 
     @Override

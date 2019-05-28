@@ -23,8 +23,10 @@ import io.netty.buffer.ByteBuf;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -40,7 +42,7 @@ final class SetConverter implements Converter<Set<?>, ParameterizedType> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Set<?> read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, ParameterizedType target, MySqlSession session) {
+    public Set<?> read(ByteBuf buf, short definitions, int precision, int collationId, ParameterizedType target, MySqlSession session) {
         Class<?> rawClass = (Class<?>) target.getRawType();
         Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
         Set<?> result;
@@ -67,7 +69,7 @@ final class SetConverter implements Converter<Set<?>, ParameterizedType> {
     }
 
     @Override
-    public boolean canRead(ColumnType type, boolean isUnsigned, int precision, int collationId, Type target, MySqlSession session) {
+    public boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
         if (ColumnType.SET != type || !(target instanceof ParameterizedType)) {
             return false;
         }
@@ -100,11 +102,12 @@ final class SetConverter implements Converter<Set<?>, ParameterizedType> {
         return false;
     }
 
-    @SuppressWarnings("unchecked")
     private Set<?> buildSet(Class<?> rawClass, Class<?> subClass) throws IllegalAccessException, InstantiationException {
         if (subClass.isEnum()) {
             if (rawClass.isAssignableFrom(EnumSet.class)) {
-                return EnumSet.noneOf((Class<Enum>) subClass);
+                @SuppressWarnings("unchecked")
+                EnumSet<?> s = EnumSet.noneOf((Class<Enum>) subClass);
+                return s;
             }
         } else if (rawClass.isAssignableFrom(LinkedHashSet.class)) {
             return new LinkedHashSet<String>();

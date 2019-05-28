@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.security;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import reactor.util.annotation.NonNull;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.SHA256_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
 
@@ -41,6 +41,11 @@ final class Sha256AuthStateMachine implements AuthStateMachine {
     public boolean hasNext() {
         // TODO: "sha256_password" is not state machine?
         return false;
+    }
+
+    @Override
+    public boolean isSslNecessary() {
+        return true;
     }
 
     @NonNull

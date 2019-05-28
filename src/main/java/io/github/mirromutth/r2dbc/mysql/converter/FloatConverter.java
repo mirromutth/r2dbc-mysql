@@ -20,6 +20,8 @@ import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * Converter for {@link float}.
  */
@@ -32,13 +34,12 @@ final class FloatConverter extends AbstractPrimitiveConverter<Float> {
     }
 
     @Override
-    public Float read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super Float> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public Float read(ByteBuf buf, short definitions, int precision, int collationId, Class<? super Float> target, MySqlSession session) {
+        return Float.parseFloat(buf.toString(StandardCharsets.US_ASCII));
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned, int precision) {
+    boolean doCanRead(ColumnType type, short definitions, int precision) {
         return ColumnType.FLOAT == type || (precision < 7 && BigDecimalConverter.DECIMAL_TYPES.contains(type));
     }
 }

@@ -19,6 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.converter;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
+import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.Type;
 
@@ -27,7 +28,8 @@ import java.lang.reflect.Type;
  */
 public interface Converter<R, T extends Type> {
 
-    R read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, T target, MySqlSession session);
+    @Nullable
+    R read(ByteBuf buf, short definitions, int precision, int collationId, T target, MySqlSession session);
 
-    boolean canRead(ColumnType type, boolean isUnsigned, int precision, int collationId, Type target, MySqlSession session);
+    boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session);
 }

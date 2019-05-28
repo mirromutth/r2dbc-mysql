@@ -36,7 +36,8 @@ final class StringConverter extends AbstractClassedConverter<String> {
         ColumnType.VARCHAR,
         ColumnType.STRING,
         ColumnType.VAR_STRING,
-        ColumnType.ENUMERABLE
+        ColumnType.ENUMERABLE,
+        ColumnType.SET
     );
 
     private StringConverter() {
@@ -44,7 +45,7 @@ final class StringConverter extends AbstractClassedConverter<String> {
     }
 
     @Override
-    public String read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super String> target, MySqlSession session) {
+    public String read(ByteBuf buf, short definitions, int precision, int collationId, Class<? super String> target, MySqlSession session) {
         if (buf.readableBytes() <= 0) {
             return "";
         }
@@ -53,7 +54,7 @@ final class StringConverter extends AbstractClassedConverter<String> {
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned) {
+    boolean doCanRead(ColumnType type, short definitions) {
         return STRING_TYPES.contains(type);
     }
 }

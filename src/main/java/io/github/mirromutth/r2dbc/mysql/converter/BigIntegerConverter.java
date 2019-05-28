@@ -16,11 +16,13 @@
 
 package io.github.mirromutth.r2dbc.mysql.converter;
 
+import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Converter for {@link BigInteger}.
@@ -34,13 +36,12 @@ final class BigIntegerConverter extends AbstractClassedConverter<BigInteger> {
     }
 
     @Override
-    public BigInteger read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super BigInteger> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public BigInteger read(ByteBuf buf, short definitions, int precision, int collationId, Class<? super BigInteger> target, MySqlSession session) {
+        return new BigInteger(buf.toString(StandardCharsets.US_ASCII));
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned) {
-        return isUnsigned && ColumnType.BIGINT == type;
+    boolean doCanRead(ColumnType type, short definitions) {
+        return ColumnType.BIGINT == type && (definitions & ColumnDefinitions.UNSIGNED) != 0;
     }
 }

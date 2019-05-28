@@ -16,11 +16,11 @@
 
 package io.github.mirromutth.r2dbc.mysql.config;
 
+import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import reactor.util.annotation.Nullable;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.time.Duration;
+import java.time.ZoneId;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -33,7 +33,12 @@ public class ConnectProperties {
 
     private final int port;
 
+    @Nullable
+    private final Duration tcpConnectTimeout;
+
     private final boolean useSsl;
+
+    private final ZeroDateOption zeroDateOption;
 
     private final String username;
 
@@ -44,14 +49,18 @@ public class ConnectProperties {
     public ConnectProperties(
         String host,
         int port,
+        @Nullable Duration tcpConnectTimeout,
         boolean useSsl,
+        ZeroDateOption zeroDateOption,
         String username,
         @Nullable String password,
         @Nullable String database
     ) {
         this.host = requireNonNull(host, "host must not be null");
         this.port = port;
+        this.tcpConnectTimeout = tcpConnectTimeout;
         this.useSsl = useSsl;
+        this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
 
@@ -70,8 +79,17 @@ public class ConnectProperties {
         return port;
     }
 
+    @Nullable
+    public Duration getTcpConnectTimeout() {
+        return tcpConnectTimeout;
+    }
+
     public boolean isUseSsl() {
         return useSsl;
+    }
+
+    public ZeroDateOption getZeroDateOption() {
+        return zeroDateOption;
     }
 
     public String getUsername() {
@@ -84,5 +102,17 @@ public class ConnectProperties {
 
     public String getDatabase() {
         return database;
+    }
+
+    @Override
+    public String toString() {
+        return "ConnectProperties{" +
+            "host='" + host + '\'' +
+            ", port=" + port +
+            ", tcpConnectTimeout=" + tcpConnectTimeout +
+            ", useSsl=" + useSsl +
+            ", zeroDateOption=" + zeroDateOption +
+            ", database='" + database + '\'' +
+            '}';
     }
 }

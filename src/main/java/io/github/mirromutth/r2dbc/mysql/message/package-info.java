@@ -15,8 +15,8 @@
  */
 
 /**
- * The messages with their decoders that are both sent from a frontend client
- * to a backend server and from a backend server to a frontend client.
+ * The messages with their decoders that are both sent from a MySQL client
+ * to a MySQL server and from a MySQL server to a MySQL client.
  */
 
 @NonNullApi

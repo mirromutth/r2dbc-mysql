@@ -1,0 +1,26 @@
+# R2dbc MySQL 5.7 docker compose config
+#
+# docker-compose -f mysql5_7.dc.yml up --build
+# docker-compose -f src/test/resources/mysql5_7.dc.yml up --build
+#
+# Try using the Registry Mirror in a poorly networked area.
+
+version: "3.3"
+
+volumes:
+  mysql5_7_dir:
+
+services:
+  test-mysql5_7-r2dbc:
+    image: mysql:5.7
+    command: [mysqld, --character-set-server=utf8mb4, --collation-server=utf8mb4_general_ci]
+    # restart: always
+    volumes:
+      - mysql5_7_dir:/var/lib/mysql
+    environment:
+      # Just a random password
+      MYSQL_ROOT_PASSWORD: UV7xrH6JBk2c
+    # For testing from the host:
+    # mysql --host=127.0.0.1 --port=6033 --user root -p
+    ports:
+      - "7322:3306"

@@ -18,7 +18,6 @@ package io.github.mirromutth.r2dbc.mysql.converter;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.json.MySqlJson;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import reactor.util.annotation.Nullable;
@@ -32,38 +31,42 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class DefaultConverters implements Converters {
 
+    private final MySqlSession session;
+
     private final Converter<?, ?>[] converters;
 
-    DefaultConverters(Converter<?, ?>... converters) {
+    DefaultConverters(MySqlSession session, Converter<?, ?>... converters) {
+        this.session = requireNonNull(session, "session must not be null");
         this.converters = requireNonNull(converters, "converters must not be null");
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * Note: this method should NEVER release {@code buf} because of
+     * it come from {@code MySqlRow} which will release this buffer.
+     */
     @Override
-    public <T> T read(@Nullable ByteBuf buf, @Nullable ColumnType columnType, boolean isUnsigned, int precision, int collationId, Type targetType, MySqlSession session) {
+    public <T> T read(@Nullable ByteBuf buf, @Nullable ColumnType columnType, short definitions, int precision, int collationId, Type targetType) {
         if (buf == null) {
             return null;
         }
 
-        try {
-            requireNonNull(session, "session must not be null");
-            requireNonNull(targetType, "targetType must not be null");
+        requireNonNull(session, "session must not be null");
+        requireNonNull(targetType, "targetType must not be null");
 
-            if (columnType == null) {
-                // Unknown column type, try convert to bytes
-                return convertToBytes(buf, targetType);
-            }
-
-            for (Converter<?, ?> converter : converters) {
-                if (converter.canRead(columnType, isUnsigned, precision, collationId, targetType, session)) {
-                    return ((Converter<T, ? super Type>) converter).read(buf, isUnsigned, precision, collationId, targetType, session);
-                }
-            }
-
-            throw new IllegalArgumentException("Cannot decode value of type " + targetType);
-        } finally {
-            buf.release();
+        if (columnType == null) {
+            // Unknown column type, try convert to bytes
+            return convertToBytes(buf, targetType);
         }
+
+        for (Converter<?, ?> converter : converters) {
+            if (converter.canRead(columnType, definitions, precision, collationId, targetType, session)) {
+                @SuppressWarnings("unchecked")
+                Converter<T, ? super Type> c = (Converter<T, ? super Type>) converter;
+                return c.read(buf, definitions, precision, collationId, targetType, session);
+            }
+        }
+
+        throw new IllegalArgumentException("Cannot decode value of type " + targetType + " with column type '" + columnType + '\'');
     }
 
     @SuppressWarnings("unchecked")

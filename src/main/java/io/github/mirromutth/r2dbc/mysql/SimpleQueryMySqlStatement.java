@@ -17,8 +17,11 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.message.frontend.SimpleQueryMessage;
-import reactor.core.publisher.Flux;
+import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
+import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
+import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
+import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -30,10 +33,13 @@ final class SimpleQueryMySqlStatement implements MySqlStatement {
 
     private final Client client;
 
+    private final Converters converters;
+
     private final String sql;
 
-    SimpleQueryMySqlStatement(Client client, String sql) {
+    SimpleQueryMySqlStatement(Client client, Converters converters, String sql) {
         this.client = requireNonNull(client, "client must not be null");
+        this.converters = requireNonNull(converters, "converters must not be null");
         this.sql = requireNonNull(sql, "sql must not be null");
     }
 
@@ -63,8 +69,7 @@ final class SimpleQueryMySqlStatement implements MySqlStatement {
     }
 
     @Override
-    public Flux<MySqlResult> execute() {
-//        return client.exchange(new SimpleQueryMessage(sql)).map(message -> {});
-        throw new RuntimeException();
+    public Mono<MySqlResult> execute() {
+        return Mono.fromSupplier(() -> new MySqlResult(sql, converters, client.exchange(Mono.just(new SimpleQueryMessage(sql)))));
     }
 }

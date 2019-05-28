@@ -17,7 +17,6 @@
 package io.github.mirromutth.r2dbc.mysql.util;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.EmptyByteBuf;
 
 import java.nio.charset.Charset;
 
@@ -36,13 +35,16 @@ public final class CodecUtils {
 
     private static final int VAR_INT_2_BYTE_LIMIT = (1 << (Byte.SIZE << 1)) - 1;
 
-    private static final int VAR_INT_2_BYTE_CODE = 0xFC;
+    private static final short VAR_INT_2_BYTE_CODE = 0xFC;
 
     private static final int VAR_INT_3_BYTE_LIMIT = (1 << (Byte.SIZE * 3)) - 1;
 
-    private static final int VAR_INT_3_BYTE_CODE = 0xFD;
+    private static final short VAR_INT_3_BYTE_CODE = 0xFD;
 
-    private static final int VAR_INT_8_BYTE_CODE = 0xFE;
+    /**
+     * Visible to test cases.
+     */
+    static final short VAR_INT_8_BYTE_CODE = 0xFE;
 
     private static final int MEDIUM_BYTES = 3;
 
@@ -53,12 +55,21 @@ public final class CodecUtils {
      * @param charset the string characters' set.
      * @return The string of C-style.
      */
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static String readCString(ByteBuf buf, Charset charset) {
         requireNonNull(buf, "buf must not be null");
         requireNonNull(charset, "charset must not be null");
 
         int length = buf.bytesBefore(TERMINAL);
+
+        if (length < 0) {
+            throw new IllegalArgumentException("buf has no C-style string terminal");
+        }
+
+        if (length == 0) {
+            // skip terminal
+            buf.skipBytes(1);
+            return "";
+        }
 
         String result = buf.toString(buf.readerIndex(), length, charset);
         buf.skipBytes(length + 1); // skip string and terminal by read
@@ -70,11 +81,23 @@ public final class CodecUtils {
      * @param buf C-style string readable buffer.
      * @return The string of C-style on byte buffer.
      */
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static ByteBuf readCStringSlice(ByteBuf buf) {
         requireNonNull(buf, "buf must not be null");
 
-        ByteBuf result = buf.readSlice(buf.bytesBefore(TERMINAL));
+        int length = buf.bytesBefore(TERMINAL);
+
+        if (length < 0) {
+            throw new IllegalArgumentException("buf has no C-style string");
+        }
+
+        if (length == 0) {
+            // skip terminal
+            buf.skipBytes(1);
+            // use EmptyByteBuf
+            return buf.alloc().buffer(0, 0);
+        }
+
+        ByteBuf result = buf.readSlice(length);
         buf.skipBytes(1);
         return result;
     }
@@ -129,7 +152,6 @@ public final class CodecUtils {
         }
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static String readVarIntSizedString(ByteBuf buf, Charset charset) {
         requireNonNull(buf, "buf must not be null");
         requireNonNull(charset, "charset must not be null");
@@ -151,7 +173,8 @@ public final class CodecUtils {
         int size = (int) readVarInt(requireNonNull(buf, "buf must not be null"));
 
         if (size == 0) {
-            return new EmptyByteBuf(buf.alloc());
+            // use EmptyByteBuf
+            return buf.alloc().buffer(0, 0);
         }
 
         return buf.readSlice(size);
@@ -162,13 +185,15 @@ public final class CodecUtils {
      * @param value   content that want write
      * @param charset {@code value} characters' set
      */
-    @SuppressWarnings("ResultOfMethodCallIgnored")
-    public static void writeCString(ByteBuf buf, CharSequence value, Charset charset) {
+    public static void writeCString(ByteBuf buf, String value, Charset charset) {
         requireNonNull(buf, "buf must not be null");
         requireNonNull(value, "value must not be null");
         requireNonNull(charset, "charset must not be null");
 
-        buf.writeCharSequence(value, charset);
+        if (!value.isEmpty()) {
+            buf.writeCharSequence(value, charset);
+        }
+
         buf.writeByte(TERMINAL);
     }
 
@@ -181,7 +206,6 @@ public final class CodecUtils {
      * @param buf   that want write to this {@link ByteBuf}
      * @param value integer that want write
      */
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     private static void writeVarInt(ByteBuf buf, int value) {
         requireNonNull(buf, "buf must not be null");
         requireNonNegative(value, "value must not be negative");
@@ -198,17 +222,19 @@ public final class CodecUtils {
         }
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void writeVarIntSizedString(ByteBuf buf, String value, Charset charset) {
         requireNonNull(buf, "buf must not be null");
         requireNonNull(value, "value must not be null");
         requireNonNull(charset, "charset must not be null");
 
-        // NEVER use value.length() in here, size must be bytes' size, not string size
-        writeVarIntSizedBytes(buf, value.getBytes(charset));
+        if (value.isEmpty()) {
+            buf.writeByte(0);
+        } else {
+            // NEVER use value.length() in here, size must be bytes' size, not string size
+            writeVarIntSizedBytes(buf, value.getBytes(charset));
+        }
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void writeVarIntSizedBytes(ByteBuf buf, byte[] value) {
         requireNonNull(buf, "buf must not be null");
         requireNonNull(value, "value must not be null");
@@ -222,7 +248,6 @@ public final class CodecUtils {
         }
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void writeVarIntSizedBytes(ByteBuf buf, ByteBuf value) {
         requireNonNull(buf, "buf must not be null");
         requireNonNull(value, "value must not be null");

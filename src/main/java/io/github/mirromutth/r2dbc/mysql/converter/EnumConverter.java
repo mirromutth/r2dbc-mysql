@@ -34,15 +34,16 @@ final class EnumConverter implements Converter<Enum<?>, Class<Enum<?>>> {
     private EnumConverter() {
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public Enum<?> read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<Enum<?>> target, MySqlSession session) {
+    public Enum<?> read(ByteBuf buf, short definitions, int precision, int collationId, Class<Enum<?>> target, MySqlSession session) {
         Charset charset = CharCollation.fromId(collationId, session.getServerVersion()).getCharset();
-        return Enum.valueOf((Class<Enum>) (Class<?>) target, buf.toString(charset));
+        @SuppressWarnings("unchecked")
+        Enum<?> e = Enum.valueOf((Class<Enum>) (Class<?>) target, buf.toString(charset));
+        return e;
     }
 
     @Override
-    public boolean canRead(ColumnType type, boolean isUnsigned, int precision, int collationId, Type target, MySqlSession session) {
+    public boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
         if (ColumnType.ENUMERABLE == type && target instanceof Class<?>) {
             return ((Class<?>) target).isEnum();
         }

@@ -41,7 +41,7 @@ final class JsonConverter implements Converter<Object, Type> {
     }
 
     @Override
-    public Object read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Type target, MySqlSession session) {
+    public Object read(ByteBuf buf, short definitions, int precision, int collationId, Type target, MySqlSession session) {
         Charset charset = CharCollation.fromId(collationId, session.getServerVersion()).getCharset();
 
         try (ByteBufInputStream input = new ByteBufInputStream(buf)) {
@@ -52,7 +52,7 @@ final class JsonConverter implements Converter<Object, Type> {
     }
 
     @Override
-    public boolean canRead(ColumnType type, boolean isUnsigned, int precision, int collationId, Type target, MySqlSession session) {
+    public boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
         // any java type if column type is json.
         return ColumnType.JSON == type;
     }

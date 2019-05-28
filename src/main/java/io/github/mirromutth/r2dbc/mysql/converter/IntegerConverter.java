@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.converter;
 
+import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
 import io.netty.buffer.ByteBuf;
@@ -32,13 +33,41 @@ final class IntegerConverter extends AbstractPrimitiveConverter<Integer> {
     }
 
     @Override
-    public Integer read(ByteBuf buf, boolean isUnsigned, int precision, int collationId, Class<? super Integer> target, MySqlSession session) {
-        // TODO: implement this method
-        throw new IllegalStateException();
+    public Integer read(ByteBuf buf, short definitions, int precision, int collationId, Class<? super Integer> target, MySqlSession session) {
+        return parse(buf);
     }
 
     @Override
-    boolean doCanRead(ColumnType type, boolean isUnsigned, int precision) {
+    boolean doCanRead(ColumnType type, short definitions, int precision) {
+        boolean isUnsigned = (definitions & ColumnDefinitions.UNSIGNED) != 0;
         return (!isUnsigned && ColumnType.INT == type) || ColumnType.MEDIUMINT == type;
+    }
+
+    /**
+     * Fast parse a negotiable integer from {@link ByteBuf} without copy.
+     *
+     * @param buf a {@link ByteBuf} include a integer that maybe has sign.
+     * @return a integer from {@code buf}.
+     */
+    static int parse(ByteBuf buf) {
+        int value = 0;
+        int first = buf.readByte();
+        final boolean isNegative;
+
+        if (first == '-') {
+            isNegative = true;
+        } else if (first >= '0' && first <= '9') {
+            isNegative = false;
+            value = first - '0';
+        } else {
+            // must be '+'
+            isNegative = false;
+        }
+
+        while (buf.isReadable()) {
+            value = value * 10 + (buf.readByte() - '0');
+        }
+
+        return isNegative ? -value : value;
     }
 }

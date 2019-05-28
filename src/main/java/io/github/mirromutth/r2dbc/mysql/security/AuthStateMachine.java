@@ -17,12 +17,12 @@
 package io.github.mirromutth.r2dbc.mysql.security;
 
 import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.exception.AuthTypeNotSupportException;
+import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.CACHING_SHA2_PASSWORD;
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.MYSQL_NATIVE_PASSWORD;
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthType.SHA256_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -40,7 +40,7 @@ public interface AuthStateMachine {
                 return Sha256AuthStateMachine.getInstance();
         }
 
-        throw new AuthTypeNotSupportException(type);
+        throw new R2dbcPermissionDeniedException("Authentication type '" + type + "' not supported");
     }
 
     String getType();
@@ -51,7 +51,12 @@ public interface AuthStateMachine {
     boolean hasNext();
 
     /**
-     * Generate current authentication and make changes to the authentication status.
+     * @return true if the authentication type should be used on SSL.
+     */
+    boolean isSslNecessary();
+
+    /**
+     * Generate next authentication and make changes to the authentication status.
      *
      * @param session current MySQL session.
      * @return {@code null} if have no next authentication used to send, and

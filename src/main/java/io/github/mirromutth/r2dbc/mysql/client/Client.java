@@ -16,24 +16,54 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.message.backend.BackendMessage;
-import io.github.mirromutth.r2dbc.mysql.message.frontend.CommandMessage;
-import io.github.mirromutth.r2dbc.mysql.message.frontend.FrontendMessage;
+import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
+import io.netty.channel.ChannelOption;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.resources.ConnectionProvider;
+import reactor.netty.tcp.TcpClient;
+import reactor.util.annotation.Nullable;
 
-import javax.annotation.concurrent.ThreadSafe;
-import java.util.function.Function;
+import java.time.Duration;
+
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An abstraction that wraps the networking part of exchanging methods.
  */
-@ThreadSafe
 public interface Client {
 
-    Flux<BackendMessage> exchange(FrontendMessage request);
+    /**
+     * @param requests single or multi request(s) for get the server responses.
+     * @return The result should be truncated, otherwise it will NEVER be completed.
+     */
+    Flux<ServerMessage> exchange(Publisher<? extends ExchangeableMessage> requests);
 
-    int getConnectionId();
+    Mono<Void> initialize();
 
     Mono<Void> close();
+
+    static Mono<Client> connect(
+        ConnectionProvider connectionProvider,
+        String host,
+        int port,
+        @Nullable Duration connectTimeout,
+        MySqlSession session
+    ) {
+        requireNonNull(connectionProvider, "connectionProvider must not be null");
+        requireNonNull(host, "host must not be null");
+        TcpClient client = TcpClient.create(connectionProvider);
+
+        if (connectTimeout != null) {
+            client = client.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
+        }
+
+        return client.host(host)
+            .port(port)
+            .connect()
+            .map(conn -> new ReactorNettyClient(conn, session));
+    }
 }
