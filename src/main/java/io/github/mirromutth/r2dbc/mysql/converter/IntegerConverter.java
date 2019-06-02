@@ -39,8 +39,11 @@ final class IntegerConverter extends AbstractPrimitiveConverter<Integer> {
 
     @Override
     boolean doCanRead(ColumnType type, short definitions, int precision) {
-        boolean isUnsigned = (definitions & ColumnDefinitions.UNSIGNED) != 0;
-        return (!isUnsigned && ColumnType.INT == type) || ColumnType.MEDIUMINT == type;
+        if (ColumnType.MEDIUMINT == type) {
+            return true;
+        }
+
+        return (definitions & ColumnDefinitions.UNSIGNED) != 0 ? ColumnType.SMALLINT == type : ColumnType.INT == type;
     }
 
     /**

@@ -19,8 +19,10 @@ package io.github.mirromutth.r2dbc.mysql;
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
+import io.r2dbc.spi.ConnectionFactoryOptions;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 
