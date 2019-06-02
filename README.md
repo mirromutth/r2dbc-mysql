@@ -87,11 +87,13 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 | TIME | - | `LocalTime` |
 | YEAR | - | `Integer`, `Year` |
 | VARCHAR/NVARCHAR | - | `String` |
-| VARBINARY/BINARY | - | Not support yet |
+| VARBINARY | - | Not support yet |
+| BINARY | - | Not support yet |
+| CHAR/NCHAR | - | `String` |
 | ENUM | - | `String`, `Enum<?>` (Need to pass in a specific enumeration class) |
 | SET | - | `String` |
-| TINYBLOB/SMALLBLOB/MEDIUMBLOB/BLOB/LONGBLOB | - | `byte[]` (need change to `Blob`) |
-| TINYTEXT/SMALLTEXT/MEDIUMTEXT/TEXT/LONGTEXT | - | `String` (need change to `Clob`) |
+| BLOB (LONGBLOB, etc.) | - | `byte[]` (need change to `Blob`) |
+| TEXT (LONGTEXT, etc.) | - | `String` (need change to `Clob`) |
 | JSON | - | `String` (see [#15](https://github.com/mirromutth/r2dbc-mysql/issues/15)) |
 | GEOMETRY | - | `byte[]` (it should handling same as BLOB, see [#11](https://github.com/mirromutth/r2dbc-mysql/issues/11)) |
 
