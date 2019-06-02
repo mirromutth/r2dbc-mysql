@@ -10,7 +10,7 @@ This driver provides the following features:
 - Login with username/password (or no password)
 - Execution of simple or batch statements without bindings
 - Read text result support for all data types except LOB types (e.g. BLOB, CLOB)
-- Translations (unverified)
+- Transactions (unverified)
 
 Next steps:
 
