@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import reactor.util.annotation.Nullable;
 

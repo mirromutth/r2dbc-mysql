@@ -16,14 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * The message include a plain text SQL query without any parameter.
+ * A plain text SQL query message without any parameter, it could include multi-statements.
  */
 public final class SimpleQueryMessage extends AbstractClientMessage implements ExchangeableMessage {
 
@@ -40,7 +40,7 @@ public final class SimpleQueryMessage extends AbstractClientMessage implements E
     }
 
     @Override
-    public boolean resetSequenceId() {
+    public boolean isSequenceIdReset() {
         return true;
     }
 

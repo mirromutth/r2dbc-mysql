@@ -12,7 +12,7 @@ This implementation is NOT OFFICIAL, official implementations are all in
 ### MySQL
 
 - At least higher than or equal to `5.6.x GA`, low version will not be guaranteed.
-- For now, ssl not supported (**I need some help for SSL support, see please**)
+- For now, ssl not supported (see [#9](https://github.com/mirromutth/r2dbc-mysql/issues/9))
 
 ## Notice
 

@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.message.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -87,7 +87,7 @@ public final class HandshakeResponse41Message extends AbstractClientMessage impl
     }
 
     @Override
-    public boolean resetSequenceId() {
+    public boolean isSequenceIdReset() {
         return false;
     }
 

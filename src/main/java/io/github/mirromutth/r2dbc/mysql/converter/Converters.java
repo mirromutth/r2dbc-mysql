@@ -17,8 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.converter;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.json.MySqlJson;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.Nullable;
 
@@ -30,38 +29,9 @@ import java.lang.reflect.Type;
 public interface Converters {
 
     @Nullable
-    <T> T read(@Nullable ByteBuf buf, @Nullable ColumnType columnType, short definitions, int precision, int collationId, Type targetType);
+    <T> T read(@Nullable ByteBuf buf, @Nullable ColumnType columnType, short definitions, int precision, int collationId, Type targetType, MySqlSession session);
 
-    static Converters text(MySqlJson mySqlJson, MySqlSession session) {
-        return new DefaultConverters(
-            session,
-
-            StringConverter.INSTANCE,
-
-            ByteConverter.INSTANCE,
-            ShortConverter.INSTANCE,
-            IntegerConverter.INSTANCE,
-            LongConverter.INSTANCE,
-            BigIntegerConverter.INSTANCE,
-
-            FloatConverter.INSTANCE,
-            DoubleConverter.INSTANCE,
-            BigDecimalConverter.INSTANCE,
-
-            BitsConverter.INSTANCE,
-
-            LocalDateTimeConverter.INSTANCE,
-            LocalDateConverter.INSTANCE,
-            LocalTimeConverter.INSTANCE,
-            YearConverter.INSTANCE,
-
-            EnumConverter.INSTANCE,
-            SetConverter.INSTANCE,
-
-            new JsonConverter(mySqlJson),
-
-            // binary converter must be last element.
-            BinaryConverter.INSTANCE
-        );
+    static Converters text() {
+        return DefaultConverters.TEXT;
     }
 }

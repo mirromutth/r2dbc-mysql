@@ -15,7 +15,7 @@
  */
 
 /**
- * MySQL Plugins' interfaces or implementations.
+ * Security interfaces and implementations for MySQL authentication in connection phase.
  */
 
 @NonNullApi

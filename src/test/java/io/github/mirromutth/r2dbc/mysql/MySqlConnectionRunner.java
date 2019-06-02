@@ -32,14 +32,16 @@ import java.util.function.Function;
 @FunctionalInterface
 interface MySqlConnectionRunner {
 
+    MySqlConnectionRunner STD5_7 = MySqlConnectionRunner.ofVersion("5_7");
+
     void run(Duration timeout, Function<MySqlConnection, Mono<?>> consumer) throws Throwable;
 
-    static MySqlConnectionRunner ofVersion(int major, @Nullable Integer minor) {
+    static MySqlConnectionRunner ofVersion(String version) {
         return (timeout, consumer) -> {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicReference<Throwable> cause = new AtomicReference<>();
 
-            MySQLHelper.getFactoryByVersion(major, minor).create().subscribe(connection -> consumer.apply(connection)
+            MySQLHelper.getFactoryByVersion(version).create().subscribe(connection -> consumer.apply(connection)
                 .subscribe(null, cause::set, () -> connection.close().subscribe(null, cause::set, latch::countDown)), cause::set);
 
             latch.await(timeout.toNanos(), TimeUnit.NANOSECONDS);

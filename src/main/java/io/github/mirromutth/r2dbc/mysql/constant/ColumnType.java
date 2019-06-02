@@ -148,7 +148,12 @@ public enum ColumnType {
         }
     },
     // DATETIME2 (18) and TIME2 (19) are internal types, do NOT support them.
-    JSON(245),
+    JSON(245) {
+        @Override
+        public Class<?> getJavaType(short definitions, int precision) {
+            return String.class;
+        }
+    },
     NEW_DECIMAL(246) {
         @Override
         public Class<?> getJavaType(short definitions, int precision) {

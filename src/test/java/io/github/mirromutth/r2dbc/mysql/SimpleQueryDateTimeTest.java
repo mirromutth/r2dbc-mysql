@@ -16,8 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.util.annotation.Nullable;
@@ -32,6 +30,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.STD5_7;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -40,22 +39,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class SimpleQueryDateTimeTest {
 
-    private static final String TABLE_DDL = "CREATE TABLE `birth` (\n" +
-        "  `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n" +
-        "  `birth_year` YEAR NOT NULL,\n" +
-        "  `birth_day` DATE NOT NULL DEFAULT '2000-01-01',\n" +
-        "  `birth_time` TIME NOT NULL,\n" +
-        "  `birth_datetime` DATETIME NOT NULL DEFAULT '1970-01-01 08:00:00',\n" +
-        "  `birth_timestamp` TIMESTAMP NOT NULL\n" +
-        ");\n";
+    private static final int FIRST_ID = 11;
 
-    // Make sure that all date time is not equal.
-    private static final LocalDateTime BIRTH_FIRST = randomDateTime(1971, 2000);
-
-    private static final LocalDateTime BIRTH_SECOND = randomDateTime(2000, 2020);
-
-    // Avoid the 2038 problem.
-    private static final LocalDateTime BIRTH_THIRD = randomDateTime(2020, 2038);
+    private static final String TABLE_DDL = String.format("CREATE TEMPORARY TABLE `birth`\n" +
+        "(\n" +
+        "    `id`              BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n" +
+        "    `birth_year`      YEAR                NOT NULL,\n" +
+        "    `birth_day`       DATE                NOT NULL DEFAULT '2000-01-01',\n" +
+        "    `birth_time`      TIME                NOT NULL,\n" +
+        "    `birth_datetime`  DATETIME            NOT NULL DEFAULT '1970-01-01 08:00:00',\n" +
+        "    `birth_timestamp` TIMESTAMP           NOT NULL\n" +
+        ") AUTO_INCREMENT = %d;\n", FIRST_ID);
 
     private static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
         .appendValue(ChronoField.HOUR_OF_DAY, 2)
@@ -71,76 +65,70 @@ class SimpleQueryDateTimeTest {
         .append(TIME_FORMATTER)
         .toFormatter();
 
-    private static final MySqlConnectionRunner RUNNER = MySqlConnectionRunner.ofVersion(5, 7);
+    // Make sure that all date time is not equal.
+    private final LocalDateTime firstBirth = randomDateTime(1971, 2000);
 
-    @BeforeAll
-    static void createTable() throws Throwable {
-        RUNNER.run(Duration.ofSeconds(16), connection -> connection.createStatement(TABLE_DDL)
-            .execute()
-            .flatMap(MySqlResult::getRowsUpdated)
-        );
-    }
+    private final LocalDateTime secondBirth = randomDateTime(2000, 2020);
 
-    @AfterAll
-    static void dropTable() throws Throwable {
-        RUNNER.run(Duration.ofSeconds(16), connection -> connection.createStatement("DROP TABLE `birth`")
-            .execute()
-            .flatMap(MySqlResult::getRowsUpdated)
-        );
-    }
+    // Avoid the 2038 problem.
+    private final LocalDateTime thirdBirth = randomDateTime(2020, 2038);
 
     @Test
     void crudAllInOne() throws Throwable {
-        RUNNER.run(Duration.ofSeconds(24), connection -> {
-            MySqlStatement insertFirstStmt = connection.createStatement(formattedInsert(BIRTH_FIRST));
-            MySqlStatement insertSecondStmt = connection.createStatement(formattedInsert(BIRTH_SECOND));
+        STD5_7.run(Duration.ofSeconds(8), connection -> {
+            MySqlStatement insertFirstStmt = connection.createStatement(formattedInsert(firstBirth));
+            MySqlStatement insertSecondStmt = connection.createStatement(formattedInsert(secondBirth));
             MySqlStatement selectStmt = connection.createStatement("SELECT * FROM `birth` ORDER BY `id`");
             MySqlStatement updateStmt = connection.createStatement(formattedUpdate());
             MySqlStatement deleteStmt = connection.createStatement("DELETE FROM `birth` WHERE `id` > 0");
 
-            return insertFirstStmt.execute()
+            insertSecondStmt.returnGeneratedValues("second_id");
+
+            return connection.createStatement(TABLE_DDL)
+                .execute()
+                .flatMap(MySqlResult::getRowsAffected)
+                .then(insertFirstStmt.execute())
                 .flatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(u -> assertEquals(u.intValue(), 1))
                 .then(insertSecondStmt.execute())
-                .flatMap(MySqlResult::getRowsUpdated)
-                .doOnNext(u -> assertEquals(u.intValue(), 1))
+                .flatMap(result -> result.getRowsAffected()
+                    .doOnNext(u -> assertEquals(u.intValue(), 1))
+                    .thenMany(result.map((row, metadata) -> row.get("second_id", long.class)))
+                    .doOnNext(id -> assertEquals(id.intValue(), FIRST_ID + 1))
+                    .then())
                 .then(selectStmt.execute())
                 .flatMapMany(Entity::from)
                 .collectList()
-                .doOnNext(entities -> {
-                    assertEquals(entities.size(), 2);
-                    assertEquals(entities.get(0), toEntity(1L, BIRTH_FIRST));
-                    assertEquals(entities.get(1), toEntity(2L, BIRTH_SECOND));
-                })
+                .doOnNext(entities -> assertEquals(entities.size(), 2))
+                .doOnNext(entities -> assertEquals(entities.get(0), toEntity(FIRST_ID, firstBirth)))
+                .doOnNext(entities -> assertEquals(entities.get(1), toEntity(FIRST_ID + 1, secondBirth)))
                 .then(updateStmt.execute())
                 .flatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(u -> assertEquals(u.intValue(), 2))
                 .then(selectStmt.execute())
                 .flatMapMany(Entity::from)
                 .collectList()
-                .doOnNext(entities -> {
-                    assertEquals(entities.size(), 2);
-                    assertEquals(entities.get(0), toEntity(1L, BIRTH_THIRD));
-                    assertEquals(entities.get(1), toEntity(2L, BIRTH_THIRD));
-                })
+                .doOnNext(entities -> assertEquals(entities.size(), 2))
+                .doOnNext(entities -> assertEquals(entities.get(0), toEntity(FIRST_ID, thirdBirth)))
+                .doOnNext(entities -> assertEquals(entities.get(1), toEntity(FIRST_ID + 1, thirdBirth)))
                 .then(deleteStmt.execute())
                 .flatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(u -> assertEquals(u.intValue(), 2));
         });
     }
 
-    private static String formattedUpdate() {
+    private String formattedUpdate() {
         return String.format("UPDATE `birth` SET\n" +
                 "`birth_year` = %d,\n" +
                 "`birth_day` = '%s',\n" +
                 "`birth_time` = '%s',\n" +
                 "`birth_datetime` = '%s',\n" +
                 "`birth_timestamp` = '%s' WHERE `id` > 0",
-            BIRTH_THIRD.getYear(),
-            DateTimeFormatter.ISO_LOCAL_DATE.format(BIRTH_THIRD),
-            TIME_FORMATTER.format(BIRTH_THIRD),
-            DATE_TIME_FORMATTER.format(BIRTH_THIRD),
-            DATE_TIME_FORMATTER.format(BIRTH_THIRD)
+            thirdBirth.getYear(),
+            DateTimeFormatter.ISO_LOCAL_DATE.format(thirdBirth),
+            TIME_FORMATTER.format(thirdBirth),
+            DATE_TIME_FORMATTER.format(thirdBirth),
+            DATE_TIME_FORMATTER.format(thirdBirth)
         );
     }
 
@@ -204,14 +192,14 @@ class SimpleQueryDateTimeTest {
         }
 
         private static Flux<Entity> from(MySqlResult result) {
-            return result.map((row, metadata) -> new Entity(
+            return Flux.from(result.map((row, metadata) -> new Entity(
                 row.get("id", long.class),
                 row.get("birth_year", Year.class),
                 row.get("birth_day", LocalDate.class),
                 row.get("birth_time", LocalTime.class),
                 row.get("birth_datetime", LocalDateTime.class),
                 row.get("birth_timestamp", LocalDateTime.class)
-            ));
+            )));
         }
 
         @Override

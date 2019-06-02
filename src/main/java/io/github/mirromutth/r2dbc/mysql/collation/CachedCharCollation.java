@@ -21,7 +21,7 @@ import java.nio.charset.Charset;
 /**
  * Character collation those use already cached {@link CharsetTarget} of MySQL
  */
-class CachedCharCollation extends AbstractCharCollation {
+final class CachedCharCollation extends AbstractCharCollation {
 
     CachedCharCollation(int id, String name, CharsetTarget target) {
         super(id, name, target);

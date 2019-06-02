@@ -18,14 +18,10 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
 import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
-import io.github.mirromutth.r2dbc.mysql.json.MySqlJsonFactory;
-import io.github.mirromutth.r2dbc.mysql.json.jackson.JacksonMySqlJsonFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.yaml.snakeyaml.Yaml;
 import reactor.netty.resources.ConnectionProvider;
-import reactor.util.annotation.Nullable;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -49,19 +45,7 @@ final class MySQLHelper {
 
     private static final ConcurrentMap<String, MySqlConnectionFactory> CONNECTION_FACTORY_MAP = new ConcurrentHashMap<>();
 
-    private static final MySqlJsonFactory JSON_FACTORY = new JacksonMySqlJsonFactory(new ObjectMapper().findAndRegisterModules());
-
-    static MySqlConnectionFactory getFactoryByVersion(int major, @Nullable Integer minor) {
-        return getFactoryByVersion(major, minor, null);
-    }
-
-    private static MySqlConnectionFactory getFactoryByVersion(int major, @Nullable Integer minor, @Nullable Integer patch) {
-        if (minor == null && patch != null) {
-            throw new IllegalArgumentException("Can not just minor version is null and patch is " + patch);
-        }
-
-        String version = buildVersion(major, minor, patch);
-
+    static MySqlConnectionFactory getFactoryByVersion(String version) {
         MySqlConnectionFactory nowFactory = CONNECTION_FACTORY_MAP.get(version);
 
         if (nowFactory == null) {
@@ -75,7 +59,7 @@ final class MySQLHelper {
                 throw new IllegalStateException("Read properties failed", e);
             }
 
-            MySqlConnectionFactory newFactory = new MySqlConnectionFactory(ConnectionProvider.newConnection(), JSON_FACTORY, newProperties);
+            MySqlConnectionFactory newFactory = new MySqlConnectionFactory(ConnectionProvider.newConnection(), newProperties);
             MySqlConnectionFactory lastFactory = CONNECTION_FACTORY_MAP.putIfAbsent(version, newFactory);
 
             if (lastFactory == null) {
@@ -175,15 +159,5 @@ final class MySQLHelper {
 
     private static String buildFilename(String version) {
         return String.format("mysql%s.dc.yml", version);
-    }
-
-    private static String buildVersion(int major, @Nullable Integer minor, @Nullable Integer patch) {
-        if (minor == null) {
-            return Integer.toString(major);
-        } else if (patch == null) {
-            return String.format("%d_%d", major, minor);
-        } else {
-            return String.format("%d_%d_%d", major, minor, patch);
-        }
     }
 }

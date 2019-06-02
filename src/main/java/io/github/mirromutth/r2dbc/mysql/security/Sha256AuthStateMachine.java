@@ -16,12 +16,12 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import reactor.util.annotation.NonNull;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
 
 /**
  * A MySQL authentication state machine which would use when authentication type is "sha256_password".

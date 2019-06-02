@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import reactor.util.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
 
 /**
  * A MySQL authentication state machine which would use when authentication type is "caching_sha2_password".

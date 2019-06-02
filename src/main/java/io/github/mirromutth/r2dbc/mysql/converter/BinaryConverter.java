@@ -17,8 +17,8 @@
 package io.github.mirromutth.r2dbc.mysql.converter;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.util.EmptyArrays;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 

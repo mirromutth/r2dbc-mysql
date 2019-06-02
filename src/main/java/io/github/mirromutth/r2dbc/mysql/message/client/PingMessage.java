@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -36,7 +36,7 @@ public final class PingMessage extends AbstractClientMessage implements Exchange
     }
 
     @Override
-    public boolean resetSequenceId() {
+    public boolean isSequenceIdReset() {
         return true;
     }
 

@@ -36,7 +36,7 @@ public interface DecodeContext {
         return CommandDecodeContext.INSTANCE;
     }
 
-    static DecodeContext textResult() {
-        return new TextResultDecodeContext();
+    static DecodeContext textResult(int totalColumns) {
+        return new TextResultDecodeContext(totalColumns);
     }
 }

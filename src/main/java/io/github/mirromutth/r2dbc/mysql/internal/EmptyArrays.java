@@ -14,21 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.json;
-
-import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
+package io.github.mirromutth.r2dbc.mysql.internal;
 
 /**
- * A factory for build a {@link MySqlJson}.
+ * Empty arrays, it is internal util, do NOT use it outer than {@code r2dbc-mysql}.
  */
-public interface MySqlJsonFactory {
+public final class EmptyArrays {
 
-    /**
-     * WARNING: should make sure the result of {@link MySqlJson} is thread-safety.
-     *
-     * @param version target MySQL server version.
-     * @return a thread-safety implementation of {@link MySqlJson}.
-     * @throws IllegalArgumentException not support that {@code version} or version is null
-     */
-    MySqlJson build(ServerVersion version) throws IllegalArgumentException;
+    public static final byte[] EMPTY_BYTES = {};
 }

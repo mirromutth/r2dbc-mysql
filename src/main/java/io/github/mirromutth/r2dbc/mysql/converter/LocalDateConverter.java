@@ -17,7 +17,8 @@
 package io.github.mirromutth.r2dbc.mysql.converter;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.LazyLoad;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
 import java.lang.reflect.Type;
@@ -27,6 +28,8 @@ import java.time.LocalDate;
  * Converter for {@link LocalDate}.
  */
 final class LocalDateConverter implements Converter<LocalDate, Class<LocalDate>> {
+
+    static final LazyLoad<LocalDate> ROUND = LazyLoad.of(() -> LocalDate.of(1, 1, 1));
 
     static final LocalDateConverter INSTANCE = new LocalDateConverter();
 
@@ -40,7 +43,7 @@ final class LocalDateConverter implements Converter<LocalDate, Class<LocalDate>>
 
         if (date == null) {
             buf.readerIndex(readerIndex); // Reset reader index for read a string for whole buffer.
-            return JavaTimeHelper.processZero(buf, session.getZeroDateOption(), Holder::getRound);
+            return JavaTimeHelper.processZero(buf, session.getZeroDateOption(), ROUND);
         }
 
         return date;
@@ -49,14 +52,5 @@ final class LocalDateConverter implements Converter<LocalDate, Class<LocalDate>>
     @Override
     public boolean canRead(ColumnType type, short definitions, int precision, int collationId, Type target, MySqlSession session) {
         return ColumnType.DATE == type && LocalDate.class == target;
-    }
-
-    static final class Holder {
-
-        private static final LocalDate ROUND = LocalDate.of(1, 1, 1);
-
-        static LocalDate getRound() {
-            return ROUND;
-        }
     }
 }

@@ -18,10 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.json.MySqlJsonFactory;
-import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
-import io.r2dbc.spi.Connection;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
 import reactor.core.publisher.Mono;
@@ -40,13 +37,10 @@ public class MySqlConnectionFactory implements ConnectionFactory {
 
     private final ConnectionProvider connectionProvider;
 
-    private final MySqlJsonFactory mySqlJsonFactory;
-
     private final ConnectProperties connectProperties;
 
-    public MySqlConnectionFactory(ConnectionProvider connectionProvider, MySqlJsonFactory mySqlJsonFactory, ConnectProperties connectProperties) {
+    public MySqlConnectionFactory(ConnectionProvider connectionProvider, ConnectProperties connectProperties) {
         this.connectionProvider = requireNonNull(connectionProvider, "connectionProvider must not be null");
-        this.mySqlJsonFactory = requireNonNull(mySqlJsonFactory, "mySqlJsonFactory must not be null");
         this.connectProperties = requireNonNull(connectProperties, "connectProperties must not be null");
     }
 
@@ -66,7 +60,7 @@ public class MySqlConnectionFactory implements ConnectionFactory {
 
             return Client.connect(connectionProvider, host, port, connectTimeout, session)
                 .flatMap(client -> client.initialize().thenReturn(client))
-                .map(client -> new MySqlConnection(client, session, mySqlJsonFactory));
+                .map(client -> new MySqlConnection(client, session));
         });
     }
 

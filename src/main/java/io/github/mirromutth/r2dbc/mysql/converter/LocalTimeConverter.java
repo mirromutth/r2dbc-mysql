@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.converter;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
 import java.lang.reflect.Type;

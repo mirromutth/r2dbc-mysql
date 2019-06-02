@@ -18,10 +18,9 @@ package io.github.mirromutth.r2dbc.mysql.converter;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
-import java.nio.charset.Charset;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -37,6 +36,7 @@ final class StringConverter extends AbstractClassedConverter<String> {
         ColumnType.STRING,
         ColumnType.VAR_STRING,
         ColumnType.ENUMERABLE,
+        ColumnType.JSON,
         ColumnType.SET
     );
 

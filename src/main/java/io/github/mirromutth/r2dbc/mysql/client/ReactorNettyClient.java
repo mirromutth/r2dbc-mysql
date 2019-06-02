@@ -18,8 +18,8 @@ package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
@@ -42,15 +42,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
+import reactor.netty.FutureMono;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -91,7 +90,30 @@ final class ReactorNettyClient implements Client {
             connection.addHandlerFirst(LoggingHandler.class.getSimpleName(), new LoggingHandler(ReactorNettyClient.class, LogLevel.TRACE));
         }
 
-        initReceive(connection);
+        connection.inbound().receiveObject()
+            .<ServerMessage>handle((msg, sink) -> {
+                if (msg instanceof ServerMessage) {
+                    if (msg instanceof ReferenceCounted) {
+                        ((ReferenceCounted) msg).retain();
+                    }
+                    sink.next((ServerMessage) msg);
+                } else {
+                    // ReferenceCounted will released by Netty.
+                    sink.error(new IllegalStateException("Impossible inbound type: " + msg.getClass()));
+                }
+            })
+            .as(it -> {
+                if (logger.isDebugEnabled()) {
+                    return it.doOnNext(LOG_RESPONSE);
+                }
+
+                return it;
+            })
+            .doOnError(throwable -> {
+                logger.error("Connection Error: {}", throwable.getMessage(), throwable);
+                connection.dispose();
+            })
+            .subscribe(this.responseProcessor::onNext, this.responseProcessor::onError, this.responseProcessor::onComplete);
     }
 
     @Override
@@ -137,7 +159,8 @@ final class ReactorNettyClient implements Client {
                                 logger.warn("Connection (id {}) fast authentication failed, auto-try to use full authentication", this.session.getConnectionId());
                             }
                         } else {
-                            close().doOnTerminate(() -> sink.error(new R2dbcPermissionDeniedException("Fast authentication failed and connection is not SSL, authentication all failed"))).subscribe();
+                            sink.error(new R2dbcPermissionDeniedException("Fast authentication failed and connection is not SSL, authentication all failed"));
+                            connection.channel().close();
                         }
                     } else if (logger.isDebugEnabled()) {
                         logger.debug("Connection (id {}) fast authentication success", this.session.getConnectionId());
@@ -163,9 +186,12 @@ final class ReactorNettyClient implements Client {
             }
 
             // Should force any query which is processing and make sure send exit message.
-            return send(Mono.just(ExitMessage.getInstance()))
-                .doOnSuccess(ignored -> connection.dispose())
-                .then(connection.onDispose());
+            return send(Mono.just(ExitMessage.getInstance())).as(it -> {
+                if (logger.isDebugEnabled()) {
+                    return it.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully, close the connection"));
+                }
+                return it;
+            }).then(Mono.defer(() -> FutureMono.from(connection.channel().close())));
         });
     }
 
@@ -185,35 +211,6 @@ final class ReactorNettyClient implements Client {
         }
 
         return connection.outbound().sendObject(requests).then();
-    }
-
-    private void initReceive(Connection connection) {
-        FluxSink<ServerMessage> responses = this.responseProcessor.sink();
-
-        connection.inbound().receiveObject()
-            .<ServerMessage>handle((msg, sink) -> {
-                if (msg instanceof ServerMessage) {
-                    if (msg instanceof ReferenceCounted) {
-                        ((ReferenceCounted) msg).retain();
-                    }
-                    sink.next((ServerMessage) msg);
-                } else {
-                    // ReferenceCounted will released by Netty.
-                    sink.error(new IllegalStateException("Impossible inbound type: " + msg.getClass()));
-                }
-            })
-            .as(it -> {
-                if (logger.isDebugEnabled()) {
-                    return it.doOnNext(LOG_RESPONSE);
-                }
-
-                return it;
-            })
-            .doOnError(throwable -> {
-                logger.error("Connection Error: {}", throwable.getMessage(), throwable);
-                connection.dispose();
-            })
-            .subscribe(responses::next, responses::error, responses::complete);
     }
 
     private void initSession(HandshakeV10Message message) {

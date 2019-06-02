@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
+package io.github.mirromutth.r2dbc.mysql;
 
 import io.netty.buffer.ByteBuf;
 

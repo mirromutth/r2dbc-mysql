@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
@@ -34,13 +34,13 @@ public final class CloseStatementMessage extends AbstractClientMessage {
     }
 
     @Override
-    public boolean resetSequenceId() {
+    public boolean isSequenceIdReset() {
         return false;
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
-        final ByteBuf buf = bufAllocator.buffer();
+    protected ByteBuf encodeSingle(ByteBufAllocator allocator, MySqlSession session) {
+        final ByteBuf buf = allocator.buffer();
 
         try {
             return buf.writeByte(STATEMENT_CLOSE_FLAG).writeIntLE(statementId);

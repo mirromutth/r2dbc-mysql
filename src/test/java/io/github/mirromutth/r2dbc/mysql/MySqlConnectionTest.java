@@ -17,8 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.json.MySqlJsonFactory;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
@@ -50,9 +49,7 @@ class MySqlConnectionTest {
 
     private final MySqlSession session = mock(MySqlSession.class);
 
-    private final MySqlJsonFactory jsonFactory = mock(MySqlJsonFactory.class);
-
-    private final MySqlConnection connection = new MySqlConnection(this.client, this.session, this.jsonFactory);
+    private final MySqlConnection connection = new MySqlConnection(this.client, session);
 
     private final ArgumentCaptor<ExchangeableMessage> captor = ArgumentCaptor.forClass(ExchangeableMessage.class);
 

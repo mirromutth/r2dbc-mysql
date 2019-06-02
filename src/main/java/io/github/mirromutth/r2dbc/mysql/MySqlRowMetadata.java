@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.core.LazyLoad;
+import io.github.mirromutth.r2dbc.mysql.internal.LazyLoad;
 import io.github.mirromutth.r2dbc.mysql.message.server.ColumnMetadataMessage;
 import io.r2dbc.spi.RowMetadata;
 

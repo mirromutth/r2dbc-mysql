@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.channel.ChannelOption;
@@ -38,7 +38,7 @@ public interface Client {
 
     /**
      * @param requests single or multi request(s) for get the server responses.
-     * @return The result should be truncated, otherwise it will NEVER be completed.
+     * @return The result should be completed by handler, otherwise it will NEVER be completed.
      */
     Flux<ServerMessage> exchange(Publisher<? extends ExchangeableMessage> requests);
 

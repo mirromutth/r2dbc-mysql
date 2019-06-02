@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 import io.github.mirromutth.r2dbc.mysql.constant.DataValues;
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.constant.Headers;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
@@ -97,77 +97,79 @@ public final class ServerMessageDecoder {
             return ErrorMessage.decode(buf);
         }
 
-        if (context.isInitialized()) {
-            if (context.isMetadata()) {
-                if (ColumnMetadataMessage.isLooksLike(buf)) {
-                    ColumnMetadataMessage columnMetadata = ColumnMetadataMessage.decode(buf, session.getCollation().getCharset());
-                    ColumnMetadataMessage[] messages = context.pushAndGetMetadata(columnMetadata);
+        if (context.isMetadata()) {
+            if (ColumnMetadataMessage.isLooksLike(buf)) {
+                ColumnMetadataMessage columnMetadata = ColumnMetadataMessage.decode(buf, session.getCollation().getCharset());
+                ColumnMetadataMessage[] messages = context.pushAndGetMetadata(columnMetadata);
 
-                    if (messages == null) {
-                        return null;
+                if (messages == null) {
+                    return null;
+                }
+
+                return new FictitiousRowMetadataMessage(messages);
+            }
+        } else {
+            if (header == DataValues.NULL_VALUE) {
+                // NULL_VALUE (0xFB) is not header of var integer and not header of OK (0x0 or 0xFE)
+                return RowMessage.decode(buf, context);
+            } else if (header == Headers.EOF) {
+                // 0xFE means it maybe EOF, or var int (64-bits) header.
+                int byteSize = buf.readableBytes();
+
+                if (byteSize > 1 + Long.BYTES) {
+                    // Maybe var int (64-bits), try to get 64-bits var integer.
+                    long minLength = buf.getLongLE(buf.readerIndex() + 1) + 1 + Long.BYTES;
+                    // Minimal length for first field with size by var integer encoded.
+                    if (buf.readableBytes() >= minLength) {
+                        // Huge message, SHOULD NOT be OK message.
+                        return RowMessage.decode(buf, context);
                     }
+                    // Otherwise it is not a row.
+                }
 
-                    return new FictitiousRowMetadataMessage(messages);
+                if (byteSize >= OkMessage.MIN_SIZE) {
+                    // Looks like a OK message.
+                    return OkMessage.decode(buf, session);
                 }
             } else {
-                if (header == DataValues.NULL_VALUE) {
-                    // NULL_VALUE (0xFB) is not header of var integer and not header of OK (0x0 or 0xFE)
-                    return RowMessage.decode(buf, context);
-                } else if (header == Headers.EOF) {
-                    // 0xFE means it maybe EOF, or var int (64-bits) header.
-                    int byteSize = buf.readableBytes();
-
-                    if (byteSize > 1 + Long.BYTES) {
-                        // Maybe var int (64-bits), try to get 64-bits var integer.
-                        long minLength = buf.getLongLE(buf.readerIndex() + 1) + 1 + Long.BYTES;
-                        // Minimal length for first field with size by var integer encoded.
-                        if (buf.readableBytes() >= minLength) {
-                            // Huge message, SHOULD NOT be OK message.
-                            return RowMessage.decode(buf, context);
-                        }
-                        // Otherwise it is not a row.
-                    }
-
-                    if (byteSize >= OkMessage.MIN_SIZE) {
-                        // Looks like a OK message.
-                        return OkMessage.decode(buf, session);
-                    }
-                } else {
-                    // If header is 0, SHOULD NOT be OK message.
-                    // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
-                    return RowMessage.decode(buf, context);
-                }
+                // If header is 0, SHOULD NOT be OK message.
+                // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
+                return RowMessage.decode(buf, context);
             }
-        } else if (CodecUtils.checkNextVarInt(buf) == 0) {
-            // Maybe a OK message starting with 0xFE?
-            // At least for now, this is unlikely to happen.
-            // MySQL server send OK message starting with 0xFE only if statement is SELECT,
-            // but MySQL server always send a number of total columns in the first part of SELECT statement result.
-            // Can NOT support a number of total columns that exceed the maximum value of int32.
-            context.initialize((int) CodecUtils.readVarInt(buf));
-            return null;
         }
 
-        return decodeCommandMessage(buf, session);
+        if ((header == Headers.OK || header == Headers.EOF) && buf.readableBytes() >= OkMessage.MIN_SIZE) {
+            return OkMessage.decode(buf, session);
+        }
+
+        throw new R2dbcNonTransientResourceException("unknown message header " + header + " on text result phase");
     }
 
     private static ServerMessage decodeCommandMessage(ByteBuf buf, MySqlSession session) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
-            case Headers.OK:
-                return OkMessage.decode(buf, session);
-            case Headers.EOF: // maybe OK, maybe EOF (unsupported EOF on command phase)
-                if (buf.readableBytes() >= OkMessage.MIN_SIZE) {
-                    return OkMessage.decode(buf, session);
-                }
-
-                break;
             case Headers.ERROR:
                 return ErrorMessage.decode(buf);
+            case Headers.OK:
+            case Headers.EOF:
+                // maybe OK, maybe column count (unsupported EOF on command phase)
+                if (buf.readableBytes() >= OkMessage.MIN_SIZE) {
+                    // MySQL has hard limit of 4096 columns per-table,
+                    // so if readable bytes upper than 7, it means if it is column count,
+                    // column count is already upper than (1 << 24) - 1 = 16777215, it is impossible.
+                    // So it must be OK message, not be column count.
+                    return OkMessage.decode(buf, session);
+                }
+        }
+
+        if (CodecUtils.checkNextVarInt(buf) == 0) {
+            // EOF message must be 5-bytes, it will never be looks like a var integer.
+            // It looks like has only a var integer, should be column count.
+            return ColumnCountMessage.decode(buf);
         }
 
         // Always deprecate EOF
-        throw new R2dbcNonTransientResourceException("Unknown message header " + header + " on command phase");
+        throw new R2dbcNonTransientResourceException("unknown message header " + header + " on command phase");
     }
 
     private static ServerMessage decodeConnectionMessage(ByteBuf buf, MySqlSession session) {
@@ -193,7 +195,7 @@ public final class ServerMessageDecoder {
                 return AuthChangeMessage.decode(buf);
         }
 
-        throw new R2dbcPermissionDeniedException("Unknown message header " + header + " on connection phase");
+        throw new R2dbcPermissionDeniedException("unknown message header " + header + " on connection phase");
     }
 
     @Nullable

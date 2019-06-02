@@ -16,10 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
+import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
@@ -35,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -56,7 +55,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     private final ServerMessageDecoder decoder = new ServerMessageDecoder();
 
-    private final AtomicReference<DecodeContext> decodeContext = new AtomicReference<>(DecodeContext.connection());
+    private volatile DecodeContext decodeContext = DecodeContext.connection();
 
     MessageDuplexCodec(MySqlSession session, AtomicBoolean closing) {
         this.session = requireNonNull(session, "session must not be null");
@@ -66,11 +65,12 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof ByteBuf) {
-            ServerMessage message = decoder.decode((ByteBuf) msg, sequenceIdProvider, session, this.decodeContext.get());
+            ServerMessage message = decoder.decode((ByteBuf) msg, sequenceIdProvider, session, this.decodeContext);
 
             if (message != null) {
-                doOnRead(message);
-                super.channelRead(ctx, message);
+                if (readIntercept(message)) {
+                    super.channelRead(ctx, message);
+                }
             }
         } else {
             if (logger.isWarnEnabled()) {
@@ -84,13 +84,9 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         if (msg instanceof ClientMessage) {
             ClientMessage message = (ClientMessage) msg;
-            doOnWrite(message);
 
-            if (promise == null) {
-                message.writeAndFlush(ctx, this.sequenceIdProvider, this.session);
-            } else {
-                message.writeAndFlush(ctx, this.sequenceIdProvider, this.session);
-            }
+            message.encode(ctx.alloc(), this.session)
+                .subscribe(new WriteSubscriber(ctx, this.sequenceIdProvider, message.isSequenceIdReset(), promise));
         } else {
             if (logger.isWarnEnabled()) {
                 logger.warn("Unknown message type {} on writing", msg.getClass());
@@ -112,17 +108,12 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         ctx.fireChannelInactive();
     }
 
-    private void doOnWrite(ClientMessage msg) {
-        if (msg instanceof SimpleQueryMessage) {
-            DecodeContext context = DecodeContext.textResult();
-            this.decodeContext.set(context);
-            if (logger.isDebugEnabled()) {
-                logger.debug("Decode context change to {}", context);
-            }
+    private boolean readIntercept(ServerMessage msg) {
+        if (msg instanceof ColumnCountMessage) {
+            setDecodeContext(DecodeContext.textResult(((ColumnCountMessage) msg).getTotalColumns()));
+            return false;
         }
-    }
 
-    private void doOnRead(ServerMessage msg) {
         if (msg instanceof OkMessage) {
             OkMessage message = (OkMessage) msg;
             int warnings = message.getWarnings();
@@ -133,13 +124,15 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
                 logger.warn("MySQL server has {} warnings", warnings);
             }
 
-            DecodeContext context = DecodeContext.command();
-            this.decodeContext.set(context);
-            if (logger.isDebugEnabled()) {
-                logger.debug("Decode context change to {}", context);
-            }
+            setDecodeContext(DecodeContext.command());
         } else if (msg instanceof ErrorMessage) {
-            handleErrorMessage((ErrorMessage) msg);
+            ErrorMessage message = (ErrorMessage) msg;
+
+            if (logger.isWarnEnabled()) {
+                logger.warn("Error: error code {}, sql state: {}, message: {}", message.getErrorCode(), message.getSqlState(), message.getErrorMessage());
+            }
+
+            setDecodeContext(DecodeContext.command());
         } else if (msg instanceof EofMessage) {
             EofMessage message = (EofMessage) msg;
             int warnings = message.getWarnings();
@@ -150,29 +143,14 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
                 logger.warn("MySQL server has {} warnings", warnings);
             }
         }
+
+        return true;
     }
 
-    private void handleErrorMessage(ErrorMessage message) {
-        boolean warning = logger.isWarnEnabled();
-
-        if (warning) {
-            logger.warn("Error: error code {}, sql state: {}, message: {}", message.getErrorCode(), message.getSqlState(), message.getErrorMessage());
-        }
-
-        DecodeContext currentContext = this.decodeContext.get();
-        DecodeContext nextContext = currentContext.onError();
-
-        // Use native equals for CAS, not Object.equals
-        if (currentContext != nextContext) {
-            if (this.decodeContext.compareAndSet(currentContext, nextContext)) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Decode context change to {}", nextContext);
-                }
-            } else {
-                if (warning) {
-                    logger.warn("Change decode context failed when error message come");
-                }
-            }
+    private void setDecodeContext(DecodeContext context) {
+        this.decodeContext = context;
+        if (logger.isDebugEnabled()) {
+            logger.debug("Decode context change to {}", context);
         }
     }
 }

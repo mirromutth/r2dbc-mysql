@@ -16,14 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import reactor.util.annotation.NonNull;
 
 import java.nio.charset.StandardCharsets;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
 
 /**
  * A MySQL authentication state machine which would use when authentication type is "mysql_native_password".

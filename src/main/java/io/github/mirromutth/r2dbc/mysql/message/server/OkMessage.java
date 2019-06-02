@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 

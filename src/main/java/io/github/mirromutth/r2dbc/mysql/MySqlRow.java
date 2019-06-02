@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.AbstractReferenceCounted;
 import io.r2dbc.spi.Row;
@@ -41,10 +42,13 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
 
     private final Converters converters;
 
-    MySqlRow(ByteBuf[] fields, MySqlRowMetadata rowMetadata, Converters converters) {
+    private final MySqlSession session;
+
+    MySqlRow(ByteBuf[] fields, MySqlRowMetadata rowMetadata, Converters converters, MySqlSession session) {
         this.fields = requireNonNull(fields, "fields must not be null");
         this.rowMetadata = requireNonNull(rowMetadata, "rowMetadata must not be null");
         this.converters = requireNonNull(converters, "converters must not be null");
+        this.session = requireNonNull(session, "session must not be null");
     }
 
     @Override
@@ -72,10 +76,6 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
         return this;
     }
 
-    MySqlRowMetadata getRowMetadata() {
-        return rowMetadata;
-    }
-
     @Nullable
     private <T> T getByType(Object identifier, Type type) {
         requireNonNull(type, "type must not be null");
@@ -89,7 +89,8 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
             columnMetadata.getDefinitions(),
             columnMetadata.getCollationId(),
             columnMetadata.getPrecision(),
-            chooseTarget(columnMetadata, type)
+            chooseTarget(columnMetadata, type),
+            session
         );
     }
 

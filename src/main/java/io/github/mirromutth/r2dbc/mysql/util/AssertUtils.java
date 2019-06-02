@@ -20,8 +20,6 @@ import reactor.util.annotation.Nullable;
 
 /**
  * Assertion library for {@code r2dbc-mysql} implementation.
- * <p>
- * P.S. should use a {@code AssertUtils} in package {@code r2dbc-common} after the package appears.
  */
 public final class AssertUtils {
 
@@ -50,17 +48,34 @@ public final class AssertUtils {
      * Checks that a specified {@link String} is not {@code null} or empty and
      * throws a customized {@link IllegalArgumentException} if it is.
      *
-     * @param string  the {@link String} to check for nullity or empty
+     * @param text    the {@link String} to check for nullity or empty
      * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
      * @return {@code string} if not {@code null} or empty
-     * @throws IllegalArgumentException if {@code string} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code text} is {@code null} or empty
      */
-    public static String requireNotEmpty(@Nullable String string, String message) {
-        if (string == null || string.isEmpty()) {
+    public static String requireNotEmpty(@Nullable String text, String message) {
+        if (text == null || text.isEmpty()) {
             throw new IllegalArgumentException(message);
         }
 
-        return string;
+        return text;
+    }
+
+    /**
+     * Checks that a specified {@link String} is not {@code null} or empty or backticks included and
+     * throws a customized {@link IllegalArgumentException} if it is.
+     *
+     * @param name    the {@link String} to check for nullity or empty or backticks included
+     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
+     * @return {@code name} if not {@code null} or empty or backticks included
+     * @throws IllegalArgumentException if {@code name} is {@code null} or empty or backticks included
+     */
+    public static String requireValidName(@Nullable String name, String message) {
+        if (name == null || name.isEmpty() || name.indexOf('`') != -1) {
+            throw new IllegalArgumentException(message);
+        }
+
+        return name;
     }
 
     /**

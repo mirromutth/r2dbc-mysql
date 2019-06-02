@@ -16,12 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.channel.ChannelHandlerContext;
-import reactor.core.publisher.Flux;
+import org.reactivestreams.Publisher;
 
 /**
  * A message sent from a MySQL client to a MySQL server.
@@ -29,11 +27,15 @@ import reactor.core.publisher.Flux;
 public interface ClientMessage {
 
     /**
-     * Write and flush encoded {@link ByteBuf} to netty channel.
-     *
-     * @param ctx                connection's channel context
-     * @param sequenceIdProvider message sequence id provider
-     * @param session            current MySQL session
+     * @return {@code true} if sequence id should be reset before {@code this} message encode.
      */
-    void writeAndFlush(ChannelHandlerContext ctx, SequenceIdProvider sequenceIdProvider, MySqlSession session);
+    boolean isSequenceIdReset();
+
+    /**
+     * Encode a message into a {@link ByteBuf} data buffer without envelope header.
+     *
+     * @param allocator the {@link ByteBufAllocator} to use to get a {@link ByteBuf} data buffer to write into.
+     * @param session   current MySQL session
+     */
+    Publisher<ByteBuf> encode(ByteBufAllocator allocator, MySqlSession session);
 }

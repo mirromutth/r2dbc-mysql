@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
+package io.github.mirromutth.r2dbc.mysql.internal;
 
+import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import io.github.mirromutth.r2dbc.mysql.security.AuthStateMachine;
 import reactor.util.annotation.Nullable;
 
-import java.time.ZoneId;
-
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
+ * It is internal util, do NOT use it outer than {@code r2dbc-mysql}, try using
+ * {@code ConnectProperties} to control session data and client behavior.
+ * <p>
  * MySQL sessions.
  */
 public final class MySqlSession {

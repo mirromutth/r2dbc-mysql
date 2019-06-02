@@ -103,11 +103,15 @@ public final class CodecUtils {
     }
 
     /**
+     * Note: it will change {@code buf} readerIndex.
+     *
      * @param buf a readable buffer include a var integer.
      * @return A var integer read from buffer.
      */
     public static long readVarInt(ByteBuf buf) {
-        short firstByte = requireNonNull(buf, "buf must not be null").readUnsignedByte();
+        requireNonNull(buf, "buf must not be null");
+
+        short firstByte = buf.readUnsignedByte();
 
         if (firstByte < VAR_INT_2_BYTE_CODE) {
             return firstByte;
@@ -117,6 +121,29 @@ public final class CodecUtils {
             return buf.readUnsignedMediumLE();
         } else {
             return buf.readLongLE();
+        }
+    }
+
+    /**
+     * Note: it will NOT change {@code buf} readerIndex.
+     *
+     * @param buf a readable buffer include a var integer.
+     * @return A var integer read from buffer.
+     */
+    public static long getVarInt(ByteBuf buf) {
+        requireNonNull(buf, "buf must not be null");
+
+        int readerIndex = buf.readerIndex();
+        short firstByte = buf.getUnsignedByte(readerIndex);
+
+        if (firstByte < VAR_INT_2_BYTE_CODE) {
+            return firstByte;
+        } else if (firstByte == VAR_INT_2_BYTE_CODE) {
+            return buf.getUnsignedShortLE(readerIndex + 1);
+        } else if (firstByte == VAR_INT_3_BYTE_CODE) {
+            return buf.getUnsignedMediumLE(readerIndex + 1);
+        } else {
+            return buf.getLongLE(readerIndex + 1);
         }
     }
 

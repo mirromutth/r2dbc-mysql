@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
+import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requirePositive;

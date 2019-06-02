@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.message.header;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A implementation of {@link SequenceIdProvider} based on atomic.
+ * An implementation of {@link SequenceIdProvider} based on atomic.
  */
 final class AtomicSequenceIdProvider implements SequenceIdProvider {
 

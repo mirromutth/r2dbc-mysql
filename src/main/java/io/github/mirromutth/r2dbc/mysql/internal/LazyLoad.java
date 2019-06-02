@@ -14,24 +14,20 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.core;
-
-import reactor.util.annotation.NonNull;
+package io.github.mirromutth.r2dbc.mysql.internal;
 
 import java.util.function.Supplier;
 
 /**
+ * It is internal util, do NOT use it outer than {@code r2dbc-mysql}.
+ * <p>
  * Lazy loading and caching values ​​for multiple acquisitions,
  * implementations ensure that the value is only loaded once.
- *
- * Can NOT return a null
  * <p>
- * Implementations are thread safety.
+ * Can NOT return a null, implementations are thread safety.
  */
-@FunctionalInterface
 public interface LazyLoad<T> extends Supplier<T> {
 
-    @NonNull
     @Override
     T get();
 

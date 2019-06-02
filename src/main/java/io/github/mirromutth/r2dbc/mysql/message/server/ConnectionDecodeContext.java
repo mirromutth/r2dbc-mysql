@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 /**
- * A implementation of {@link DecodeContext} in connection phase.
+ * An implementation of {@link DecodeContext} in connection phase.
  */
 final class ConnectionDecodeContext implements DecodeContext {
 

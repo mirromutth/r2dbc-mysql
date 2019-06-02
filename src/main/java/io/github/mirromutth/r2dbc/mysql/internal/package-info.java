@@ -15,10 +15,10 @@
  */
 
 /**
- * MySQL client session data structure.
+ * MySQL client internal common data structure and logic.
  */
 
 @NonNullApi
-package io.github.mirromutth.r2dbc.mysql.core;
+package io.github.mirromutth.r2dbc.mysql.internal;
 
 import reactor.util.annotation.NonNullApi;

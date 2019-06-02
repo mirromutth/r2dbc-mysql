@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import io.github.mirromutth.r2dbc.mysql.core.ServerVersion;
+import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Test cases for {@link CharCollation}
+ * Unit tests for {@link CharCollation}.
  */
 class CharCollationTest {
 

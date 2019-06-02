@@ -19,9 +19,6 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 import reactor.util.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNegative;
 
 /**
  * A text result decode context.
@@ -30,7 +27,11 @@ final class TextResultDecodeContext implements DecodeContext {
 
     private final AtomicInteger columns = new AtomicInteger(0);
 
-    private final AtomicReference<ColumnMetadataMessage[]> metadataMessages = new AtomicReference<>();
+    private final ColumnMetadataMessage[] metadataMessages;
+
+    TextResultDecodeContext(int totalColumns) {
+        this.metadataMessages = new ColumnMetadataMessage[totalColumns];
+    }
 
     @Override
     public DecodeContext onError() {
@@ -42,30 +43,12 @@ final class TextResultDecodeContext implements DecodeContext {
         return "DecodeContext-TextResult";
     }
 
-    boolean isInitialized() {
-        return metadataMessages.get() != null;
-    }
-
     boolean isMetadata() {
-        ColumnMetadataMessage[] messages = metadataMessages.get();
-        return messages != null && columns.get() < messages.length;
-    }
-
-    void initialize(int columns) {
-        requireNonNegative(columns, "columns must not be negative");
-
-        if (isInitialized()) {
-            throw new IllegalStateException("columns' metadata can only initialize once");
-        }
-
-        if (!this.metadataMessages.compareAndSet(null, new ColumnMetadataMessage[columns])) {
-            throw new IllegalStateException("columns' metadata can only initialize once");
-        }
+        return columns.get() < metadataMessages.length;
     }
 
     @Nullable
     ColumnMetadataMessage[] pushAndGetMetadata(ColumnMetadataMessage columnMetadata) {
-        ColumnMetadataMessage[] metadataMessages = requireInitialized();
         int index = columns.getAndIncrement();
         int size = metadataMessages.length;
 
@@ -83,14 +66,6 @@ final class TextResultDecodeContext implements DecodeContext {
     }
 
     int getTotalColumns() {
-        return requireInitialized().length;
-    }
-
-    private ColumnMetadataMessage[] requireInitialized() {
-        ColumnMetadataMessage[] messages = this.metadataMessages.get();
-        if (messages == null) {
-            throw new IllegalStateException("columns' metadata has not been initialized");
-        }
-        return messages;
+        return metadataMessages.length;
     }
 }

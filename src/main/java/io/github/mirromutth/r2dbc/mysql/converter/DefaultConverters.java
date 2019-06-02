@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.converter;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnType;
-import io.github.mirromutth.r2dbc.mysql.core.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import reactor.util.annotation.Nullable;
@@ -31,12 +31,38 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class DefaultConverters implements Converters {
 
-    private final MySqlSession session;
+    static final DefaultConverters TEXT = new DefaultConverters(
+        StringConverter.INSTANCE,
+
+        // should before LongConverter because of Number.class
+        BigIntegerConverter.INSTANCE,
+
+        ByteConverter.INSTANCE,
+        ShortConverter.INSTANCE,
+        IntegerConverter.INSTANCE,
+        LongConverter.INSTANCE,
+
+        FloatConverter.INSTANCE,
+        DoubleConverter.INSTANCE,
+        BigDecimalConverter.INSTANCE,
+
+        BitsConverter.INSTANCE,
+
+        LocalDateTimeConverter.INSTANCE,
+        LocalDateConverter.INSTANCE,
+        LocalTimeConverter.INSTANCE,
+        YearConverter.INSTANCE,
+
+        EnumConverter.INSTANCE,
+        SetConverter.INSTANCE,
+
+        // binary converter must be last element.
+        BinaryConverter.INSTANCE
+    );
 
     private final Converter<?, ?>[] converters;
 
-    DefaultConverters(MySqlSession session, Converter<?, ?>... converters) {
-        this.session = requireNonNull(session, "session must not be null");
+    private DefaultConverters(Converter<?, ?>... converters) {
         this.converters = requireNonNull(converters, "converters must not be null");
     }
 
@@ -45,7 +71,7 @@ final class DefaultConverters implements Converters {
      * it come from {@code MySqlRow} which will release this buffer.
      */
     @Override
-    public <T> T read(@Nullable ByteBuf buf, @Nullable ColumnType columnType, short definitions, int precision, int collationId, Type targetType) {
+    public <T> T read(@Nullable ByteBuf buf, @Nullable ColumnType columnType, short definitions, int precision, int collationId, Type targetType, MySqlSession session) {
         if (buf == null) {
             return null;
         }
