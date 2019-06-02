@@ -174,6 +174,7 @@ final class ReactorNettyClient implements Client {
                     sink.error(new R2dbcPermissionDeniedException("unknown message type '" + message.getClass().getSimpleName() + "' in authentication phase"));
                 }
             })
+            .doOnTerminate(this.session::clearAuthentication)
             .then();
     }
 
@@ -231,7 +232,6 @@ final class ReactorNettyClient implements Client {
         this.session.setAuthStateMachine(authStateMachine);
         this.session.setSalt(message.getSalt());
         this.session.setServerCapabilities(serverCapabilities);
-        this.session.setServerStatuses(message.getServerStatuses());
 
         int clientCapabilities = calculateClientCapabilities(serverCapabilities, this.session);
 

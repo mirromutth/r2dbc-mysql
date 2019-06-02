@@ -16,12 +16,9 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
-import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
-import reactor.netty.resources.ConnectionProvider;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -51,20 +48,20 @@ final class MySQLHelper {
         if (nowFactory == null) {
             logger.info("Version {} connection factory not found, try build a new factory", version);
 
-            ConnectProperties newProperties;
+            MySqlConnectConfiguration newConfig;
 
             try {
-                newProperties = buildProperties(version);
+                newConfig = buildConfig(version);
             } catch (IOException e) {
-                throw new IllegalStateException("Read properties failed", e);
+                throw new IllegalStateException("Read configuration failed", e);
             }
 
-            MySqlConnectionFactory newFactory = new MySqlConnectionFactory(ConnectionProvider.newConnection(), newProperties);
+            MySqlConnectionFactory newFactory = new MySqlConnectionFactory(newConfig);
             MySqlConnectionFactory lastFactory = CONNECTION_FACTORY_MAP.putIfAbsent(version, newFactory);
 
             if (lastFactory == null) {
                 logger.info("Version {} connection factory build success, try init", version);
-                initMySQL(newProperties);
+                initMySQL(newConfig);
                 return newFactory;
             } else {
                 logger.info("Version {} connection factory already build by other thread", version);
@@ -76,16 +73,16 @@ final class MySQLHelper {
         }
     }
 
-    private static void initMySQL(ConnectProperties properties) {
+    private static void initMySQL(MySqlConnectConfiguration configuration) {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("JDBC driver not found", e);
         }
 
-        String url = String.format("jdbc:mysql://%s:%d", properties.getHost(), properties.getPort());
+        String url = String.format("jdbc:mysql://%s:%d", configuration.getHost(), configuration.getPort());
 
-        try (Connection conn = DriverManager.getConnection(url, properties.getUsername(), properties.getPassword())) {
+        try (Connection conn = DriverManager.getConnection(url, configuration.getUsername(), configuration.getPassword())) {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("CREATE DATABASE IF NOT EXISTS `r2dbc`");
             }
@@ -94,7 +91,7 @@ final class MySQLHelper {
         }
     }
 
-    private static ConnectProperties buildProperties(String version) throws IOException {
+    private static MySqlConnectConfiguration buildConfig(String version) throws IOException {
         String filename = buildFilename(version);
         InputStream input = MySQLHelper.class.getClassLoader().getResourceAsStream(filename);
 
@@ -108,16 +105,14 @@ final class MySQLHelper {
             String password = getRootPassword(getMap(service, "environment"));
             int port = Integer.parseInt(getPorts(service).get(0).split(":")[0]);
 
-            return new ConnectProperties(
-                "127.0.0.1",
-                port,
-                Duration.ofSeconds(5),
-                false,
-                ZeroDateOption.USE_NULL,
-                "root",
-                password,
-                "r2dbc"
-            );
+            return MySqlConnectConfiguration.builder()
+                .host("127.0.0.1")
+                .port(port)
+                .connectTimeout(Duration.ofSeconds(5))
+                .username("root")
+                .password(password)
+                .database("r2dbc")
+                .build();
         }
     }
 

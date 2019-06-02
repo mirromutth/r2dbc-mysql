@@ -22,7 +22,7 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  * <p>
  * This option indicates special handling when MySQL server returning "zero date".
  */
-public enum ZeroDateOption {
+public enum ZeroDate {
 
     /**
      * Just throw a exception when MySQL server return "zero date".

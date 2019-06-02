@@ -44,7 +44,7 @@ final class LocalDateTimeConverter implements Converter<LocalDateTime, Class<Loc
 
         if (dateTime == null) {
             buf.readerIndex(readerIndex); // Reset reader index for read a string for whole buffer.
-            return JavaTimeHelper.processZero(buf, session.getZeroDateOption(), ROUND);
+            return JavaTimeHelper.processZero(buf, session.getZeroDate(), ROUND);
         }
 
         return dateTime;

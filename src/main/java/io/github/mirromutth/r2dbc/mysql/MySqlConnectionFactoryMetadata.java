@@ -21,13 +21,15 @@ import io.r2dbc.spi.ConnectionFactoryMetadata;
 /**
  * An implementation of {@link ConnectionFactoryMetadata} for a MySQL Server database.
  */
-enum MySqlConnectionFactoryMetadata implements ConnectionFactoryMetadata {
+final class MySqlConnectionFactoryMetadata implements ConnectionFactoryMetadata {
 
-    INSTANCE;
+    static final MySqlConnectionFactoryMetadata INSTANCE = new MySqlConnectionFactoryMetadata();
+
+    private MySqlConnectionFactoryMetadata() {
+    }
 
     @Override
     public String getName() {
-        // The name is pending because this is an unofficial implementation.
-        return "MySQL Server";
+        return "MySQL";
     }
 }

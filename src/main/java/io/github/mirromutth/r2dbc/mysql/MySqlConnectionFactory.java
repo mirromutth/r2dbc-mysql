@@ -17,12 +17,9 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.config.ConnectProperties;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
-import io.r2dbc.spi.ConnectionFactoryOptions;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 
@@ -32,35 +29,30 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link ConnectionFactory} for creating connections to a MySQL database.
- * <p>
- * Note: Can NOT be {@code final} because this class maybe used by IoC/AoP frameworks.
  */
-public class MySqlConnectionFactory implements ConnectionFactory {
+public final class MySqlConnectionFactory implements ConnectionFactory {
 
-    private final ConnectionProvider connectionProvider;
+    private final MySqlConnectConfiguration configuration;
 
-    private final ConnectProperties connectProperties;
-
-    public MySqlConnectionFactory(ConnectionProvider connectionProvider, ConnectProperties connectProperties) {
-        this.connectionProvider = requireNonNull(connectionProvider, "connectionProvider must not be null");
-        this.connectProperties = requireNonNull(connectProperties, "connectProperties must not be null");
+    public MySqlConnectionFactory(MySqlConnectConfiguration configuration) {
+        this.configuration = requireNonNull(configuration, "configuration must not be null");
     }
 
     @Override
     public Mono<MySqlConnection> create() {
         return Mono.defer(() -> {
             MySqlSession session = new MySqlSession(
-                connectProperties.isUseSsl(),
-                connectProperties.getDatabase(),
-                connectProperties.getZeroDateOption(),
-                connectProperties.getUsername(),
-                connectProperties.getPassword()
+                configuration.isUseSsl(),
+                configuration.getDatabase(),
+                configuration.getZeroDate(),
+                configuration.getUsername(),
+                configuration.getPassword()
             );
-            String host = connectProperties.getHost();
-            int port = connectProperties.getPort();
-            Duration connectTimeout = connectProperties.getTcpConnectTimeout();
+            String host = configuration.getHost();
+            int port = configuration.getPort();
+            Duration connectTimeout = configuration.getConnectTimeout();
 
-            return Client.connect(connectionProvider, host, port, connectTimeout, session)
+            return Client.connect(ConnectionProvider.newConnection(), host, port, connectTimeout, session)
                 .flatMap(client -> client.initialize().thenReturn(client))
                 .map(client -> new MySqlConnection(client, session));
         });

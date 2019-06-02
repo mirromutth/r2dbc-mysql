@@ -21,27 +21,53 @@ Next steps:
 
 ## Usage
 
-### Programmatic
+### Discovery
 
 ```java
-ConnectProperties options = new ConnectProperties(
-    "127.0.0.1", // host
-    3306, // port
-    Duration.ofSeconds(3), // tcp connect timeout, optional, null means no timeout
-    // SSL now not support for now, so it should be false for now
-    false, // always use SSL, In the special authentication mode of the MySQL server, it may be forced to use SSL even this value is false
-    ZeroDateOption.USE_NULL, // MySQL server maybe return "0000-00-00 00:00:00", This option indicates special handling when MySQL server returning "zero date".
-    "root", // username
-    "******", // some password, null means has no password
-    "r2dbc" // database which connect
-);
-ConnectionFactory connectionFactory = new MySqlConnectionFactory(ConnectionProvider.newConnection(), options);
+ConnectionFactoryOptions options = builder()
+    .option(DRIVER, "mysql")
+    .option(HOST, "127.0.0.1")
+    .option(USER, "root")
+    .option(PORT, 3306)  // optional, default 3306
+    .option(CONNECT_TIMEOUT, Duration.ofSeconds(3)) // optional, default null, null means no timeout
+    .option(SSL, false) // optional, default is disabled. SSL not support, it should be disable for now
+    .option(Option.valueOf("zeroDate"), "use_null") // optional, default "use_null".
+    .option(PASSWORD, "some-password-in-here") // optional, default null, null means has no password
+    .option(DATABASE, "r2dbc") // optional, default null, null means not specifying the database
+    .build();
+ConnectionFactory connectionFactory = ConnectionFactories.get(options);
 
 // Alternative: Creating a Mono using Project Reactor
 Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ```
 
-The above usage is only temporary, the driver may suggest using `Builder` in future versions.
+The `zeroDate` indicates special handling when MySQL server returning "zero date" (i.e. `0000-00-00 00:00:00`),
+it has three option and ignore case:
+
+- `"exception"`: Just throw a exception when MySQL server return "zero date".
+- `"use_null"`: Use `null` when MySQL server return "zero date".
+- `"use_round"`: **NOT** RECOMMENDED, only for compatibility. Use "round" date (i.e. `0001-01-01 00:00:00`) when MySQL server return "zero date".
+
+### Programmatic
+
+```java
+MySqlConnectConfiguration configuration = MySqlConnectConfiguration.builder()
+    .host("127.0.0.1")
+    .port(3306) // optional, default 3306
+    .connectTimeout(Duration.ofSeconds(3)) // optional, default null, null means no timeout
+    .disableSsl() // optional, default is disabled. SSL not support, it should be disable for now
+    .zeroDate(ZeroDate.USE_NULL) // optional, default USE_NULL
+    .username("root")
+    .password("some password in here") // optional, default null, null means has no password
+    .database("r2dbc") // optional, default null, null means not specifying the database
+    .build();
+ConnectionFactory connectionFactory = new MySqlConnectionFactory(configuration);
+
+// Alternative: Creating a Mono using Project Reactor
+Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
+```
+
+About more information of `zeroDate`, see **Usage** -> **Discovery**, and should use `enum` in programmatic not like discovery.
 
 ### Simple statement
 

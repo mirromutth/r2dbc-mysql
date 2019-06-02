@@ -43,7 +43,7 @@ final class LocalDateConverter implements Converter<LocalDate, Class<LocalDate>>
 
         if (date == null) {
             buf.readerIndex(readerIndex); // Reset reader index for read a string for whole buffer.
-            return JavaTimeHelper.processZero(buf, session.getZeroDateOption(), ROUND);
+            return JavaTimeHelper.processZero(buf, session.getZeroDate(), ROUND);
         }
 
         return date;

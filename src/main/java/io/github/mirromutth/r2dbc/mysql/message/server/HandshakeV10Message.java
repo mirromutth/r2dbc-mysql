@@ -72,7 +72,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
     }
 
     static HandshakeV10Message decode(ByteBuf buf, HandshakeHeader handshakeHeader) {
-        Builder builder = new Builder().withHandshakeHeader(handshakeHeader);
+        Builder builder = new Builder().handshakeHeader(handshakeHeader);
         CompositeByteBuf salt = buf.alloc().compositeBuffer(2);
 
         try {
@@ -87,14 +87,14 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
                 capabilities.addComponent(true, buf.readRetainedSlice(2));
 
                 // New protocol with 16 bytes to describe server character, but MySQL give lower 8-bits only.
-                builder.withCollationLow8Bits(buf.readByte())
-                    .withServerStatuses(buf.readShortLE());
+                builder.collationLow8Bits(buf.readByte())
+                    .serverStatuses(buf.readShortLE());
 
                 // No need release `capabilities` second part, it will release with `capabilities`
                 serverCapabilities = capabilities.addComponent(true, buf.readRetainedSlice(2))
                     .readIntLE();
 
-                builder.withServerCapabilities(serverCapabilities);
+                builder.serverCapabilities(serverCapabilities);
             } finally {
                 capabilities.release();
             }
@@ -131,20 +131,20 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
         buf.skipBytes(1);
 
         // No need release salt second part, it will release with `salt`
-        builder.withSalt(ByteBufUtil.getBytes(salt.addComponent(true, saltSecondPart.retain())));
+        builder.salt(ByteBufUtil.getBytes(salt.addComponent(true, saltSecondPart.retain())));
 
         if (isPluginAuth) {
             if (CodecUtils.hasNextCString(buf)) {
-                builder.withAuthType(CodecUtils.readCString(buf, charset));
+                builder.authType(CodecUtils.readCString(buf, charset));
             } else {
                 // It is MySQL bug 59453, auth type native name has no terminal character in
                 // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
                 // And MySQL only support "mysql_native_password" in those versions,
                 // maybe just use constant AuthTypes.MYSQL_NATIVE_PASSWORD without read?
-                builder.withAuthType(buf.toString(charset));
+                builder.authType(buf.toString(charset));
             }
         } else {
-            builder.withAuthType(DEFAULT_AUTH_TYPE);
+            builder.authType(DEFAULT_AUTH_TYPE);
         }
 
         return builder;
@@ -246,29 +246,29 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
             );
         }
 
-        void withAuthType(String authType) {
+        void authType(String authType) {
             this.authType = authType;
         }
 
-        Builder withCollationLow8Bits(byte collationLow8Bits) {
+        Builder collationLow8Bits(byte collationLow8Bits) {
             this.collationLow8Bits = collationLow8Bits;
             return this;
         }
 
-        Builder withHandshakeHeader(HandshakeHeader handshakeHeader) {
+        Builder handshakeHeader(HandshakeHeader handshakeHeader) {
             this.handshakeHeader = handshakeHeader;
             return this;
         }
 
-        void withSalt(byte[] salt) {
+        void salt(byte[] salt) {
             this.salt = salt;
         }
 
-        void withServerCapabilities(int serverCapabilities) {
+        void serverCapabilities(int serverCapabilities) {
             this.serverCapabilities = serverCapabilities;
         }
 
-        void withServerStatuses(short serverStatuses) {
+        void serverStatuses(short serverStatuses) {
             this.serverStatuses = serverStatuses;
         }
     }

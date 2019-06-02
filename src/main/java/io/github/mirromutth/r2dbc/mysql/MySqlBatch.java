@@ -81,8 +81,7 @@ public final class MySqlBatch implements Batch {
     @Override
     public String toString() {
         return "MySqlBatch{" +
-            "client=" + client +
-            ", statements=<hidden>" +
+            "count=" + count +
             '}';
     }
 }

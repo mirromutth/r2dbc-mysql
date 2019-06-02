@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.converter;
 
 import io.github.mirromutth.r2dbc.mysql.constant.SqlStates;
-import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
+import io.github.mirromutth.r2dbc.mysql.constant.ZeroDate;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import reactor.util.annotation.Nullable;
@@ -90,14 +90,14 @@ final class JavaTimeHelper {
     }
 
     @Nullable
-    static <T extends Temporal> T processZero(ByteBuf buf, ZeroDateOption option, Supplier<T> round) {
+    static <T extends Temporal> T processZero(ByteBuf buf, ZeroDate option, Supplier<T> round) {
         switch (option) {
             case USE_NULL:
                 return null;
             case USE_ROUND:
                 return round.get();
         }
-        String message = String.format("Value '%s' invalid and ZeroDateOption is %s", buf.toString(StandardCharsets.US_ASCII), ZeroDateOption.EXCEPTION.name());
+        String message = String.format("Value '%s' invalid and ZeroDate is %s", buf.toString(StandardCharsets.US_ASCII), ZeroDate.EXCEPTION.name());
         throw new R2dbcNonTransientResourceException(message, SqlStates.ILLEGAL_ARGUMENT);
     }
 }

@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.internal;
 
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
+import io.github.mirromutth.r2dbc.mysql.constant.ZeroDate;
 import io.github.mirromutth.r2dbc.mysql.security.AuthStateMachine;
 import reactor.util.annotation.Nullable;
 
@@ -26,7 +26,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * It is internal util, do NOT use it outer than {@code r2dbc-mysql}, try using
- * {@code ConnectProperties} to control session data and client behavior.
+ * {@code MySqlConnectConfiguration} to control session data and client behavior.
  * <p>
  * MySQL sessions.
  */
@@ -44,11 +44,9 @@ public final class MySqlSession {
 
     private final String database;
 
-    private final ZeroDateOption zeroDateOption;
+    private final ZeroDate zeroDate;
 
     private volatile int clientCapabilities = 0;
-
-    private volatile int serverStatuses = 0;
 
     /**
      * It would be null after connection phase completed.
@@ -77,13 +75,13 @@ public final class MySqlSession {
     public MySqlSession(
         boolean useSsl,
         String database,
-        ZeroDateOption zeroDateOption,
+        ZeroDate zeroDate,
         String username,
         @Nullable String password
     ) {
         this.useSsl = useSsl;
         this.database = requireNonNull(database, "database must not be null");
-        this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
+        this.zeroDate = requireNonNull(zeroDate, "zeroDate must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
     }
@@ -132,8 +130,8 @@ public final class MySqlSession {
         return database;
     }
 
-    public ZeroDateOption getZeroDateOption() {
-        return zeroDateOption;
+    public ZeroDate getZeroDate() {
+        return zeroDate;
     }
 
     public int getClientCapabilities() {
@@ -142,14 +140,6 @@ public final class MySqlSession {
 
     public void setClientCapabilities(int clientCapabilities) {
         this.clientCapabilities = clientCapabilities;
-    }
-
-    public int getServerStatuses() {
-        return serverStatuses;
-    }
-
-    public void setServerStatuses(int serverStatuses) {
-        this.serverStatuses = serverStatuses;
     }
 
     @Nullable

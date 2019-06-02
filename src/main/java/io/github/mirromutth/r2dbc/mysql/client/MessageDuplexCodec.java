@@ -118,8 +118,6 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             OkMessage message = (OkMessage) msg;
             int warnings = message.getWarnings();
 
-            this.session.setServerStatuses(message.getServerStatuses());
-
             if (warnings > 0 && logger.isWarnEnabled()) {
                 logger.warn("MySQL server has {} warnings", warnings);
             }
@@ -136,8 +134,6 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         } else if (msg instanceof EofMessage) {
             EofMessage message = (EofMessage) msg;
             int warnings = message.getWarnings();
-
-            this.session.setServerStatuses(message.getServerStatuses());
 
             if (warnings > 0 && logger.isWarnEnabled()) {
                 logger.warn("MySQL server has {} warnings", warnings);
