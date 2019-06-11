@@ -19,10 +19,10 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNegative;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * A message that is start envelope for {@code SELECT} query result,
+ * A message that is start envelope for {@literal SELECT} query result,
  * {@link #totalColumns}  how many columns will be returned for the result.
  */
 public final class ColumnCountMessage implements ServerMessage {
@@ -30,7 +30,9 @@ public final class ColumnCountMessage implements ServerMessage {
     private final int totalColumns;
 
     private ColumnCountMessage(int totalColumns) {
-        this.totalColumns = requireNonNegative(totalColumns, "totalColumns must not be negative");
+        require(totalColumns > 0, "totalColumns must be a positive integer");
+
+        this.totalColumns = totalColumns;
     }
 
     public int getTotalColumns() {

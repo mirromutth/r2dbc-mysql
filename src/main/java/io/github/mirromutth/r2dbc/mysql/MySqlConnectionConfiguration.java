@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.constant.ZeroDate;
+import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
@@ -40,9 +40,9 @@ public final class MySqlConnectionConfiguration {
     @Nullable
     private final Duration connectTimeout;
 
-    private final boolean useSsl;
+    private final boolean ssl;
 
-    private final ZeroDate zeroDate;
+    private final ZeroDateOption zeroDateOption;
 
     private final String username;
 
@@ -54,8 +54,8 @@ public final class MySqlConnectionConfiguration {
         String host,
         int port,
         @Nullable Duration connectTimeout,
-        boolean useSsl,
-        ZeroDate zeroDate,
+        boolean ssl,
+        ZeroDateOption zeroDateOption,
         String username,
         @Nullable CharSequence password,
         @Nullable String database
@@ -63,8 +63,8 @@ public final class MySqlConnectionConfiguration {
         this.host = requireNonNull(host, "host must not be null");
         this.port = port;
         this.connectTimeout = connectTimeout;
-        this.useSsl = useSsl;
-        this.zeroDate = requireNonNull(zeroDate, "zeroDate must not be null");
+        this.ssl = ssl;
+        this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
 
@@ -92,12 +92,12 @@ public final class MySqlConnectionConfiguration {
         return connectTimeout;
     }
 
-    boolean isUseSsl() {
-        return useSsl;
+    boolean isSsl() {
+        return ssl;
     }
 
-    ZeroDate getZeroDate() {
-        return zeroDate;
+    ZeroDateOption getZeroDateOption() {
+        return zeroDateOption;
     }
 
     String getUsername() {
@@ -118,10 +118,10 @@ public final class MySqlConnectionConfiguration {
             "host='" + host + '\'' +
             ", port=" + port +
             ", connectTimeout=" + connectTimeout +
-            ", useSsl=" + useSsl +
-            ", zeroDate=" + zeroDate +
-            ", username=<hidden>" +
-            ", password=<hidden>" +
+            ", ssl=" + (ssl ? "enabled" : "disabled") +
+            ", zeroDateOption=" + zeroDateOption +
+            ", username='" + username + '\'' +
+            ", password=REDACTED" +
             ", database='" + database + '\'' +
             '}';
     }
@@ -141,17 +141,17 @@ public final class MySqlConnectionConfiguration {
         @Nullable
         private Duration connectTimeout;
 
-        private boolean useSsl;
+        private boolean ssl;
 
         private String username;
 
-        private ZeroDate zeroDate = ZeroDate.USE_NULL;
+        private ZeroDateOption zeroDateOption = ZeroDateOption.USE_NULL;
 
         private Builder() {
         }
 
         public MySqlConnectionConfiguration build() {
-            return new MySqlConnectionConfiguration(host, port, connectTimeout, useSsl, zeroDate, username, password, database);
+            return new MySqlConnectionConfiguration(host, port, connectTimeout, ssl, zeroDateOption, username, password, database);
         }
 
         public Builder database(@Nullable String database) {
@@ -180,12 +180,12 @@ public final class MySqlConnectionConfiguration {
         }
 
         public Builder enableSsl() {
-            this.useSsl = true;
+            this.ssl = true;
             return this;
         }
 
         public Builder disableSsl() {
-            this.useSsl = false;
+            this.ssl = false;
             return this;
         }
 
@@ -194,8 +194,8 @@ public final class MySqlConnectionConfiguration {
             return this;
         }
 
-        public Builder zeroDate(ZeroDate zeroDate) {
-            this.zeroDate = requireNonNull(zeroDate, "zeroDate must not be null");
+        public Builder zeroDateOption(ZeroDateOption zeroDate) {
+            this.zeroDateOption = requireNonNull(zeroDate, "zeroDateOption must not be null");
             return this;
         }
     }

@@ -21,13 +21,6 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
  */
 public interface DecodeContext {
 
-    /**
-     * @return next {@link DecodeContext} when error happened.
-     */
-    default DecodeContext onError() {
-        return this;
-    }
-
     static DecodeContext connection() {
         return ConnectionDecodeContext.INSTANCE;
     }
@@ -36,7 +29,15 @@ public interface DecodeContext {
         return CommandDecodeContext.INSTANCE;
     }
 
-    static DecodeContext textResult(int totalColumns) {
-        return new TextResultDecodeContext(totalColumns);
+    static DecodeContext waitPrepare() {
+        return WaitPrepareDecodeContext.INSTANCE;
+    }
+
+    static DecodeContext result(boolean binary, int totalColumns) {
+        return new ResultDecodeContext(binary, totalColumns);
+    }
+
+    static DecodeContext preparedMetadata(int totalColumns, int totalParameters) {
+        return new PreparedMetadataDecodeContext(totalColumns, totalParameters);
     }
 }

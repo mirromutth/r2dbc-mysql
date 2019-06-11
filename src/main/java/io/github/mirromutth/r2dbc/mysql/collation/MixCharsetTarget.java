@@ -16,9 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import io.github.mirromutth.r2dbc.mysql.ServerVersion;
+import reactor.util.annotation.Nullable;
 
 import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -29,32 +30,29 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class MixCharsetTarget extends AbstractCharsetTarget {
 
+    @Nullable
     private final Charset fallbackCharset;
 
     private final CharsetTarget[] targets;
 
-    MixCharsetTarget(int byteSize, Charset fallbackCharset, CharsetTarget... targets) {
-        this(byteSize, ServerVersion.NONE, fallbackCharset, targets);
+    MixCharsetTarget(int byteSize, CharsetTarget... targets) {
+        this(byteSize, null, targets);
     }
 
-    private MixCharsetTarget(int byteSize, ServerVersion minVersion, Charset fallbackCharset, CharsetTarget... targets) {
-        super(maxByteSize(requireNonNull(targets, "targets must not be null"), byteSize), minVersion);
+    MixCharsetTarget(int byteSize, @Nullable Charset fallbackCharset, CharsetTarget... targets) {
+        super(maxByteSize(requireNonNull(targets, "targets must not be null"), byteSize));
 
-        this.fallbackCharset = requireNonNull(fallbackCharset, "fallbackCharset must not be null");
+        this.fallbackCharset = fallbackCharset;
         this.targets = targets;
     }
 
     @Override
     public Charset getCharset() {
-        for (CharsetTarget target : targets) {
-            try {
-                return target.getCharset();
-            } catch (IllegalArgumentException ignored) {
-                // Charset not support, just ignore
-            }
+        if (fallbackCharset == null) {
+            return getCharsetFallible();
+        } else {
+            return getCharsetNonFail(fallbackCharset);
         }
-
-        return fallbackCharset;
     }
 
     @Override
@@ -62,17 +60,28 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
         return false;
     }
 
-    private static int maxByteSize(CharsetTarget[] targets, int defaultByteSize) {
-        int result = defaultByteSize;
+    private Charset getCharsetFallible() {
+        IllegalArgumentException err = null;
 
-        for (CharsetTarget target : targets) {
-            int byteSize = target.getByteSize();
-            if (byteSize > result) {
-                result = byteSize;
+        for (CharsetTarget target : this.targets) {
+            try {
+                return target.getCharset();
+            } catch (IllegalArgumentException e) {
+                // UnsupportedCharsetException is subclass of IllegalArgumentException
+                if (err == null) {
+                    err = e;
+                } else {
+                    e.addSuppressed(err);
+                    err = e;
+                }
             }
         }
 
-        return result;
+        if (err == null) {
+            throw new UnsupportedCharsetException("Charset target not found in MixCharsetTarget");
+        } else {
+            throw err;
+        }
     }
 
     @Override
@@ -89,29 +98,17 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
 
         MixCharsetTarget that = (MixCharsetTarget) o;
 
-        if (!fallbackCharset.equals(that.fallbackCharset)) {
+        if (!Objects.equals(fallbackCharset, that.fallbackCharset)) {
             return false;
         }
-
-        int size = targets.length;
-
-        if (size != that.targets.length) {
-            return false;
-        }
-
-        for (int i = 0; i < size; ++i) {
-            if (!Objects.equals(targets[i], that.targets[i])) {
-                return false;
-            }
-        }
-
-        return true;
+        // Probably incorrect - comparing Object[] arrays with Arrays.equals
+        return Arrays.equals(targets, that.targets);
     }
 
     @Override
     public int hashCode() {
         int result = super.hashCode();
-        result = 31 * result + fallbackCharset.hashCode();
+        result = 31 * result + (fallbackCharset != null ? fallbackCharset.hashCode() : 0);
         result = 31 * result + Arrays.hashCode(targets);
         return result;
     }
@@ -122,7 +119,32 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
             "fallbackCharset=" + fallbackCharset +
             ", targets=" + Arrays.toString(targets) +
             ", byteSize=" + byteSize +
-            ", minVersion=" + minVersion +
             '}';
+    }
+
+    private Charset getCharsetNonFail(Charset fallback) {
+        for (CharsetTarget target : this.targets) {
+            try {
+                return target.getCharset();
+            } catch (IllegalArgumentException ignored) {
+                // UnsupportedCharsetException is subclass of IllegalArgumentException
+                // Charset not support, just ignore
+            }
+        }
+
+        return fallback;
+    }
+
+    private static int maxByteSize(CharsetTarget[] targets, int defaultByteSize) {
+        int result = defaultByteSize;
+
+        for (CharsetTarget target : targets) {
+            int byteSize = target.getByteSize();
+            if (byteSize > result) {
+                result = byteSize;
+            }
+        }
+
+        return result;
     }
 }

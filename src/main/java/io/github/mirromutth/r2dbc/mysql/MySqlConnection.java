@@ -17,18 +17,22 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SynchronousSink;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireValidName;
 
@@ -37,9 +41,19 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireValidName
  */
 public final class MySqlConnection implements Connection {
 
+    private static final BiConsumer<ServerMessage, SynchronousSink<Void>> ONLY_OK_ERROR = (message, sink) -> {
+        if (message instanceof ErrorMessage) {
+            sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
+        } else if (message instanceof OkMessage) {
+            sink.complete();
+        } else {
+            ReferenceCountUtil.safeRelease(message);
+        }
+    };
+
     private final Client client;
 
-    private final Converters textConverters;
+    private final Codecs codecs;
 
     private final MySqlSession session;
 
@@ -48,7 +62,7 @@ public final class MySqlConnection implements Connection {
     MySqlConnection(Client client, MySqlSession session) {
         this.client = requireNonNull(client, "client must not be null");
         this.session = requireNonNull(session, "session must not be null");
-        this.textConverters = Converters.text();
+        this.codecs = Codecs.getInstance();
     }
 
     @Override
@@ -67,15 +81,7 @@ public final class MySqlConnection implements Connection {
     }
 
     public Mono<Void> ping() {
-        return this.client.exchange(Mono.just(PingMessage.getInstance())).handle((message, sink) -> {
-            if (message instanceof ErrorMessage) {
-                sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
-            } else if (message instanceof OkMessage) {
-                sink.complete();
-            } else {
-                ReferenceCountUtil.release(message);
-            }
-        }).then();
+        return this.client.exchange(Mono.just(PingMessage.getInstance())).handle(ONLY_OK_ERROR).then();
     }
 
     @Override
@@ -90,12 +96,13 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public MySqlBatch createBatch() {
-        return new MySqlBatch(client, textConverters, session);
+        return new MySqlBatch(client, codecs, session);
     }
 
     @Override
     public Mono<Void> createSavepoint(String name) {
         requireValidName(name, "Savepoint name must not be empty and not contain backticks");
+
         return executeVoid(String.format("SAVEPOINT `%s`", name));
     }
 
@@ -106,13 +113,19 @@ public final class MySqlConnection implements Connection {
      */
     @Override
     public MySqlStatement createStatement(String sql) {
-        requireNonNull(sql, "sql must not be null");
-        return new SimpleQueryMySqlStatement(client, textConverters, session, sql);
+        require(ParsedQuery.isOneStatement(sql), "sql must contain only one statement");
+
+        if (ParsedQuery.hasParameter(sql)) {
+            return new ParametrizedMySqlStatement(client, codecs, session, sql);
+        }
+
+        return new SimpleQueryMySqlStatement(client, codecs, session, sql);
     }
 
     @Override
     public Mono<Void> releaseSavepoint(String name) {
         requireValidName(name, "Savepoint name must not be empty and not contain backticks");
+
         return executeVoid(String.format("RELEASE SAVEPOINT `%s`", name));
     }
 
@@ -124,22 +137,18 @@ public final class MySqlConnection implements Connection {
     @Override
     public Mono<Void> rollbackTransactionToSavepoint(String name) {
         requireValidName(name, "Savepoint name must not be empty and not contain backticks");
+
         return executeVoid(String.format("ROLLBACK TO SAVEPOINT `%s`", name));
     }
 
     @Override
     public Mono<Void> setTransactionIsolationLevel(IsolationLevel isolationLevel) {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
+
         return executeVoid(String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()));
     }
 
     private Mono<Void> executeVoid(String sql) {
-        return SimpleQueryFlow.execute(client, sql).handle((message, sink) -> {
-            if (message instanceof OkMessage) {
-                sink.complete();
-            } else {
-                ReferenceCountUtil.release(message);
-            }
-        }).then();
+        return SimpleQueryFlow.execute(client, sql).handle(ONLY_OK_ERROR).then();
     }
 }

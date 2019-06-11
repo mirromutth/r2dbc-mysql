@@ -42,9 +42,9 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
     public Mono<MySqlConnection> create() {
         return Mono.defer(() -> {
             MySqlSession session = new MySqlSession(
-                configuration.isUseSsl(),
+                configuration.isSsl(),
                 configuration.getDatabase(),
-                configuration.getZeroDate(),
+                configuration.getZeroDateOption(),
                 configuration.getUsername(),
                 configuration.getPassword()
             );

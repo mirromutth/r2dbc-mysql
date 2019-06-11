@@ -17,10 +17,9 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import reactor.core.publisher.Mono;
-import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -31,41 +30,41 @@ final class SimpleQueryMySqlStatement extends MySqlStatementSupport {
 
     private final Client client;
 
-    private final Converters converters;
+    private final Codecs codecs;
 
     private final MySqlSession session;
 
     private final String sql;
 
-    SimpleQueryMySqlStatement(Client client, Converters converters, MySqlSession session, String sql) {
+    SimpleQueryMySqlStatement(Client client, Codecs codecs, MySqlSession session, String sql) {
         this.client = requireNonNull(client, "client must not be null");
-        this.converters = requireNonNull(converters, "converters must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.session = requireNonNull(session, "session must not be null");
         this.sql = requireNonNull(sql, "sql must not be null");
     }
 
     @Override
-    public SimpleQueryMySqlStatement add() {
+    public MySqlStatementSupport add() {
         return this;
     }
 
     @Override
-    public SimpleQueryMySqlStatement bind(@Nullable Object identifier, @Nullable Object value) {
+    public MySqlStatementSupport bind(Object identifier, Object value) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple query statement");
     }
 
     @Override
-    public SimpleQueryMySqlStatement bind(int index, @Nullable Object value) {
+    public MySqlStatementSupport bind(int index, Object value) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple query statement");
     }
 
     @Override
-    public SimpleQueryMySqlStatement bindNull(@Nullable Object identifier, @Nullable Class<?> type) {
+    public MySqlStatementSupport bindNull(Object identifier, Class<?> type) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple query statement");
     }
 
     @Override
-    public SimpleQueryMySqlStatement bindNull(int index, @Nullable Class<?> type) {
+    public MySqlStatementSupport bindNull(int index, Class<?> type) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple query statement");
     }
 
@@ -75,10 +74,10 @@ final class SimpleQueryMySqlStatement extends MySqlStatementSupport {
             String key = this.generatedKeyName;
 
             if (key == null) {
-                return new SimpleMySqlResult(converters, session, SimpleQueryFlow.execute(this.client, this.sql));
+                return new SimpleMySqlResult(codecs, session, SimpleQueryFlow.execute(this.client, this.sql));
             } else {
                 String sql = String.format("%s;SELECT LAST_INSERT_ID() AS `%s`", this.sql, key);
-                return new InsertBundledMySqlResult(converters, session, SimpleQueryFlow.execute(this.client, sql));
+                return new InsertBundledMySqlResult(codecs, session, SimpleQueryFlow.execute(this.client, sql));
             }
         });
     }

@@ -33,7 +33,7 @@ final class EnvelopeSlicer extends LengthFieldBasedFrameDecoder {
     EnvelopeSlicer() {
         super(
             ByteOrder.LITTLE_ENDIAN,
-            Envelopes.MAX_PART_SIZE + Envelopes.PART_HEADER_SIZE,
+            Envelopes.MAX_ENVELOPE_SIZE + Envelopes.PART_HEADER_SIZE,
             0,
             Envelopes.SIZE_FIELD_SIZE,
             1, // byte size of sequence Id field

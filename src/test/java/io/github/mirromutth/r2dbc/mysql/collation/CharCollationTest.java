@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for {@link CharCollation}.
@@ -38,13 +37,5 @@ class CharCollationTest {
         assertNotNull(CharCollation.fromId(246, version)); // utf-8 more 4-bytes unicode version 5.20 case insensitivity
         assertNotNull(CharCollation.fromId(255, version)); // utf-8 more 4-bytes unicode version 9.00 accent insensitivity and case insensitivity
         assertNotEquals(CharCollation.fromId(33, version), CharCollation.fromId(224, version));
-    }
-
-    @Test
-    void defaultCollation() {
-        assertNotNull(CharCollation.defaultCollation(version));
-        assertNotNull(CharCollation.defaultCollation(ServerVersion.create(99, 0, 0)));
-        assertTrue(CharCollation.defaultCollation(version).getByteSize() > 1);
-        assertTrue(CharCollation.defaultCollation(ServerVersion.create(99, 0, 0)).getByteSize() > 1);
     }
 }

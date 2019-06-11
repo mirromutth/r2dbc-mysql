@@ -21,9 +21,6 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  */
 public final class ServerStatuses {
 
-    private ServerStatuses() {
-    }
-
     public static final int IN_TRANS = 1;
     public static final int AUTO_COMMIT = 2;
     public static final int MORE_RESULTS_EXISTS = 8;
@@ -38,4 +35,7 @@ public final class ServerStatuses {
     public static final int PS_OUT_PARAMS = 4096;
     public static final int IN_TRANS_READONLY = 8192;
     public static final int SESSION_STATE_CHANGED = 16384;
+
+    private ServerStatuses() {
+    }
 }

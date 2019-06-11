@@ -30,7 +30,7 @@ abstract class MySqlStatementSupport implements MySqlStatement {
     String generatedKeyName = null;
 
     @Override
-    public MySqlStatement returnGeneratedValues(String... columns) {
+    public final MySqlStatementSupport returnGeneratedValues(String... columns) {
         requireNonNull(columns, "columns must not be null");
 
         if (columns.length == 1) {

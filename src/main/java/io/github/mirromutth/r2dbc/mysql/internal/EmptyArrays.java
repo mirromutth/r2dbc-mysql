@@ -17,9 +17,11 @@
 package io.github.mirromutth.r2dbc.mysql.internal;
 
 /**
- * Empty arrays, it is internal util, do NOT use it outer than {@code r2dbc-mysql}.
+ * Empty arrays, it is internal util, do NOT use it outer than {@literal r2dbc-mysql}.
  */
 public final class EmptyArrays {
 
     public static final byte[] EMPTY_BYTES = {};
+
+    public static final String[] EMPTY_STRINGS = {};
 }

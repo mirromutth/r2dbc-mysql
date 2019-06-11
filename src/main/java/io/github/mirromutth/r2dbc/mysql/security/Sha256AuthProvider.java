@@ -16,11 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import reactor.util.annotation.NonNull;
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "sha256_password".
@@ -39,26 +38,15 @@ final class Sha256AuthProvider implements MySqlAuthProvider {
         return true;
     }
 
-    @NonNull
     @Override
-    public byte[] fastAuthPhase(MySqlSession session) {
-        requireNonNull(session, "session must not be null");
-
-        CharSequence password = session.getPassword();
-
-        if (password == null || password.length() <= 0) {
-            return EMPTY_BYTES;
-        }
-
+    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         // TODO: implement fast authentication
-
         return EMPTY_BYTES;
     }
 
     @Override
-    public byte[] fullAuthPhase(MySqlSession session) {
+    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
         // TODO: implement full authentication
-
         return EMPTY_BYTES;
     }
 

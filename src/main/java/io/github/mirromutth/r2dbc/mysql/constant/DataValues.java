@@ -21,8 +21,8 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  */
 public final class DataValues {
 
+    public static final short NULL_VALUE = 0xFB;
+
     private DataValues() {
     }
-
-    public static final short NULL_VALUE = 0xFB;
 }

@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
@@ -25,6 +25,7 @@ import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.annotation.Nullable;
 
 import java.util.function.BiFunction;
 
@@ -39,36 +40,61 @@ final class SimpleMySqlResult extends MySqlResult {
 
     private final Flux<ServerMessage> messages;
 
+    @Nullable
+    private final Runnable onComplete;
+
     /**
-     * @param messages should has complete signal.
+     * @param messages should without complete signal.
      */
-    SimpleMySqlResult(Converters converters, MySqlSession session, Flux<ServerMessage> messages) {
-        super(converters, session);
+    SimpleMySqlResult(Codecs codecs, MySqlSession session, Flux<ServerMessage> messages) {
+        this(codecs, session, messages, null);
+    }
+
+    /**
+     * @param messages should without complete signal.
+     * @param onComplete the callback to call on {@code Subscriber.onComplete}
+     */
+    SimpleMySqlResult(Codecs codecs, MySqlSession session, Flux<ServerMessage> messages, @Nullable Runnable onComplete) {
+        super(codecs, session);
+
         this.messages = requireNonNull(messages, "messages must not be null");
+        this.onComplete = onComplete;
     }
 
     @Override
     public Mono<Long> getRowsAffected() {
-        return messages.<Long>handle((message, sink) -> {
+        Flux<Long> rowsAffected = messages.handle((message, sink) -> {
             if (message instanceof OkMessage) {
                 sink.next(((OkMessage) message).getAffectedRows());
                 sink.complete();
             } else {
-                ReferenceCountUtil.release(message);
+                ReferenceCountUtil.safeRelease(message);
             }
-        }).reduce(SUM);
+        });
+
+        if (onComplete == null) {
+            return rowsAffected.reduce(SUM);
+        }
+
+        return rowsAffected.doOnComplete(onComplete).reduce(SUM);
     }
 
     @Override
     public <T> Flux<T> map(BiFunction<Row, RowMetadata, ? extends T> f) {
         requireNonNull(f, "mapping function must not be null");
 
-        return messages.handle((message, sink) -> {
+        Flux<T> result = messages.handle((message, sink) -> {
             if (message instanceof OkMessage) {
                 sink.complete();
             } else {
-                handleNoComplete(message, f, sink);
+                handleNoComplete(message, sink, f);
             }
         });
+
+        if (onComplete == null) {
+            return result;
+        }
+
+        return result.doOnComplete(onComplete);
     }
 }

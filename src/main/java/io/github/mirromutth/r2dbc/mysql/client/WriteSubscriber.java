@@ -23,9 +23,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
+import reactor.util.annotation.Nullable;
 
 /**
- * An implementations of {@link CoreSubscriber} for {@link ChannelHandlerContext} write
+ * An implementation of {@link CoreSubscriber} for {@link ChannelHandlerContext} write
  * and flush subscribed by streaming {@link ByteBuf}s.
  * <p>
  * It ensures {@link #promise} will be complete.
@@ -40,11 +41,15 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     private final ChannelPromise promise;
 
-    WriteSubscriber(ChannelHandlerContext ctx, SequenceIdProvider provider, boolean reset, ChannelPromise promise) {
+    @Nullable
+    private final Runnable onComplete;
+
+    WriteSubscriber(ChannelHandlerContext ctx, SequenceIdProvider provider, boolean reset, ChannelPromise promise, @Nullable Runnable onComplete) {
         this.ctx = ctx;
         this.provider = provider;
         this.reset = reset;
         this.promise = promise;
+        this.onComplete = onComplete;
     }
 
     @Override
@@ -72,6 +77,10 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     @Override
     public void onComplete() {
+        if (onComplete != null) {
+            onComplete.run();
+        }
+
         promise.setSuccess();
     }
 }

@@ -16,7 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import reactor.util.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -35,18 +36,15 @@ final class AuthHelper {
     private AuthHelper() {
     }
 
-    static byte[] defaultFastAuthPhase(String algorithm, MySqlSession session, boolean leftSalt) {
-        CharSequence password = session.getPassword();
-
+    static byte[] defaultFastAuthPhase(String algorithm, boolean leftSalt, @Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
             return EMPTY_BYTES;
         }
 
-        byte[] salt = session.getSalt();
-
         requireNonNull(salt, "salt must not be null when password exists");
+        requireNonNull(collation, "collation must not be null when password exists");
 
-        Charset charset = session.getCollation().getCharset();
+        Charset charset = collation.getCharset();
         MessageDigest digest = loadDigest(algorithm);
 
         byte[] oneRound = digestBuffer(digest, charset.encode(CharBuffer.wrap(password)));

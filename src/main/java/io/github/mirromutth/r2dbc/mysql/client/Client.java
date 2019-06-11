@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
+import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.channel.ChannelOption;
 import org.reactivestreams.Publisher;
@@ -37,10 +38,12 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 public interface Client {
 
     /**
-     * @param requests single or multi request(s) for get the server responses.
+     * @param requests one or multi request(s) for get the server responses.
      * @return The result should be completed by handler, otherwise it will NEVER be completed.
      */
     Flux<ServerMessage> exchange(Publisher<? extends ExchangeableMessage> requests);
+
+    Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages);
 
     Mono<Void> initialize();
 

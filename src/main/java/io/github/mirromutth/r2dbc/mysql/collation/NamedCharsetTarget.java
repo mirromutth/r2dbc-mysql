@@ -16,26 +16,20 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import io.github.mirromutth.r2dbc.mysql.ServerVersion;
-
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A {@link CharsetTarget} that has charset name only.
+ * An implementation of {@link CharsetTarget} that has charset name only.
  */
 final class NamedCharsetTarget extends AbstractCharsetTarget {
 
     private final String charsetName;
 
     NamedCharsetTarget(int byteSize, String charsetName) {
-        this(byteSize, charsetName, ServerVersion.NONE);
-    }
-
-    private NamedCharsetTarget(int byteSize, String charsetName, ServerVersion minVersion) {
-        super(byteSize, minVersion);
+        super(byteSize);
 
         this.charsetName = requireNonNull(charsetName, "charsetName must not be null");
     }
@@ -79,7 +73,6 @@ final class NamedCharsetTarget extends AbstractCharsetTarget {
         return "NamedCharsetTarget{" +
             "charsetName='" + charsetName + '\'' +
             ", byteSize=" + byteSize +
-            ", minVersion=" + minVersion +
             '}';
     }
 }

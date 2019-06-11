@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.r2dbc.spi.Batch;
@@ -25,6 +25,7 @@ import reactor.core.publisher.Flux;
 
 import java.util.StringJoiner;
 
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -34,17 +35,17 @@ public final class MySqlBatch implements Batch {
 
     private final Client client;
 
-    private final Converters converters;
+    private final Codecs codecs;
 
     private final MySqlSession session;
 
-    private int count = 0;
-
     private final StringJoiner statements = new StringJoiner(";");
 
-    MySqlBatch(Client client, Converters converters, MySqlSession session) {
+    private int count = 0;
+
+    MySqlBatch(Client client, Codecs codecs, MySqlSession session) {
         this.client = requireNonNull(client, "client must not be null");
-        this.converters = requireNonNull(converters, "converters must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.session = requireNonNull(session, "session must not be null");
     }
 
@@ -55,7 +56,7 @@ public final class MySqlBatch implements Batch {
      */
     @Override
     public MySqlBatch add(String sql) {
-        requireNonNull(sql, "SQL must not be null");
+        require(ParsedQuery.isOneStatement(sql), "sql must contain only one statement");
 
         ++this.count;
         this.statements.add(sql);
@@ -74,7 +75,7 @@ public final class MySqlBatch implements Batch {
             return SimpleQueryFlow.execute(this.client, this.statements.toString())
                 .windowUntil(message -> message instanceof OkMessage)
                 .take(count)
-                .map(messages -> new SimpleMySqlResult(this.converters, this.session, messages));
+                .map(messages -> new SimpleMySqlResult(this.codecs, this.session, messages));
         });
     }
 

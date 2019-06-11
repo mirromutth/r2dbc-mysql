@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
@@ -84,34 +85,33 @@ class SimpleQueryDateTimeTest {
 
             insertSecondStmt.returnGeneratedValues("second_id");
 
-            return connection.createStatement(TABLE_DDL)
-                .execute()
+            return Mono.from(connection.createStatement(TABLE_DDL).execute())
                 .flatMap(MySqlResult::getRowsAffected)
-                .then(insertFirstStmt.execute())
+                .then(Mono.from(insertFirstStmt.execute()))
                 .flatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(u -> assertEquals(u.intValue(), 1))
-                .then(insertSecondStmt.execute())
+                .then(Mono.from(insertSecondStmt.execute()))
                 .flatMap(result -> result.getRowsAffected()
                     .doOnNext(u -> assertEquals(u.intValue(), 1))
                     .thenMany(result.map((row, metadata) -> row.get("second_id", long.class)))
                     .doOnNext(id -> assertEquals(id.intValue(), FIRST_ID + 1))
                     .then())
-                .then(selectStmt.execute())
+                .then(Mono.from(selectStmt.execute()))
                 .flatMapMany(Entity::from)
                 .collectList()
                 .doOnNext(entities -> assertEquals(entities.size(), 2))
                 .doOnNext(entities -> assertEquals(entities.get(0), toEntity(FIRST_ID, firstBirth)))
                 .doOnNext(entities -> assertEquals(entities.get(1), toEntity(FIRST_ID + 1, secondBirth)))
-                .then(updateStmt.execute())
+                .then(Mono.from(updateStmt.execute()))
                 .flatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(u -> assertEquals(u.intValue(), 2))
-                .then(selectStmt.execute())
+                .then(Mono.from(selectStmt.execute()))
                 .flatMapMany(Entity::from)
                 .collectList()
                 .doOnNext(entities -> assertEquals(entities.size(), 2))
                 .doOnNext(entities -> assertEquals(entities.get(0), toEntity(FIRST_ID, thirdBirth)))
                 .doOnNext(entities -> assertEquals(entities.get(1), toEntity(FIRST_ID + 1, thirdBirth)))
-                .then(deleteStmt.execute())
+                .then(Mono.from(deleteStmt.execute()))
                 .flatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(u -> assertEquals(u.intValue(), 2));
         });

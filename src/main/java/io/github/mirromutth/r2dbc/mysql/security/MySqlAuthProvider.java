@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import reactor.util.annotation.Nullable;
 
@@ -65,17 +65,20 @@ public interface MySqlAuthProvider {
     /**
      * Generate an authorization for fast authentication phase.
      *
-     * @param session current MySQL session.
+     * @param password  user password
+     * @param salt      password salt for hash algorithm
+     * @param collation password character collation
      * @return fast authentication phase must not be null.
      */
-    byte[] fastAuthPhase(MySqlSession session);
+    byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation);
 
     /**
      * Generate an authorization for full authentication phase.
      *
-     * @param session current MySQL session.
+     * @param password  user password
+     * @param collation password character collation
      * @return {@code null} means has no full authentication phase.
      */
     @Nullable
-    byte[] fullAuthPhase( MySqlSession session);
+    byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation);
 }

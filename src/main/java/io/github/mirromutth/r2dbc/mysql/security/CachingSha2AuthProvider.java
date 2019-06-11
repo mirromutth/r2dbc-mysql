@@ -16,10 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password".
@@ -48,14 +48,12 @@ final class CachingSha2AuthProvider implements MySqlAuthProvider {
      * {@inheritDoc}
      */
     @Override
-    public byte[] fastAuthPhase(MySqlSession session) {
-        requireNonNull(session, "session must not be null");
-
-        return AuthHelper.defaultFastAuthPhase(ALGORITHM, session, IS_LEFT_SALT);
+    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+        return AuthHelper.defaultFastAuthPhase(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
-    public byte[] fullAuthPhase(MySqlSession session) {
+    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
         // TODO: implement full authentication
         return EMPTY_BYTES;
     }

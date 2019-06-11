@@ -16,25 +16,19 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import io.github.mirromutth.r2dbc.mysql.ServerVersion;
-
 import java.nio.charset.Charset;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A {@link CharsetTarget} that has charset cached.
+ * An implementation of {@link CharsetTarget} that has cached charset.
  */
 final class CachedCharsetTarget extends AbstractCharsetTarget {
 
     private final Charset charset;
 
     CachedCharsetTarget(int byteSize, Charset charset) {
-        this(byteSize, charset, ServerVersion.NONE);
-    }
-
-    private CachedCharsetTarget(int byteSize, Charset charset, ServerVersion minVersion) {
-        super(byteSize, minVersion);
+        super(byteSize);
 
         this.charset = requireNonNull(charset, "charset must not be null");
     }
@@ -78,7 +72,6 @@ final class CachedCharsetTarget extends AbstractCharsetTarget {
         return "CachedCharsetTarget{" +
             "charset=" + charset +
             ", byteSize=" + byteSize +
-            ", minVersion=" + minVersion +
             '}';
     }
 }

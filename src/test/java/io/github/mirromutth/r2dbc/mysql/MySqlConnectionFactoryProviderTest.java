@@ -22,7 +22,6 @@ import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.Option;
 import org.junit.jupiter.api.Test;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionFactoryProvider.MYSQL_DRIVER;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
 import static io.r2dbc.spi.ConnectionFactoryOptions.HOST;
 import static io.r2dbc.spi.ConnectionFactoryOptions.USER;
@@ -37,7 +36,7 @@ class MySqlConnectionFactoryProviderTest {
     @Test
     void minimum() {
         ConnectionFactory connectionFactory = ConnectionFactories.get(ConnectionFactoryOptions.builder()
-            .option(DRIVER, MYSQL_DRIVER)
+            .option(DRIVER, "mysql")
             .option(HOST, "127.0.0.1")
             .option(USER, "root")
             .build());
@@ -48,7 +47,7 @@ class MySqlConnectionFactoryProviderTest {
     @Test
     void invalidZeroDate() {
         ConnectionFactory connectionFactory = ConnectionFactories.find(ConnectionFactoryOptions.builder()
-            .option(DRIVER, MYSQL_DRIVER)
+            .option(DRIVER, "mysql")
             .option(HOST, "127.0.0.1")
             .option(USER, "root")
             .option(Option.valueOf("zeroDate"), "use_nil")
@@ -60,7 +59,7 @@ class MySqlConnectionFactoryProviderTest {
     @Test
     void validZeroDate() {
         ConnectionFactory connectionFactory = ConnectionFactories.get(ConnectionFactoryOptions.builder()
-            .option(DRIVER, MYSQL_DRIVER)
+            .option(DRIVER, "mysql")
             .option(HOST, "127.0.0.1")
             .option(USER, "root")
             .option(Option.valueOf("zeroDate"), "use_round")

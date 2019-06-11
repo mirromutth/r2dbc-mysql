@@ -16,33 +16,24 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import io.github.mirromutth.r2dbc.mysql.ServerVersion;
-
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requirePositive;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * Generic {@link CharsetTarget} logic and properties.
+ * Base class for {@link CharsetTarget}.
  */
 abstract class AbstractCharsetTarget implements CharsetTarget {
 
     final int byteSize;
 
-    final ServerVersion minVersion;
+    AbstractCharsetTarget(int byteSize) {
+        require(byteSize > 0, "byteSize must be a positive integer");
 
-    AbstractCharsetTarget(int byteSize, ServerVersion minVersion) {
-        this.byteSize = requirePositive(byteSize, "byteSize must be positive integer");
-        this.minVersion = requireNonNull(minVersion, "minVersion must not be null");
+        this.byteSize = byteSize;
     }
 
     @Override
     public final int getByteSize() {
         return byteSize;
-    }
-
-    @Override
-    public final boolean isExists(ServerVersion version) {
-        return minVersion.compareTo(version) <= 0;
     }
 
     @Override
@@ -56,16 +47,11 @@ abstract class AbstractCharsetTarget implements CharsetTarget {
 
         AbstractCharsetTarget that = (AbstractCharsetTarget) o;
 
-        if (byteSize != that.byteSize) {
-            return false;
-        }
-        return minVersion.equals(that.minVersion);
+        return byteSize == that.byteSize;
     }
 
     @Override
     public int hashCode() {
-        int result = byteSize;
-        result = 31 * result + minVersion.hashCode();
-        return result;
+        return byteSize;
     }
 }

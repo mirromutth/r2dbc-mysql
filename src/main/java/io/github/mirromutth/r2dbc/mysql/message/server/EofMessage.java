@@ -23,24 +23,25 @@ import io.netty.buffer.ByteBuf;
  * <p>
  * Note: EOF message are deprecated and OK message are also used to indicate EOF as of MySQL 5.7.5.
  */
-public final class EofMessage implements ServerMessage {
+public final class EofMessage implements ServerMessage, WarningMessage {
 
-    private final short warnings;
+    private final int warnings;
 
     private final short serverStatuses;
 
-    private EofMessage(short warnings, short serverStatuses) {
+    private EofMessage(int warnings, short serverStatuses) {
         this.warnings = warnings;
         this.serverStatuses = serverStatuses;
     }
 
     static EofMessage decode(ByteBuf buf) {
         buf.skipBytes(1); // skip generic header 0xFE of EOF messages
-        short warnings = buf.readShortLE();
+        int warnings = buf.readUnsignedShortLE();
         return new EofMessage(warnings, buf.readShortLE());
     }
 
-    public short getWarnings() {
+    @Override
+    public int getWarnings() {
         return warnings;
     }
 
@@ -67,7 +68,7 @@ public final class EofMessage implements ServerMessage {
 
     @Override
     public int hashCode() {
-        int result = (int) warnings;
+        int result = warnings;
         result = 31 * result + (int) serverStatuses;
         return result;
     }

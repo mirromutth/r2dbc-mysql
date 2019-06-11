@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.constant.ZeroDate;
+import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
@@ -52,7 +52,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
 
         String zeroDate = options.getValue(ZERO_DATE);
         if (zeroDate != null) {
-            builder.zeroDate(ZeroDate.valueOf(zeroDate.toUpperCase()));
+            builder.zeroDateOption(ZeroDateOption.valueOf(zeroDate.toUpperCase()));
         }
 
         Integer port = options.getValue(PORT);
@@ -97,7 +97,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     }
 
     private static boolean isValidZeroDate(String value) {
-        for (ZeroDate zeroDate : ZeroDate.values()) {
+        for (ZeroDateOption zeroDate : ZeroDateOption.values()) {
             if (zeroDate.name().equalsIgnoreCase(value)) {
                 return true;
             }

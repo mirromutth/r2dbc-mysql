@@ -16,9 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import reactor.util.annotation.Nullable;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "mysql_native_password".
@@ -43,19 +42,16 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
 
     /**
      * SHA1(password) all bytes xor SHA1( "random data from MySQL server" + SHA1(SHA1(password)) )
-     *
-     * @param session used to get password and salt.
-     * @return encrypted authentication if password is not null, otherwise empty byte array.
+     * <p>
+     * {@inheritDoc}
      */
     @Override
-    public byte[] fastAuthPhase(MySqlSession session) {
-        requireNonNull(session, "session must not be null");
-
-        return AuthHelper.defaultFastAuthPhase(ALGORITHM, session, IS_LEFT_SALT);
+    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+        return AuthHelper.defaultFastAuthPhase(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
-    public byte[] fullAuthPhase(MySqlSession session) {
+    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
         // "mysql_native_password" not support full authentication.
         return null;
     }

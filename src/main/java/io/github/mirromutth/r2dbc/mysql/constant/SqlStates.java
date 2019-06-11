@@ -21,8 +21,8 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  */
 public final class SqlStates {
 
+    public static final String ILLEGAL_ARGUMENT = "S1009";
+
     private SqlStates() {
     }
-
-    public static final String ILLEGAL_ARGUMENT = "S1009";
 }

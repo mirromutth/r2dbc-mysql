@@ -16,69 +16,15 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataValues;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
-import io.netty.buffer.ByteBuf;
-import io.netty.util.AbstractReferenceCounted;
-import reactor.util.annotation.Nullable;
-
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
+import io.netty.util.ReferenceCounted;
 
 /**
- * Row data message.
+ * A message includes data fields which is a row of result.
  */
-public final class RowMessage extends AbstractReferenceCounted implements ServerMessage {
+public interface RowMessage extends ReferenceCounted, ServerMessage {
 
-    private final ByteBuf[] fields;
+    boolean isBinary();
 
-    private RowMessage(ByteBuf[] fields) {
-        this.fields = requireNonNull(fields, "fields must not be null");
-    }
-
-    /**
-     * WARNING: each element maybe {@code null} if it's data is nullable.
-     *
-     * @return the elements of row content
-     */
-    public ByteBuf[] getFields() {
-        return fields;
-    }
-
-    static RowMessage decode(ByteBuf buf, TextResultDecodeContext context) {
-        int size = context.getTotalColumns();
-        ByteBuf[] fields = new ByteBuf[size];
-
-        for (int i = 0; i < size; ++i) {
-            if (DataValues.NULL_VALUE == buf.getUnsignedByte(buf.readerIndex())) {
-                buf.skipBytes(1);
-            } else {
-                fields[i] = CodecUtils.readVarIntSizedSlice(buf).retain();
-            }
-        }
-
-        return new RowMessage(fields);
-    }
-
-    @Override
-    protected void deallocate() {
-        for (ByteBuf field : fields) {
-            field.release();
-        }
-    }
-
-    @Override
-    public RowMessage touch(@Nullable Object o) {
-        for (ByteBuf field : fields) {
-            field.touch(o);
-        }
-
-        return this;
-    }
-
-    @Override
-    public String toString() {
-        // Row data should NOT be printed as this may contain security information.
-        // Of course, if user use trace level logs, row data is still be printed by ByteBuf dump.
-        return "RowMessage{fields=<hidden>}";
-    }
+    FieldValue[] getFields();
 }

@@ -16,6 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
@@ -30,19 +32,23 @@ import java.util.function.Function;
  * execution will be thrown, connection will always be closed after use.
  */
 @FunctionalInterface
-interface MySqlConnectionRunner {
+public interface MySqlConnectionRunner {
 
     MySqlConnectionRunner STD5_7 = MySqlConnectionRunner.ofVersion("5_7");
 
-    void run(Duration timeout, Function<MySqlConnection, Mono<?>> consumer) throws Throwable;
+    void run(Duration timeout, Function<MySqlConnection, Publisher<?>> consumer) throws Throwable;
 
     static MySqlConnectionRunner ofVersion(String version) {
         return (timeout, consumer) -> {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicReference<Throwable> cause = new AtomicReference<>();
 
-            MySQLHelper.getFactoryByVersion(version).create().subscribe(connection -> consumer.apply(connection)
-                .subscribe(null, cause::set, () -> connection.close().subscribe(null, cause::set, latch::countDown)), cause::set);
+            MySQLHelper.getFactoryByVersion(version).create()
+                .flatMap(connection -> Flux.from(consumer.apply(connection))
+                    .onErrorResume(e -> connection.close().then(Mono.error(e)))
+                    .concatWith(connection.close().then(Mono.empty()))
+                    .then())
+                .subscribe(null, cause::set, latch::countDown);
 
             latch.await(timeout.toNanos(), TimeUnit.NANOSECONDS);
 

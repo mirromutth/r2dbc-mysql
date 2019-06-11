@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.internal.LazyLoad;
-import io.github.mirromutth.r2dbc.mysql.message.server.ColumnMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import io.r2dbc.spi.RowMetadata;
 
 import java.util.Arrays;
@@ -36,66 +36,66 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class MySqlRowMetadata implements RowMetadata {
 
-    private final MySqlColumnMetadata[] columns;
+    private final MySqlDefinitionMetadata[] metadata;
 
-    private final Map<String, MySqlColumnMetadata> nameKeyedColumns;
+    private final Map<String, MySqlDefinitionMetadata> nameKeyedMetadata;
 
-    private final LazyLoad<List<MySqlColumnMetadata>> immutableColumns;
+    private final LazyLoad<List<MySqlDefinitionMetadata>> immutableMetadata;
 
-    private final LazyLoad<Set<String>> immutableColumnNames;
+    private final LazyLoad<Set<String>> immutableMetadataNames;
 
-    private MySqlRowMetadata(MySqlColumnMetadata[] columns) {
-        this.columns = requireNonNull(columns, "columns must not be null");
-        this.nameKeyedColumns = convertColumnMap(columns);
-        this.immutableColumns = LazyLoad.of(() -> {
-            switch (this.columns.length) {
+    private MySqlRowMetadata(MySqlDefinitionMetadata[] metadata) {
+        this.metadata = requireNonNull(metadata, "metadata must not be null");
+        this.nameKeyedMetadata = convertColumnMap(metadata);
+        this.immutableMetadata = LazyLoad.of(() -> {
+            switch (this.metadata.length) {
                 case 0:
                     return Collections.emptyList();
                 case 1:
-                    return Collections.singletonList(this.columns[0]);
+                    return Collections.singletonList(this.metadata[0]);
                 default:
-                    return Collections.unmodifiableList(Arrays.asList(this.columns));
+                    return Collections.unmodifiableList(Arrays.asList(this.metadata));
             }
         });
-        this.immutableColumnNames = LazyLoad.of(() -> {
-            switch (this.columns.length) {
+        this.immutableMetadataNames = LazyLoad.of(() -> {
+            switch (this.metadata.length) {
                 case 0:
                     return Collections.emptySet();
                 case 1:
-                    return Collections.singleton(this.columns[0].getName());
+                    return Collections.singleton(this.metadata[0].getName());
                 default:
-                    return Collections.unmodifiableSet(columnNames(this.columns));
+                    return Collections.unmodifiableSet(columnNames(this.metadata));
             }
         });
     }
 
     @Override
-    public MySqlColumnMetadata getColumnMetadata(Object identifier) {
+    public MySqlDefinitionMetadata getColumnMetadata(Object identifier) {
         requireNonNull(identifier, "identifier must not be null");
 
         if (identifier instanceof Integer) {
-            return columns[(Integer) identifier];
+            return metadata[(Integer) identifier];
         } else if (identifier instanceof String) {
-            MySqlColumnMetadata column = nameKeyedColumns.get(identifier);
+            MySqlDefinitionMetadata column = nameKeyedMetadata.get(identifier);
 
             if (column == null) {
-                throw new NoSuchElementException("Column name '" + identifier + "' does not exist in column names " + this.nameKeyedColumns.keySet());
+                throw new NoSuchElementException(String.format("Column name '%s' does not exist in column names %s", identifier, this.nameKeyedMetadata.keySet()));
             }
 
             return column;
         }
 
-        throw new IllegalArgumentException("Identifier '" + identifier + "' is not a valid identifier. Should either be an Integer index or a String column name.");
+        throw new IllegalArgumentException("identifier should either be an Integer index or a String column name.");
     }
 
     @Override
-    public List<MySqlColumnMetadata> getColumnMetadatas() {
-        return immutableColumns.get();
+    public List<MySqlDefinitionMetadata> getColumnMetadatas() {
+        return immutableMetadata.get();
     }
 
     @Override
     public Set<String> getColumnNames() {
-        return immutableColumnNames.get();
+        return immutableMetadataNames.get();
     }
 
     @Override
@@ -109,56 +109,56 @@ final class MySqlRowMetadata implements RowMetadata {
 
         MySqlRowMetadata that = (MySqlRowMetadata) o;
 
-        return Arrays.equals(columns, that.columns);
+        return Arrays.equals(metadata, that.metadata);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(columns);
+        return Arrays.hashCode(metadata);
     }
 
     @Override
     public String toString() {
         return "MySqlRowMetadata{" +
-            "columns=" + Arrays.toString(columns) +
+            "metadata=" + Arrays.toString(metadata) +
             '}';
     }
 
-    static MySqlRowMetadata create(ColumnMetadataMessage[] columns) {
+    static MySqlRowMetadata create(DefinitionMetadataMessage[] columns) {
         int size = columns.length;
-        MySqlColumnMetadata[] metadata = new MySqlColumnMetadata[size];
+        MySqlDefinitionMetadata[] metadata = new MySqlDefinitionMetadata[size];
 
         for (int i = 0; i < size; ++i) {
-            metadata[i] = MySqlColumnMetadata.create(i, columns[i]);
+            metadata[i] = MySqlDefinitionMetadata.create(i, columns[i]);
         }
 
         return new MySqlRowMetadata(metadata);
     }
 
-    private static Set<String> columnNames(MySqlColumnMetadata[] columns) {
-        // ceil(size / 0.75) = ceil(size / 3 * 4) = ceil(size / 3) * 4 = floor((size + 3 - 1) / 3) * 4
-        Set<String> names = new LinkedHashSet<>(((columns.length + 2) / 3) * 4, 0.75f);
+    private static Set<String> columnNames(MySqlDefinitionMetadata[] columns) {
+        // ceil(size / 0.75) = ceil((size * 4) / 3) = floor((size * 4 + 3 - 1) / 3)
+        Set<String> names = new LinkedHashSet<>(((columns.length << 2) + 2) / 3, 0.75f);
 
-        for (MySqlColumnMetadata column : columns) {
+        for (MySqlDefinitionMetadata column : columns) {
             names.add(column.getName());
         }
 
         return names;
     }
 
-    private static Map<String, MySqlColumnMetadata> convertColumnMap(MySqlColumnMetadata[] columns) {
+    private static Map<String, MySqlDefinitionMetadata> convertColumnMap(MySqlDefinitionMetadata[] columns) {
         int size = columns.length;
 
         switch (size) {
             case 0:
                 return Collections.emptyMap();
             case 1:
-                MySqlColumnMetadata first = columns[0];
+                MySqlDefinitionMetadata first = columns[0];
                 return Collections.singletonMap(first.getName(), first);
             default:
-                // ceil(size / 0.75) = ceil(size / 3 * 4) = ceil(size / 3) * 4 = floor((size + 3 - 1) / 3) * 4
-                Map<String, MySqlColumnMetadata> result = new HashMap<>(((size + 2) / 3) * 4, 0.75f);
-                for (MySqlColumnMetadata column : columns) {
+                // ceil(size / 0.75) = ceil((size * 4) / 3) = floor((size * 4 + 3 - 1) / 3)
+                Map<String, MySqlDefinitionMetadata> result = new HashMap<>(((size << 2) + 2) / 3, 0.75f);
+                for (MySqlDefinitionMetadata column : columns) {
                     result.put(column.getName(), column);
                 }
 
