@@ -16,20 +16,40 @@
 
 package io.github.mirromutth.r2dbc.mysql.security;
 
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-/**
- * Generic crypto logic for all authentication types.
- */
-final class AuthCrypto {
+import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
-    private AuthCrypto() {
+/**
+ * A utility
+ */
+final class AuthHelper {
+
+    private AuthHelper() {
     }
 
-    static byte[] usualHash(String algorithm, byte[] password, byte[] salt, boolean leftSalt) {
+    static byte[] defaultFastAuthPhase(String algorithm, MySqlSession session, boolean leftSalt) {
+        CharSequence password = session.getPassword();
+
+        if (password == null || password.length() <= 0) {
+            return EMPTY_BYTES;
+        }
+
+        byte[] salt = session.getSalt();
+
+        requireNonNull(salt, "salt must not be null when password exists");
+
+        Charset charset = session.getCollation().getCharset();
         MessageDigest digest = loadDigest(algorithm);
-        byte[] oneRound = finalDigests(digest, password);
+
+        byte[] oneRound = digestBuffer(digest, charset.encode(CharBuffer.wrap(password)));
         byte[] twoRounds = finalDigests(digest, oneRound);
 
         if (leftSalt) {
@@ -48,13 +68,18 @@ final class AuthCrypto {
     }
 
     private static byte[] finalDigests(MessageDigest digest, byte[]... plains) {
+        digest.reset();
+
         for (byte[] plain : plains) {
             digest.update(plain);
         }
 
-        byte[] result = digest.digest();
-        digest.reset();
-        return result;
+        return digest.digest();
+    }
+
+    private static byte[] digestBuffer(MessageDigest digest, ByteBuffer buffer) {
+        digest.update(buffer);
+        return digest.digest();
     }
 
     private static byte[] allBytesXor(byte[] left, byte[] right) {

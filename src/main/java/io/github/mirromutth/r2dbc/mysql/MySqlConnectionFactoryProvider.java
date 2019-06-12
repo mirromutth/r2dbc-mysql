@@ -48,7 +48,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public ConnectionFactory create(ConnectionFactoryOptions options) {
         requireNonNull(options, "connectionFactoryOptions must not be null");
 
-        MySqlConnectConfiguration.Builder builder = MySqlConnectConfiguration.builder();
+        MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder();
 
         String zeroDate = options.getValue(ZERO_DATE);
         if (zeroDate != null) {
@@ -60,18 +60,14 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.port(port);
         }
 
-        CharSequence password = options.getValue(PASSWORD);
-        if (password != null) {
-            builder.password(password.toString());
-        }
-
         Boolean ssl = options.getValue(SSL);
         if (ssl != null && ssl) {
             builder.enableSsl();
         }
 
-        MySqlConnectConfiguration configuration = builder.host(options.getRequiredValue(HOST))
+        MySqlConnectionConfiguration configuration = builder.host(options.getRequiredValue(HOST))
             .username(options.getRequiredValue(USER))
+            .password(options.getValue(PASSWORD))
             .connectTimeout(options.getValue(CONNECT_TIMEOUT))
             .database(options.getValue(DATABASE))
             .build();

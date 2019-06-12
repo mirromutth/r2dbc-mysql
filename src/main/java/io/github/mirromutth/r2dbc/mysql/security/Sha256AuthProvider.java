@@ -19,28 +19,19 @@ package io.github.mirromutth.r2dbc.mysql.security;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import reactor.util.annotation.NonNull;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A MySQL authentication state machine which would use when authentication type is "sha256_password".
+ * An implementation of {@link MySqlAuthProvider} for type "sha256_password".
  */
-final class Sha256AuthStateMachine implements AuthStateMachine {
+final class Sha256AuthProvider implements MySqlAuthProvider {
 
-    private static final Sha256AuthStateMachine INSTANCE = new Sha256AuthStateMachine();
+    static final String TYPE = "sha256_password";
 
-    static Sha256AuthStateMachine getInstance() {
-        return INSTANCE;
-    }
+    static final Sha256AuthProvider INSTANCE = new Sha256AuthProvider();
 
-    private Sha256AuthStateMachine() {
-    }
-
-    @Override
-    public boolean hasNext() {
-        // TODO: "sha256_password" is not state machine?
-        return false;
+    private Sha256AuthProvider() {
     }
 
     @Override
@@ -50,22 +41,29 @@ final class Sha256AuthStateMachine implements AuthStateMachine {
 
     @NonNull
     @Override
-    public byte[] nextAuthentication(MySqlSession session) {
+    public byte[] fastAuthPhase(MySqlSession session) {
         requireNonNull(session, "session must not be null");
 
-        String password = session.getPassword();
+        CharSequence password = session.getPassword();
 
-        if (password == null || password.isEmpty()) {
+        if (password == null || password.length() <= 0) {
             return EMPTY_BYTES;
         }
 
-        // TODO: implement
+        // TODO: implement fast authentication
+
+        return EMPTY_BYTES;
+    }
+
+    @Override
+    public byte[] fullAuthPhase(MySqlSession session) {
+        // TODO: implement full authentication
 
         return EMPTY_BYTES;
     }
 
     @Override
     public String getType() {
-        return SHA256_PASSWORD;
+        return TYPE;
     }
 }

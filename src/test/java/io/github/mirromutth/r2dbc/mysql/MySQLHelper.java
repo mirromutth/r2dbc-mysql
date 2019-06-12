@@ -48,7 +48,7 @@ final class MySQLHelper {
         if (nowFactory == null) {
             logger.info("Version {} connection factory not found, try build a new factory", version);
 
-            MySqlConnectConfiguration newConfig;
+            MySqlConnectionConfiguration newConfig;
 
             try {
                 newConfig = buildConfig(version);
@@ -73,7 +73,7 @@ final class MySQLHelper {
         }
     }
 
-    private static void initMySQL(MySqlConnectConfiguration configuration) {
+    private static void initMySQL(MySqlConnectionConfiguration configuration) {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
@@ -82,7 +82,7 @@ final class MySQLHelper {
 
         String url = String.format("jdbc:mysql://%s:%d", configuration.getHost(), configuration.getPort());
 
-        try (Connection conn = DriverManager.getConnection(url, configuration.getUsername(), configuration.getPassword())) {
+        try (Connection conn = DriverManager.getConnection(url, configuration.getUsername(), configuration.getPassword().toString())) {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("CREATE DATABASE IF NOT EXISTS `r2dbc`");
             }
@@ -91,21 +91,21 @@ final class MySQLHelper {
         }
     }
 
-    private static MySqlConnectConfiguration buildConfig(String version) throws IOException {
+    private static MySqlConnectionConfiguration buildConfig(String version) throws IOException {
         String filename = buildFilename(version);
-        InputStream input = MySQLHelper.class.getClassLoader().getResourceAsStream(filename);
+        InputStream resource = MySQLHelper.class.getClassLoader().getResourceAsStream(filename);
 
-        if (input == null) {
+        if (resource == null) {
             throw new FileNotFoundException("File '" + filename + "' not found in resources.");
         }
 
-        try (InputStream in = input) {
-            Map<String, Object> obj = new Yaml().load(in);
+        try (InputStream input = resource) {
+            Map<String, Object> obj = new Yaml().load(input);
             Map<String, Object> service = getMap(getMap(obj, "services"), buildServiceName(version));
-            String password = getRootPassword(getMap(service, "environment"));
+            CharSequence password = getRootPassword(getMap(service, "environment"));
             int port = Integer.parseInt(getPorts(service).get(0).split(":")[0]);
 
-            return MySqlConnectConfiguration.builder()
+            return MySqlConnectionConfiguration.builder()
                 .host("127.0.0.1")
                 .port(port)
                 .connectTimeout(Duration.ofSeconds(5))
@@ -127,8 +127,8 @@ final class MySQLHelper {
         return l;
     }
 
-    private static String getRootPassword(Map<String, Object> map) {
-        String m = (String) map.get("MYSQL_ROOT_PASSWORD");
+    private static CharSequence getRootPassword(Map<String, Object> map) {
+        CharSequence m = (CharSequence) map.get("MYSQL_ROOT_PASSWORD");
 
         if (m == null) {
             throw new IllegalStateException("Key '" + "' not found in " + map);

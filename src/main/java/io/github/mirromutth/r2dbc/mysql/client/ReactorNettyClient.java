@@ -31,7 +31,7 @@ import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeHeader;
 import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeV10Message;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
-import io.github.mirromutth.r2dbc.mysql.security.AuthStateMachine;
+import io.github.mirromutth.r2dbc.mysql.security.MySqlAuthProvider;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -219,17 +219,17 @@ final class ReactorNettyClient implements Client {
         ServerVersion version = header.getServerVersion();
         int serverCapabilities = message.getServerCapabilities();
         String authType = message.getAuthType();
-        AuthStateMachine authStateMachine = AuthStateMachine.build(authType);
+        MySqlAuthProvider authProvider = MySqlAuthProvider.build(authType);
         CharCollation collation = CharCollation.defaultCollation(version);
 
-//        if (authStateMachine.isSslNecessary()) {
+//        if (authProvider.isSslNecessary()) {
 //            this.session.setUseSsl(true);
 //        }
 
         this.session.setConnectionId(header.getConnectionId());
         this.session.setServerVersion(version);
         this.session.setCollation(collation);
-        this.session.setAuthStateMachine(authStateMachine);
+        this.session.setAuthProvider(authProvider);
         this.session.setSalt(message.getSalt());
         this.session.setServerCapabilities(serverCapabilities);
 
@@ -240,11 +240,11 @@ final class ReactorNettyClient implements Client {
 
     private HandshakeResponse41Message createHandshakeResponse() {
         String username = session.getUsername();
-        byte[] authentication = session.nextAuthentication();
+        byte[] authorization = session.fastPhaseAuthorization();
         String authType = session.getAuthType();
 
         requireNonNull(username, "username must not be null at authentication phase");
-        requireNonNull(authentication, "authentication must not be null at first authentication");
+        requireNonNull(authorization, "authorization must not be null at first authentication");
         requireNonNull(authType, "authType must not be null at authentication phase");
 
         // TODO: implement SSL
@@ -253,7 +253,7 @@ final class ReactorNettyClient implements Client {
             session.getClientCapabilities(),
             session.getCollation().getId(),
             username,
-            authentication,
+            authorization,
             authType,
             session.getDatabase(),
             clientAttrs

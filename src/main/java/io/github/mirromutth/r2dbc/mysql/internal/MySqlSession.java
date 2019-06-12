@@ -19,14 +19,15 @@ package io.github.mirromutth.r2dbc.mysql.internal;
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.ZeroDate;
-import io.github.mirromutth.r2dbc.mysql.security.AuthStateMachine;
+import io.github.mirromutth.r2dbc.mysql.security.MySqlAuthProvider;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * It is internal util, do NOT use it outer than {@code r2dbc-mysql}, try using
- * {@code MySqlConnectConfiguration} to control session data and client behavior.
+ * {@code MySqlConnectionConfiguration} to control session and client behavior.
  * <p>
  * MySQL sessions.
  */
@@ -52,7 +53,7 @@ public final class MySqlSession {
      * It would be null after connection phase completed.
      */
     @Nullable
-    private volatile AuthStateMachine authStateMachine;
+    private volatile MySqlAuthProvider authProvider;
 
     /**
      * It would be null after connection phase completed.
@@ -64,7 +65,7 @@ public final class MySqlSession {
      * It would be null after connection phase completed.
      */
     @Nullable
-    private volatile String password;
+    private volatile CharSequence password;
 
     /**
      * It would be null after connection phase completed.
@@ -77,7 +78,7 @@ public final class MySqlSession {
         String database,
         ZeroDate zeroDate,
         String username,
-        @Nullable String password
+        @Nullable CharSequence password
     ) {
         this.useSsl = useSsl;
         this.database = requireNonNull(database, "database must not be null");
@@ -148,7 +149,7 @@ public final class MySqlSession {
     }
 
     @Nullable
-    public String getPassword() {
+    public CharSequence getPassword() {
         return password;
     }
 
@@ -163,7 +164,7 @@ public final class MySqlSession {
 
     @Nullable
     public String getAuthType() {
-        AuthStateMachine machine = this.authStateMachine;
+        MySqlAuthProvider machine = this.authProvider;
 
         if (machine == null) {
             return null;
@@ -172,34 +173,25 @@ public final class MySqlSession {
         return machine.getType();
     }
 
-    public void setAuthStateMachine(AuthStateMachine authStateMachine) {
-        this.authStateMachine = authStateMachine;
-    }
-
-    public boolean hasNext() {
-        AuthStateMachine authStateMachine = this.authStateMachine;
-
-        if (authStateMachine == null) {
-            return false;
-        }
-
-        return authStateMachine.hasNext();
+    public void setAuthProvider(MySqlAuthProvider authProvider) {
+        this.authProvider = authProvider;
     }
 
     /**
-     * Generate current authentication and make changes to the authentication status.
+     * Generate an authorization for fast authentication phase.
      *
-     * @return {@code null}
+     * @return {@code null} means connection phase has completed and password is clear,
+     * can not generate any authorization.
      */
     @Nullable
-    public byte[] nextAuthentication() {
-        AuthStateMachine authStateMachine = this.authStateMachine;
+    public byte[] fastPhaseAuthorization() {
+        MySqlAuthProvider authProvider = this.authProvider;
 
-        if (authStateMachine == null) {
+        if (authProvider == null) {
             return null;
         }
 
-        return authStateMachine.nextAuthentication(this);
+        return authProvider.fastAuthPhase(this);
     }
 
     /**
@@ -209,6 +201,6 @@ public final class MySqlSession {
         this.username = null;
         this.password = null;
         this.salt = null;
-        this.authStateMachine = null;
+        this.authProvider = null;
     }
 }

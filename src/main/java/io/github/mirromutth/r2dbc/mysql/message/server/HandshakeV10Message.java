@@ -16,8 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
+import io.github.mirromutth.r2dbc.mysql.security.MySqlAuthProvider;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -33,8 +33,6 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * MySQL Handshake Message for protocol version 10
  */
 public final class HandshakeV10Message extends AbstractHandshakeMessage {
-
-    private static final String DEFAULT_AUTH_TYPE = AuthTypes.MYSQL_NATIVE_PASSWORD;
 
     private static final int RESERVED_SIZE = 10;
 
@@ -140,11 +138,11 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
                 // It is MySQL bug 59453, auth type native name has no terminal character in
                 // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
                 // And MySQL only support "mysql_native_password" in those versions,
-                // maybe just use constant AuthTypes.MYSQL_NATIVE_PASSWORD without read?
+                // maybe just use constant "mysql_native_password" without read?
                 builder.authType(buf.toString(charset));
             }
         } else {
-            builder.authType(DEFAULT_AUTH_TYPE);
+            builder.authType(MySqlAuthProvider.defaultAuthType());
         }
 
         return builder;

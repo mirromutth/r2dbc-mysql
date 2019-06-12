@@ -24,9 +24,9 @@ import java.time.Duration;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * MySQL configuration of connect.
+ * MySQL configuration of connection.
  */
-public final class MySqlConnectConfiguration {
+public final class MySqlConnectionConfiguration {
 
     /**
      * Default MySQL port.
@@ -46,18 +46,18 @@ public final class MySqlConnectConfiguration {
 
     private final String username;
 
-    private final String password;
+    private final CharSequence password;
 
     private final String database;
 
-    private MySqlConnectConfiguration(
+    private MySqlConnectionConfiguration(
         String host,
         int port,
         @Nullable Duration connectTimeout,
         boolean useSsl,
         ZeroDate zeroDate,
         String username,
-        @Nullable String password,
+        @Nullable CharSequence password,
         @Nullable String database
     ) {
         this.host = requireNonNull(host, "host must not be null");
@@ -104,7 +104,7 @@ public final class MySqlConnectConfiguration {
         return username;
     }
 
-    String getPassword() {
+    CharSequence getPassword() {
         return password;
     }
 
@@ -114,7 +114,7 @@ public final class MySqlConnectConfiguration {
 
     @Override
     public String toString() {
-        return "MySqlConnectConfiguration{" +
+        return "MySqlConnectionConfiguration{" +
             "host='" + host + '\'' +
             ", port=" + port +
             ", connectTimeout=" + connectTimeout +
@@ -134,7 +134,7 @@ public final class MySqlConnectConfiguration {
         private String host;
 
         @Nullable
-        private String password;
+        private CharSequence password;
 
         private int port = DEFAULT_PORT;
 
@@ -150,8 +150,8 @@ public final class MySqlConnectConfiguration {
         private Builder() {
         }
 
-        public MySqlConnectConfiguration build() {
-            return new MySqlConnectConfiguration(host, port, connectTimeout, useSsl, zeroDate, username, password, database);
+        public MySqlConnectionConfiguration build() {
+            return new MySqlConnectionConfiguration(host, port, connectTimeout, useSsl, zeroDate, username, password, database);
         }
 
         public Builder database(@Nullable String database) {
@@ -164,7 +164,7 @@ public final class MySqlConnectConfiguration {
             return this;
         }
 
-        public Builder password(@Nullable String password) {
+        public Builder password(@Nullable CharSequence password) {
             this.password = password;
             return this;
         }

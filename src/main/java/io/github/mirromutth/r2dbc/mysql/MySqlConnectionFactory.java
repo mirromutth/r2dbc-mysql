@@ -32,9 +32,9 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlConnectionFactory implements ConnectionFactory {
 
-    private final MySqlConnectConfiguration configuration;
+    private final MySqlConnectionConfiguration configuration;
 
-    public MySqlConnectionFactory(MySqlConnectConfiguration configuration) {
+    public MySqlConnectionFactory(MySqlConnectionConfiguration configuration) {
         this.configuration = requireNonNull(configuration, "configuration must not be null");
     }
 
