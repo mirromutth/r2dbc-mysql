@@ -16,10 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.message.server.ColumnMetadataMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.FictitiousRowMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.FakeRowMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.RowMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
@@ -45,14 +45,14 @@ public abstract class MySqlResult implements Result {
 
     private static final Function<Long, Integer> TO_INT = Math::toIntExact;
 
-    private final Converters converters;
+    private final Codecs codecs;
 
     private final MySqlSession session;
 
     private volatile MySqlRowMetadata rowMetadata;
 
-    MySqlResult(Converters converters, MySqlSession session) {
-        this.converters = requireNonNull(converters, "converters must not be null");
+    MySqlResult(Codecs codecs, MySqlSession session) {
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.session = requireNonNull(session, "session must not be null");
     }
 
@@ -66,18 +66,18 @@ public abstract class MySqlResult implements Result {
     @Override
     abstract public <T> Flux<T> map(BiFunction<Row, RowMetadata, ? extends T> f);
 
-    <T> void handleNoComplete(ServerMessage message, BiFunction<Row, RowMetadata, ? extends T> f, SynchronousSink<T> sink) {
-        if (message instanceof FictitiousRowMetadataMessage) {
-            processRowMetadata((FictitiousRowMetadataMessage) message);
+    <T> void handleNoComplete(ServerMessage message, SynchronousSink<T> sink, BiFunction<Row, RowMetadata, ? extends T> f) {
+        if (message instanceof FakeRowMetadataMessage) {
+            processRowMetadata((FakeRowMetadataMessage) message);
         } else if (message instanceof RowMessage) {
-            processRow((RowMessage) message, f, sink);
+            processRow((RowMessage) message, sink, f);
         } else {
-            ReferenceCountUtil.release(message);
+            ReferenceCountUtil.safeRelease(message);
         }
     }
 
-    private void processRowMetadata(FictitiousRowMetadataMessage message) {
-        ColumnMetadataMessage[] metadataMessages = message.getMessages();
+    private void processRowMetadata(FakeRowMetadataMessage message) {
+        DefinitionMetadataMessage[] metadataMessages = message.unwrap();
 
         if (metadataMessages.length == 0) {
             return;
@@ -86,7 +86,7 @@ public abstract class MySqlResult implements Result {
         this.rowMetadata = MySqlRowMetadata.create(metadataMessages);
     }
 
-    private <T> void processRow(RowMessage message, BiFunction<Row, RowMetadata, ? extends T> f, SynchronousSink<T> sink) {
+    private <T> void processRow(RowMessage message, SynchronousSink<T> sink, BiFunction<Row, RowMetadata, ? extends T> f) {
         MySqlRowMetadata rowMetadata = this.rowMetadata;
 
         if (rowMetadata == null) {
@@ -94,15 +94,14 @@ public abstract class MySqlResult implements Result {
             return;
         }
 
-        MySqlRow row = new MySqlRow(message.getFields(), rowMetadata, this.converters, this.session);
+        MySqlRow row = new MySqlRow(message.getFields(), rowMetadata, this.codecs, message.isBinary(), this.session);
         T t;
 
         try {
             // Can NOT just sink.next(f.apply(...)) because of finally release
             t = f.apply(row, rowMetadata);
         } finally {
-            // Maybe should catch and ignore exceptions in releasing?
-            row.release();
+            ReferenceCountUtil.safeRelease(row);
         }
 
         sink.next(t);

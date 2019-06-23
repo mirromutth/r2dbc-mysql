@@ -21,14 +21,13 @@ import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Map;
 
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requirePositive;
 
 /**
  * A handshake response message sent by clients those supporting
@@ -40,7 +39,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requirePositive;
  * Should make sure {@link #clientCapabilities} is right before construct this instance,
  * e.g. {@link Capabilities#CONNECT_ATTRS}, {@link Capabilities#CONNECT_WITH_DB} or other capabilities.
  */
-public final class HandshakeResponse41Message extends AbstractClientMessage implements ExchangeableMessage {
+public final class HandshakeResponse41Message extends EnvelopeClientMessage implements ExchangeableMessage {
 
     private static final int ONE_BYTE_MAX_INT = 0xFF;
 
@@ -71,8 +70,10 @@ public final class HandshakeResponse41Message extends AbstractClientMessage impl
         String database,
         Map<String, String> attributes
     ) {
+        require(collationId > 0, "collationId must be a positive integer");
+
         this.clientCapabilities = clientCapabilities;
-        this.collationId = requirePositive(collationId, "collationId must be a positive integer");
+        this.collationId = collationId;
         this.username = requireNonNull(username, "username must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
@@ -92,56 +93,48 @@ public final class HandshakeResponse41Message extends AbstractClientMessage impl
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
+    protected void writeTo(ByteBuf buf, MySqlSession session) {
         Charset charset = session.getCollation().getCharset();
-        final ByteBuf buf = bufAllocator.buffer();
 
-        try {
-            buf.writeIntLE(clientCapabilities)
-                .writeIntLE(Envelopes.MAX_PART_SIZE + 1) // 16777216, means include sequence id or exclusive logic in MySQL.
-                .writeByte(collationId)
-                .writeZero(FILTER_SIZE);
+        buf.writeIntLE(clientCapabilities)
+            .writeIntLE(Envelopes.MAX_ENVELOPE_SIZE + 1) // 16777216, include sequence id.
+            .writeByte(collationId) // only low 8-bits
+            .writeZero(FILTER_SIZE);
 
-            CodecUtils.writeCString(buf, username, charset);
+        CodecUtils.writeCString(buf, username, charset);
 
-            if (varIntSizedAuth) {
-                CodecUtils.writeVarIntSizedBytes(buf, authentication);
-            } else {
-                buf.writeByte(authentication.length).writeBytes(authentication);
-            }
-
-            if (!database.isEmpty()) {
-                CodecUtils.writeCString(buf, database, charset);
-            }
-
-            if (authType != null) {
-                CodecUtils.writeCString(buf, authType, charset);
-            }
-
-            return writeAttrs(buf, charset);
-        } catch (Throwable e) {
-            buf.release();
-            throw e;
+        if (varIntSizedAuth) {
+            CodecUtils.writeVarIntSizedBytes(buf, authentication);
+        } else {
+            buf.writeByte(authentication.length).writeBytes(authentication);
         }
+
+        if (!database.isEmpty()) {
+            CodecUtils.writeCString(buf, database, charset);
+        }
+
+        if (authType != null) {
+            CodecUtils.writeCString(buf, authType, charset);
+        }
+
+        writeAttrs(buf, charset);
     }
 
-    private ByteBuf writeAttrs(ByteBuf buf, Charset charset) {
-        if (attributes.isEmpty()) { // no need write attributes
-            return buf;
+    private void writeAttrs(ByteBuf buf, Charset charset) {
+        if (attributes.isEmpty()) {
+            // no need write attributes
+            return;
         }
 
         final ByteBuf attributesBuf = buf.alloc().buffer();
 
         try {
-            // attributesBuf write first
             for (Map.Entry<String, String> entry : attributes.entrySet()) {
                 CodecUtils.writeVarIntSizedString(attributesBuf, entry.getKey(), charset);
                 CodecUtils.writeVarIntSizedString(attributesBuf, entry.getValue(), charset);
             }
 
             CodecUtils.writeVarIntSizedBytes(buf, attributesBuf);
-
-            return buf;
         } finally {
             attributesBuf.release();
         }
@@ -197,8 +190,8 @@ public final class HandshakeResponse41Message extends AbstractClientMessage impl
         return "HandshakeResponse41Message{" +
             "clientCapabilities=" + clientCapabilities +
             ", collationId=" + collationId +
-            ", username=<hidden>" +
-            ", authentication=<hidden>" +
+            ", username='" + username + '\'' +
+            ", authentication=REDACTED" +
             ", authType='" + authType + '\'' +
             ", database='" + database + '\'' +
             ", attributes=" + attributes +

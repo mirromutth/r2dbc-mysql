@@ -32,4 +32,7 @@ public final class Headers {
     public static final short EOF = 0xFE;
 
     public static final short ERROR = 0xFF;
+
+    private Headers() {
+    }
 }

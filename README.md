@@ -10,13 +10,14 @@ This driver provides the following features:
 - Login with username/password (or no password)
 - Execution of simple or batch statements without bindings
 - Read text result support for all data types except LOB types (e.g. BLOB, CLOB)
-- Transactions (unverified)
+- Transactions (testing, not verify for now)
 
 Next steps:
 
 - Execution of prepared statements with bindings.
 - Support LOB types (e.g. BLOB, CLOB)
 - Support binary result.
+- Complete transactions test.
 - TLS (see [#9](https://github.com/mirromutth/r2dbc-mysql/issues/9))
 
 ## Usage
@@ -24,7 +25,7 @@ Next steps:
 ### Discovery
 
 ```java
-ConnectionFactoryOptions options = builder()
+ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
     .option(DRIVER, "mysql")
     .option(HOST, "127.0.0.1")
     .option(USER, "root")
@@ -56,7 +57,7 @@ MySqlConnectConfiguration configuration = MySqlConnectConfiguration.builder()
     .port(3306) // optional, default 3306
     .connectTimeout(Duration.ofSeconds(3)) // optional, default null, null means no timeout
     .disableSsl() // optional, default is disabled. SSL not support, it should be disable for now
-    .zeroDate(ZeroDate.USE_NULL) // optional, default USE_NULL
+    .zeroDateOption(ZeroDateOption.USE_NULL) // optional, default USE_NULL
     .username("root")
     .password("some password in here") // optional, default null, null means has no password
     .database("r2dbc") // optional, default null, null means not specifying the database
@@ -67,7 +68,7 @@ ConnectionFactory connectionFactory = new MySqlConnectionFactory(configuration);
 Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ```
 
-About more information of `zeroDate`, see **Usage** -> **Discovery**, and should use `enum` in programmatic not like discovery.
+About more information of `ZeroDateOption`, see **Usage** -> **Discovery**, and should use `enum` in programmatic not like discovery.
 
 ### Simple statement
 
@@ -77,6 +78,9 @@ connection.createStatement("INSERT INTO `person` (`first_name`, `last_name`) VAL
 ```
 
 Each statement can only contain one query (`SELECT`, `INSERT`, `UPDATE`, etc.) without `;`.
+
+> Every `Result` should be used (call `getRowsUpdated` or `map`, even DDL), can NOT just ignore any `Result`,
+> otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
 
 ### Batch statement
 
@@ -88,6 +92,9 @@ connection.createBatch()
 ```
 
 Each statement of `add(String)` can only contain one query without `;`.
+
+> Every `Result` should be used (call `getRowsUpdated` or `map`, even DDL), can NOT just ignore any `Result`,
+> otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
 
 ## Data Type Mapping
 
@@ -106,8 +113,8 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 | BIGINT | SIGNED | `Long` |
 | FLOAT | SIGNED/UNSIGNED | `Float` |
 | DOUBLE | SIGNED/UNSIGNED | `Double` |
-| DECIMAL | SIGNED/UNSIGNED | `BigDecimal`, `Float` (if precision less than 7), `Double` (if precision less than 16) |
-| BIT | - | `BitSet`, `Boolean` (if precision is 1), `Byte` (if precision less or equals than 8) |
+| DECIMAL | SIGNED/UNSIGNED | `BigDecimal`, `Float` (if size less than 7), `Double` (if size less than 16) |
+| BIT | - | `BitSet`, `Boolean` (if size is 1), `Byte` (if size less or equals than 8) |
 | DATETIME/TIMESTAMP | - | `LocalDateTime` |
 | DATE | - | `LocalDate` |
 | TIME | - | `LocalTime` |
@@ -125,8 +132,9 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 
 ## Notice
 
-- Since the MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this connector does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`, and do NOT know what is MySQL connection session time zone. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
-- Do not turn on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
+- The MySQL return microseconds when only in prepared statement result (and maybe has not microsecond even in prepared statement result). Therefore this driver does not guarantee time accuracy to microseconds.
+- The MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
+- Do not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
 
 ## License
 

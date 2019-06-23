@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
@@ -77,15 +78,14 @@ class MySqlBatchTest {
             deleteBatch.add(formattedDelete(IS_ODD));
             deleteBatch.add(formattedDelete(IS_EVEN));
 
-            return connection.createStatement(TABLE_DDL)
-                .execute()
+            return Mono.from(connection.createStatement(TABLE_DDL).execute())
                 .flatMap(MySqlResult::getRowsAffected)
                 .thenMany(insertBatch.execute())
                 .concatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(updated -> assertEquals(updated.intValue(), 1))
                 .reduce(Math::addExact)
                 .doOnNext(all -> assertEquals(all.intValue(), 5))
-                .then(selectStmt.execute())
+                .then(Mono.from(selectStmt.execute()))
                 .flatMapMany(result -> result.map((row, metadata) -> row.get("data", String.class)))
                 .collectList()
                 .doOnNext(data -> assertEquals(data.size(), 5))

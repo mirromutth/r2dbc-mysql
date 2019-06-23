@@ -17,7 +17,10 @@
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
 /**
- * A client message that is exchangeable. Counterexample, {@link ExitMessage} or {@link CloseStatementMessage}, etc.
+ * The message that is exchangeable. Counterexample, {@link ExitMessage} or {@link PreparedCloseMessage}, etc.
+ *
+ * @see SendOnlyMessage
  */
 public interface ExchangeableMessage extends ClientMessage {
+
 }

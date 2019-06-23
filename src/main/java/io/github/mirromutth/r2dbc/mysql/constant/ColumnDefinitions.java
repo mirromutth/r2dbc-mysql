@@ -37,4 +37,7 @@ public final class ColumnDefinitions {
     public static final int ON_UPDATE_NOW = 1 << 13; // field will be set to NOW() in UPDATE statement
 
     // more flags are useless
+
+    private ColumnDefinitions() {
+    }
 }

@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.util;
 import reactor.util.annotation.Nullable;
 
 /**
- * Assertion library for {@code r2dbc-mysql} implementation.
+ * Assertion library for {@literal r2dbc-mysql} implementation.
  */
 public final class AssertUtils {
 
@@ -45,20 +45,17 @@ public final class AssertUtils {
     }
 
     /**
-     * Checks that a specified {@link String} is not {@code null} or empty and
-     * throws a customized {@link IllegalArgumentException} if it is.
+     * Checks that a specified condition is {@code true} and throws a
+     * customized {@link IllegalArgumentException} if it is not.
      *
-     * @param text    the {@link String} to check for nullity or empty
-     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
-     * @return {@code string} if not {@code null} or empty
-     * @throws IllegalArgumentException if {@code text} is {@code null} or empty
+     * @param condition the condition value
+     * @param message   the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
+     * @throws IllegalArgumentException if {@code condition} is {@code false}.
      */
-    public static String requireNotEmpty(@Nullable String text, String message) {
-        if (text == null || text.isEmpty()) {
+    public static void require(boolean condition, String message) {
+        if (!condition) {
             throw new IllegalArgumentException(message);
         }
-
-        return text;
     }
 
     /**
@@ -71,78 +68,10 @@ public final class AssertUtils {
      * @throws IllegalArgumentException if {@code name} is {@code null} or empty or backticks included
      */
     public static String requireValidName(@Nullable String name, String message) {
-        if (name == null || name.isEmpty() || name.indexOf('`') != -1) {
+        if (name == null || name.isEmpty() || name.indexOf('`') >= 0) {
             throw new IllegalArgumentException(message);
         }
 
         return name;
-    }
-
-    /**
-     * Checks that a specified integer is not negative and
-     * throws a customized {@link IllegalArgumentException} if it is.
-     *
-     * @param x       the specified integer to check for negatively
-     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
-     * @return {@code x} if not negative
-     * @throws IllegalArgumentException if {@code x} is negative
-     */
-    public static int requireNonNegative(int x, String message) {
-        if (x < 0) {
-            throw new IllegalArgumentException(message);
-        }
-
-        return x;
-    }
-
-    /**
-     * Checks that a specified integer is not negative and
-     * throws a customized {@link IllegalArgumentException} if it is.
-     *
-     * @param x       the specified integer to check for negatively
-     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
-     * @return {@code x} if not negative
-     * @throws IllegalArgumentException if {@code x} is negative
-     */
-    public static long requireNonNegative(long x, String message) {
-        if (x < 0) {
-            throw new IllegalArgumentException(message);
-        }
-
-        return x;
-    }
-
-    /**
-     * Checks that a specified integer is positive and throws a
-     * customized {@link IllegalArgumentException} if it is not.
-     *
-     * @param x       the specified integer to check for positively
-     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
-     * @return {@code x} if positive
-     * @throws IllegalArgumentException if {@code x} is not positive
-     */
-    public static int requirePositive(int x, String message) {
-        if (x <= 0) {
-            throw new IllegalArgumentException(message);
-        }
-
-        return x;
-    }
-
-    /**
-     * Checks that a specified integer is positive and throws a
-     * customized {@link IllegalArgumentException} if it is not.
-     *
-     * @param x       the specified integer to check for positively
-     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
-     * @return {@code x} if positive
-     * @throws IllegalArgumentException if {@code x} is not positive
-     */
-    public static long requirePositive(long x, String message) {
-        if (x <= 0L) {
-            throw new IllegalArgumentException(message);
-        }
-
-        return x;
     }
 }

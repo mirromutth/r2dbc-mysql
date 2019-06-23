@@ -16,10 +16,11 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.netty.buffer.ByteBuf;
+import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.netty.util.AbstractReferenceCounted;
+import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Row;
 import reactor.util.annotation.Nullable;
 
@@ -33,21 +34,24 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlRow extends AbstractReferenceCounted implements Row {
 
-    /**
-     * WARNING: elements maybe null.
-     */
-    private final ByteBuf[] fields;
+    private final FieldValue[] fields;
 
     private final MySqlRowMetadata rowMetadata;
 
-    private final Converters converters;
+    private final Codecs codecs;
+
+    /**
+     * It is binary decode logic.
+     */
+    private final boolean binary;
 
     private final MySqlSession session;
 
-    MySqlRow(ByteBuf[] fields, MySqlRowMetadata rowMetadata, Converters converters, MySqlSession session) {
+    MySqlRow(FieldValue[] fields, MySqlRowMetadata rowMetadata, Codecs codecs, boolean binary, MySqlSession session) {
         this.fields = requireNonNull(fields, "fields must not be null");
         this.rowMetadata = requireNonNull(rowMetadata, "rowMetadata must not be null");
-        this.converters = requireNonNull(converters, "converters must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
+        this.binary = binary;
         this.session = requireNonNull(session, "session must not be null");
     }
 
@@ -69,50 +73,29 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
 
     @Override
     public MySqlRow touch(@Nullable Object hint) {
-        for (ByteBuf field : fields) {
-            field.touch(hint);
+        for (FieldValue field : fields) {
+            if (field != null) {
+                field.touch(hint);
+            }
         }
 
         return this;
+    }
+
+    @Override
+    protected void deallocate() {
+        for (FieldValue field : fields) {
+            ReferenceCountUtil.safeRelease(field);
+        }
     }
 
     @Nullable
     private <T> T getByType(Object identifier, Type type) {
         requireNonNull(type, "type must not be null");
 
-        MySqlColumnMetadata columnMetadata = rowMetadata.getColumnMetadata(identifier);
-        ByteBuf field = fields[columnMetadata.getIndex()];
+        MySqlDefinitionMetadata info = rowMetadata.getColumnMetadata(identifier);
+        FieldValue field = fields[info.getIndex()];
 
-        return converters.read(
-            field,
-            columnMetadata.getType(),
-            columnMetadata.getDefinitions(),
-            columnMetadata.getCollationId(),
-            columnMetadata.getPrecision(),
-            chooseTarget(columnMetadata, type),
-            session
-        );
-    }
-
-    private Type chooseTarget(MySqlColumnMetadata columnMetadata, Type targetType) {
-        // Object.class means could return any thing
-        if (targetType == Object.class) {
-            Class<?> mainType = columnMetadata.getJavaType();
-
-            if (mainType != null) {
-                // use main type if main type exists
-                return mainType;
-            }
-            // otherwise no main type, just use Object.class
-        }
-
-        return targetType;
-    }
-
-    @Override
-    protected void deallocate() {
-        for (ByteBuf field : fields) {
-            field.release();
-        }
+        return codecs.decode(binary, field, info, type, session);
     }
 }

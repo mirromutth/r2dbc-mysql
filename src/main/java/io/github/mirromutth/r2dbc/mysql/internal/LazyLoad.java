@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.internal;
 import java.util.function.Supplier;
 
 /**
- * It is internal util, do NOT use it outer than {@code r2dbc-mysql}.
+ * It is internal util, do NOT use it outer than {@literal r2dbc-mysql}.
  * <p>
  * Lazy loading and caching values ​​for multiple acquisitions,
  * implementations ensure that the value is only loaded once.

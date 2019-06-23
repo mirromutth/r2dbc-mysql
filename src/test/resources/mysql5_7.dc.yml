@@ -21,6 +21,6 @@ services:
       # Just a random password
       MYSQL_ROOT_PASSWORD: UV7xrH6JBk2c
     # For testing from the host:
-    # mysql --host=127.0.0.1 --port=6033 --user root -p
+    # mysql --host=127.0.0.1 --port=7322 --user root -p'UV7xrH6JBk2c'
     ports:
       - "7322:3306"

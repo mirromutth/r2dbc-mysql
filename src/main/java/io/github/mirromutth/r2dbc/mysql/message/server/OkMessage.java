@@ -30,7 +30,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * <p>
  * Note: OK message are also used to indicate EOF and EOF message are deprecated as of MySQL 5.7.5.
  */
-public final class OkMessage implements ServerMessage {
+public final class OkMessage implements ServerMessage, WarningMessage {
 
     static final int MIN_SIZE = 7;
 
@@ -97,6 +97,7 @@ public final class OkMessage implements ServerMessage {
         return serverStatuses;
     }
 
+    @Override
     public int getWarnings() {
         return warnings;
     }

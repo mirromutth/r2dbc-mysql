@@ -18,11 +18,11 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.netty.buffer.ByteBuf;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNegative;
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * MySQL server version, looks like {@code "8.0.14"}.
+ * MySQL server version, looks like {@literal "8.0.14"}.
  */
 public final class ServerVersion implements Comparable<ServerVersion> {
 
@@ -49,9 +49,9 @@ public final class ServerVersion implements Comparable<ServerVersion> {
     }
 
     public static ServerVersion create(int major, int minor, int patch) {
-        requireNonNegative(major, "major version must not be negative");
-        requireNonNegative(minor, "minor version must not be negative");
-        requireNonNegative(patch, "patch version must not be negative");
+        require(major >= 0, "major version must not be a negative integer");
+        require(minor >= 0, "minor version must not be a negative integer");
+        require(patch >= 0, "patch version must not be a negative integer");
 
         if (major == 0 && minor == 0 && patch == 0) {
             return NONE;

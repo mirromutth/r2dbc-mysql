@@ -20,6 +20,8 @@ import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 
 import java.nio.charset.Charset;
 
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+
 /**
  * Character collation of MySQL
  */
@@ -33,17 +35,20 @@ public interface CharCollation {
 
     Charset getCharset();
 
-    static CharCollation defaultCollation(ServerVersion version) {
-        return CharCollations.getInstance().defaultCollation(version);
-    }
+    int BINARY_ID = CharCollations.BINARY.getId();
 
     static CharCollation fromId(int id, ServerVersion version) {
-        CharCollation result = CharCollations.getInstance().fromId(id);
+        requireNonNull(version, "version must not be null");
 
-        if (result == null) {
-            return defaultCollation(version);
-        }
+        return CharCollations.fromId(id, version);
+    }
 
-        return result;
+    /**
+     * WARNING: this method is internal method in `r2dbc-mysql`, it is UNSTABLE and may change.
+     *
+     * @return client character collation.
+     */
+    static CharCollation clientCharCollation() {
+        return CharCollations.UTF8MB4_GENERAL_CI;
     }
 }

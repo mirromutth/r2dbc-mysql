@@ -17,13 +17,10 @@
 package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Constants for MySQL protocol envelopes, do NOT use it outer than {@code r2dbc-mysql},
+ * Constants for MySQL protocol envelopes, do NOT use it outer than {@literal r2dbc-mysql},
  * we can NOT promise it will never be changes.
  */
 public final class Envelopes {
-
-    private Envelopes() {
-    }
 
     /**
      * The length of the byte size field, it is 3 bytes.
@@ -32,5 +29,8 @@ public final class Envelopes {
 
     public static final int PART_HEADER_SIZE = SIZE_FIELD_SIZE + 1;
 
-    public static final int MAX_PART_SIZE = ~(-(1 << (SIZE_FIELD_SIZE << 3)));
+    public static final int MAX_ENVELOPE_SIZE = ~(-(1 << (SIZE_FIELD_SIZE << 3)));
+
+    private Envelopes() {
+    }
 }

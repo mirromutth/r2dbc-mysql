@@ -16,8 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import io.github.mirromutth.r2dbc.mysql.ServerVersion;
-
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 
@@ -38,6 +36,4 @@ interface CharsetTarget {
     Charset getCharset() throws UnsupportedCharsetException;
 
     boolean isCached();
-
-    boolean isExists(ServerVersion version);
 }

@@ -17,7 +17,9 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.util.ReferenceCountUtil;
 
 import java.util.List;
 
@@ -27,40 +29,47 @@ import java.util.List;
 interface ByteBufJoiner {
 
     /**
-     * The implementation is responsible to correctly handle the life-cycle of the given {@link ByteBuf}s, so
-     * call {@link ByteBuf#release()} if a {@link ByteBuf} is fully consumed.
+     * This method would release all {@link ByteBuf}s when any exception throws.
      *
-     * @param parts All previous {@link ByteBuf}s are relative to the last buffer.
-     * @param lastPart The last buffer.
-     * @return A {@link ByteBuf} holds the all bytes of given {@code parts} and {@code lastPart}
+     * @param parts {@link ByteBuf}s want to be wrap, it will be clear even exception happened.
+     * @return A {@link ByteBuf} holds the all bytes of given {@code parts}
      */
-    ByteBuf join(List<ByteBuf> parts, ByteBuf lastPart);
+    ByteBuf join(List<ByteBuf> parts);
 
-    @SuppressWarnings("ForLoopReplaceableByForEach")
     static ByteBufJoiner wrapped() {
-        return (parts, lastPart) -> {
-            int maxIndex = parts.size();
+        return (parts) -> {
+            int size = parts.size();
 
-            if (maxIndex <= 0) {
-                return lastPart;
-            }
+            switch (size) {
+                case 0:
+                    throw new IllegalStateException("No buffer available");
+                case 1:
+                    try {
+                        return parts.get(0);
+                    } finally {
+                        parts.clear();
+                    }
+                default:
+                    CompositeByteBuf composite = null;
 
-            try {
-                ByteBuf[] buffers = parts.toArray(new ByteBuf[maxIndex + 1]);
-                buffers[maxIndex] = lastPart;
-                return Unpooled.wrappedBuffer(buffers);
-            } catch (Throwable e) {
-                // Failed, release all buffers in list
-                // Use the old-style for loop, see: https://github.com/netty/netty/issues/2642
-                int size = parts.size();
-
-                for (int i = 0; i < size; ++i) {
-                    parts.get(i).release();
-                }
-
-                throw e; // throw this exception
-            } finally {
-                parts.clear(); // no need release when success or has released by exception caught
+                    try {
+                        composite = parts.get(0).alloc().compositeBuffer(size);
+                        // Auto-releasing failed parts
+                        return composite.addComponents(true, parts);
+                    } catch (Throwable e) {
+                        if (composite == null) {
+                            // Alloc failed, release parts.
+                            for (ByteBuf part : parts) {
+                                ReferenceCountUtil.safeRelease(part);
+                            }
+                        } else {
+                            // Also release success parts.
+                            composite.release();
+                        }
+                        throw e;
+                    } finally {
+                        parts.clear();
+                    }
             }
         };
     }

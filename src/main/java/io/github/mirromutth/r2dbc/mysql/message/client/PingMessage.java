@@ -16,15 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.Unpooled;
 
 /**
  * The request message check alive of MySQL server.
  */
-public final class PingMessage extends AbstractClientMessage implements ExchangeableMessage {
+public final class PingMessage extends FixedSizeClientMessage implements ExchangeableMessage {
+
+    private static final int PING_FLAG = 0x0E;
 
     private static final PingMessage INSTANCE = new PingMessage();
 
@@ -41,8 +40,13 @@ public final class PingMessage extends AbstractClientMessage implements Exchange
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
-        return Unpooled.wrappedBuffer(new byte[] { 0x0E });
+    protected int size() {
+        return Byte.BYTES;
+    }
+
+    @Override
+    protected void writeTo(ByteBuf buf) {
+        buf.writeByte(PING_FLAG);
     }
 
     @Override

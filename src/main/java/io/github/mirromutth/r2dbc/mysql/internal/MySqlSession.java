@@ -18,22 +18,20 @@ package io.github.mirromutth.r2dbc.mysql.internal;
 
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import io.github.mirromutth.r2dbc.mysql.constant.ZeroDate;
+import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import io.github.mirromutth.r2dbc.mysql.security.MySqlAuthProvider;
-import io.netty.buffer.ByteBufAllocator;
 import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * It is internal util, do NOT use it outer than {@code r2dbc-mysql}, try using
- * {@code MySqlConnectionConfiguration} to control session and client behavior.
+ * The MySQL session considers the behavior of server or client.
  * <p>
- * MySQL sessions.
+ * WARNING: It is internal util, do NOT use it outer than {@literal r2dbc-mysql}, try
+ * configure {@code ConnectionFactoryOptions} or {@code MySqlConnectionConfiguration}
+ * to control session and client behavior.
  */
 public final class MySqlSession {
-
-    private volatile boolean useSsl;
 
     private volatile int connectionId = -1;
 
@@ -41,11 +39,16 @@ public final class MySqlSession {
 
     private volatile int serverCapabilities = 0;
 
-    private volatile CharCollation collation = CharCollation.defaultCollation(ServerVersion.NONE);
+    private final boolean ssl;
 
     private final String database;
 
-    private final ZeroDate zeroDate;
+    private final ZeroDateOption zeroDateOption;
+
+    /**
+     * Client character collation.
+     */
+    private final CharCollation collation = CharCollation.clientCharCollation();
 
     private volatile int clientCapabilities = 0;
 
@@ -74,25 +77,21 @@ public final class MySqlSession {
     private volatile byte[] salt;
 
     public MySqlSession(
-        boolean useSsl,
+        boolean ssl,
         String database,
-        ZeroDate zeroDate,
+        ZeroDateOption zeroDateOption,
         String username,
         @Nullable CharSequence password
     ) {
-        this.useSsl = useSsl;
+        this.ssl = ssl;
         this.database = requireNonNull(database, "database must not be null");
-        this.zeroDate = requireNonNull(zeroDate, "zeroDate must not be null");
+        this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
     }
 
-    public boolean isUseSsl() {
-        return useSsl;
-    }
-
-    public void setUseSsl(boolean useSsl) {
-        this.useSsl = useSsl;
+    public boolean isSsl() {
+        return ssl;
     }
 
     public int getConnectionId() {
@@ -123,16 +122,12 @@ public final class MySqlSession {
         return collation;
     }
 
-    public void setCollation(CharCollation collation) {
-        this.collation = collation;
-    }
-
     public String getDatabase() {
         return database;
     }
 
-    public ZeroDate getZeroDate() {
-        return zeroDate;
+    public ZeroDateOption getZeroDateOption() {
+        return zeroDateOption;
     }
 
     public int getClientCapabilities() {
@@ -191,7 +186,7 @@ public final class MySqlSession {
             return null;
         }
 
-        return authProvider.fastAuthPhase(this);
+        return authProvider.fastAuthPhase(password, salt, collation);
     }
 
     /**

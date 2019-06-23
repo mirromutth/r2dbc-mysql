@@ -118,11 +118,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
         // Reserved field, all bytes are 0x00.
         buf.skipBytes(RESERVED_SIZE);
 
-        int saltSecondPartSize = Math.max(
-            MIN_SALT_SECOND_PART_SIZE,
-            saltSize - salt.readableBytes() - 1
-        );
-
+        int saltSecondPartSize = Math.max(MIN_SALT_SECOND_PART_SIZE, saltSize - salt.readableBytes() - 1);
         ByteBuf saltSecondPart = buf.readSlice(saltSecondPartSize);
 
         // Always 0x00, and it is not salt part, ignore.
@@ -207,7 +203,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
     @Override
     public String toString() {
         return "HandshakeV10Message{" +
-            "salt=<hidden>" +
+            "salt=REDACTED" +
             ", serverCapabilities=" + serverCapabilities +
             ", collationLow8Bits=" + collationLow8Bits +
             ", serverStatuses=" + serverStatuses +

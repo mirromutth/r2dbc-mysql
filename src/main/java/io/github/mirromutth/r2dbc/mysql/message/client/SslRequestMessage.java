@@ -18,33 +18,30 @@ package io.github.mirromutth.r2dbc.mysql.message.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 
 /**
  * The ssl request message.
+ * <p>
+ * Note: protocol 41 ALWAYS be used.
  */
-public final class SslRequestMessage extends AbstractClientMessage {
+public final class SslRequestMessage extends FixedSizeClientMessage implements ExchangeableMessage {
 
     private static final int FILTER_SIZE = 23;
 
+    private static final int BUF_SIZE = Integer.BYTES + Integer.BYTES + Byte.BYTES + FILTER_SIZE;
+
     private final int clientCapabilities;
 
-    private final byte collationLow8Bits;
+    private final int collationId;
 
     /**
      * @param clientCapabilities client capabilities, see {@link Capabilities}
-     * @param collationLow8Bits 0 if server not support protocol 41 or has been not give collation
+     * @param collationId  0 if server not support protocol 41 or has been not give collation
      */
-    public SslRequestMessage(int clientCapabilities, byte collationLow8Bits) {
+    public SslRequestMessage(int clientCapabilities, int collationId) {
         this.clientCapabilities = clientCapabilities;
-
-        if ((clientCapabilities & Capabilities.PROTOCOL_41) != 0) {
-            this.collationLow8Bits = collationLow8Bits;
-        } else {
-            this.collationLow8Bits = 0;
-        }
+        this.collationId = collationId;
     }
 
     @Override
@@ -53,23 +50,48 @@ public final class SslRequestMessage extends AbstractClientMessage {
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
-        final ByteBuf buf = bufAllocator.buffer();
+    protected int size() {
+        return BUF_SIZE;
+    }
 
-        try {
-            if ((clientCapabilities & Capabilities.PROTOCOL_41) != 0) {
-                buf.writeIntLE(clientCapabilities)
-                    .writeIntLE(Envelopes.MAX_PART_SIZE)
-                    .writeByte(collationLow8Bits)
-                    .writeZero(FILTER_SIZE);
-            } else {
-                buf.writeShortLE(clientCapabilities & 0xFFFF).writeMediumLE(Envelopes.MAX_PART_SIZE);
-            }
+    @Override
+    protected void writeTo(ByteBuf buf) {
+        buf.writeIntLE(clientCapabilities)
+            .writeIntLE(Envelopes.MAX_ENVELOPE_SIZE)
+            .writeByte(collationId) // only low 8-bits.
+            .writeZero(FILTER_SIZE);
+    }
 
-            return buf;
-        } catch (Throwable e) {
-            buf.release();
-            throw e;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
         }
+        if (!(o instanceof SslRequestMessage)) {
+            return false;
+        }
+
+        SslRequestMessage that = (SslRequestMessage) o;
+
+        if (clientCapabilities != that.clientCapabilities) {
+            return false;
+        }
+        return collationId == that.collationId;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = clientCapabilities;
+        result = 31 * result + collationId;
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "SslRequestMessage{" +
+            "clientCapabilities=" + clientCapabilities +
+            ", collationId=" + collationId +
+            '}';
     }
 }

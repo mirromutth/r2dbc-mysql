@@ -16,14 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
-import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.HandshakeResponse41Message;
+import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.AbstractHandshakeMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.AuthMoreDataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
@@ -118,7 +118,7 @@ final class ReactorNettyClient implements Client {
 
     @Override
     public Flux<ServerMessage> exchange(Publisher<? extends ExchangeableMessage> requests) {
-        requireNonNull(requests, "request must not be null");
+        requireNonNull(requests, "requests must not be null");
 
         return Flux.defer(() -> {
             if (this.closing.get()) {
@@ -127,6 +127,13 @@ final class ReactorNettyClient implements Client {
 
             return this.responseProcessor.doOnSubscribe(s -> send(requests).subscribe());
         });
+    }
+
+    @Override
+    public Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages) {
+        requireNonNull(messages, "messages must not be null");
+
+        return Mono.defer(() -> send(messages));
     }
 
     @Override
@@ -154,13 +161,12 @@ final class ReactorNettyClient implements Client {
                     sink.error(new R2dbcPermissionDeniedException(msg.getErrorMessage(), msg.getSqlState(), msg.getErrorCode()));
                 } else if (message instanceof AuthMoreDataMessage) {
                     if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != 3) {
-                        if (this.session.isUseSsl()) {
+                        if (this.session.isSsl()) {
                             if (logger.isWarnEnabled()) {
                                 logger.warn("Connection (id {}) fast authentication failed, auto-try to use full authentication", this.session.getConnectionId());
                             }
                         } else {
                             sink.error(new R2dbcPermissionDeniedException("Fast authentication failed and connection is not SSL, authentication all failed"));
-                            connection.channel().close();
                         }
                     } else if (logger.isDebugEnabled()) {
                         logger.debug("Connection (id {}) fast authentication success", this.session.getConnectionId());
@@ -174,6 +180,7 @@ final class ReactorNettyClient implements Client {
                     sink.error(new R2dbcPermissionDeniedException("unknown message type '" + message.getClass().getSimpleName() + "' in authentication phase"));
                 }
             })
+            .doOnError(e -> connection.channel().close())
             .doOnTerminate(this.session::clearAuthentication)
             .then();
     }
@@ -181,7 +188,7 @@ final class ReactorNettyClient implements Client {
     @Override
     public Mono<Void> close() {
         return Mono.defer(() -> {
-            if (this.closing.getAndSet(true)) {
+            if (!this.closing.compareAndSet(false, true)) {
                 // client is closing or closed
                 return Mono.empty();
             }
@@ -194,6 +201,11 @@ final class ReactorNettyClient implements Client {
                 return it;
             }).then(Mono.defer(() -> FutureMono.from(connection.channel().close())));
         });
+    }
+
+    @Override
+    public String toString() {
+        return String.format("ReactorNettyClient(%s){connectionId=%d}", this.closing.get() ? "closing or closed" : "activating", session.getConnectionId());
     }
 
     private Mono<Void> send(Publisher<? extends ClientMessage> messages) {
@@ -218,17 +230,10 @@ final class ReactorNettyClient implements Client {
         HandshakeHeader header = message.getHandshakeHeader();
         ServerVersion version = header.getServerVersion();
         int serverCapabilities = message.getServerCapabilities();
-        String authType = message.getAuthType();
-        MySqlAuthProvider authProvider = MySqlAuthProvider.build(authType);
-        CharCollation collation = CharCollation.defaultCollation(version);
-
-//        if (authProvider.isSslNecessary()) {
-//            this.session.setUseSsl(true);
-//        }
+        MySqlAuthProvider authProvider = MySqlAuthProvider.build(message.getAuthType());
 
         this.session.setConnectionId(header.getConnectionId());
         this.session.setServerVersion(version);
-        this.session.setCollation(collation);
         this.session.setAuthProvider(authProvider);
         this.session.setSalt(message.getSalt());
         this.session.setServerCapabilities(serverCapabilities);
@@ -261,14 +266,19 @@ final class ReactorNettyClient implements Client {
     }
 
     private static int calculateClientCapabilities(int serverCapabilities, MySqlSession session) {
-        // use protocol 41 and deprecate EOF message
-        int clientCapabilities = serverCapabilities | Capabilities.PROTOCOL_41 | Capabilities.DEPRECATE_EOF;
+        int clientCapabilities = serverCapabilities |
+            Capabilities.LONG_PASSWORD | // support long password
+            Capabilities.TRANSACTIONS | // support transactions
+            Capabilities.PROTOCOL_41 | // must be protocol 41
+            Capabilities.DEPRECATE_EOF | // must deprecate EOF
+            Capabilities.MULTI_STATEMENTS | // support multi-statements
+            Capabilities.MULTI_RESULTS | // support multi-results
+            Capabilities.PREPARED_MULTI_RESULTS; // support prepared statements' multi-results
 
-        // server should always return metadata
-        // TODO: maybe need implement compress logic?
-        clientCapabilities &= ~(Capabilities.OPTIONAL_RESULT_SET_METADATA | Capabilities.COMPRESS);
+        // server should always return metadata, and no compress, and without session track
+        clientCapabilities &= ~(Capabilities.OPTIONAL_RESULT_SET_METADATA | Capabilities.COMPRESS | Capabilities.SESSION_TRACK);
 
-        if (session.isUseSsl()) {
+        if (session.isSsl()) {
             clientCapabilities |= Capabilities.SSL;
         } else {
             clientCapabilities &= ~(Capabilities.SSL | Capabilities.SSL_VERIFY_SERVER_CERT);

@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.converter.Converters;
+import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
@@ -34,7 +34,7 @@ import java.util.function.BiFunction;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link MySqlResult} representing the results of {@code INSERT} with
+ * An implementation of {@link MySqlResult} representing the results of {@literal INSERT} with
  * {@code SELECT LAST_INSERT_ID()} query against the MySQL database.
  */
 final class InsertBundledMySqlResult extends MySqlResult {
@@ -47,8 +47,8 @@ final class InsertBundledMySqlResult extends MySqlResult {
 
     private final Flux<ServerMessage> messages;
 
-    InsertBundledMySqlResult(Converters converters, MySqlSession session, Flux<ServerMessage> messages) {
-        super(converters, session);
+    InsertBundledMySqlResult(Codecs codecs, MySqlSession session, Flux<ServerMessage> messages) {
+        super(codecs, session);
         this.messages = requireNonNull(messages, "messages must not be null");
     }
 
@@ -60,7 +60,7 @@ final class InsertBundledMySqlResult extends MySqlResult {
     @Override
     public <T> Flux<T> map(BiFunction<Row, RowMetadata, ? extends T> f) {
         return lastInsertId.doOnSubscribe(s -> onSubscribe())
-            .handle((message, sink) -> handleNoComplete(message, f, sink));
+            .handle((message, sink) -> handleNoComplete(message, sink, f));
     }
 
     private void onSubscribe() {
@@ -74,12 +74,13 @@ final class InsertBundledMySqlResult extends MySqlResult {
 
                 if (message instanceof OkMessage) {
                     lastInsertId.onComplete();
+                    sink.complete();
                 }
             } else {
                 if (message instanceof OkMessage) {
                     rowsUpdated.onNext(((OkMessage) message).getAffectedRows());
                 } else {
-                    ReferenceCountUtil.release(message);
+                    ReferenceCountUtil.safeRelease(message);
                 }
             }
         }).subscribe(null, e -> {

@@ -21,9 +21,6 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  */
 public final class Capabilities {
 
-    private Capabilities() {
-    }
-
     /**
      * More secure passwords.
      */
@@ -31,6 +28,10 @@ public final class Capabilities {
     public static final int FOUND_ROWS = 1 << 1;
     public static final int LONG_FLAG = 1 << 2;
     public static final int CONNECT_WITH_DB = 1 << 3;
+
+    /**
+     * The deflate compression.
+     */
     public static final int COMPRESS = 32;
     public static final int LOCAL_FILES = 128;
 
@@ -45,7 +46,7 @@ public final class Capabilities {
     public static final int SECURE_CONNECTION = 32768;
     public static final int MULTI_STATEMENTS = 65536;
     public static final int MULTI_RESULTS = 1 << 17;
-    public static final int PS_MULTI_RESULTS = 1 << 18;
+    public static final int PREPARED_MULTI_RESULTS = 1 << 18;
     public static final int PLUGIN_AUTH = 1 << 19;
     public static final int CONNECT_ATTRS = 1 << 20;
 
@@ -67,4 +68,7 @@ public final class Capabilities {
 
     public static final int SSL_VERIFY_SERVER_CERT = 1 << 30;
     public static final int REMEMBER_OPTIONS = 1 << 31;
+
+    private Capabilities() {
+    }
 }

@@ -18,14 +18,19 @@ package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
+import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
+import io.github.mirromutth.r2dbc.mysql.message.client.PreparedExecuteMessage;
+import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.CompletableDecodeContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
-import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessageDecoder;
+import io.github.mirromutth.r2dbc.mysql.message.server.WarningMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -33,6 +38,7 @@ import io.netty.channel.ChannelPromise;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.util.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -47,6 +53,10 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageDuplexCodec.class);
 
+    private volatile DecodeContext decodeContext = DecodeContext.connection();
+
+    private volatile boolean binaryResult = false;
+
     private final SequenceIdProvider sequenceIdProvider = SequenceIdProvider.atomic();
 
     private final MySqlSession session;
@@ -55,7 +65,11 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     private final ServerMessageDecoder decoder = new ServerMessageDecoder();
 
-    private volatile DecodeContext decodeContext = DecodeContext.connection();
+    private final Runnable FORMAT_TEXT = () -> this.binaryResult = false;
+
+    private final Runnable FORMAT_BIN = () -> this.binaryResult = true;
+
+    private final Runnable WAIT_PREPARE = () -> this.setDecodeContext(DecodeContext.waitPrepare());
 
     MessageDuplexCodec(MySqlSession session, AtomicBoolean closing) {
         this.session = requireNonNull(session, "session must not be null");
@@ -63,13 +77,14 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ByteBuf) {
-            ServerMessage message = decoder.decode((ByteBuf) msg, sequenceIdProvider, session, this.decodeContext);
+            DecodeContext context = this.decodeContext;
+            ServerMessage message = decoder.decode((ByteBuf) msg, sequenceIdProvider, session, context);
 
             if (message != null) {
-                if (readIntercept(message)) {
-                    super.channelRead(ctx, message);
+                if (readFilter(ctx, message, context)) {
+                    ctx.fireChannelRead(message);
                 }
             }
         } else {
@@ -84,9 +99,9 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         if (msg instanceof ClientMessage) {
             ClientMessage message = (ClientMessage) msg;
+            WriteSubscriber writer = new WriteSubscriber(ctx, this.sequenceIdProvider, message.isSequenceIdReset(), promise, onDone(message));
 
-            message.encode(ctx.alloc(), this.session)
-                .subscribe(new WriteSubscriber(ctx, this.sequenceIdProvider, message.isSequenceIdReset(), promise));
+            message.encode(ctx.alloc(), this.session).subscribe(writer);
         } else {
             if (logger.isWarnEnabled()) {
                 logger.warn("Unknown message type {} on writing", msg.getClass());
@@ -108,21 +123,42 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         ctx.fireChannelInactive();
     }
 
-    private boolean readIntercept(ServerMessage msg) {
+    @Nullable
+    private Runnable onDone(ClientMessage message) {
+        if (message instanceof SimpleQueryMessage) {
+            return FORMAT_TEXT;
+        } else if (message instanceof PrepareQueryMessage) {
+            return WAIT_PREPARE;
+        } else if (message instanceof PreparedExecuteMessage) {
+            return FORMAT_BIN;
+        }
+
+        return null;
+    }
+
+    private boolean readFilter(ChannelHandlerContext ctx, ServerMessage msg, DecodeContext context) {
+        if (context instanceof CompletableDecodeContext) {
+            CompletableDecodeContext completable = (CompletableDecodeContext) context;
+            if (completable.isCompleted()) {
+                setDecodeContext(completable.nextContext());
+                ctx.fireChannelRead(completable.fakeMessage());
+            }
+        }
+
+        if (msg instanceof WarningMessage) {
+            loggingWarnings((WarningMessage) msg);
+        }
+
         if (msg instanceof ColumnCountMessage) {
-            setDecodeContext(DecodeContext.textResult(((ColumnCountMessage) msg).getTotalColumns()));
+            setDecodeContext(DecodeContext.result(this.binaryResult, ((ColumnCountMessage) msg).getTotalColumns()));
             return false;
         }
 
         if (msg instanceof OkMessage) {
-            OkMessage message = (OkMessage) msg;
-            int warnings = message.getWarnings();
-
-            if (warnings > 0 && logger.isWarnEnabled()) {
-                logger.warn("MySQL server has {} warnings", warnings);
-            }
-
             setDecodeContext(DecodeContext.command());
+        } else if (msg instanceof PreparedOkMessage) {
+            PreparedOkMessage message = (PreparedOkMessage) msg;
+            setDecodeContext(DecodeContext.preparedMetadata(message.getTotalColumns(), message.getTotalParameters()));
         } else if (msg instanceof ErrorMessage) {
             ErrorMessage message = (ErrorMessage) msg;
 
@@ -131,13 +167,6 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             }
 
             setDecodeContext(DecodeContext.command());
-        } else if (msg instanceof EofMessage) {
-            EofMessage message = (EofMessage) msg;
-            int warnings = message.getWarnings();
-
-            if (warnings > 0 && logger.isWarnEnabled()) {
-                logger.warn("MySQL server has {} warnings", warnings);
-            }
         }
 
         return true;
@@ -147,6 +176,14 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         this.decodeContext = context;
         if (logger.isDebugEnabled()) {
             logger.debug("Decode context change to {}", context);
+        }
+    }
+
+    private void loggingWarnings(WarningMessage message) {
+        int warnings = message.getWarnings();
+
+        if (warnings > 0 && logger.isInfoEnabled()) {
+            logger.info("MySQL server has {} warnings", warnings);
         }
     }
 }

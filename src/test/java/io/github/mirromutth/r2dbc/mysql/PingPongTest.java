@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 
@@ -24,7 +25,7 @@ import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.STD5_7;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Unit tests for ping message, include business query ping {@code SELECT 1}.
+ * Unit tests for ping message, include application level ping {@code SELECT 1}.
  * <p>
  * SQL query {@code SELECT 1} is a ping approach which is cross-database (maybe some are not
  * supported) and is easy to understand.
@@ -38,10 +39,11 @@ class PingPongTest {
 
     @Test
     void selectOne() throws Throwable {
-        STD5_7.run(Duration.ofSeconds(4), connection -> connection.createStatement("SELECT 1").execute()
+        STD5_7.run(Duration.ofSeconds(4), connection -> Mono.from(connection.createStatement("SELECT 1").execute())
             .flatMapMany(result -> result.map((row, metadata) -> row.get(0, Number.class)))
             .doOnNext(number -> assertEquals(number.intValue(), 1))
-            .then());
+            .reduce((x, y) -> Math.addExact(x.intValue(), y.intValue()))
+            .doOnNext(number -> assertEquals(number.intValue(), 1)));
     }
 
     @Test

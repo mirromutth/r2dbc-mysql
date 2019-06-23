@@ -16,14 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 
 /**
  * The request message tells the MySQL client to exit.
  */
-public final class ExitMessage extends AbstractClientMessage {
+public final class ExitMessage extends FixedSizeClientMessage {
+
+    private static final int EXIT_FLAG = 0x01;
 
     private static final ExitMessage INSTANCE = new ExitMessage();
 
@@ -40,8 +40,13 @@ public final class ExitMessage extends AbstractClientMessage {
     }
 
     @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
-        return bufAllocator.buffer(1, 1).writeByte(0x01);
+    protected int size() {
+        return Byte.BYTES;
+    }
+
+    @Override
+    protected void writeTo(ByteBuf buf) {
+        buf.writeByte(EXIT_FLAG);
     }
 
     @Override

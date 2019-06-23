@@ -16,71 +16,21 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-
 /**
  * A plain text SQL query message without any parameter, it could include multi-statements.
  */
-public final class SimpleQueryMessage extends AbstractClientMessage implements ExchangeableMessage {
+public final class SimpleQueryMessage extends AbstractQueryMessage implements ExchangeableMessage {
 
     private static final byte QUERY_FLAG = 3;
 
-    private final String sql;
-
     public SimpleQueryMessage(String sql) {
-        this.sql = requireNonNull(sql, "sql must not be null");
-    }
-
-    public String getSql() {
-        return sql;
-    }
-
-    @Override
-    public boolean isSequenceIdReset() {
-        return true;
-    }
-
-    @Override
-    protected ByteBuf encodeSingle(ByteBufAllocator bufAllocator, MySqlSession session) {
-        final ByteBuf result = bufAllocator.buffer();
-
-        try {
-            result.writeByte(QUERY_FLAG);
-            result.writeCharSequence(sql, session.getCollation().getCharset());
-            return result;
-        } catch (Throwable e) {
-            result.release();
-            throw e;
-        }
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof SimpleQueryMessage)) {
-            return false;
-        }
-
-        SimpleQueryMessage that = (SimpleQueryMessage) o;
-
-        return sql.equals(that.sql);
-    }
-
-    @Override
-    public int hashCode() {
-        return sql.hashCode();
+        super(QUERY_FLAG, sql);
     }
 
     @Override
     public String toString() {
         // SQL should NOT be printed as this may contain security information.
         // Of course, if user use trace level logs, SQL is still be printed by ByteBuf dump.
-        return "SimpleQueryMessage{sql=<hidden>}";
+        return "SimpleQueryMessage{sql=REDACTED}";
     }
 }
