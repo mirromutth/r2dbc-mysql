@@ -60,10 +60,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
     @Override
     public String toString() {
-        return "PreparedExecuteMessage{" +
-            "statementId=" + statementId +
-            ", has " + parameters.length + " parameters" +
-            '}';
+        return String.format("PreparedExecuteMessage{statementId=%d, has %d parameters}", statementId, parameters.length);
     }
 
     @Override

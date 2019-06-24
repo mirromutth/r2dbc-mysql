@@ -9,16 +9,18 @@ This driver provides the following features:
 
 - Login with username/password (or no password)
 - Execution of simple or batch statements without bindings
-- Read text result support for all data types except LOB types (e.g. BLOB, CLOB)
+- Execution of prepared statements with bindings.
+- Support LOB types (e.g. BLOB, CLOB)
+- Support text/binary result.
+- Native ping command.
 - Transactions (testing, not verify for now)
 
 Next steps:
 
-- Execution of prepared statements with bindings.
-- Support LOB types (e.g. BLOB, CLOB)
-- Support binary result.
-- Complete transactions test.
+- Support all exceptions of error code mapping.
 - TLS (see [#9](https://github.com/mirromutth/r2dbc-mysql/issues/9))
+- Add more unit tests.
+- Complete transaction tests.
 
 ## Usage
 
@@ -77,10 +79,30 @@ connection.createStatement("INSERT INTO `person` (`first_name`, `last_name`) VAL
     .execute(); // return a Publisher include one Result
 ```
 
-Each statement can only contain one query (`SELECT`, `INSERT`, `UPDATE`, etc.) without `;`.
+Each statement can only contain one query (`SELECT`, `INSERT`, `UPDATE`, etc.).
 
-> Every `Result` should be used (call `getRowsUpdated` or `map`, even DDL), can NOT just ignore any `Result`,
-> otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
+- MySQL does **NOT** support DDL in prepare statement, please use simple statement if want to execute DDL.
+- Every `Result` should be used (call `getRowsUpdated` or `map`, even DDL), can NOT just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
+- If bound `returnGeneratedValues`, call `getRowsUpdated` to get affected rows, call `map` to get last inserted ID, can be called both.
+
+### Prepared statement
+
+```java
+connection.createStatement("INSERT INTO `person` (`birth`, `nickname`, `show_name`) VALUES (?, ?name, ?name)")
+    .bind(0, LocalDateTime.of(2019, 6, 25, 12, 12, 12))
+    .bind("name", "Some one")
+    .add()
+    .bind(0, LocalDateTime.of(2009, 6, 25, 12, 12, 12))
+    .bind("name", "Some two")
+    .returnGeneratedValues("generated_id")
+    .execute(); // return a Publisher include two Result.
+```
+
+Each statement can only contain one query (`SELECT`, `INSERT`, `UPDATE`, etc.).
+
+- MySQL does **NOT** support DDL in prepare statement, please use simple statement if want to execute DDL.
+- Every `Result` should be used (call `getRowsUpdated` or `map`), can NOT just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
+- If bound `returnGeneratedValues`, call `getRowsUpdated` to get affected rows, call `map` to get last inserted ID, can be called both.
 
 ### Batch statement
 
@@ -91,7 +113,7 @@ connection.createBatch()
     .execute(); // return a Publisher include two Result
 ```
 
-Each statement of `add(String)` can only contain one query without `;`.
+Each statement of `add(String)` can only contain one query, `;` will be removed if has only whitespace follow the `;`.
 
 > Every `Result` should be used (call `getRowsUpdated` or `map`, even DDL), can NOT just ignore any `Result`,
 > otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
@@ -102,33 +124,31 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 
 | MySQL Type | Unsigned | Support Data Type |
 |---|---|---|
-| INT | UNSIGNED | `Long` |
-| INT | SIGNED | `Integer` |
-| TINYINT | UNSIGNED | `Short` |
-| TINYINT | SIGNED | `Byte` |
-| SMALLINT | UNSIGNED | `Integer` |
-| SMALLINT | SIGNED | `Short` |
-| MEDIUMINT | SIGNED/UNSIGNED | `Integer` |
-| BIGINT | UNSIGNED | `BigInteger`, `Long` (throws `ArithmeticException` if it overflows) |
-| BIGINT | SIGNED | `Long` |
-| FLOAT | SIGNED/UNSIGNED | `Float` |
-| DOUBLE | SIGNED/UNSIGNED | `Double` |
+| INT | UNSIGNED | `Long`, `BigInteger` |
+| INT | SIGNED | `Integer`, `Long`, `BigInteger` |
+| TINYINT | UNSIGNED | `Short`, `Integer`, `Long`, `BigInteger` |
+| TINYINT | SIGNED | `Byte`, `Short`, `Integer`, `Long`, `BigInteger` |
+| SMALLINT | UNSIGNED | `Integer`, `Long`, `BigInteger` |
+| SMALLINT | SIGNED | `Short`, `Integer`, `Long`, `BigInteger` |
+| MEDIUMINT | SIGNED/UNSIGNED | `Integer`, `Long`, `BigInteger` |
+| BIGINT | UNSIGNED | `BigInteger`, `Long` (Not check overflow for ID column) |
+| BIGINT | SIGNED | `Long`, `BigInteger` |
+| FLOAT | SIGNED/UNSIGNED | `Float`, `BigDecimal` |
+| DOUBLE | SIGNED/UNSIGNED | `Double`, `BigDecimal`  |
 | DECIMAL | SIGNED/UNSIGNED | `BigDecimal`, `Float` (if size less than 7), `Double` (if size less than 16) |
-| BIT | - | `BitSet`, `Boolean` (if size is 1), `Byte` (if size less or equals than 8) |
+| BIT | - | `BitSet`, `Boolean` (if size is 1), `byte[]` |
 | DATETIME/TIMESTAMP | - | `LocalDateTime` |
 | DATE | - | `LocalDate` |
 | TIME | - | `LocalTime` |
-| YEAR | - | `Integer`, `Year` |
+| YEAR | - | `Short`, `Integer`, `Long`, `BigInteger`, `Year` |
 | VARCHAR/NVARCHAR | - | `String` |
-| VARBINARY | - | Not support yet |
-| BINARY | - | Not support yet |
 | CHAR/NCHAR | - | `String` |
-| ENUM | - | `String`, `Enum<?>` (Need to pass in a specific enumeration class) |
-| SET | - | `String` |
-| BLOB (LONGBLOB, etc.) | - | `byte[]` (need change to `Blob`) |
-| TEXT (LONGTEXT, etc.) | - | `String` (need change to `Clob`) |
-| JSON | - | `String` (see [#15](https://github.com/mirromutth/r2dbc-mysql/issues/15)) |
-| GEOMETRY | - | `byte[]` (it should handling same as BLOB, see [#11](https://github.com/mirromutth/r2dbc-mysql/issues/11)) |
+| ENUM | - | `String`, `Enum<?>` |
+| SET | - | `String[]`, `String`, `Set<String>` (Need use `ParameterizedType`), `Set<Enum<?>>` (Need use `ParameterizedType`) |
+| BLOB (LONGBLOB, etc.) | - | `Blob`, `byte[]` (Not check overflow) |
+| TEXT (LONGTEXT, etc.) | - | `Clob`, `String` (Not check overflow) |
+| JSON | - | `String`, `Clob` |
+| GEOMETRY | - | `byte[]`, `Blob` |
 
 ## Notice
 

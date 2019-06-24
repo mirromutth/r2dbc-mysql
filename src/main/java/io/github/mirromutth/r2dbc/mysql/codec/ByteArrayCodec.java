@@ -63,7 +63,7 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     @Override
     protected boolean doCanDecode(FieldInformation info) {
         DataType type = info.getType();
-        return DataType.BIT == type || TypeConditions.isString(type) || TypeConditions.isLob(type);
+        return DataType.BIT == type || DataType.GEOMETRY == type || TypeConditions.isString(type) || TypeConditions.isLob(type);
     }
 
     private static byte[] decodeBoth(ByteBuf buf) {

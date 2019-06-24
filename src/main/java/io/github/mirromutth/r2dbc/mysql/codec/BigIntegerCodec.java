@@ -142,7 +142,7 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         return value;
     }
 
-    private static BigInteger unsignedBigInteger(long negative) {
+    static BigInteger unsignedBigInteger(long negative) {
         byte[] bits = new byte[Long.BYTES + 1];
 
         bits[0] = 0;

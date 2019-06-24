@@ -31,6 +31,8 @@ public interface Codecs {
     @Nullable
     <T> T decode(boolean binary, FieldValue value, FieldInformation info, Type type, MySqlSession session);
 
+    <T> T decodeLastInsertId(long value, Class<T> type);
+
     ParameterValue encode(Object value, MySqlSession session);
 
     ParameterValue encodeNull();

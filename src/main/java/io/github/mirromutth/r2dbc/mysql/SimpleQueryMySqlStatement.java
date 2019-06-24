@@ -70,15 +70,6 @@ final class SimpleQueryMySqlStatement extends MySqlStatementSupport {
 
     @Override
     public Mono<MySqlResult> execute() {
-        return Mono.fromSupplier(() -> {
-            String key = this.generatedKeyName;
-
-            if (key == null) {
-                return new SimpleMySqlResult(codecs, session, SimpleQueryFlow.execute(this.client, this.sql));
-            } else {
-                String sql = String.format("%s;SELECT LAST_INSERT_ID() AS `%s`", this.sql, key);
-                return new InsertBundledMySqlResult(codecs, session, SimpleQueryFlow.execute(this.client, sql));
-            }
-        });
+        return Mono.fromSupplier(() -> new MySqlResult(codecs, session, generatedKeyName, SimpleQueryFlow.execute(client, sql)));
     }
 }

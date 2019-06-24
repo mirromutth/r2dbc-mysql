@@ -31,8 +31,8 @@ import reactor.core.publisher.SynchronousSink;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireValidName;
 
@@ -41,7 +41,9 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireValidName
  */
 public final class MySqlConnection implements Connection {
 
-    private static final BiConsumer<ServerMessage, SynchronousSink<Void>> ONLY_OK_ERROR = (message, sink) -> {
+    private static final Consumer<ServerMessage> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
+
+    private static final BiConsumer<ServerMessage, SynchronousSink<ServerMessage>> ONLY_OK_ERROR = (message, sink) -> {
         if (message instanceof ErrorMessage) {
             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
         } else if (message instanceof OkMessage) {
@@ -81,7 +83,10 @@ public final class MySqlConnection implements Connection {
     }
 
     public Mono<Void> ping() {
-        return this.client.exchange(Mono.just(PingMessage.getInstance())).handle(ONLY_OK_ERROR).then();
+        // Considers create a `CommandFlow` when want support more commands.
+        return this.client.exchange(Mono.just(PingMessage.getInstance()))
+            .handle(ONLY_OK_ERROR)
+            .then();
     }
 
     @Override
@@ -113,13 +118,13 @@ public final class MySqlConnection implements Connection {
      */
     @Override
     public MySqlStatement createStatement(String sql) {
-        require(ParsedQuery.isOneStatement(sql), "sql must contain only one statement");
+        Query query = Queries.parse(sql);
 
-        if (ParsedQuery.hasParameter(sql)) {
-            return new ParametrizedMySqlStatement(client, codecs, session, sql);
+        if (query instanceof PrepareQuery) {
+            return new ParametrizedMySqlStatement(client, codecs, session, (PrepareQuery) query);
         }
 
-        return new SimpleQueryMySqlStatement(client, codecs, session, sql);
+        return new SimpleQueryMySqlStatement(client, codecs, session, query.getSql());
     }
 
     @Override
@@ -149,6 +154,6 @@ public final class MySqlConnection implements Connection {
     }
 
     private Mono<Void> executeVoid(String sql) {
-        return SimpleQueryFlow.execute(client, sql).handle(ONLY_OK_ERROR).then();
+        return SimpleQueryFlow.execute(client, sql).doOnNext(SAFE_RELEASE).then();
     }
 }

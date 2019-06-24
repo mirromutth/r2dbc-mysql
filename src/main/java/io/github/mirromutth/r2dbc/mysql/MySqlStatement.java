@@ -18,7 +18,6 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.r2dbc.spi.Statement;
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Mono;
 
 /**
  * A strongly typed implementation of {@link Statement} for the MySQL database.

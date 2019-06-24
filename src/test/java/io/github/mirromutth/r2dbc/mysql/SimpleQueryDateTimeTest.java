@@ -86,12 +86,12 @@ class SimpleQueryDateTimeTest {
             insertSecondStmt.returnGeneratedValues("second_id");
 
             return Mono.from(connection.createStatement(TABLE_DDL).execute())
-                .flatMap(MySqlResult::getRowsAffected)
+                .flatMap(MySqlResult::getRowsUpdated)
                 .then(Mono.from(insertFirstStmt.execute()))
                 .flatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(u -> assertEquals(u.intValue(), 1))
                 .then(Mono.from(insertSecondStmt.execute()))
-                .flatMap(result -> result.getRowsAffected()
+                .flatMap(result -> result.getRowsUpdated()
                     .doOnNext(u -> assertEquals(u.intValue(), 1))
                     .thenMany(result.map((row, metadata) -> row.get("second_id", long.class)))
                     .doOnNext(id -> assertEquals(id.intValue(), FIRST_ID + 1))

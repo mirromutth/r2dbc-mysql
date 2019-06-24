@@ -16,7 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
@@ -70,15 +69,23 @@ public final class OkMessage implements ServerMessage, WarningMessage {
         int warnings = buf.readUnsignedShortLE();
 
         if (buf.isReadable()) {
-            int capabilities = session.getClientCapabilities();
             Charset charset = session.getCollation().getCharset();
+            int sizeAfterVarInt = CodecUtils.checkNextVarInt(buf);
 
-            if ((capabilities & Capabilities.SESSION_TRACK) != 0) {
-                String information = CodecUtils.readVarIntSizedString(buf, charset);
+            if (sizeAfterVarInt < 0) {
+                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, buf.toString(charset));
+            } else {
+                int readerIndex = buf.readerIndex();
+                long size = CodecUtils.readVarInt(buf);
+                String information;
+
+                if (size > sizeAfterVarInt) {
+                    information = buf.toString(readerIndex, buf.writerIndex() - readerIndex, charset);
+                } else {
+                    information = buf.toString(buf.readerIndex(), (int) size, charset);
+                }
                 // ignore session state information, it is not human readable and useless for client
                 return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);
-            } else {
-                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, buf.toString(charset));
             }
         } else { // maybe have no human-readable message
             return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, "");
@@ -144,12 +151,22 @@ public final class OkMessage implements ServerMessage, WarningMessage {
 
     @Override
     public String toString() {
-        return "OkMessage{" +
-            "affectedRows=" + affectedRows +
-            ", lastInsertId=" + lastInsertId +
-            ", serverStatuses=" + serverStatuses +
-            ", warnings=" + warnings +
-            ", information='" + information + '\'' +
-            '}';
+        StringBuilder builder = new StringBuilder()
+            .append("OkMessage{affectedRows=")
+            .append(affectedRows)
+            .append(", lastInsertId=")
+            .append(lastInsertId)
+            .append(", serverStatuses=")
+            .append(serverStatuses);
+
+        if (warnings != 0) {
+            builder.append(", warnings=").append(warnings);
+        }
+
+        return builder.append(", information='")
+            .append(information)
+            .append('\'')
+            .append('}')
+            .toString();
     }
 }

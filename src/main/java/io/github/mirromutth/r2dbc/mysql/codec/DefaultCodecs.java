@@ -24,6 +24,7 @@ import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.Type;
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -138,6 +139,61 @@ final class DefaultCodecs implements Codecs {
         }
 
         throw new IllegalArgumentException(String.format("Cannot decode value of type '%s' with column type '%s'", target, info.getType()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T decodeLastInsertId(long value, Class<T> type) {
+        requireNonNull(type, "type must not be null");
+
+        if (value < 0) {
+            // BIGINT UNSIGNED
+            BigInteger result = BigIntegerCodec.unsignedBigInteger(value);
+            if (BigInteger.class == type) {
+                return (T) result;
+            } else {
+                // Must use BigInteger.toString because of overflow.
+                throw new IllegalArgumentException(String.format("Cannot decode value of type '%s' with last inserted ID %s", type, result));
+            }
+        } else if (value > Integer.MAX_VALUE) {
+            if (BigInteger.class == type) {
+                return (T) BigInteger.valueOf(value);
+            } else if (Long.TYPE == type || Long.class == type) {
+                return (T) Long.valueOf(value);
+            }
+        } else if (value > Short.MAX_VALUE) {
+            if (BigInteger.class == type) {
+                return (T) BigInteger.valueOf(value);
+            } else if (Long.TYPE == type || Long.class == type) {
+                return (T) Long.valueOf(value);
+            } else if (Integer.TYPE == type || Integer.class == type) {
+                return (T) Integer.valueOf((int) value);
+            }
+        } else if (value > Byte.MAX_VALUE) {
+            if (BigInteger.class == type) {
+                return (T) BigInteger.valueOf(value);
+            } else if (Long.TYPE == type || Long.class == type) {
+                return (T) Long.valueOf(value);
+            } else if (Integer.TYPE == type || Integer.class == type) {
+                return (T) Integer.valueOf((int) value);
+            } else if (Short.TYPE == type || Short.class == type) {
+                return (T) Short.valueOf((short) value);
+            }
+        } else {
+            if (BigInteger.class == type) {
+                return (T) BigInteger.valueOf(value);
+            } else if (Long.TYPE == type || Long.class == type) {
+                return (T) Long.valueOf(value);
+            } else if (Integer.TYPE == type || Integer.class == type) {
+                return (T) Integer.valueOf((int) value);
+            } else if (Short.TYPE == type || Short.class == type) {
+                return (T) Short.valueOf((short) value);
+            } else if (Byte.TYPE == type || Byte.class == type) {
+                return (T) Byte.valueOf((byte) value);
+            }
+        }
+
+        throw new IllegalArgumentException(String.format("Cannot decode value of type '%s' with last inserted ID %s", type, value));
     }
 
     @Override

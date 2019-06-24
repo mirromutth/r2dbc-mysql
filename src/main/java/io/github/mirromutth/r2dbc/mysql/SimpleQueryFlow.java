@@ -24,6 +24,8 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 /**
  * Simple (direct) query message flow for {@link MySqlBatch} and {@link SimpleQueryMySqlStatement}.
  */
@@ -33,13 +35,44 @@ final class SimpleQueryFlow {
     }
 
     /**
-     * Execute a simple query. Query execution terminates with
-     * a {@link ErrorMessage} and send Exception to signal.
+     * Execute multi-query with batch. Query execution terminates with a
+     * {@link ErrorMessage} and send Exception to signal.
+     *
+     * @param client     the {@link Client} to exchange messages with.
+     * @param statements bundled sql for execute.
+     * @return the messages received in response to this exchange, and will be
+     * completed by {@link OkMessage} for each statement.
+     */
+    static Flux<Flux<ServerMessage>> execute(Client client, List<? extends CharSequence> statements) {
+        return Flux.defer(() -> {
+            int size = statements.size();
+
+            if (size <= 0) {
+                return Flux.empty();
+            }
+
+            String sql = String.join(";", statements);
+            return client.exchange(Mono.just(new SimpleQueryMessage(sql)))
+                .<ServerMessage>handle((message, sink) -> {
+                    if (message instanceof ErrorMessage) {
+                        sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+                    } else {
+                        sink.next(message);
+                    }
+                })
+                .windowUntil(message -> message instanceof OkMessage)
+                .take(size);
+        });
+    }
+
+    /**
+     * Execute a simple query. Query execution terminates with a {@link ErrorMessage}
+     * and send Exception to signal.
      *
      * @param client the {@link Client} to exchange messages with.
-     * @param sql    the query to execute.
-     * @return the messages received in response to this exchange,
-     * and it should be completed by handler, otherwise it will NEVER be completed.
+     * @param sql    the query to execute, must contain only one statement.
+     * @return the messages received in response to this exchange, and will be
+     * completed by {@link OkMessage}.
      */
     static Flux<ServerMessage> execute(Client client, String sql) {
         return client.exchange(Mono.just(new SimpleQueryMessage(sql))).handle((message, sink) -> {
@@ -49,6 +82,10 @@ final class SimpleQueryFlow {
             }
 
             sink.next(message);
+
+            if (message instanceof OkMessage) {
+                sink.complete();
+            }
         });
     }
 }

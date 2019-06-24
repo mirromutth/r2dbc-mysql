@@ -34,7 +34,7 @@ class MySqlBatchTest {
     private static final String TABLE_DDL = "CREATE TEMPORARY TABLE `batch` (\n" +
         "    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n" +
         "    `data` VARCHAR(20) NOT NULL\n" +
-        ")";
+        ");\n";
 
     private static final String IS_EVEN = "`id` % 2 = 0";
 
@@ -79,7 +79,7 @@ class MySqlBatchTest {
             deleteBatch.add(formattedDelete(IS_EVEN));
 
             return Mono.from(connection.createStatement(TABLE_DDL).execute())
-                .flatMap(MySqlResult::getRowsAffected)
+                .flatMap(MySqlResult::getRowsUpdated)
                 .thenMany(insertBatch.execute())
                 .concatMap(MySqlResult::getRowsUpdated)
                 .doOnNext(updated -> assertEquals(updated.intValue(), 1))
@@ -110,9 +110,9 @@ class MySqlBatchTest {
 
     private static String formattedSelect(@Nullable String condition) {
         if (condition == null || condition.isEmpty()) {
-            return "SELECT `id`, `data` FROM `batch` ORDER BY `id`";
+            return "SELECT `id`, `data` FROM `batch` ORDER BY `id`;\n";
         }
-        return String.format("SELECT `id`, `data` FROM `batch` WHERE %s ORDER BY `id`", condition);
+        return String.format("SELECT `id`, `data` FROM `batch` WHERE %s ORDER BY `id`;\n", condition);
     }
 
     private static String formattedInsert(String data) {

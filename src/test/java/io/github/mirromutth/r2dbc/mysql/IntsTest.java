@@ -46,6 +46,9 @@ class IntsTest {
      */
     private static final int INCREMENT_STEP = 5;
 
+    /**
+     * Note: MySQL does not support DDL in prepare statement.
+     */
     private static final String TABLE_DDL = String.format("CREATE TEMPORARY TABLE `test_ints`\n" +
         "(\n" +
         "    `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n" +
@@ -63,7 +66,7 @@ class IntsTest {
 
     private static final String INSERT_INTO = "INSERT INTO `test_ints`\n" +
         "(`data_int8`, `data_uint8`, `data_int16`, `data_uint16`, `data_int24`, `data_uint24`, `data_int32`, `data_uint32`, `data_int64`, `data_uint64`)\n" +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);\n";
 
     private static final Entity ALL_NULL = new Entity(FIRST_ID, null, null, null, null, null, null, null, null, null, null);
 
@@ -84,9 +87,11 @@ class IntsTest {
             .collectList()
             .doOnNext(entities -> assertTrue(entities.isEmpty()))
             .thenMany(createInsert(connection, ALL_NULL, ODD_HALF_NULL, EVEN_HALF_NULL, FULL).execute())
-            .concatMap(MySqlResult::getRowsUpdated)
+            .concatMap(result -> result.getRowsUpdated()
+                .doOnNext(u -> assertEquals(u.intValue(), 1))
+                .thenMany(result.map((row, metadata) -> row.get("generated_id", Long.TYPE))))
             .collectList()
-            .doOnNext(rowsUpdated -> assertEquals(rowsUpdated, Arrays.asList(1, 1, 1, 1)))
+            .doOnNext(ids -> assertEquals(ids, Arrays.asList(FIRST_ID, FIRST_ID + INCREMENT_STEP, FIRST_ID + INCREMENT_STEP * 2, FIRST_ID + INCREMENT_STEP * 3)))
             .thenMany(connection.createStatement("SELECT * FROM `test_ints` WHERE `id` % 2 = ?is_odd")
                 .bind("is_odd", true)
                 .add()
@@ -116,6 +121,8 @@ class IntsTest {
         for (Entity entity : entities) {
             bindInsertEntity(statement, entity).add();
         }
+
+        statement.returnGeneratedValues("generated_id");
 
         return statement;
     }
@@ -301,7 +308,7 @@ class IntsTest {
         }
 
         private static Flux<Entity> from(MySqlResult result) {
-            return result.map((row, metadata) -> new Entity(
+            return Flux.from(result.map((row, metadata) -> new Entity(
                 row.get(0, Long.TYPE),
                 row.get("data_int8", Byte.class),
                 row.get(2, Short.class),
@@ -313,7 +320,7 @@ class IntsTest {
                 row.get(8, Long.class),
                 row.get("data_int64", Long.class),
                 (BigInteger) row.get(10, Number.class) // For check class
-            ));
+            )));
         }
     }
 }

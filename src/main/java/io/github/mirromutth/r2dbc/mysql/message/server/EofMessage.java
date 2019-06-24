@@ -75,9 +75,10 @@ public final class EofMessage implements ServerMessage, WarningMessage {
 
     @Override
     public String toString() {
-        return "EofMessage{" +
-            "warnings=" + warnings +
-            ", serverStatuses=" + serverStatuses +
-            '}';
+        if (warnings != 0) {
+            return String.format("EofMessage{warnings=%d, serverStatuses=%s}", warnings, serverStatuses);
+        } else {
+            return String.format("EofMessage{serverStatuses=%s}", serverStatuses);
+        }
     }
 }

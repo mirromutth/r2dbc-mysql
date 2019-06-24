@@ -25,9 +25,7 @@ import io.github.mirromutth.r2dbc.mysql.message.client.PreparedCloseMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.FakePrepareCompleteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
-import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -45,7 +43,7 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * Parametrized {@link MySqlStatement} with parameter markers executed against a Microsoft SQL Server database.
  * <p>
  * MySQL uses indexed parameters which are marked by {@literal ?} without naming. This implementation uses
- * {@link ParsedQuery} to implement named parameters, and different indexes can have the same name.
+ * {@link PrepareQuery} to implement named parameters, and different indexes can have the same name.
  */
 final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
@@ -55,17 +53,17 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     private final MySqlSession session;
 
-    private final ParsedQuery query;
+    private final PrepareQuery query;
 
     private final Bindings bindings;
 
     private final AtomicBoolean executed = new AtomicBoolean();
 
-    ParametrizedMySqlStatement(Client client, Codecs codecs, MySqlSession session, String sql) {
+    ParametrizedMySqlStatement(Client client, Codecs codecs, MySqlSession session, PrepareQuery query) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.session = requireNonNull(session, "session must not be null");
-        this.query = ParsedQuery.parse(requireNonNull(sql, "sql must not be null"));
+        this.query = requireNonNull(query, "sql must not be null");
         this.bindings = new Bindings(this.query.getParameters());
     }
 
@@ -130,7 +128,6 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
                 return Flux.error(new IllegalStateException("No parameters bound for prepared statement"));
             }
 
-            EmitterProcessor<Binding> bindingEmitter = EmitterProcessor.create(true);
             String sql = this.query.getSql();
 
             Mono<Integer> statementId = this.client.exchange(Mono.just(new PrepareQueryMessage(sql)))
@@ -148,26 +145,11 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
                 })
                 .last();
 
-            Runnable nextBinding = () -> tryNextBinding(iterator, bindingEmitter);
-
-            return statementId.<MySqlResult>flatMapMany(id ->
-                bindingEmitter.startWith(iterator.next())
-                    .map(binding -> binding.toMessage(id))
-                    .map(request -> {
-                        Flux<ServerMessage> exchanged = this.client.exchange(Mono.just(request))
-                            .handle((response, sink) -> {
-                                if (response instanceof ErrorMessage) {
-                                    sink.error(ExceptionFactory.createException((ErrorMessage) response, sql));
-                                    return;
-                                }
-
-                                sink.next(response);
-                            });
-
-                        return new SimpleMySqlResult(this.codecs, this.session, exchanged, nextBinding);
-                    })
-                .onErrorResume(e -> client.sendOnly(Mono.just(new PreparedCloseMessage(id))).then(Mono.error(e)))
-                .concatWith(client.sendOnly(Mono.just(new PreparedCloseMessage(id))).then(Mono.empty()))
+            return statementId.flatMapMany(id ->
+                PrepareQueryFlow.execute(client, sql, id, iterator)
+                    .map(messages -> new MySqlResult(codecs, session, generatedKeyName, messages))
+                    .onErrorResume(e -> client.sendOnly(Mono.just(new PreparedCloseMessage(id))).then(Mono.error(e)))
+                    .concatWith(client.sendOnly(Mono.just(new PreparedCloseMessage(id))).then(Mono.empty()))
             ).doOnCancel(bindings::clear)
                 .doOnError(e -> bindings.clear());
         });
@@ -191,22 +173,6 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     private void assertNotExecuted() {
         if (this.executed.get()) {
             throw new IllegalStateException("Statement was already executed");
-        }
-    }
-
-    private static void tryNextBinding(Iterator<Binding> iterator, EmitterProcessor<Binding> boundRequests) {
-        if (boundRequests.isCancelled()) {
-            return;
-        }
-
-        try {
-            if (iterator.hasNext()) {
-                boundRequests.onNext(iterator.next());
-            } else {
-                boundRequests.onComplete();
-            }
-        } catch (Exception e) {
-            boundRequests.onError(e);
         }
     }
 

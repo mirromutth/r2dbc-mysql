@@ -19,13 +19,12 @@ package io.github.mirromutth.r2dbc.mysql;
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.r2dbc.spi.Batch;
 import reactor.core.publisher.Flux;
 
-import java.util.StringJoiner;
+import java.util.ArrayList;
+import java.util.List;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -39,9 +38,7 @@ public final class MySqlBatch implements Batch {
 
     private final MySqlSession session;
 
-    private final StringJoiner statements = new StringJoiner(";");
-
-    private int count = 0;
+    private final List<String> statements = new ArrayList<>();
 
     MySqlBatch(Client client, Codecs codecs, MySqlSession session) {
         this.client = requireNonNull(client, "client must not be null");
@@ -50,39 +47,32 @@ public final class MySqlBatch implements Batch {
     }
 
     /**
-     * @param sql should include only one-statement, otherwise stream terminate disordered.
+     * @param sql should contain only one-statement.
      * @return this {@link MySqlBatch}
-     * @throws IllegalArgumentException if {@code sql} is {@code null}
+     * @throws IllegalArgumentException if {@code sql} is {@code null} or contain multi-statements.
      */
     @Override
     public MySqlBatch add(String sql) {
-        require(ParsedQuery.isOneStatement(sql), "sql must contain only one statement");
-
-        ++this.count;
-        this.statements.add(sql);
+        statements.add(Queries.formatBatchElement(sql));
         return this;
     }
 
     @Override
     public Flux<MySqlResult> execute() {
         return Flux.defer(() -> {
-            int count = this.count;
+            int size = statements.size();
 
-            if (count <= 0) {
+            if (size <= 0) {
                 return Flux.empty();
             }
 
-            return SimpleQueryFlow.execute(this.client, this.statements.toString())
-                .windowUntil(message -> message instanceof OkMessage)
-                .take(count)
-                .map(messages -> new SimpleMySqlResult(this.codecs, this.session, messages));
+            return SimpleQueryFlow.execute(client, statements)
+                .map(messages -> new MySqlResult(codecs, session, null, messages));
         });
     }
 
     @Override
     public String toString() {
-        return "MySqlBatch{" +
-            "count=" + count +
-            '}';
+        return String.format("MySqlBatch{ has %d statements }", statements.size());
     }
 }
