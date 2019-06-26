@@ -32,15 +32,26 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlConnectionFactory implements ConnectionFactory {
 
-    private final MySqlConnectionConfiguration configuration;
+    private final Mono<MySqlConnection> client;
 
-    public MySqlConnectionFactory(MySqlConnectionConfiguration configuration) {
-        this.configuration = requireNonNull(configuration, "configuration must not be null");
+    private MySqlConnectionFactory(Mono<MySqlConnection> client) {
+        this.client = client;
     }
 
     @Override
     public Mono<MySqlConnection> create() {
-        return Mono.defer(() -> {
+        return client;
+    }
+
+    @Override
+    public ConnectionFactoryMetadata getMetadata() {
+        return MySqlConnectionFactoryMetadata.INSTANCE;
+    }
+
+    public static MySqlConnectionFactory from(MySqlConnectionConfiguration configuration) {
+        requireNonNull(configuration, "configuration must not be null");
+
+        return new MySqlConnectionFactory(Mono.defer(() -> {
             MySqlSession session = new MySqlSession(
                 configuration.isSsl(),
                 configuration.getDatabase(),
@@ -55,11 +66,6 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             return Client.connect(ConnectionProvider.newConnection(), host, port, connectTimeout, session)
                 .flatMap(client -> client.initialize().thenReturn(client))
                 .map(client -> new MySqlConnection(client, session));
-        });
-    }
-
-    @Override
-    public ConnectionFactoryMetadata getMetadata() {
-        return MySqlConnectionFactoryMetadata.INSTANCE;
+        }));
     }
 }

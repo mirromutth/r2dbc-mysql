@@ -122,7 +122,7 @@ final class ReactorNettyClient implements Client {
 
         return Flux.defer(() -> {
             if (this.closing.get()) {
-                return Flux.error(new IllegalStateException("can not exchange messages because the connection is closed"));
+                return Flux.error(new IllegalStateException("can not send messages because the connection is closed"));
             }
 
             return this.responseProcessor.doOnSubscribe(s -> send(requests).subscribe());
@@ -133,7 +133,13 @@ final class ReactorNettyClient implements Client {
     public Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages) {
         requireNonNull(messages, "messages must not be null");
 
-        return Mono.defer(() -> send(messages));
+        return Mono.defer(() -> {
+            if (this.closing.get()) {
+                return Mono.error(new IllegalStateException("can not send messages because the connection is closed"));
+            }
+
+            return send(messages);
+        });
     }
 
     @Override

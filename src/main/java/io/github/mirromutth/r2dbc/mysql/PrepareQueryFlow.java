@@ -20,6 +20,9 @@ import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
+import io.r2dbc.spi.R2dbcException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -31,42 +34,57 @@ import java.util.Iterator;
  */
 final class PrepareQueryFlow {
 
+    private static final Logger logger = LoggerFactory.getLogger(PrepareQueryFlow.class);
+
     private PrepareQueryFlow() {
     }
 
-    static Flux<Flux<ServerMessage>> execute(Client client, String sql, int statementId, Iterator<Binding> iterator) {
+    static Flux<Flux<ServerMessage>> execute(Client client, StatementMetadata metadata, Iterator<Binding> iterator) {
         EmitterProcessor<Binding> bindingEmitter = EmitterProcessor.create(true);
 
         return bindingEmitter.startWith(iterator.next())
-            .map(binding -> client.exchange(Mono.just(binding.toMessage(statementId)))
+            .onErrorResume(e -> metadata.close().then(Mono.error(e)))
+            .map(binding -> client.exchange(Mono.just(binding.toMessage(metadata.getStatementId())))
                 .handle((response, sink) -> {
                     if (response instanceof ErrorMessage) {
-                        sink.error(ExceptionFactory.createException((ErrorMessage) response, sql));
+                        R2dbcException e = ExceptionFactory.createException((ErrorMessage) response, metadata.getSql());
+                        try {
+                            sink.error(e);
+                        } finally {
+                            // Statement will close because of `onError`
+                            bindingEmitter.onError(e);
+                        }
                         return;
                     }
 
                     sink.next(response);
 
                     if (response instanceof OkMessage) {
-                        tryNextBinding(iterator, bindingEmitter);
-                        sink.complete();
+                        tryNextBinding(iterator, bindingEmitter, metadata).subscribe(null, e -> {
+                            logger.error("Statement {} close failed", metadata.getStatementId(), e);
+                            sink.complete();
+                        }, sink::complete);
                     }
                 }));
     }
 
-    private static void tryNextBinding(Iterator<Binding> iterator, EmitterProcessor<Binding> boundRequests) {
+    private static Mono<Void> tryNextBinding(Iterator<Binding> iterator, EmitterProcessor<Binding> boundRequests, StatementMetadata metadata) {
         if (boundRequests.isCancelled()) {
-            return;
+            return metadata.close();
         }
 
         try {
             if (iterator.hasNext()) {
                 boundRequests.onNext(iterator.next());
-            } else {
-                boundRequests.onComplete();
+                return Mono.empty();
             }
         } catch (Exception e) {
+            // Statement will close because of `onError`
             boundRequests.onError(e);
+            return Mono.empty();
         }
+
+        // Has completed.
+        return metadata.close().doOnTerminate(boundRequests::onComplete);
     }
 }

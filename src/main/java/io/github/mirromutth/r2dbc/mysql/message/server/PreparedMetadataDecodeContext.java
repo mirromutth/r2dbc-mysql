@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * An implementation of {@link DecodeContext} for prepared metadata.
  */
-final class PreparedMetadataDecodeContext extends MetadataDecodeContext implements CompletableDecodeContext {
+final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
 
     private static final DefinitionMetadataMessage[] EMPTY_METADATA = {};
 
@@ -37,21 +37,6 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext implemen
     }
 
     @Override
-    public boolean isCompleted() {
-        return !isMetadata();
-    }
-
-    @Override
-    public DecodeContext nextContext() {
-        return CommandDecodeContext.INSTANCE;
-    }
-
-    @Override
-    public ServerMessage fakeMessage() {
-        return FakePrepareCompleteMessage.INSTANCE;
-    }
-
-    @Override
     public String toString() {
         return "DecodeContext-PreparedMetadata";
     }
@@ -62,7 +47,7 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext implemen
     }
 
     @Override
-    DefinitionMetadataMessage[] pushAndGetMetadata(DefinitionMetadataMessage metadata) {
+    AbstractSyntheticMetadataMessage pushAndGetMetadata(DefinitionMetadataMessage metadata) {
         int columns = this.columns.getAndIncrement();
         int paramSize = paramMetadata.length;
         int colSize = colMetadata.length;
@@ -75,7 +60,8 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext implemen
             paramMetadata[columns] = metadata;
 
             if (columns == paramSize - 1) {
-                return paramMetadata;
+                // If colSize is 0 means has no columns' metadata, it is the last message of prepared metadata.
+                return new SyntheticParamMetadataMessage(colSize == 0, paramMetadata);
             }
 
             return null;
@@ -84,7 +70,8 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext implemen
         colMetadata[columns -= paramSize] = metadata;
 
         if (columns == colSize - 1) {
-            return colMetadata;
+            // SyntheticRowMetadataMessage must be the last message of prepared metadata.
+            return new SyntheticRowMetadataMessage(true, colMetadata);
         }
 
         return null;

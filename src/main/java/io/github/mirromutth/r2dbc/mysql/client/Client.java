@@ -58,6 +58,7 @@ public interface Client {
     ) {
         requireNonNull(connectionProvider, "connectionProvider must not be null");
         requireNonNull(host, "host must not be null");
+
         TcpClient client = TcpClient.create(connectionProvider);
 
         if (connectTimeout != null) {

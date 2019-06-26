@@ -17,19 +17,13 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 /**
- * A virtual message considers prepare complete signal.
+ * A bundle of {@link DefinitionMetadataMessage}s for parameters' metadata.
  * <p>
- * Note: it is FAKE message, not real exists.
+ * Note: it is synthetic message, not real exists.
  */
-public final class FakePrepareCompleteMessage implements ServerMessage {
+final class SyntheticParamMetadataMessage extends AbstractSyntheticMetadataMessage {
 
-    static final FakePrepareCompleteMessage INSTANCE = new FakePrepareCompleteMessage();
-
-    private FakePrepareCompleteMessage() {
-    }
-
-    @Override
-    public String toString() {
-        return "FakePrepareCompleteMessage{}";
+    SyntheticParamMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages) {
+        super(completed, messages);
     }
 }

@@ -18,14 +18,11 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 
 /**
  * Base class considers {@link #isCompleted()} for {@link DecodeContext},
- * if it completed, should change context to {@link #nextContext()}, and
- * read a server-side message faked by {@link CompletableDecodeContext}.
+ * if it completed, should change context to {@link #nextContext()}.
  */
 public interface CompletableDecodeContext extends DecodeContext {
 
     boolean isCompleted();
 
     DecodeContext nextContext();
-
-    ServerMessage fakeMessage();
 }

@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.constant.DataType;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.FakeRowMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticRowMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.RowMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
@@ -90,7 +90,7 @@ public final class MySqlResult implements Result {
             return results().handle((message, sink) -> handleResult(message, sink, f));
         } else {
             return affects().map(message -> {
-                FakeRow row = new FakeRow(codecs, generatedKeyName, message.getLastInsertId());
+                SyntheticRow row = new SyntheticRow(codecs, generatedKeyName, message.getLastInsertId());
                 return f.apply(row, row);
             });
         }
@@ -130,8 +130,8 @@ public final class MySqlResult implements Result {
     }
 
     private <T> void handleResult(ServerMessage message, SynchronousSink<T> sink, BiFunction<Row, RowMetadata, ? extends T> f) {
-        if (message instanceof FakeRowMetadataMessage) {
-            DefinitionMetadataMessage[] metadataMessages = ((FakeRowMetadataMessage) message).unwrap();
+        if (message instanceof SyntheticRowMetadataMessage) {
+            DefinitionMetadataMessage[] metadataMessages = ((SyntheticRowMetadataMessage) message).unwrap();
             if (metadataMessages.length == 0) {
                 return;
             }
@@ -164,7 +164,7 @@ public final class MySqlResult implements Result {
         sink.next(t);
     }
 
-    private static class FakeRow implements Row, RowMetadata, ColumnMetadata {
+    private static class SyntheticRow implements Row, RowMetadata, ColumnMetadata {
 
         private final Codecs codecs;
 
@@ -172,7 +172,7 @@ public final class MySqlResult implements Result {
 
         private final long lastInsertId;
 
-        private FakeRow(Codecs codecs, String generatedKeyName, long lastInsertId) {
+        private SyntheticRow(Codecs codecs, String generatedKeyName, long lastInsertId) {
             this.codecs = codecs;
             this.generatedKeyName = generatedKeyName;
             this.lastInsertId = lastInsertId;

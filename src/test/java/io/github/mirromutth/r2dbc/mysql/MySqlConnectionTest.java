@@ -49,7 +49,7 @@ class MySqlConnectionTest {
 
     private final MySqlSession session = mock(MySqlSession.class);
 
-    private final MySqlConnection connection = new MySqlConnection(this.client, session);
+    private final MySqlConnection connection = new MySqlConnection(client, session);
 
     private final ArgumentCaptor<ExchangeableMessage> captor = ArgumentCaptor.forClass(ExchangeableMessage.class);
 

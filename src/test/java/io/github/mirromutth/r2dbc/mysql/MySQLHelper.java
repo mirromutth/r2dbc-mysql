@@ -56,7 +56,7 @@ final class MySQLHelper {
                 throw new IllegalStateException("Read configuration failed", e);
             }
 
-            MySqlConnectionFactory newFactory = new MySqlConnectionFactory(newConfig);
+            MySqlConnectionFactory newFactory = MySqlConnectionFactory.from(newConfig);
             MySqlConnectionFactory lastFactory = CONNECTION_FACTORY_MAP.putIfAbsent(version, newFactory);
 
             if (lastFactory == null) {

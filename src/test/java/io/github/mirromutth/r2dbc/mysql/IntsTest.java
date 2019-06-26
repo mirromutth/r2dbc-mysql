@@ -78,7 +78,9 @@ class IntsTest {
 
     @Test
     void crudByParametrizedStatement() throws Throwable {
-        STD5_7.run(Duration.ofSeconds(8), connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?").bind(0, (Integer) INCREMENT_STEP).execute())
+        STD5_7.run(Duration.ofSeconds(8), connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?")
+            .bind(0, (Integer) INCREMENT_STEP)
+            .execute())
             .flatMap(MySqlResult::getRowsUpdated)
             .then(Mono.from(connection.createStatement(TABLE_DDL).execute()))
             .flatMap(MySqlResult::getRowsUpdated)

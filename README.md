@@ -64,7 +64,7 @@ MySqlConnectConfiguration configuration = MySqlConnectConfiguration.builder()
     .password("some password in here") // optional, default null, null means has no password
     .database("r2dbc") // optional, default null, null means not specifying the database
     .build();
-ConnectionFactory connectionFactory = new MySqlConnectionFactory(configuration);
+ConnectionFactory connectionFactory = MySqlConnectionFactory.from(configuration);
 
 // Alternative: Creating a Mono using Project Reactor
 Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
@@ -90,16 +90,19 @@ Each statement can only contain one query (`SELECT`, `INSERT`, `UPDATE`, etc.).
 ```java
 connection.createStatement("INSERT INTO `person` (`birth`, `nickname`, `show_name`) VALUES (?, ?name, ?name)")
     .bind(0, LocalDateTime.of(2019, 6, 25, 12, 12, 12))
-    .bind("name", "Some one")
+    .bind("name", "Some one") // Not one-to-one binding, call twice of native index-bindings, or call once of name-bindings.
     .add()
     .bind(0, LocalDateTime.of(2009, 6, 25, 12, 12, 12))
-    .bind("name", "Some two")
+    .bind(1, "My Nickname")
+    .bind(2, "Naming show")
     .returnGeneratedValues("generated_id")
     .execute(); // return a Publisher include two Result.
 ```
 
 Each statement can only contain one query (`SELECT`, `INSERT`, `UPDATE`, etc.).
 
+- All parameters must be bound before execute, even parameter is `null` (use `bindNull` to bind `null`).
+- In one-to-one binding, because native MySQL prepared statements use index-based parameters, *index-bindings* will have **better** performance than *name-bindings*.
 - MySQL does **NOT** support DDL in prepare statement, please use simple statement if want to execute DDL.
 - Every `Result` should be used (call `getRowsUpdated` or `map`), can NOT just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
 - If bound `returnGeneratedValues`, call `getRowsUpdated` to get affected rows, call `map` to get last inserted ID, can be called both.
@@ -135,8 +138,8 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 | BIGINT | SIGNED | `Long`, `BigInteger` |
 | FLOAT | SIGNED/UNSIGNED | `Float`, `BigDecimal` |
 | DOUBLE | SIGNED/UNSIGNED | `Double`, `BigDecimal`  |
-| DECIMAL | SIGNED/UNSIGNED | `BigDecimal`, `Float` (if size less than 7), `Double` (if size less than 16) |
-| BIT | - | `BitSet`, `Boolean` (if size is 1), `byte[]` |
+| DECIMAL | SIGNED/UNSIGNED | `BigDecimal`, `Float` (Size less than 7), `Double` (Size less than 16) |
+| BIT | - | `BitSet`, `Boolean` (Size is 1), `byte[]` |
 | DATETIME/TIMESTAMP | - | `LocalDateTime` |
 | DATE | - | `LocalDate` |
 | TIME | - | `LocalTime` |
@@ -144,7 +147,7 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 | VARCHAR/NVARCHAR | - | `String` |
 | CHAR/NCHAR | - | `String` |
 | ENUM | - | `String`, `Enum<?>` |
-| SET | - | `String[]`, `String`, `Set<String>` (Need use `ParameterizedType`), `Set<Enum<?>>` (Need use `ParameterizedType`) |
+| SET | - | `String[]`, `String`, `Set<String>` and `Set<Enum<?>>` (`Set<T>` need use `ParameterizedType`) |
 | BLOB (LONGBLOB, etc.) | - | `Blob`, `byte[]` (Not check overflow) |
 | TEXT (LONGTEXT, etc.) | - | `Clob`, `String` (Not check overflow) |
 | JSON | - | `String`, `Clob` |

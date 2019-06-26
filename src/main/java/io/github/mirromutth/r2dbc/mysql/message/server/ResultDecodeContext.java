@@ -55,7 +55,7 @@ final class ResultDecodeContext extends MetadataDecodeContext {
     }
 
     @Override
-    DefinitionMetadataMessage[] pushAndGetMetadata(DefinitionMetadataMessage metadata) {
+    SyntheticRowMetadataMessage pushAndGetMetadata(DefinitionMetadataMessage metadata) {
         int index = columns.getAndIncrement();
         int size = metadataMessages.length;
 
@@ -66,7 +66,8 @@ final class ResultDecodeContext extends MetadataDecodeContext {
         metadataMessages[index] = metadata;
 
         if (index == size - 1) {
-            return metadataMessages;
+            // In results, read row metadata means not complete. (has rows or OK following)
+            return new SyntheticRowMetadataMessage(false, metadataMessages);
         } else {
             return null;
         }

@@ -86,7 +86,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
 
     @Override
     public boolean canEncode(Object value) {
-        return value instanceof Set<?>;
+        return value instanceof Set<?> && isValidSet((Set<?>) value);
     }
 
     @Override
@@ -138,6 +138,16 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         }
 
         return new LinkedHashSet<String>();
+    }
+
+    private static boolean isValidSet(Set<?> value) {
+        for (Object element : value) {
+            if (element == null || (!(element instanceof CharSequence) && !element.getClass().isEnum())) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static final class SplitIterable implements Iterable<String> {

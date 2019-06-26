@@ -21,9 +21,8 @@ import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.PreparedCloseMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.AbstractSyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.FakePrepareCompleteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
 import io.netty.util.ReferenceCountUtil;
 import reactor.core.publisher.Flux;
@@ -130,27 +129,25 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
             String sql = this.query.getSql();
 
-            Mono<Integer> statementId = this.client.exchange(Mono.just(new PrepareQueryMessage(sql)))
-                .<Integer>handle((message, sink) -> {
+            return this.client.exchange(Mono.just(new PrepareQueryMessage(sql)))
+                .<StatementMetadata>handle((message, sink) -> {
                     if (message instanceof ErrorMessage) {
                         sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+                    } else if (message instanceof AbstractSyntheticMetadataMessage) {
+                        if (((AbstractSyntheticMetadataMessage) message).isCompleted()) {
+                            sink.complete();
+                        }
                     } else if (message instanceof PreparedOkMessage) {
-                        PreparedOkMessage prepared = (PreparedOkMessage) message;
-                        sink.next(prepared.getStatementId());
-                    } else if (message instanceof FakePrepareCompleteMessage) {
-                        sink.complete();
+                        PreparedOkMessage preparedOk = (PreparedOkMessage) message;
+                        sink.next(new StatementMetadata(this.client, sql, preparedOk.getStatementId()));
                     } else {
                         ReferenceCountUtil.release(message);
                     }
                 })
-                .last();
-
-            return statementId.flatMapMany(id ->
-                PrepareQueryFlow.execute(client, sql, id, iterator)
-                    .map(messages -> new MySqlResult(codecs, session, generatedKeyName, messages))
-                    .onErrorResume(e -> client.sendOnly(Mono.just(new PreparedCloseMessage(id))).then(Mono.error(e)))
-                    .concatWith(client.sendOnly(Mono.just(new PreparedCloseMessage(id))).then(Mono.empty()))
-            ).doOnCancel(bindings::clear)
+                .last()
+                .flatMapMany(metadata -> PrepareQueryFlow.execute(client, metadata, iterator)
+                    .map(messages -> new MySqlResult(codecs, session, generatedKeyName, messages)))
+                .doOnCancel(bindings::clear)
                 .doOnError(e -> bindings.clear());
         });
     }

@@ -16,15 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import reactor.util.annotation.Nullable;
-
 /**
- * Base class considers {@link DefinitionMetadataMessage} for {@link DecodeContext} implementations.
+ * A bundle of {@link DefinitionMetadataMessage}s for row metadata (i.e. columns' metadata).
+ * <p>
+ * Note: it is synthetic message, not real exists.
  */
-abstract class MetadataDecodeContext implements DecodeContext {
+public final class SyntheticRowMetadataMessage extends AbstractSyntheticMetadataMessage {
 
-    abstract boolean isMetadata();
-
-    @Nullable
-    abstract AbstractSyntheticMetadataMessage pushAndGetMetadata(DefinitionMetadataMessage metadata);
+    SyntheticRowMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages) {
+        super(completed, messages);
+    }
 }

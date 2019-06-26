@@ -22,8 +22,8 @@ import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
+import io.github.mirromutth.r2dbc.mysql.message.server.AbstractSyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.CompletableDecodeContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
@@ -83,7 +83,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             ServerMessage message = decoder.decode((ByteBuf) msg, sequenceIdProvider, session, context);
 
             if (message != null) {
-                if (readFilter(ctx, message, context)) {
+                if (readFilter(message)) {
                     ctx.fireChannelRead(message);
                 }
             }
@@ -136,15 +136,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         return null;
     }
 
-    private boolean readFilter(ChannelHandlerContext ctx, ServerMessage msg, DecodeContext context) {
-        if (context instanceof CompletableDecodeContext) {
-            CompletableDecodeContext completable = (CompletableDecodeContext) context;
-            if (completable.isCompleted()) {
-                setDecodeContext(completable.nextContext());
-                ctx.fireChannelRead(completable.fakeMessage());
-            }
-        }
-
+    private boolean readFilter(ServerMessage msg) {
         if (msg instanceof WarningMessage) {
             loggingWarnings((WarningMessage) msg);
         }
@@ -156,9 +148,21 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
         if (msg instanceof OkMessage) {
             setDecodeContext(DecodeContext.command());
+        } else if (msg instanceof AbstractSyntheticMetadataMessage) {
+            if (((AbstractSyntheticMetadataMessage) msg).isCompleted()) {
+                setDecodeContext(DecodeContext.command());
+            }
         } else if (msg instanceof PreparedOkMessage) {
             PreparedOkMessage message = (PreparedOkMessage) msg;
-            setDecodeContext(DecodeContext.preparedMetadata(message.getTotalColumns(), message.getTotalParameters()));
+            int columns = message.getTotalColumns();
+            int parameters = message.getTotalParameters();
+
+            if (columns > -parameters) {
+                // columns + parameters > 0
+                setDecodeContext(DecodeContext.preparedMetadata(columns, parameters));
+            } else {
+                setDecodeContext(DecodeContext.command());
+            }
         } else if (msg instanceof ErrorMessage) {
             ErrorMessage message = (ErrorMessage) msg;
 

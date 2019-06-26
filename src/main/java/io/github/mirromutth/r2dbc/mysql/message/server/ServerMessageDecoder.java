@@ -311,14 +311,9 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static FakeRowMetadataMessage decodeMetadata(ByteBuf buf, MySqlSession session, MetadataDecodeContext context) {
+    private static AbstractSyntheticMetadataMessage decodeMetadata(ByteBuf buf, MySqlSession session, MetadataDecodeContext context) {
         DefinitionMetadataMessage columnMetadata = DefinitionMetadataMessage.decode(buf, session.getCollation().getCharset());
-        DefinitionMetadataMessage[] messages = context.pushAndGetMetadata(columnMetadata);
 
-        if (messages == null) {
-            return null;
-        }
-
-        return new FakeRowMetadataMessage(messages);
+        return context.pushAndGetMetadata(columnMetadata);
     }
 }

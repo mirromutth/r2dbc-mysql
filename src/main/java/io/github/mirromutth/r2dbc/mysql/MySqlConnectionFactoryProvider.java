@@ -72,7 +72,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             .database(options.getValue(DATABASE))
             .build();
 
-        return new MySqlConnectionFactory(configuration);
+        return MySqlConnectionFactory.from(configuration);
     }
 
     @Override
