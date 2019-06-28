@@ -28,9 +28,11 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link ColumnMetadata} and parameter metadata for MySQL database.
+ * An implementation of {@link ColumnMetadata} for MySQL database.
+ * <p>
+ * Note: same as parameter metadata in MySQL, but parameter metadata is useless for the SPI of R2DBC.
  */
-final class MySqlDefinitionMetadata implements ColumnMetadata, FieldInformation {
+final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     private final int index;
 
@@ -50,7 +52,7 @@ final class MySqlDefinitionMetadata implements ColumnMetadata, FieldInformation 
 
     private final int collationId;
 
-    private MySqlDefinitionMetadata(int index, DataType type, int nativeType, String name, short definitions, boolean nonNull, int size, int decimals, int collationId) {
+    private MySqlColumnMetadata(int index, DataType type, int nativeType, String name, short definitions, boolean nonNull, int size, int decimals, int collationId) {
         require(index >= 0, "index must not be a negative integer");
         requireNonNull(type, "type must not be null");
         require(size >= 0, "size must not be a negative integer");
@@ -75,8 +77,8 @@ final class MySqlDefinitionMetadata implements ColumnMetadata, FieldInformation 
         this.collationId = collationId;
     }
 
-    static MySqlDefinitionMetadata create(int index, DefinitionMetadataMessage message) {
-        return new MySqlDefinitionMetadata(
+    static MySqlColumnMetadata create(int index, DefinitionMetadataMessage message) {
+        return new MySqlColumnMetadata(
             index,
             message.getType(),
             message.getNativeType(),
@@ -159,11 +161,11 @@ final class MySqlDefinitionMetadata implements ColumnMetadata, FieldInformation 
         if (this == o) {
             return true;
         }
-        if (!(o instanceof MySqlDefinitionMetadata)) {
+        if (!(o instanceof MySqlColumnMetadata)) {
             return false;
         }
 
-        MySqlDefinitionMetadata that = (MySqlDefinitionMetadata) o;
+        MySqlColumnMetadata that = (MySqlColumnMetadata) o;
 
         if (index != that.index) {
             return false;
@@ -204,7 +206,7 @@ final class MySqlDefinitionMetadata implements ColumnMetadata, FieldInformation 
 
     @Override
     public String toString() {
-        return "MySqlDefinitionMetadata{" +
+        return "MySqlColumnMetadata{" +
             "index=" + index +
             ", nativeType=" + nativeType +
             ", name='" + name + '\'' +

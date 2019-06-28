@@ -17,16 +17,13 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticRowMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.RowMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticRowMetadataMessage;
 import io.netty.util.ReferenceCountUtil;
-import io.r2dbc.spi.ColumnMetadata;
-import io.r2dbc.spi.Nullability;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
@@ -37,10 +34,6 @@ import reactor.core.publisher.MonoProcessor;
 import reactor.core.publisher.SynchronousSink;
 import reactor.util.annotation.Nullable;
 
-import java.math.BigInteger;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -90,7 +83,7 @@ public final class MySqlResult implements Result {
             return results().handle((message, sink) -> handleResult(message, sink, f));
         } else {
             return affects().map(message -> {
-                SyntheticRow row = new SyntheticRow(codecs, generatedKeyName, message.getLastInsertId());
+                InsertSyntheticRow row = new InsertSyntheticRow(codecs, generatedKeyName, message.getLastInsertId());
                 return f.apply(row, row);
             });
         }
@@ -101,7 +94,7 @@ public final class MySqlResult implements Result {
             Flux<ServerMessage> messages = this.messages.getAndSet(null);
 
             if (messages == null) {
-                // Has subscribed, ok will be set or cancel.
+                // Has subscribed, `okProcessor` will be set or cancel.
                 return;
             }
 
@@ -120,7 +113,7 @@ public final class MySqlResult implements Result {
         Flux<ServerMessage> messages = this.messages.getAndSet(null);
 
         if (messages == null) {
-            throw new IllegalStateException("Source has been released");
+            return Flux.error(new IllegalStateException("Source has been released"));
         }
 
         // Result mode, no need ok message.
@@ -162,113 +155,5 @@ public final class MySqlResult implements Result {
         }
 
         sink.next(t);
-    }
-
-    private static class SyntheticRow implements Row, RowMetadata, ColumnMetadata {
-
-        private final Codecs codecs;
-
-        private final String generatedKeyName;
-
-        private final long lastInsertId;
-
-        private SyntheticRow(Codecs codecs, String generatedKeyName, long lastInsertId) {
-            this.codecs = codecs;
-            this.generatedKeyName = generatedKeyName;
-            this.lastInsertId = lastInsertId;
-        }
-
-        @Override
-        public <T> T get(Object identifier, Class<T> type) {
-            requireNonNull(type, "type must not be null");
-            assertValidIdentifier(identifier);
-
-            return get0(type);
-        }
-
-        @Override
-        public Object get(Object identifier) {
-            assertValidIdentifier(identifier);
-
-            if (lastInsertId < 0) {
-                // BIGINT UNSIGNED
-                return get0(BigInteger.class);
-            } else {
-                return get0(Long.TYPE);
-            }
-        }
-
-        @Override
-        public ColumnMetadata getColumnMetadata(Object identifier) {
-            assertValidIdentifier(identifier);
-
-            return this;
-        }
-
-        @Override
-        public Collection<ColumnMetadata> getColumnMetadatas() {
-            return Collections.singletonList(this);
-        }
-
-        @Override
-        public Collection<String> getColumnNames() {
-            return Collections.singleton(generatedKeyName);
-        }
-
-        @Override
-        public Class<?> getJavaType() {
-            if (lastInsertId < 0) {
-                return BigInteger.class;
-            } else {
-                return Long.TYPE;
-            }
-        }
-
-        @Override
-        public String getName() {
-            return generatedKeyName;
-        }
-
-        @Override
-        public Integer getNativeTypeMetadata() {
-            return DataType.BIGINT.getType();
-        }
-
-        @Override
-        public Nullability getNullability() {
-            return Nullability.NON_NULL;
-        }
-
-        @Override
-        public Integer getPrecision() {
-            // The default precision of BIGINT is 20
-            return 20;
-        }
-
-        @Override
-        public Integer getScale() {
-            // BIGINT not support scale.
-            return null;
-        }
-
-        private <T> T get0(Class<T> type) {
-            return codecs.decodeLastInsertId(lastInsertId, type);
-        }
-
-        private void assertValidIdentifier(Object identifier) {
-            requireNonNull(identifier, "identifier must not be null");
-
-            if (identifier instanceof Integer) {
-                if ((Integer) identifier != 0) {
-                    throw new ArrayIndexOutOfBoundsException((Integer) identifier);
-                }
-            } else if (identifier instanceof String) {
-                if (!this.generatedKeyName.equals(identifier)) {
-                    throw new NoSuchElementException(String.format("Column name '%s' does not exist in column names [%s]", identifier, this.generatedKeyName));
-                }
-            } else {
-                throw new IllegalArgumentException("identifier should either be an Integer index or a String column name.");
-            }
-        }
     }
 }

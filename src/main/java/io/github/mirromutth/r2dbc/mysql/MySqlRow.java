@@ -93,7 +93,7 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
     private <T> T getByType(Object identifier, Type type) {
         requireNonNull(type, "type must not be null");
 
-        MySqlDefinitionMetadata info = rowMetadata.getColumnMetadata(identifier);
+        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(identifier);
         FieldValue field = fields[info.getIndex()];
 
         return codecs.decode(binary, field, info, type, session);

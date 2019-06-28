@@ -13,6 +13,7 @@ This driver provides the following features:
 - Support LOB types (e.g. BLOB, CLOB)
 - Support text/binary result.
 - Native ping command.
+- Support all charsets from MySQL, like `utf8mb4_0900_ai_ci`, `latin1_general_ci`, `utf32_unicode_520_ci`, etc.
 - Transactions (testing, not verify for now)
 
 Next steps:
@@ -103,6 +104,7 @@ Each statement can only contain one query (`SELECT`, `INSERT`, `UPDATE`, etc.).
 
 - All parameters must be bound before execute, even parameter is `null` (use `bindNull` to bind `null`).
 - In one-to-one binding, because native MySQL prepared statements use index-based parameters, *index-bindings* will have **better** performance than *name-bindings*.
+- Native MySQL data rows encoded by index-based, get fields by index will have **better** performance than get by column name.
 - MySQL does **NOT** support DDL in prepare statement, please use simple statement if want to execute DDL.
 - Every `Result` should be used (call `getRowsUpdated` or `map`), can NOT just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
 - If bound `returnGeneratedValues`, call `getRowsUpdated` to get affected rows, call `map` to get last inserted ID, can be called both.
@@ -158,6 +160,7 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 - The MySQL return microseconds when only in prepared statement result (and maybe has not microsecond even in prepared statement result). Therefore this driver does not guarantee time accuracy to microseconds.
 - The MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
 - Do not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
+- Client default charset is `utf8mb4_general_ci`, will not change DDL.
 
 ## License
 
