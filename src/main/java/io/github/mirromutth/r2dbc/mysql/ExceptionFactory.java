@@ -17,24 +17,58 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
+import io.netty.util.collection.IntObjectHashMap;
 import io.r2dbc.spi.R2dbcBadGrammarException;
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import io.r2dbc.spi.R2dbcException;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import io.r2dbc.spi.R2dbcTimeoutException;
+import io.r2dbc.spi.R2dbcTransientResourceException;
 import reactor.util.annotation.Nullable;
 
+import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+
 /**
- * Factory for SQL Server-specific {@link R2dbcException}s.
+ * A factory for generate {@link R2dbcException}s.
  */
 final class ExceptionFactory {
 
     static R2dbcException createException(ErrorMessage message, @Nullable String sql) {
-        switch (message.getErrorCode()) {
-            case 1054:
-            case 1064:
-            case 1146:
-                return new R2dbcBadGrammarException(message.getErrorMessage(), message.getSqlState(), message.getErrorCode(), sql);
-            case 1062: // duplicate key
+        requireNonNull(message, "error message must not be null");
+
+        int errorCode = message.getErrorCode();
+        String sqlState = message.getSqlState();
+        String errorMessage = message.getErrorMessage();
+
+        R2dbcException exception = mappingErrorCode(errorMessage, sqlState, errorCode, sql);
+
+        if (exception == null && sqlState != null) {
+            exception = mappingSqlState(errorMessage, sqlState, errorCode, sql);
+        }
+
+        if (exception != null) {
+            return exception;
+        }
+
+        // Fallback when all exceptions mismatch.
+        return new R2dbcNonTransientResourceException(errorMessage, sqlState, errorCode);
+    }
+
+    @Nullable
+    private static R2dbcException mappingErrorCode(String errorMessage, @Nullable String sqlState, int errorCode, @Nullable String sql) {
+        // TODO: support more error codes
+        switch (errorCode) {
+            case 1213: // Dead lock :-( no one wants this
+                return new R2dbcTransientResourceException(errorMessage, sqlState, errorCode);
+            case 1205: // Wait lock timeout
+                return new R2dbcTimeoutException(errorMessage, sqlState, errorCode);
+            case 1054: // Unknown column name in existing table
+            case 1064: // Bad syntax
+            case 1146: // Unknown table name
+            case 1630: // Function not exists
+                return new R2dbcBadGrammarException(errorMessage, sqlState, errorCode, sql);
+            case 1062: // Duplicate entry key
             case 630:
             case 839:
             case 840:
@@ -47,9 +81,15 @@ final class ExceptionFactory {
             case 1451:
             case 1452:
             case 1557:
-                return new R2dbcDataIntegrityViolationException(message.getErrorMessage(), message.getSqlState(), message.getErrorCode());
+                return new R2dbcDataIntegrityViolationException(errorMessage, sqlState, errorCode);
         }
 
-        return new R2dbcPermissionDeniedException();
+        return null;
+    }
+
+    @Nullable
+    private static R2dbcException mappingSqlState(String errorMessage, String sqlState, int errorCode, @Nullable String sql) {
+        // TODO: implement mapping by standard sql state rules
+        return null;
     }
 }

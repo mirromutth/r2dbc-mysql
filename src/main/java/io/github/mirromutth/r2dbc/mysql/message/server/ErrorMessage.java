@@ -41,7 +41,7 @@ public final class ErrorMessage implements ServerMessage {
     private ErrorMessage(int errorCode, @Nullable String sqlState, String errorMessage) {
         this.errorCode = errorCode;
         this.sqlState = sqlState;
-        this.errorMessage = requireNonNull(errorMessage, "errorMessage must not be null");
+        this.errorMessage = requireNonNull(errorMessage, "error message must not be null");
     }
 
     public int getErrorCode() {
