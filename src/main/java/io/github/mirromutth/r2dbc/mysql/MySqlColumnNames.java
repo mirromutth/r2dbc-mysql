@@ -75,16 +75,20 @@ final class MySqlColumnNames {
                 left = middle + 1;
 
                 if (compared == -2) {
+                    // Match succeed if case insensitive, always use last
+                    // matched result that will be closer to `name`.
                     ciResult = middle;
                 }
             } else if (compared > 0) {
                 right = middle - 1;
 
                 if (compared == 2) {
+                    // Match succeed if case insensitive, always use last
+                    // matched result that will be closer to `name`.
                     ciResult = middle;
                 }
             } else {
-                // Case sensitive match, just return.
+                // Match succeed when case sensitive, just return.
                 return middle;
             }
         }
