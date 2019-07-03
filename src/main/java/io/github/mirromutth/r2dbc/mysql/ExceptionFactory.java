@@ -17,12 +17,12 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
-import io.netty.util.collection.IntObjectHashMap;
 import io.r2dbc.spi.R2dbcBadGrammarException;
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import io.r2dbc.spi.R2dbcRollbackException;
 import io.r2dbc.spi.R2dbcTimeoutException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import reactor.util.annotation.Nullable;
@@ -33,6 +33,12 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * A factory for generate {@link R2dbcException}s.
  */
 final class ExceptionFactory {
+
+    private static final String CONSTRAINT_VIOLATION_PREFIX = "23";
+
+    private static final String TRANSACTION_ROLLBACK_PREFIX = "40";
+
+    private static final String SYNTAX_ERROR_PREFIX = "42";
 
     static R2dbcException createException(ErrorMessage message, @Nullable String sql) {
         requireNonNull(message, "error message must not be null");
@@ -57,30 +63,50 @@ final class ExceptionFactory {
 
     @Nullable
     private static R2dbcException mappingErrorCode(String errorMessage, @Nullable String sqlState, int errorCode, @Nullable String sql) {
-        // TODO: support more error codes
+        // Should keep looking more error codes
+        // Try use binary search or primitive-int-to-primitive-int hashed map?
         switch (errorCode) {
+            case 1044: // Database access denied
+            case 1045: // Wrong password
+            case 1095: // Kill thread denied,
+            case 1142: // Table access denied
+            case 1143: // Column access denied
+            case 1227: // Operation has no privilege(s)
+            case 1370: // Routine or process access denied
+            case 1698: // User need password but has no password
+            case 1873: // Change user denied
+                return new R2dbcPermissionDeniedException(errorMessage, sqlState, errorCode);
+            case 1159: // Read interrupted, reading basic packet timeout because of network jitter in most cases
+            case 1161: // Write interrupted, writing basic packet timeout because of network jitter in most cases
             case 1213: // Dead lock :-( no one wants this
                 return new R2dbcTransientResourceException(errorMessage, sqlState, errorCode);
             case 1205: // Wait lock timeout
+            case 1907: // Statement executing timeout
                 return new R2dbcTimeoutException(errorMessage, sqlState, errorCode);
+            case 1613: // Transaction rollback because of took too long
+                return new R2dbcRollbackException(errorMessage, sqlState, errorCode);
             case 1054: // Unknown column name in existing table
             case 1064: // Bad syntax
+            case 1247: // Unsupported reference
             case 1146: // Unknown table name
             case 1630: // Function not exists
                 return new R2dbcBadGrammarException(errorMessage, sqlState, errorCode, sql);
-            case 1062: // Duplicate entry key
-            case 630:
-            case 839:
-            case 840:
-            case 893:
-            case 1169:
-            case 1215:
-            case 1216:
-            case 1217:
-            case 1364:
-            case 1451:
-            case 1452:
-            case 1557:
+            case 630: // Undefined error code...but exists in Spring's Exception mapping
+            case 839: // Undefined error code...but exists in Spring's Exception mapping
+            case 840: // Undefined error code...but exists in Spring's Exception mapping
+            case 893: // Undefined error code...but exists in Spring's Exception mapping
+            case 1022: // Duplicate key
+            case 1048: // Field cannot be null
+            case 1062: // Duplicate entry for key constraint
+            case 1169: // Violation of an unique constraint
+            case 1215: // Add a foreign key has a violation
+            case 1216: // Child row has a violation of foreign key constraint when inserting or updating
+            case 1217: // Parent row has a violation of foreign key constraint when deleting or updating
+            case 1364: // Field has no default value but user try set it to DEFAULT
+            case 1451: // Parent row has a violation of foreign key constraint when deleting or updating
+            case 1452: // Child row has a violation of foreign key constraint when inserting or updating
+            case 1557: // Conflicting foreign key constraints and unique constraints
+            case 1859: // Duplicate unknown entry for key constraint
                 return new R2dbcDataIntegrityViolationException(errorMessage, sqlState, errorCode);
         }
 
@@ -89,7 +115,14 @@ final class ExceptionFactory {
 
     @Nullable
     private static R2dbcException mappingSqlState(String errorMessage, String sqlState, int errorCode, @Nullable String sql) {
-        // TODO: implement mapping by standard sql state rules
+        if (sqlState.startsWith(CONSTRAINT_VIOLATION_PREFIX)) {
+            return new R2dbcDataIntegrityViolationException(errorMessage, sqlState, errorCode);
+        } else if (sqlState.startsWith(TRANSACTION_ROLLBACK_PREFIX)) {
+            return new R2dbcRollbackException(errorMessage, sqlState, errorCode);
+        } else if (sqlState.startsWith(SYNTAX_ERROR_PREFIX)) {
+            return new R2dbcBadGrammarException(errorMessage, sqlState, errorCode, sql);
+        }
+
         return null;
     }
 }
