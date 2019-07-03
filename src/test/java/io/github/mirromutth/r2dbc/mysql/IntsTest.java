@@ -47,9 +47,9 @@ class IntsTest {
     private static final int INCREMENT_STEP = 5;
 
     /**
-     * Note: MySQL does not support DDL in prepare statement.
+     * Note: MySQL does not support table definition in prepare statement.
      */
-    private static final String TABLE_DDL = String.format("CREATE TEMPORARY TABLE `test_ints`\n" +
+    private static final String TABLE = String.format("CREATE TEMPORARY TABLE `test_ints`\n" +
         "(\n" +
         "    `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n" +
         "    `data_int8`   TINYINT,\n" +
@@ -82,7 +82,7 @@ class IntsTest {
             .bind(0, (Integer) INCREMENT_STEP)
             .execute())
             .flatMap(MySqlResult::getRowsUpdated)
-            .then(Mono.from(connection.createStatement(TABLE_DDL).execute()))
+            .then(Mono.from(connection.createStatement(TABLE).execute()))
             .flatMap(MySqlResult::getRowsUpdated)
             .then(Mono.from(connection.createStatement("SELECT * FROM `test_ints`").execute()))
             .flatMapMany(result -> result.map((row, metadata) -> 1))

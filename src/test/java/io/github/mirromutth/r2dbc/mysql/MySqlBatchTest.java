@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class MySqlBatchTest {
 
-    private static final String TABLE_DDL = "CREATE TEMPORARY TABLE `batch` (\n" +
+    private static final String TABLE = "CREATE TEMPORARY TABLE `batch` (\n" +
         "    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n" +
         "    `data` VARCHAR(20) NOT NULL\n" +
         ");\n";
@@ -78,7 +78,7 @@ class MySqlBatchTest {
             deleteBatch.add(formattedDelete(IS_ODD));
             deleteBatch.add(formattedDelete(IS_EVEN));
 
-            return Mono.from(connection.createStatement(TABLE_DDL).execute())
+            return Mono.from(connection.createStatement(TABLE).execute())
                 .flatMap(MySqlResult::getRowsUpdated)
                 .thenMany(insertBatch.execute())
                 .concatMap(MySqlResult::getRowsUpdated)

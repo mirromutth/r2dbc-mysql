@@ -42,7 +42,7 @@ class SimpleQueryDateTimeTest {
 
     private static final int FIRST_ID = 11;
 
-    private static final String TABLE_DDL = String.format("CREATE TEMPORARY TABLE `birth`\n" +
+    private static final String TABLE = String.format("CREATE TEMPORARY TABLE `birth`\n" +
         "(\n" +
         "    `id`              BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n" +
         "    `birth_year`      YEAR                NOT NULL,\n" +
@@ -85,7 +85,7 @@ class SimpleQueryDateTimeTest {
 
             insertSecondStmt.returnGeneratedValues("second_id");
 
-            return Mono.from(connection.createStatement(TABLE_DDL).execute())
+            return Mono.from(connection.createStatement(TABLE).execute())
                 .flatMap(MySqlResult::getRowsUpdated)
                 .then(Mono.from(insertFirstStmt.execute()))
                 .flatMap(MySqlResult::getRowsUpdated)
