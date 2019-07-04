@@ -64,11 +64,10 @@ final class ExceptionFactory {
     @Nullable
     private static R2dbcException mappingErrorCode(String errorMessage, @Nullable String sqlState, int errorCode, @Nullable String sql) {
         // Should keep looking more error codes
-        // Try use binary search or primitive-int-to-primitive-int hashed map?
         switch (errorCode) {
             case 1044: // Database access denied
             case 1045: // Wrong password
-            case 1095: // Kill thread denied,
+            case 1095: // Kill thread denied
             case 1142: // Table access denied
             case 1143: // Column access denied
             case 1227: // Operation has no privilege(s)
@@ -91,10 +90,6 @@ final class ExceptionFactory {
             case 1146: // Unknown table name
             case 1630: // Function not exists
                 return new R2dbcBadGrammarException(errorMessage, sqlState, errorCode, sql);
-            case 630: // Undefined error code...but exists in Spring's Exception mapping
-            case 839: // Undefined error code...but exists in Spring's Exception mapping
-            case 840: // Undefined error code...but exists in Spring's Exception mapping
-            case 893: // Undefined error code...but exists in Spring's Exception mapping
             case 1022: // Duplicate key
             case 1048: // Field cannot be null
             case 1062: // Duplicate entry for key constraint
