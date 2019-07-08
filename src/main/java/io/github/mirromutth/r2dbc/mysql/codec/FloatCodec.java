@@ -38,19 +38,13 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    public Float decodeText(NormalFieldValue value, FieldInformation info, Class<? super Float> target, MySqlSession session) {
-        return Float.parseFloat(value.getBuffer().toString(StandardCharsets.US_ASCII));
-    }
-
-    @Override
-    public Float decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super Float> target, MySqlSession session) {
+    public Float decode(NormalFieldValue value, FieldInformation info, Class<? super Float> target, boolean binary, MySqlSession session) {
         ByteBuf buf = value.getBuffer();
 
-        if (info.getType() == DataType.FLOAT) {
+        if (binary && info.getType() == DataType.FLOAT) {
             return buf.readFloatLE();
         }
-
-        // DECIMAL and size less than 7.
+        // otherwise encoded by text (must not be DOUBLE).
         return Float.parseFloat(buf.toString(StandardCharsets.US_ASCII));
     }
 

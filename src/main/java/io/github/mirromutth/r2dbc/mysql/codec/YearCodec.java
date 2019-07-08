@@ -39,13 +39,12 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     }
 
     @Override
-    public Year decodeText(NormalFieldValue value, FieldInformation info, Class<? super Year> target, MySqlSession session) {
-        return Year.of(IntegerCodec.parse(value.getBuffer()));
-    }
-
-    @Override
-    public Year decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super Year> target, MySqlSession session) {
-        return Year.of(value.getBuffer().readShortLE());
+    public Year decode(NormalFieldValue value, FieldInformation info, Class<? super Year> target, boolean binary, MySqlSession session) {
+        if (binary) {
+            return Year.of(value.getBuffer().readShortLE());
+        } else {
+            return Year.of(IntegerCodec.parse(value.getBuffer()));
+        }
     }
 
     @Override

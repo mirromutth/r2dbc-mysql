@@ -32,7 +32,7 @@ import reactor.core.publisher.Mono;
 
 import java.lang.reflect.Type;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Codec for {@link Clob}.
@@ -47,13 +47,12 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
     }
 
     @Override
-    public Clob decodeText(FieldValue value, FieldInformation info, Class<? super Clob> target, MySqlSession session) {
-        return decodeBoth(value, info, session);
-    }
+    public Clob decode(FieldValue value, FieldInformation info, Class<? super Clob> target, boolean binary, MySqlSession session) {
+        if (value instanceof NormalFieldValue) {
+            return ScalarClob.retain(((NormalFieldValue) value).getBuffer(), info.getCollationId(), session.getServerVersion());
+        }
 
-    @Override
-    public Clob decodeBinary(FieldValue value, FieldInformation info, Class<? super Clob> target, MySqlSession session) {
-        return decodeBoth(value, info, session);
+        return ScalarClob.retain(((LargeFieldValue) value).getBuffers(), info.getCollationId(), session.getServerVersion());
     }
 
     @Override
@@ -84,32 +83,21 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
         return new ClobValue((Clob) value, session);
     }
 
-    private static Clob decodeBoth(FieldValue value, FieldInformation info, MySqlSession session) {
-        if (value instanceof NormalFieldValue) {
-            return ScalarClob.retain(((NormalFieldValue) value).getBuffer(), info.getCollationId(), session.getServerVersion());
-        }
-
-        return ScalarClob.retain(((LargeFieldValue) value).getBuffers(), info.getCollationId(), session.getServerVersion());
-    }
-
     private static class ClobValue extends AbstractLobValue {
 
-        private static final AtomicReferenceFieldUpdater<ClobValue, Clob> VALUE_UPDATER =
-            AtomicReferenceFieldUpdater.newUpdater(ClobValue.class, Clob.class, "clob");
+        private final AtomicReference<Clob> clob;
 
         private final MySqlSession session;
 
-        private volatile Clob clob;
-
         private ClobValue(Clob clob, MySqlSession session) {
+            this.clob = new AtomicReference<>(clob);
             this.session = session;
-            this.clob = clob;
         }
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
             return Mono.defer(() -> {
-                Clob clob = VALUE_UPDATER.getAndSet(this, null);
+                Clob clob = this.clob.getAndSet(null);
 
                 if (clob == null) {
                     return Mono.error(new IllegalStateException("Clob has written, can not write twice"));
@@ -133,18 +121,18 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
 
             ClobValue clobValue = (ClobValue) o;
 
-            return Objects.equals(this.clob, clobValue.clob);
+            return Objects.equals(this.clob.get(), clobValue.clob.get());
         }
 
         @Override
         public int hashCode() {
-            Clob clob = this.clob;
+            Clob clob = this.clob.get();
             return clob == null ? 0 : clob.hashCode();
         }
 
         @Override
         protected Publisher<Void> getDiscard() {
-            Clob clob = VALUE_UPDATER.getAndSet(this, null);
+            Clob clob = this.clob.getAndSet(null);
             return clob == null ? null : clob.discard();
         }
     }

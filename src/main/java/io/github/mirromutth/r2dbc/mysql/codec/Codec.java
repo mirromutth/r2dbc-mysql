@@ -29,10 +29,7 @@ import java.lang.reflect.Type;
 interface Codec<R, V extends FieldValue, T extends Type> {
 
     @Nullable
-    R decodeText(V value, FieldInformation info, T target, MySqlSession session);
-
-    @Nullable
-    R decodeBinary(V value, FieldInformation info, T target, MySqlSession session);
+    R decode(V value, FieldInformation info, T target, boolean binary, MySqlSession session);
 
     boolean canDecode(FieldValue value, FieldInformation info, Type target);
 

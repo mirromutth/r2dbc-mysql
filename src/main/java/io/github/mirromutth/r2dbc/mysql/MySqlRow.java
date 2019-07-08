@@ -96,6 +96,6 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
         MySqlColumnMetadata info = rowMetadata.getColumnMetadata(identifier);
         FieldValue field = fields[info.getIndex()];
 
-        return codecs.decode(binary, field, info, type, session);
+        return codecs.decode(field, info, type, binary, session);
     }
 }

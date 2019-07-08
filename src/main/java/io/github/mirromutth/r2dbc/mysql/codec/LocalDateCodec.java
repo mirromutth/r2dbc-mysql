@@ -44,34 +44,31 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public LocalDate decodeText(NormalFieldValue value, FieldInformation info, Class<? super LocalDate> target, MySqlSession session) {
+    public LocalDate decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDate> target, boolean binary, MySqlSession session) {
         ByteBuf buf = value.getBuffer();
         int index = buf.readerIndex();
         int bytes = buf.readableBytes();
-        LocalDate date = JavaTimeHelper.readDateText(buf);
 
-        if (date == null) {
-            return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> buf.toString(index, bytes, StandardCharsets.US_ASCII));
+        if (binary) {
+            TemporalAccessor accessor = JavaTimeHelper.readDateTimeBinary(buf);
+
+            if (accessor == null) {
+                return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> ByteBufUtil.hexDump(buf, index, bytes));
+            } else if (accessor instanceof LocalDate) {
+                return (LocalDate) accessor;
+            }
+
+            // Must not null in here, do not use TemporalAccessor.query (it may return null)
+            return LocalDate.from(accessor);
+        } else {
+            LocalDate date = JavaTimeHelper.readDateText(buf);
+
+            if (date == null) {
+                return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> buf.toString(index, bytes, StandardCharsets.US_ASCII));
+            }
+
+            return date;
         }
-
-        return date;
-    }
-
-    @Override
-    public LocalDate decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super LocalDate> target, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
-        int index = buf.readerIndex();
-        int bytes = buf.readableBytes();
-        TemporalAccessor accessor = JavaTimeHelper.readDateTimeBinary(buf);
-
-        if (accessor == null) {
-            return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> ByteBufUtil.hexDump(buf, index, bytes));
-        } else if (accessor instanceof LocalDate) {
-            return (LocalDate) accessor;
-        }
-
-        // Must not null in here, do not use TemporalAccessor.query (it may return null)
-        return LocalDate.from(accessor);
     }
 
     @Override

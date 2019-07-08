@@ -36,13 +36,12 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    public Byte decodeText(NormalFieldValue value, FieldInformation info, Class<? super Byte> target, MySqlSession session) {
-        return (byte) IntegerCodec.parse(value.getBuffer());
-    }
-
-    @Override
-    public Byte decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super Byte> target, MySqlSession session) {
-        return value.getBuffer().readByte();
+    public Byte decode(NormalFieldValue value, FieldInformation info, Class<? super Byte> target, boolean binary, MySqlSession session) {
+        if (binary) {
+            return value.getBuffer().readByte();
+        } else {
+            return (byte) IntegerCodec.parse(value.getBuffer());
+        }
     }
 
     @Override

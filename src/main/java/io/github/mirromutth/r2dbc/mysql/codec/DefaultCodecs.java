@@ -21,7 +21,6 @@ import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
-import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.Type;
 import java.math.BigInteger;
@@ -91,7 +90,7 @@ final class DefaultCodecs implements Codecs {
      * it come from {@code MySqlRow} which will release this buffer.
      */
     @Override
-    public <T> T decode(boolean binary, FieldValue value, FieldInformation info, Type type, MySqlSession session) {
+    public <T> T decode(FieldValue value, FieldInformation info, Type type, boolean binary, MySqlSession session) {
         requireNonNull(value, "value must not be null");
         requireNonNull(info, "info must not be null");
         requireNonNull(session, "session must not be null");
@@ -115,11 +114,7 @@ final class DefaultCodecs implements Codecs {
             PrimitiveCodec<T> codec = (PrimitiveCodec<T>) this.primitiveCodecs.get(targetClass);
 
             if (codec != null && value instanceof NormalFieldValue && codec.canPrimitiveDecode(info)) {
-                if (binary) {
-                    return codec.decodeBinary((NormalFieldValue) value, info, targetClass, session);
-                } else {
-                    return codec.decodeText((NormalFieldValue) value, info, targetClass, session);
-                }
+                return codec.decode((NormalFieldValue) value, info, targetClass, binary, session);
             } else {
                 // Primitive mismatch, no `Codec` support this primitive class.
                 throw new IllegalArgumentException(String.format("Cannot decode value of type '%s' with column type '%s'", targetClass, info.getType()));
@@ -130,11 +125,7 @@ final class DefaultCodecs implements Codecs {
             if (codec.canDecode(value, info, target)) {
                 @SuppressWarnings("unchecked")
                 Codec<T, ? super FieldValue, ? super Type> c = (Codec<T, ? super FieldValue, ? super Type>) codec;
-                if (binary) {
-                    return c.decodeBinary(value, info, target, session);
-                } else {
-                    return c.decodeText(value, info, target, session);
-                }
+                return c.decode(value, info, target, binary, session);
             }
         }
 
@@ -156,7 +147,7 @@ final class DefaultCodecs implements Codecs {
             return (T) Long.valueOf(value);
         } else if (BigInteger.class == type) {
             if (value < 0) {
-                 return (T) BigIntegerCodec.unsignedBigInteger(value);
+                return (T) BigIntegerCodec.unsignedBigInteger(value);
             } else {
                 return (T) BigInteger.valueOf(value);
             }

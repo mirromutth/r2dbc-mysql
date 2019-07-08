@@ -37,13 +37,14 @@ final class StringCodec extends AbstractClassedCodec<String> {
     }
 
     @Override
-    public String decodeText(NormalFieldValue value, FieldInformation info, Class<? super String> target, MySqlSession session) {
-        return decode(value.getBuffer(), info, session);
-    }
+    public String decode(NormalFieldValue value, FieldInformation info, Class<? super String> target, boolean binary, MySqlSession session) {
+        ByteBuf buf = value.getBuffer();
 
-    @Override
-    public String decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super String> target, MySqlSession session) {
-        return decode(value.getBuffer(), info, session);
+        if (!buf.isReadable()) {
+            return "";
+        }
+
+        return buf.toString(CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset());
     }
 
     @Override
@@ -61,14 +62,6 @@ final class StringCodec extends AbstractClassedCodec<String> {
         DataType type = info.getType();
         // Note: TEXT is also BLOB with char collation in MySQL.
         return (TypeConditions.isString(type) || TypeConditions.isLob(type)) && info.getCollationId() != CharCollation.BINARY_ID;
-    }
-
-    private static String decode(ByteBuf buf, FieldInformation info, MySqlSession session) {
-        if (!buf.isReadable()) {
-            return "";
-        }
-
-        return buf.toString(CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset());
     }
 
     private static class StringValue extends AbstractParameterValue {

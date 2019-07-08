@@ -27,6 +27,7 @@ import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAccessor;
@@ -45,34 +46,33 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
     }
 
     @Override
-    public LocalDateTime decodeText(NormalFieldValue value, FieldInformation info, Class<? super LocalDateTime> target, MySqlSession session) {
+    public LocalDateTime decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDateTime> target, boolean binary, MySqlSession session) {
         ByteBuf buf = value.getBuffer();
         int index = buf.readerIndex();
         int bytes = buf.readableBytes();
-        LocalDateTime dateTime = JavaTimeHelper.readDateTimeText(buf);
 
-        if (dateTime == null) {
-            return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> buf.toString(index, bytes, StandardCharsets.US_ASCII));
+        if (binary) {
+            TemporalAccessor accessor = JavaTimeHelper.readDateTimeBinary(buf);
+
+            if (accessor == null) {
+                return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> ByteBufUtil.hexDump(buf, index, bytes));
+            } else if (accessor instanceof LocalDateTime) {
+                return (LocalDateTime) accessor;
+            } else if (accessor instanceof LocalDate) {
+                return LocalDateTime.of((LocalDate) accessor, LocalTime.MIN);
+            }
+
+            // Must not null in here, do not use TemporalAccessor.query (it may return null)
+            return LocalDateTime.from(accessor);
+        } else {
+            LocalDateTime dateTime = JavaTimeHelper.readDateTimeText(buf);
+
+            if (dateTime == null) {
+                return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> buf.toString(index, bytes, StandardCharsets.US_ASCII));
+            }
+
+            return dateTime;
         }
-
-        return dateTime;
-    }
-
-    @Override
-    public LocalDateTime decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super LocalDateTime> target, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
-        int index = buf.readerIndex();
-        int bytes = buf.readableBytes();
-        TemporalAccessor accessor = JavaTimeHelper.readDateTimeBinary(buf);
-
-        if (accessor == null) {
-            return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> ByteBufUtil.hexDump(buf, index, bytes));
-        } else if (accessor instanceof LocalDateTime) {
-            return (LocalDateTime) accessor;
-        }
-
-        // Must not null in here, do not use TemporalAccessor.query (it may return null)
-        return LocalDateTime.from(accessor);
     }
 
     @Override

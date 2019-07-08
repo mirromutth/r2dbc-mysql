@@ -41,13 +41,13 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    public byte[] decodeText(NormalFieldValue value, FieldInformation info, Class<? super byte[]> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer());
-    }
+    public byte[] decode(NormalFieldValue value, FieldInformation info, Class<? super byte[]> target, boolean binary, MySqlSession session) {
+        ByteBuf buf = value.getBuffer();
 
-    @Override
-    public byte[] decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super byte[]> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer());
+        if (!buf.isReadable()) {
+            return EMPTY_BYTES;
+        }
+        return ByteBufUtil.getBytes(buf);
     }
 
     @Override
@@ -64,14 +64,6 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     protected boolean doCanDecode(FieldInformation info) {
         DataType type = info.getType();
         return DataType.BIT == type || DataType.GEOMETRY == type || TypeConditions.isString(type) || TypeConditions.isLob(type);
-    }
-
-    private static byte[] decodeBoth(ByteBuf buf) {
-        if (!buf.isReadable()) {
-            return EMPTY_BYTES;
-        }
-
-        return ByteBufUtil.getBytes(buf);
     }
 
     private static final class ByteArrayValue extends AbstractParameterValue {

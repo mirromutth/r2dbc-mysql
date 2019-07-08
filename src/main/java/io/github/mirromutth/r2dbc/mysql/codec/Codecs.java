@@ -29,7 +29,7 @@ import java.lang.reflect.Type;
 public interface Codecs {
 
     @Nullable
-    <T> T decode(boolean binary, FieldValue value, FieldInformation info, Type type, MySqlSession session);
+    <T> T decode(FieldValue value, FieldInformation info, Type type, boolean binary, MySqlSession session);
 
     <T> T decodeLastInsertId(long value, Class<T> type);
 

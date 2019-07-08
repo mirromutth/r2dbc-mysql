@@ -39,13 +39,33 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    public BigDecimal decodeText(NormalFieldValue value, FieldInformation info, Class<? super BigDecimal> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer());
-    }
+    public BigDecimal decode(NormalFieldValue value, FieldInformation info, Class<? super BigDecimal> target, boolean binary, MySqlSession session) {
+        ByteBuf buf = value.getBuffer();
 
-    @Override
-    public BigDecimal decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super BigDecimal> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer());
+        if (binary) {
+            DataType type = info.getType();
+
+            switch (type) {
+                case FLOAT:
+                    return BigDecimal.valueOf(buf.readFloatLE());
+                case DOUBLE:
+                    return BigDecimal.valueOf(buf.readDoubleLE());
+            }
+            // Not float or double, is text-encoded yet.
+        }
+
+        BigDecimal decimal = new BigDecimal(buf.toString(StandardCharsets.US_ASCII));
+
+        // Why Java has not BigDecimal.parseBigDecimal(String)?
+        if (BigDecimal.ZERO.equals(decimal)) {
+            return BigDecimal.ZERO;
+        } else if (BigDecimal.ONE.equals(decimal)) {
+            return BigDecimal.ONE;
+        } else if (BigDecimal.TEN.equals(decimal)) {
+            return BigDecimal.TEN;
+        } else {
+            return decimal;
+        }
     }
 
     @Override
@@ -60,21 +80,8 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        return TypeConditions.isDecimal(info.getType());
-    }
-
-    private static BigDecimal decodeBoth(ByteBuf buf) {
-        BigDecimal decimal = new BigDecimal(buf.toString(StandardCharsets.US_ASCII));
-
-        if (BigDecimal.ZERO.equals(decimal)) {
-            return BigDecimal.ZERO;
-        } else if (BigDecimal.ONE.equals(decimal)) {
-            return BigDecimal.ONE;
-        } else if (BigDecimal.TEN.equals(decimal)) {
-            return BigDecimal.TEN;
-        } else {
-            return decimal;
-        }
+        DataType type = info.getType();
+        return TypeConditions.isDecimal(type) || DataType.FLOAT == type || DataType.DOUBLE == type;
     }
 
     private static final class BigDecimalValue extends AbstractParameterValue {

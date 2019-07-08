@@ -40,67 +40,11 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     }
 
     @Override
-    public BigInteger decodeText(NormalFieldValue value, FieldInformation info, Class<? super BigInteger> target, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
-
-        if (info.getType() == DataType.BIGINT && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
-            if (buf.getByte(buf.readerIndex()) == '+') {
-                buf.skipBytes(1);
-            }
-
-            String num = buf.toString(StandardCharsets.US_ASCII);
-
-            if (isGreaterThanMaxValue(num)) {
-                return new BigInteger(num);
-            } else {
-                // valueOf can use constant pool.
-                return BigInteger.valueOf(parse(num));
-            }
+    public BigInteger decode(NormalFieldValue value, FieldInformation info, Class<? super BigInteger> target, boolean binary, MySqlSession session) {
+        if (binary) {
+            return decodeBinary(value, info);
         } else {
-            return BigInteger.valueOf(LongCodec.parse(buf));
-        }
-    }
-
-    @Override
-    public BigInteger decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super BigInteger> target, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
-        boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
-
-        switch (info.getType()) {
-            case BIGINT:
-                long v = buf.readLongLE();
-                if (isUnsigned) {
-                    if (v >= 0) {
-                        return BigInteger.valueOf(v);
-                    } else {
-                        return unsignedBigInteger(v);
-                    }
-                } else {
-                    return BigInteger.valueOf(v);
-                }
-            case INT:
-                if (isUnsigned) {
-                    return BigInteger.valueOf(buf.readUnsignedIntLE());
-                } else {
-                    return BigInteger.valueOf(buf.readIntLE());
-                }
-            case MEDIUMINT:
-                // Note: MySQL return 32-bits two's complement for 24-bits integer
-                return BigInteger.valueOf(buf.readIntLE());
-            case SMALLINT:
-                if (isUnsigned) {
-                    return BigInteger.valueOf(buf.readUnsignedShortLE());
-                } else {
-                    return BigInteger.valueOf(buf.readShortLE());
-                }
-            case YEAR:
-                return BigInteger.valueOf(buf.readShortLE());
-            default: // TINYINT
-                if (isUnsigned) {
-                    return BigInteger.valueOf(buf.readUnsignedByte());
-                } else {
-                    return BigInteger.valueOf(buf.readByte());
-                }
+            return decodeText(value, info);
         }
     }
 
@@ -131,17 +75,6 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         return num.compareTo(LONG_MAX_VALUE) > 0;
     }
 
-    private static long parse(String num) {
-        long value = 0;
-        int size = num.length();
-
-        for (int i = 0; i < size; ++i) {
-            value = value * 10L + (num.charAt(i) - '0');
-        }
-
-        return value;
-    }
-
     static BigInteger unsignedBigInteger(long negative) {
         byte[] bits = new byte[Long.BYTES + 1];
 
@@ -156,5 +89,76 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         bits[8] = (byte) negative;
 
         return new BigInteger(bits);
+    }
+
+    private static BigInteger decodeText(NormalFieldValue value, FieldInformation info) {
+        ByteBuf buf = value.getBuffer();
+
+        if (info.getType() == DataType.BIGINT && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
+            if (buf.getByte(buf.readerIndex()) == '+') {
+                buf.skipBytes(1);
+            }
+
+            String num = buf.toString(StandardCharsets.US_ASCII);
+
+            // Why Java has not BigInteger.parseBigInteger(String)?
+            if (isGreaterThanMaxValue(num)) {
+                return new BigInteger(num);
+            } else {
+                // valueOf can use constant pool.
+                return BigInteger.valueOf(parseUnsigned(num));
+            }
+        } else {
+            return BigInteger.valueOf(LongCodec.parse(buf));
+        }
+    }
+
+    private static BigInteger decodeBinary(NormalFieldValue value, FieldInformation info) {
+        ByteBuf buf = value.getBuffer();
+        boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
+
+        switch (info.getType()) {
+            case BIGINT:
+                long v = buf.readLongLE();
+                if (isUnsigned && v < 0) {
+                    return unsignedBigInteger(v);
+                }
+
+                return BigInteger.valueOf(v);
+            case INT:
+                if (isUnsigned) {
+                    return BigInteger.valueOf(buf.readUnsignedIntLE());
+                } else {
+                    return BigInteger.valueOf(buf.readIntLE());
+                }
+            case MEDIUMINT:
+                // Note: MySQL return 32-bits two's complement for 24-bits integer
+                return BigInteger.valueOf(buf.readIntLE());
+            case SMALLINT:
+                if (isUnsigned) {
+                    return BigInteger.valueOf(buf.readUnsignedShortLE());
+                } else {
+                    return BigInteger.valueOf(buf.readShortLE());
+                }
+            case YEAR:
+                return BigInteger.valueOf(buf.readShortLE());
+            default: // TINYINT
+                if (isUnsigned) {
+                    return BigInteger.valueOf(buf.readUnsignedByte());
+                } else {
+                    return BigInteger.valueOf(buf.readByte());
+                }
+        }
+    }
+
+    private static long parseUnsigned(String num) {
+        long value = 0;
+        int size = num.length();
+
+        for (int i = 0; i < size; ++i) {
+            value = value * 10L + (num.charAt(i) - '0');
+        }
+
+        return value;
     }
 }

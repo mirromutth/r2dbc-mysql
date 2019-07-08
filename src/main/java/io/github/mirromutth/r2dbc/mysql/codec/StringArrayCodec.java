@@ -42,13 +42,21 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
     }
 
     @Override
-    public String[] decodeText(NormalFieldValue value, FieldInformation info, Class<? super String[]> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer(), info, session);
-    }
+    public String[] decode(NormalFieldValue value, FieldInformation info, Class<? super String[]> target, boolean binary, MySqlSession session) {
+        ByteBuf buf = value.getBuffer();
 
-    @Override
-    public String[] decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super String[]> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer(), info, session);
+        if (!buf.isReadable()) {
+            return EMPTY_STRINGS;
+        }
+
+        int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
+        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
+
+        if (firstComma < 0) {
+            return new String[] { buf.toString(charset) };
+        }
+
+        return buf.toString(charset).split(",");
     }
 
     @Override
@@ -64,21 +72,6 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
     @Override
     protected boolean doCanDecode(FieldInformation info) {
         return DataType.SET == info.getType();
-    }
-
-    private static String[] decodeBoth(ByteBuf buf, FieldInformation info, MySqlSession session) {
-        if (!buf.isReadable()) {
-            return EMPTY_STRINGS;
-        }
-
-        int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
-        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
-
-        if (firstComma < 0) {
-            return new String[] { buf.toString(charset) };
-        }
-
-        return buf.toString(charset).split(",");
     }
 
     private static final class StringArrayValue extends AbstractParameterValue {

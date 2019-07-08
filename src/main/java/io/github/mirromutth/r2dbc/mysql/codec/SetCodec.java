@@ -47,14 +47,43 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
     private SetCodec() {
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Set<?> decodeText(NormalFieldValue value, FieldInformation info, ParameterizedType target, MySqlSession session) {
-        return decodeBoth(value.getBuffer(), info, target, session);
-    }
+    public Set<?> decode(NormalFieldValue value, FieldInformation info, ParameterizedType target, boolean binary, MySqlSession session) {
+        ByteBuf buf = value.getBuffer();
 
-    @Override
-    public Set<?> decodeBinary(NormalFieldValue value, FieldInformation info, ParameterizedType target, MySqlSession session) {
-        return decodeBoth(value.getBuffer(), info, target, session);
+        if (!buf.isReadable()) {
+            return Collections.emptySet();
+        }
+
+        Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
+        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
+        int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
+
+        if (firstComma < 0) {
+            if (subClass.isEnum()) {
+                return Collections.singleton(Enum.valueOf((Class<Enum>) subClass, buf.toString(charset)));
+            } else {
+                return Collections.singleton(buf.toString(charset));
+            }
+        }
+
+        Iterable<String> elements = new SplitIterable(buf, charset, firstComma);
+        Set<?> result = buildSet(subClass);
+
+        if (subClass.isEnum()) {
+            Class<Enum> enumClass = (Class<Enum>) subClass;
+            Set<Enum<?>> enumSet = (Set<Enum<?>>) result;
+            for (String element : elements) {
+                enumSet.add(Enum.valueOf(enumClass, element));
+            }
+        } else {
+            for (String element : elements) {
+                ((Set<String>) result).add(element);
+            }
+        }
+
+        return result;
     }
 
     @Override
@@ -92,42 +121,6 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
         return new SetValue((Set<?>) value, session);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Set<?> decodeBoth(ByteBuf buf, FieldInformation info, ParameterizedType target, MySqlSession session) {
-        if (!buf.isReadable()) {
-            return Collections.emptySet();
-        }
-
-        Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
-        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
-        int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
-
-        if (firstComma < 0) {
-            if (subClass.isEnum()) {
-                return Collections.singleton(Enum.valueOf((Class<Enum>) subClass, buf.toString(charset)));
-            } else {
-                return Collections.singleton(buf.toString(charset));
-            }
-        }
-
-        Iterable<String> elements = new SplitIterable(buf, charset, firstComma);
-        Set<?> result = buildSet(subClass);
-
-        if (subClass.isEnum()) {
-            Class<Enum> enumClass = (Class<Enum>) subClass;
-            Set<Enum<?>> enumSet = (Set<Enum<?>>) result;
-            for (String element : elements) {
-                enumSet.add(Enum.valueOf(enumClass, element));
-            }
-        } else {
-            for (String element : elements) {
-                ((Set<String>) result).add(element);
-            }
-        }
-
-        return result;
     }
 
     private static Set<?> buildSet(Class<?> subClass) {
@@ -203,19 +196,20 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         @Override
         public String next() {
             String result = buf.toString(lastChar, currentComma - lastChar, charset);
+            int nextStart = currentComma + 1;
 
-            lastChar = currentComma + 1;
-            currentComma = nextComma();
+            lastChar = nextStart;
+            currentComma = nextComma(nextStart);
 
             return result;
         }
 
-        private int nextComma() {
-            if (lastChar > writerIndex) {
-                return lastChar;
+        private int nextComma(int nextStart) {
+            if (nextStart > writerIndex) {
+                return nextStart;
             }
 
-            int index = buf.indexOf(lastChar, writerIndex, (byte) ',');
+            int index = buf.indexOf(nextStart, writerIndex, (byte) ',');
 
             if (index < 0) {
                 return writerIndex;

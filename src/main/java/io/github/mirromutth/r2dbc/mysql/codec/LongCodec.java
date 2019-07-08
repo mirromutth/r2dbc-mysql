@@ -39,43 +39,15 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public Long decodeText(NormalFieldValue value, FieldInformation info, Class<? super Long> target, MySqlSession session) {
-        // Note: no check overflow for BIGINT UNSIGNED
-        return parse(value.getBuffer());
-    }
-
-    @Override
-    public Long decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super Long> target, MySqlSession session) {
+    public Long decode(NormalFieldValue value, FieldInformation info, Class<? super Long> target, boolean binary, MySqlSession session) {
         ByteBuf buf = value.getBuffer();
-        boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
-        switch (info.getType()) {
-            case BIGINT:
-                // Note: no check overflow for BIGINT UNSIGNED
-                return buf.readLongLE();
-            case INT:
-                if (isUnsigned) {
-                    return buf.readUnsignedIntLE();
-                } else {
-                    return (long) buf.readIntLE();
-                }
-            case MEDIUMINT:
-                // Note: MySQL return 32-bits two's complement for 24-bits integer
-                return (long) buf.readIntLE();
-            case SMALLINT:
-                if (isUnsigned) {
-                    return (long) buf.readUnsignedShortLE();
-                } else {
-                    return (long) buf.readShortLE();
-                }
-            case YEAR:
-                return (long) buf.readShortLE();
-            default: // TINYINT
-                if (isUnsigned) {
-                    return (long) buf.readUnsignedByte();
-                } else {
-                    return (long) buf.readByte();
-                }
+        if (binary) {
+            boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
+            return decodeBinary(buf, info.getType(), isUnsigned);
+        } else {
+            // Note: no check overflow for BIGINT UNSIGNED
+            return parse(buf);
         }
     }
 
@@ -151,6 +123,37 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
     static ParameterValue encodeOfLong(long value) {
         return new LongValue(value);
+    }
+
+    private static long decodeBinary(ByteBuf buf, DataType type, boolean isUnsigned) {
+        switch (type) {
+            case BIGINT:
+                // Note: no check overflow for BIGINT UNSIGNED
+                return buf.readLongLE();
+            case INT:
+                if (isUnsigned) {
+                    return buf.readUnsignedIntLE();
+                } else {
+                    return buf.readIntLE();
+                }
+            case MEDIUMINT:
+                // Note: MySQL return 32-bits two's complement for 24-bits integer
+                return buf.readIntLE();
+            case SMALLINT:
+                if (isUnsigned) {
+                    return buf.readUnsignedShortLE();
+                } else {
+                    return buf.readShortLE();
+                }
+            case YEAR:
+                return buf.readShortLE();
+            default: // TINYINT
+                if (isUnsigned) {
+                    return buf.readUnsignedByte();
+                } else {
+                    return buf.readByte();
+                }
+        }
     }
 
     private static final class LongValue extends AbstractParameterValue {

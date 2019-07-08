@@ -20,7 +20,6 @@ import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
 import io.github.mirromutth.r2dbc.mysql.constant.SqlStates;
 import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import io.netty.buffer.ByteBuf;
-import io.r2dbc.spi.R2dbcBadGrammarException;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import reactor.util.annotation.Nullable;
 
@@ -34,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /**
- * A helper for reading java 8 time library from {@link ByteBuf}.
+ * An utility for fast decode java 8 date/time from {@link ByteBuf}.
  */
 final class JavaTimeHelper {
 

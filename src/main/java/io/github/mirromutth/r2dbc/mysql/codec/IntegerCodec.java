@@ -47,33 +47,14 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     }
 
     @Override
-    public Integer decodeText(NormalFieldValue value, FieldInformation info, Class<? super Integer> target, MySqlSession session) {
-        return parse(value.getBuffer());
-    }
-
-    @Override
-    public Integer decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super Integer> target, MySqlSession session) {
+    public Integer decode(NormalFieldValue value, FieldInformation info, Class<? super Integer> target, boolean binary, MySqlSession session) {
         ByteBuf buf = value.getBuffer();
-        boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
-        switch (info.getType()) {
-            case INT: // Already check overflow in `doCanDecode`
-            case MEDIUMINT:
-                return buf.readIntLE();
-            case SMALLINT:
-                if (isUnsigned) {
-                    return buf.readUnsignedShortLE();
-                } else {
-                    return (int) buf.readShortLE();
-                }
-            case YEAR:
-                return (int) buf.readShortLE();
-            default: // TINYINT
-                if (isUnsigned) {
-                    return (int) buf.readUnsignedByte();
-                } else {
-                    return (int)  buf.readByte();
-                }
+        if (binary) {
+            boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
+            return decodeBinary(buf, info.getType(), isUnsigned);
+        } else {
+            return parse(buf);
         }
     }
 
@@ -128,6 +109,28 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
     static ParameterValue encodeOfInt(int value) {
         return new IntValue(value);
+    }
+
+    private static int decodeBinary(ByteBuf buf, DataType type, boolean isUnsigned) {
+        switch (type) {
+            case INT: // Already check overflow in `doCanDecode`
+            case MEDIUMINT:
+                return buf.readIntLE();
+            case SMALLINT:
+                if (isUnsigned) {
+                    return buf.readUnsignedShortLE();
+                } else {
+                    return buf.readShortLE();
+                }
+            case YEAR:
+                return buf.readShortLE();
+            default: // TINYINT
+                if (isUnsigned) {
+                    return buf.readUnsignedByte();
+                } else {
+                    return buf.readByte();
+                }
+        }
     }
 
     private static final class IntValue extends AbstractParameterValue {

@@ -38,22 +38,19 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    public Double decodeText(NormalFieldValue value, FieldInformation info, Class<? super Double> target, MySqlSession session) {
-        return Double.parseDouble(value.getBuffer().toString(StandardCharsets.US_ASCII));
-    }
-
-    @Override
-    public Double decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super Double> target, MySqlSession session) {
+    public Double decode(NormalFieldValue value, FieldInformation info, Class<? super Double> target, boolean binary, MySqlSession session) {
         ByteBuf buf = value.getBuffer();
 
-        switch (info.getType()) {
-            case DOUBLE:
-                return buf.readDoubleLE();
-            case FLOAT:
-                return (double) buf.readFloatLE();
-            default: // DECIMAL and size less than 16
-                return Double.parseDouble(buf.toString(StandardCharsets.US_ASCII));
+        if (binary) {
+            switch (info.getType()) {
+                case DOUBLE:
+                    return buf.readDoubleLE();
+                case FLOAT:
+                    return (double) buf.readFloatLE();
+            }
+            // DECIMAL and size less than 16, encoded by text.
         }
+        return Double.parseDouble(buf.toString(StandardCharsets.US_ASCII));
     }
 
     @Override

@@ -46,13 +46,12 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
     }
 
     @Override
-    public Blob decodeText(FieldValue value, FieldInformation info, Class<? super Blob> target, MySqlSession session) {
-        return decodeBoth(value);
-    }
+    public Blob decode(FieldValue value, FieldInformation info, Class<? super Blob> target, boolean binary, MySqlSession session) {
+        if (value instanceof NormalFieldValue) {
+            return ScalarBlob.retain(((NormalFieldValue) value).getBuffer());
+        }
 
-    @Override
-    public Blob decodeBinary(FieldValue value, FieldInformation info, Class<? super Blob> target, MySqlSession session) {
-        return decodeBoth(value);
+        return ScalarBlob.retain(((LargeFieldValue) value).getBuffers());
     }
 
     @Override
@@ -81,14 +80,6 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
         return new BlobValue((Blob) value);
-    }
-
-    private static Blob decodeBoth(FieldValue value) {
-        if (value instanceof NormalFieldValue) {
-            return ScalarBlob.retain(((NormalFieldValue) value).getBuffer());
-        }
-
-        return ScalarBlob.retain(((LargeFieldValue) value).getBuffers());
     }
 
     private static final class BlobValue extends AbstractLobValue {

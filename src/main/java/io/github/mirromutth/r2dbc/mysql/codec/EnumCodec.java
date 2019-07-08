@@ -23,14 +23,13 @@ import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
-import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 
 /**
- * Codec for all {@code enum class}.
+ * Codec for {@code enum class}.
  */
 final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
 
@@ -40,13 +39,11 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
     }
 
     @Override
-    public Enum<?> decodeText(NormalFieldValue value, FieldInformation info, Class<?> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer(), info, target, session);
-    }
-
-    @Override
-    public Enum<?> decodeBinary(NormalFieldValue value, FieldInformation info, Class<?> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer(), info, target, session);
+    public Enum<?> decode(NormalFieldValue value, FieldInformation info, Class<?> target, boolean binary, MySqlSession session) {
+        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
+        @SuppressWarnings("unchecked")
+        Enum<?> e = Enum.valueOf((Class<Enum>) target, value.getBuffer().toString(charset));
+        return e;
     }
 
     @Override
@@ -66,13 +63,6 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
         return new EnumValue((Enum<?>) value, session);
-    }
-
-    private static Enum<?> decodeBoth(ByteBuf buf, FieldInformation info, Class<?> target, MySqlSession session) {
-        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
-        @SuppressWarnings("unchecked")
-        Enum<?> e = Enum.valueOf((Class<Enum>) target, buf.toString(charset));
-        return e;
     }
 
     private static final class EnumValue extends AbstractParameterValue {

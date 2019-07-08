@@ -27,6 +27,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.BitSet;
 
+import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
+
 /**
  * Codec for {@link BitSet}.
  */
@@ -39,13 +41,13 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
     }
 
     @Override
-    public BitSet decodeText(NormalFieldValue value, FieldInformation info, Class<? super BitSet> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer());
-    }
+    public BitSet decode(NormalFieldValue value, FieldInformation info, Class<? super BitSet> target, boolean binary, MySqlSession session) {
+        ByteBuf buf = value.getBuffer();
 
-    @Override
-    public BitSet decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super BitSet> target, MySqlSession session) {
-        return decodeBoth(value.getBuffer());
+        if (!buf.isReadable()) {
+            return BitSet.valueOf(EMPTY_BYTES);
+        }
+        return BitSet.valueOf(revert(ByteBufUtil.getBytes(buf)));
     }
 
     @Override
@@ -61,10 +63,6 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
     @Override
     protected boolean doCanDecode(FieldInformation info) {
         return DataType.BIT == info.getType();
-    }
-
-    private static BitSet decodeBoth(ByteBuf buf) {
-        return BitSet.valueOf(revert(ByteBufUtil.getBytes(buf)));
     }
 
     private static byte[] revert(byte[] bytes) {

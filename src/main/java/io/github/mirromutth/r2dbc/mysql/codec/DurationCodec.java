@@ -37,13 +37,12 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     }
 
     @Override
-    public Duration decodeText(NormalFieldValue value, FieldInformation info, Class<? super Duration> target, MySqlSession session) {
-        return JavaTimeHelper.readDurationText(value.getBuffer());
-    }
-
-    @Override
-    public Duration decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super Duration> target, MySqlSession session) {
-        return JavaTimeHelper.readDurationBinary(value.getBuffer());
+    public Duration decode(NormalFieldValue value, FieldInformation info, Class<? super Duration> target, boolean binary, MySqlSession session) {
+        if (binary) {
+            return JavaTimeHelper.readDurationBinary(value.getBuffer());
+        } else {
+            return JavaTimeHelper.readDurationText(value.getBuffer());
+        }
     }
 
     @Override

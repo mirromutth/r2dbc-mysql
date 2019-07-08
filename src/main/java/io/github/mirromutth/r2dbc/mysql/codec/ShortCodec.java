@@ -37,25 +37,24 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public Short decodeText(NormalFieldValue value, FieldInformation info, Class<? super Short> target, MySqlSession session) {
-        return (short) IntegerCodec.parse(value.getBuffer());
-    }
+    public Short decode(NormalFieldValue value, FieldInformation info, Class<? super Short> target, boolean binary, MySqlSession session) {
+        if (binary) {
+            ByteBuf buf = value.getBuffer();
+            boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
-    @Override
-    public Short decodeBinary(NormalFieldValue value, FieldInformation info, Class<? super Short> target, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
-        boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
-
-        switch (info.getType()) {
-            case SMALLINT: // Already check overflow in `doCanDecode`
-            case YEAR:
-                return buf.readShortLE();
-            default: // TINYINT
-                if (isUnsigned) {
-                    return buf.readUnsignedByte();
-                } else {
-                    return (short) buf.readByte();
-                }
+            switch (info.getType()) {
+                case SMALLINT: // Already check overflow in `doCanDecode`
+                case YEAR:
+                    return buf.readShortLE();
+                default: // TINYINT
+                    if (isUnsigned) {
+                        return buf.readUnsignedByte();
+                    } else {
+                        return (short) buf.readByte();
+                    }
+            }
+        } else {
+            return (short) IntegerCodec.parse(value.getBuffer());
         }
     }
 
