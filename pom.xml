@@ -21,7 +21,7 @@
 
     <groupId>io.github.mirromutth</groupId>
     <artifactId>r2dbc-mysql</artifactId>
-    <version>1.0.0.BUILD-SNAPSHOT</version>
+    <version>0.1.0.BUILD-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Reactive Relational Database Connectivity - MySQL</name>
@@ -41,7 +41,6 @@
         <reactor.version>Dysprosium-M1</reactor.version>
         <slf4j.version>1.7.26</slf4j.version>
         <testcontainers.version>1.11.2</testcontainers.version>
-        <jackson.version.bom>2.9.9</jackson.version.bom>
     </properties>
 
     <dependencyManagement>
@@ -57,13 +56,6 @@
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
                 <version>${junit.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson</groupId>
-                <artifactId>jackson-bom</artifactId>
-                <version>${jackson.version.bom}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -154,21 +146,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>mysql</artifactId>
             <scope>test</scope>
@@ -204,6 +181,9 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.0.1</version>
                 <configuration>
+                    <excludePackageNames>
+                        io.github.mirromutth.r2dbc.mysql.security,io.github.mirromutth.r2dbc.mysql.client,io.github.mirromutth.r2dbc.mysql.internal,io.github.mirromutth.r2dbc.mysql.codec,io.github.mirromutth.r2dbc.mysql.message,io.github.mirromutth.r2dbc.mysql.util
+                    </excludePackageNames>
                     <links>
                         <link>https://projectreactor.io/docs/core/release/api/</link>
                         <link>http://www.reactive-streams.org/reactive-streams-1.0.2-javadoc/</link>
@@ -244,6 +224,18 @@
                 </configuration>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    <include>LICENSE</include>
+                </includes>
+                <targetPath>META-INF</targetPath>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+            </resource>
+        </resources>
     </build>
 
     <repositories>
