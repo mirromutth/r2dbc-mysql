@@ -14,14 +14,65 @@ This driver provides the following features:
 - Support text/binary result.
 - Native ping command.
 - Support all charsets from MySQL, like `utf8mb4_0900_ai_ci`, `latin1_general_ci`, `utf32_unicode_520_ci`, etc.
+- Support for general exceptions of error code and standard SQL state mappings.
 - Transactions (testing, not verify for now)
 
 Next steps:
 
-- Support all exceptions of error code mapping.
 - TLS (see [#9](https://github.com/mirromutth/r2dbc-mysql/issues/9))
 - Add more unit tests.
 - Complete transaction tests.
+
+## Maven
+
+```xml
+<dependency>
+    <groupId>com.github.mirromutth</groupId>
+    <artifactId>r2dbc-mysql</artifactId>
+    <version>0.1.0.M1</version>
+</dependency>
+```
+
+> Note: `com.github.mirromutth` is temporary group ID, it may change during its release or next milestone.
+
+Artifacts can be found at the following repositories.
+
+### Repositories
+
+```xml
+<repository>
+    <id>jitpack.io</id>
+    <url>https://jitpack.io</url>
+</repository>
+```
+
+## Gradle
+
+### Groovy DSL
+
+```groovy
+repositories {
+	maven { url 'https://jitpack.io' }
+	// ...
+}
+// ...
+dependencies {
+    implementation 'com.github.mirromutth:r2dbc-mysql:0.1.0.M1'
+}
+```
+
+### Kotlin DSL
+
+```kotlin
+repositories {
+	maven("https://jitpack.io")
+	// ...
+}
+// ...
+dependencies {
+    compile("com.github.mirromutth:r2dbc-mysql:0.1.0.M1")
+}
+```
 
 ## Usage
 
