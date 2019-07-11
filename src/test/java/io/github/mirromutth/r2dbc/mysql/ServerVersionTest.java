@@ -41,6 +41,7 @@ class ServerVersionTest {
         assertEquals(v0, ServerVersion.create(0, 0, 0));
 
         assertEquals(v5_7_12, parse("5.7.12.17"));
+        assertEquals(v5_7_12, parse("5.7.12-17"));
         assertEquals(v5_7_12, parse("5.7.12.RELEASE"));
         assertEquals(v5_7_12, parse("5.7.12.RC2"));
         assertEquals(v5_7_12, parse("5.7.12RC2"));
@@ -48,20 +49,26 @@ class ServerVersionTest {
         assertEquals(v5_7_12, parse("5.7.12-RC2"));
 
         assertEquals(v8, parse("8"));
+        assertEquals(v8, parse("8-2"));
         assertEquals(v8, parse("8v2"));
         assertEquals(v8, parse("8-v2"));
         assertEquals(v8, parse("8.0"));
+        assertEquals(v8, parse("8.0-2"));
         assertEquals(v8, parse("8.0v2"));
+        assertEquals(v8, parse("8.0.0-2"));
         assertEquals(v8, parse("8.0.0v2"));
         assertEquals(v8, parse("8.0.0-v2"));
 
         assertEquals(v8_1, parse("8.1"));
+        assertEquals(v8_1, parse("8.1-2"));
         assertEquals(v8_1, parse("8.1v2"));
         assertEquals(v8_1, parse("8.1-v2"));
+        assertEquals(v8_1, parse("8.1.0-2"));
         assertEquals(v8_1, parse("8.1.0v2"));
         assertEquals(v8_1, parse("8.1.0-v2"));
 
         assertEquals(v56_78_910, parse("56.78.910.17"));
+        assertEquals(v56_78_910, parse("56.78.910-12"));
         assertEquals(v56_78_910, parse("56.78.910.RELEASE"));
         assertEquals(v56_78_910, parse("56.78.910.RC2"));
         assertEquals(v56_78_910, parse("56.78.910RC2"));

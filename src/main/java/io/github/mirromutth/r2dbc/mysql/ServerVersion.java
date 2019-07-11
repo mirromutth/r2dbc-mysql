@@ -44,8 +44,8 @@ public final class ServerVersion implements Comparable<ServerVersion> {
      * Parse a {@link ServerVersion} from {@link ByteBuf} encoded by ASCII.
      *
      * @param version buffer encoded by ASCII
-     * @return A server version that value is {@literal major.minor.patch}
-     * @throws IllegalArgumentException if any version part overflows to a negative integer.
+     * @return A server version that value decode from {@code version}.
+     * @throws IllegalArgumentException if {@code version} is null, or any version part overflows to a negative integer.
      */
     public static ServerVersion parse(ByteBuf version) {
         requireNonNull(version, "version must not be null");
