@@ -40,6 +40,13 @@ public final class ServerVersion implements Comparable<ServerVersion> {
         this.patch = patch;
     }
 
+    /**
+     * Parse a {@link ServerVersion} from {@link ByteBuf} encoded by ASCII.
+     *
+     * @param version buffer encoded by ASCII
+     * @return A server version that value decode from {@code version}.
+     * @throws IllegalArgumentException if {@code version} is null, or any version part overflows to a negative integer.
+     */
     public static ServerVersion parse(ByteBuf version) {
         requireNonNull(version, "version must not be null");
 
@@ -48,6 +55,15 @@ public final class ServerVersion implements Comparable<ServerVersion> {
         return create(major, minor, readIntBeforePoint(version));
     }
 
+    /**
+     * Create a {@link ServerVersion} that value is {@literal major.minor.patch}.
+     *
+     * @param major must not be a negative integer
+     * @param minor must not be a negative integer
+     * @param patch must not be a negative integer
+     * @return A server version that value is {@literal major.minor.patch}
+     * @throws IllegalArgumentException if any version part is negative integer.
+     */
     public static ServerVersion create(int major, int minor, int patch) {
         require(major >= 0, "major version must not be a negative integer");
         require(minor >= 0, "minor version must not be a negative integer");
@@ -125,33 +141,35 @@ public final class ServerVersion implements Comparable<ServerVersion> {
     }
 
     private static int readIntBeforePoint(ByteBuf version) {
-        int digits = version.bytesBefore((byte) '.');
-        boolean hasPoint = true;
+        int readerIndex = version.readerIndex();
         int result = 0;
+        int digits = version.bytesBefore((byte) '.');
+        int completeIndex;
 
-        if (digits < 0) { // no '.'
-            hasPoint = false;
-            digits = version.readableBytes(); // read until end of buffer
+        if (digits < 0) {
+            // Contains not '.', read until end of buffer.
+            completeIndex = version.writerIndex();
 
-            if (digits < 1) { // can not read any byte
+            if (completeIndex <= readerIndex) {
+                // Cannot read any byte.
                 return 0;
             }
+        } else {
+            // Read before '.', and ignore last '.'
+            completeIndex = readerIndex + digits + 1;
         }
 
-        for (int i = 0; i < digits; ++i) {
-            byte current = version.readByte();
+        for (int i = readerIndex; i < completeIndex; ++i) {
+            byte current = version.getByte(i);
 
             if (current < '0' || current > '9') { // C style condition, maybe should use `!Character.isDigit(current)`?
-                throw new NumberFormatException("unknown character '" + ((char) current) + "' for parse server version");
+                break;
             }
 
             result = result * 10 + (current - '0');
         }
 
-        if (hasPoint) {
-            version.skipBytes(1); // skip the '.'
-        }
-
+        version.readerIndex(completeIndex);
         return result;
     }
 }
