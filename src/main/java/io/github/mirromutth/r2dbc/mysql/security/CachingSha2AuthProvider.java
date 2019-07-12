@@ -49,7 +49,7 @@ final class CachingSha2AuthProvider implements MySqlAuthProvider {
      */
     @Override
     public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
-        return AuthHelper.defaultFastAuthPhase(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
+        return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override

@@ -29,14 +29,14 @@ import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
 import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A utility
+ * A utility for general authentication hashing algorithm.
  */
 final class AuthHelper {
 
     private AuthHelper() {
     }
 
-    static byte[] defaultFastAuthPhase(String algorithm, boolean leftSalt, @Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    static byte[] generalHash(String algorithm, boolean leftSalt, @Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
             return EMPTY_BYTES;
         }

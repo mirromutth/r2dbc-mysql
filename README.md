@@ -12,10 +12,10 @@ This driver provides the following features:
 - Execution of prepared statements with bindings.
 - Support LOB types (e.g. BLOB, CLOB)
 - Support text/binary result.
-- Native ping command.
+- Native ping command. (target SPI is `Connection.validate(ValidateDepth)`)
 - Support all charsets from MySQL, like `utf8mb4_0900_ai_ci`, `latin1_general_ci`, `utf32_unicode_520_ci`, etc.
 - Support for general exceptions of error code and standard SQL state mappings.
-- Transactions (testing, not verify for now)
+- Transactions (testing)
 
 Next steps:
 
@@ -92,7 +92,7 @@ ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
     .build();
 ConnectionFactory connectionFactory = ConnectionFactories.get(options);
 
-// Alternative: Creating a Mono using Project Reactor
+// Creating a Mono using Project Reactor
 Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ```
 
@@ -118,7 +118,7 @@ MySqlConnectConfiguration configuration = MySqlConnectConfiguration.builder()
     .build();
 ConnectionFactory connectionFactory = MySqlConnectionFactory.from(configuration);
 
-// Alternative: Creating a Mono using Project Reactor
+// Creating a Mono using Project Reactor
 Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ```
 
