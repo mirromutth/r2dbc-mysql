@@ -14,40 +14,46 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.security;
+package io.github.mirromutth.r2dbc.mysql.authentication;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
-
 /**
- * An implementation of {@link MySqlAuthProvider} for type "sha256_password".
+ * An implementation of {@link MySqlAuthProvider} for type "mysql_native_password".
  */
-final class Sha256AuthProvider implements MySqlAuthProvider {
+final class MySqlNativeAuthProvider implements MySqlAuthProvider {
 
-    static final String TYPE = "sha256_password";
+    static final String TYPE = "mysql_native_password";
 
-    static final Sha256AuthProvider INSTANCE = new Sha256AuthProvider();
+    static final MySqlNativeAuthProvider INSTANCE = new MySqlNativeAuthProvider();
 
-    private Sha256AuthProvider() {
+    private static final String ALGORITHM = "SHA-1";
+
+    private static final boolean IS_LEFT_SALT = true;
+
+    private MySqlNativeAuthProvider() {
     }
 
     @Override
     public boolean isSslNecessary() {
-        return true;
+        return false;
     }
 
+    /**
+     * SHA1(password) all bytes xor SHA1( "random data from MySQL server" + SHA1(SHA1(password)) )
+     * <p>
+     * {@inheritDoc}
+     */
     @Override
     public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
-        // TODO: implement fast authentication
-        return EMPTY_BYTES;
+        return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
     public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
-        // TODO: implement full authentication
-        return EMPTY_BYTES;
+        // "mysql_native_password" not support full authentication.
+        return null;
     }
 
     @Override

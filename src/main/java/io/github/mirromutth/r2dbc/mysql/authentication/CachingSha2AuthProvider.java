@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.security;
+package io.github.mirromutth.r2dbc.mysql.authentication;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;

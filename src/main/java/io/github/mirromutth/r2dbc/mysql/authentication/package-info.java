@@ -15,10 +15,10 @@
  */
 
 /**
- * Security interfaces and implementations for MySQL authentication in connection phase.
+ * Handlers for the various styles of MySQL authentication.
  */
 
 @NonNullApi
-package io.github.mirromutth.r2dbc.mysql.security;
+package io.github.mirromutth.r2dbc.mysql.authentication;
 
 import reactor.util.annotation.NonNullApi;

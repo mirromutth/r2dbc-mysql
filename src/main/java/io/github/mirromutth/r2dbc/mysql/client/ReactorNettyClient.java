@@ -31,7 +31,7 @@ import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeHeader;
 import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeV10Message;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
-import io.github.mirromutth.r2dbc.mysql.security.MySqlAuthProvider;
+import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -205,7 +205,7 @@ final class ReactorNettyClient implements Client {
                     return it.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully, close the connection"));
                 }
                 return it;
-            }).then(Mono.defer(() -> FutureMono.from(connection.channel().close())));
+            }).then(FutureMono.deferFuture(() -> connection.channel().close()));
         });
     }
 
