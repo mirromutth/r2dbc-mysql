@@ -52,8 +52,8 @@ Artifacts can be found at the following repositories.
 
 ```groovy
 repositories {
-	maven { url 'https://jitpack.io' }
-	// ...
+    maven { url 'https://jitpack.io' }
+    // ...
 }
 // ...
 dependencies {
@@ -65,8 +65,8 @@ dependencies {
 
 ```kotlin
 repositories {
-	maven("https://jitpack.io")
-	// ...
+    maven("https://jitpack.io")
+    // ...
 }
 // ...
 dependencies {
