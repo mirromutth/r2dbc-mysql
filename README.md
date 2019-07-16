@@ -12,7 +12,7 @@ This driver provides the following features:
 - Execution of prepared statements with bindings.
 - Support LOB types (e.g. BLOB, CLOB)
 - Support text/binary result.
-- Native ping command. (target SPI is `Connection.validate(ValidateDepth)`)
+- Native ping command. (unstable, target is a future SPI that can be verifying with the selectable depth)
 - Support all charsets from MySQL, like `utf8mb4_0900_ai_ci`, `latin1_general_ci`, `utf32_unicode_520_ci`, etc.
 - Support for general exceptions of error code and standard SQL state mappings.
 - Transactions (testing)
