@@ -16,14 +16,18 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
+import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
 import io.github.mirromutth.r2dbc.mysql.constant.DataType;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
+import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Codec for {@link Duration}.
@@ -39,9 +43,9 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     @Override
     public Duration decode(NormalFieldValue value, FieldInformation info, Class<? super Duration> target, boolean binary, MySqlSession session) {
         if (binary) {
-            return JavaTimeHelper.readDurationBinary(value.getBuffer());
+            return decodeBinary(value.getBuffer());
         } else {
-            return JavaTimeHelper.readDurationText(value.getBuffer());
+            return decodeText(value.getBuffer());
         }
     }
 
@@ -58,6 +62,42 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     @Override
     protected boolean doCanDecode(FieldInformation info) {
         return DataType.TIME == info.getType();
+    }
+
+    private static Duration decodeText(ByteBuf buf) {
+        int hour = CodecUtils.readIntInDigits(buf, true);
+        int minute = CodecUtils.readIntInDigits(buf, true);
+        int second = CodecUtils.readIntInDigits(buf, true);
+        long totalSeconds = TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second;
+
+        return Duration.ofSeconds(totalSeconds);
+    }
+
+    private static Duration decodeBinary(ByteBuf buf) {
+        int bytes = buf.readableBytes();
+
+        if (bytes < BinaryDateTimes.TIME_SIZE) {
+            return Duration.ZERO;
+        }
+
+        boolean isNegative = buf.readBoolean();
+
+        long day = buf.readUnsignedIntLE();
+        byte hour = buf.readByte();
+        byte minute = buf.readByte();
+        byte second = buf.readByte();
+        long totalSeconds = TimeUnit.DAYS.toSeconds(day) +
+            TimeUnit.HOURS.toSeconds(hour) +
+            TimeUnit.MINUTES.toSeconds(minute) +
+            second;
+
+        if (bytes < BinaryDateTimes.MICRO_TIME_SIZE) {
+            return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
+        }
+
+        long nanos = TimeUnit.MICROSECONDS.toNanos(buf.readUnsignedIntLE());
+
+        return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds, isNegative ? -nanos : nanos);
     }
 
     private static final class DurationValue extends AbstractParameterValue {

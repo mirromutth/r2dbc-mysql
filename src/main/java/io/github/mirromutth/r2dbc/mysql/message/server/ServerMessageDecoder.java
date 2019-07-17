@@ -21,7 +21,7 @@ import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.constant.Headers;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
@@ -31,7 +31,7 @@ import reactor.util.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Generic message decoder logic.
@@ -43,12 +43,11 @@ public final class ServerMessageDecoder {
     private final List<ByteBuf> parts = new ArrayList<>();
 
     @Nullable
-    public ServerMessage decode(ByteBuf envelope, SequenceIdProvider sequenceIdProvider, MySqlSession session, DecodeContext decodeContext) {
+    public ServerMessage decode(ByteBuf envelope, MySqlSession session, DecodeContext decodeContext, @Nullable SequenceIdProvider.Linkable idProvider) {
         requireNonNull(envelope, "envelope must not be null");
         requireNonNull(session, "session must not be null");
-        requireNonNull(sequenceIdProvider, "sequenceIdProvider must not be null");
 
-        if (readNotFinish(envelope, sequenceIdProvider)) {
+        if (readNotFinish(envelope, idProvider)) {
             return null;
         }
 
@@ -247,11 +246,18 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private boolean readNotFinish(ByteBuf envelope, SequenceIdProvider sequenceIdProvider) {
+    private boolean readNotFinish(ByteBuf envelope, @Nullable SequenceIdProvider.Linkable idProvider) {
         try {
             int size = envelope.readUnsignedMediumLE();
             if (size < Envelopes.MAX_ENVELOPE_SIZE) {
-                sequenceIdProvider.last(envelope.readUnsignedByte());
+                if (idProvider == null) {
+                    // Just ignore sequence id because of no need link any message.
+                    envelope.skipBytes(1);
+                } else {
+                    // Link last message.
+                    idProvider.last(envelope.readUnsignedByte());
+                }
+
                 parts.add(envelope);
                 // success, no need release
                 envelope = null;

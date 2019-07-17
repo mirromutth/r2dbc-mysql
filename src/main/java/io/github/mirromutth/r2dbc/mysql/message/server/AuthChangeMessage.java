@@ -16,14 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Change authentication plugin type and salt message.

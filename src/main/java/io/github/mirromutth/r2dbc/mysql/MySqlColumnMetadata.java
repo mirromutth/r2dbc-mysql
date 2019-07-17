@@ -24,8 +24,8 @@ import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import reactor.util.annotation.NonNull;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link ColumnMetadata} for MySQL database.

@@ -17,10 +17,10 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * The handshake generic header, all protocol versions contains

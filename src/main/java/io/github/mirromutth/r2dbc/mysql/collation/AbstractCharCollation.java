@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Generic properties and logic for {@link CharCollation}.

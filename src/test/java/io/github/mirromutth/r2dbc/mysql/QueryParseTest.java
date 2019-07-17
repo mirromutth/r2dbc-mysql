@@ -31,9 +31,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Unit tests for {@link Query} and {@link Queries}.
+ * Unit tests for {@link Query} with the parsing logic in {@link Queries}.
  */
-class QueryTest {
+class QueryParseTest {
 
     @Test
     void parseBatchElement() {

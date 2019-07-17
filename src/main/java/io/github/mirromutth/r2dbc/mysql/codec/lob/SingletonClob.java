@@ -17,7 +17,6 @@
 package io.github.mirromutth.r2dbc.mysql.codec.lob;
 
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
-import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.core.publisher.Mono;
 
 /**

@@ -20,8 +20,10 @@ import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.netty.buffer.ByteBuf;
 
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
+
 /**
- * The ssl request message.
+ * The ssl request message. It is also first part of {@link HandshakeResponse41Message}.
  * <p>
  * Note: protocol 41 ALWAYS be used.
  */
@@ -39,14 +41,11 @@ public final class SslRequestMessage extends FixedSizeClientMessage implements E
      * @param clientCapabilities client capabilities, see {@link Capabilities}
      * @param collationId  0 if server not support protocol 41 or has been not give collation
      */
-    public SslRequestMessage(int clientCapabilities, int collationId) {
+    SslRequestMessage(int clientCapabilities, int collationId) {
+        require(collationId > 0, "collationId must be a positive integer");
+
         this.clientCapabilities = clientCapabilities;
         this.collationId = collationId;
-    }
-
-    @Override
-    public boolean isSequenceIdReset() {
-        return false;
     }
 
     @Override
@@ -57,9 +56,17 @@ public final class SslRequestMessage extends FixedSizeClientMessage implements E
     @Override
     protected void writeTo(ByteBuf buf) {
         buf.writeIntLE(clientCapabilities)
-            .writeIntLE(Envelopes.MAX_ENVELOPE_SIZE)
-            .writeByte(collationId) // only low 8-bits.
+            .writeIntLE(Envelopes.MAX_ENVELOPE_SIZE + 1) // 16777216, include sequence id.
+            .writeByte(collationId) // only low 8-bits
             .writeZero(FILTER_SIZE);
+    }
+
+    int getClientCapabilities() {
+        return clientCapabilities;
+    }
+
+    int getCollationId() {
+        return collationId;
     }
 
     @Override
@@ -93,5 +100,10 @@ public final class SslRequestMessage extends FixedSizeClientMessage implements E
             "clientCapabilities=" + clientCapabilities +
             ", collationId=" + collationId +
             '}';
+    }
+
+    public static SslRequestMessage create(int clientCapabilities, int collationId) {
+        require((clientCapabilities & Capabilities.SSL) != 0, "client capabilities must enable SSL");
+        return new SslRequestMessage(clientCapabilities, collationId);
     }
 }

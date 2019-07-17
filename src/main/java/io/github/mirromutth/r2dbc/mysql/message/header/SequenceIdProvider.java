@@ -27,23 +27,28 @@ public interface SequenceIdProvider {
     byte next();
 
     /**
-     * Set the last sequence id is {@code value}.
-     *
-     * @param value last sequence id.
+     * A {@link SequenceIdProvider} considers linking last envelope.
      */
-    void last(int value);
+    interface Linkable extends SequenceIdProvider {
 
-    /**
-     * Reset the sequence id from 0.
-     */
-    void reset();
+        /**
+         * Set the last sequence id is {@code value}.
+         *
+         * @param value last sequence id.
+         */
+        void last(int value);
+    }
 
     /**
      * Atomic/concurrent sequence id provider.
      *
      * @return a thread-safe packet counter.
      */
-    static SequenceIdProvider atomic() {
+    static Linkable atomic() {
         return new AtomicSequenceIdProvider();
+    }
+
+    static SequenceIdProvider unsafe() {
+        return new UnsafeSequenceIdProvider();
     }
 }

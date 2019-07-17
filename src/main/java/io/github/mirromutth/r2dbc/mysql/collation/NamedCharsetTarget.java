@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.collation;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link CharsetTarget} that has charset name only.

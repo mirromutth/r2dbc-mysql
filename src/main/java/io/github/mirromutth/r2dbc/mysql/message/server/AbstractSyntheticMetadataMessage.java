@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Base message considers bundle of {@link DefinitionMetadataMessage}s.

@@ -16,28 +16,27 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
+import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
 import io.github.mirromutth.r2dbc.mysql.constant.DataType;
-import io.github.mirromutth.r2dbc.mysql.internal.LazyLoad;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
+import reactor.util.annotation.Nullable;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.temporal.TemporalAccessor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Codec for {@link LocalDateTime}.
  */
 final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
 
-    private static final LazyLoad<LocalDateTime> ROUND = LazyLoad.of(() -> LocalDateTime.of(LocalDateCodec.ROUND.get(), LocalTime.MIN));
+    private static final LocalDateTime ROUND = LocalDateTime.of(LocalDateCodec.ROUND, LocalTime.MIN);
 
     static final LocalDateTimeCodec INSTANCE = new LocalDateTimeCodec();
 
@@ -52,23 +51,18 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
         int bytes = buf.readableBytes();
 
         if (binary) {
-            TemporalAccessor accessor = JavaTimeHelper.readDateTimeBinary(buf);
-
-            if (accessor == null) {
-                return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> ByteBufUtil.hexDump(buf, index, bytes));
-            } else if (accessor instanceof LocalDateTime) {
-                return (LocalDateTime) accessor;
-            } else if (accessor instanceof LocalDate) {
-                return LocalDateTime.of((LocalDate) accessor, LocalTime.MIN);
-            }
-
-            // Must not null in here, do not use TemporalAccessor.query (it may return null)
-            return LocalDateTime.from(accessor);
-        } else {
-            LocalDateTime dateTime = JavaTimeHelper.readDateTimeText(buf);
+            LocalDateTime dateTime = decodeBinary(buf, bytes);
 
             if (dateTime == null) {
-                return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> buf.toString(index, bytes, StandardCharsets.US_ASCII));
+                return ZeroDateHandler.handle(session.getZeroDateOption(), true, buf, index, bytes, ROUND);
+            } else {
+                return dateTime;
+            }
+        } else {
+            LocalDateTime dateTime = decodeText(buf);
+
+            if (dateTime == null) {
+                return ZeroDateHandler.handle(session.getZeroDateOption(), false, buf, index, bytes, ROUND);
             }
 
             return dateTime;
@@ -89,6 +83,43 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
     public boolean doCanDecode(FieldInformation info) {
         DataType type = info.getType();
         return (DataType.DATETIME == type || DataType.TIMESTAMP == type || DataType.TIMESTAMP2 == type);
+    }
+
+    @Nullable
+    private static LocalDateTime decodeText(ByteBuf buf) {
+        LocalDate date = LocalDateCodec.readDateText(buf);
+
+        if (date == null) {
+            return null;
+        }
+
+        LocalTime time = LocalTimeCodec.readTimeText(buf);
+        return LocalDateTime.of(date, time);
+    }
+
+    @Nullable
+    private static LocalDateTime decodeBinary(ByteBuf buf, int bytes) {
+        LocalDate date = LocalDateCodec.readDateBinary(buf, bytes);
+
+        if (date == null) {
+            return null;
+        }
+
+        if (bytes < BinaryDateTimes.DATETIME_SIZE) {
+            return LocalDateTime.of(date, LocalTime.MIDNIGHT);
+        }
+
+        byte hour = buf.readByte();
+        byte minute = buf.readByte();
+        byte second = buf.readByte();
+
+        if (bytes < BinaryDateTimes.MICRO_DATETIME_SIZE) {
+            return LocalDateTime.of(date, LocalTime.of(hour, minute, second));
+        }
+
+        long micros = buf.readUnsignedIntLE();
+
+        return LocalDateTime.of(date, LocalTime.of(hour, minute, second, (int) TimeUnit.MICROSECONDS.toNanos(micros)));
     }
 
     private static final class LocalDateTimeValue extends AbstractParameterValue {

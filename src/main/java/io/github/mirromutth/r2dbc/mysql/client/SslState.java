@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.internal;
+package io.github.mirromutth.r2dbc.mysql.client;
 
 /**
- * Empty arrays, it is internal util, do NOT use it outer than {@literal r2dbc-mysql}.
+ * Represents the SSL state aspect of a connection.
  */
-public final class EmptyArrays {
+enum SslState {
 
-    public static final byte[] EMPTY_BYTES = {};
-
-    public static final String[] EMPTY_STRINGS = {};
+    ENABLED,
 }

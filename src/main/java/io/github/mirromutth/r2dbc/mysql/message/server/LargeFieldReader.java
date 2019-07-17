@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.LargeFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
@@ -30,7 +30,7 @@ import io.netty.util.ReferenceCountUtil;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * An implementation of {@link FieldReader} for large result which bytes more than

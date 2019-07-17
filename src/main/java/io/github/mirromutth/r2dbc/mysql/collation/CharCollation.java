@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 
 import java.nio.charset.Charset;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Character collation of MySQL

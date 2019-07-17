@@ -14,26 +14,16 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message;
-
-import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
-import reactor.core.publisher.Mono;
+package io.github.mirromutth.r2dbc.mysql.client;
 
 /**
- * A parameter value includes encode logic.
+ * The lifecycle of connection.
  */
-public interface ParameterValue {
+enum Lifecycle {
 
-    boolean isNull();
+    CONNECTION,
 
-    Mono<Void> writeTo(ParameterWriter writer);
+    COMMAND,
 
-    int getNativeType();
-
-    /**
-     * Cancel to binding, do nothing if value has written or has canceled.
-     * <p>
-     * Note: should NEVER throw any exception.
-     */
-    void cancel();
+//    REPLICATION // useless for r2dbc driver, just ignore
 }

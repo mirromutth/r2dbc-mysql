@@ -35,11 +35,6 @@ public final class PingMessage extends FixedSizeClientMessage implements Exchang
     }
 
     @Override
-    public boolean isSequenceIdReset() {
-        return true;
-    }
-
-    @Override
     protected int size() {
         return Byte.BYTES;
     }

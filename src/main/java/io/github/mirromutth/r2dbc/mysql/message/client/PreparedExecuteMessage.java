@@ -26,10 +26,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A message to execute a prepared statement once with parameter.
@@ -51,11 +50,6 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
     public PreparedExecuteMessage(int statementId, ParameterValue[] parameters) {
         this.statementId = statementId;
         this.parameters = requireNonNull(parameters, "parameters must not be null");
-    }
-
-    @Override
-    public boolean isSequenceIdReset() {
-        return true;
     }
 
     @Override

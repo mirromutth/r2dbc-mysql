@@ -22,13 +22,13 @@ import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
 import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * The MySQL session considers the behavior of server or client.
  * <p>
- * WARNING: It is internal util, do NOT use it outer than {@literal r2dbc-mysql}, try
- * configure {@code ConnectionFactoryOptions} or {@code MySqlConnectionConfiguration}
+ * WARNING: It is internal data structure, do NOT use it outer than {@literal r2dbc-mysql},
+ * try configure {@code ConnectionFactoryOptions} or {@code MySqlConnectionConfiguration}
  * to control session and client behavior.
  */
 public final class MySqlSession {
@@ -38,8 +38,6 @@ public final class MySqlSession {
     private volatile ServerVersion serverVersion = ServerVersion.NONE;
 
     private volatile int serverCapabilities = 0;
-
-    private final boolean ssl;
 
     private final String database;
 
@@ -76,22 +74,11 @@ public final class MySqlSession {
     @Nullable
     private volatile byte[] salt;
 
-    public MySqlSession(
-        boolean ssl,
-        String database,
-        ZeroDateOption zeroDateOption,
-        String username,
-        @Nullable CharSequence password
-    ) {
-        this.ssl = ssl;
+    public MySqlSession(String database, ZeroDateOption zeroDateOption, String username, @Nullable CharSequence password) {
         this.database = requireNonNull(database, "database must not be null");
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
-    }
-
-    public boolean isSsl() {
-        return ssl;
     }
 
     public int getConnectionId() {

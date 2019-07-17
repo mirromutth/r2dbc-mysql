@@ -21,7 +21,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -31,8 +30,8 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.STD5_7;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.SSL_COMMUNITY_5_7;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -76,7 +75,7 @@ class SimpleQueryDateTimeTest {
 
     @Test
     void crudBySimpleStatement() throws Throwable {
-        STD5_7.run(Duration.ofSeconds(8), connection -> {
+        SSL_COMMUNITY_5_7.run(connection -> {
             MySqlStatement insertFirstStmt = connection.createStatement(formattedInsert(firstBirth));
             MySqlStatement insertSecondStmt = connection.createStatement(formattedInsert(secondBirth));
             MySqlStatement selectStmt = connection.createStatement("SELECT * FROM `birth` ORDER BY `id`");
@@ -176,12 +175,8 @@ class SimpleQueryDateTimeTest {
         private final LocalDateTime birthTimestamp;
 
         private Entity(
-            @Nullable Long id,
-            @Nullable Year birthYear,
-            @Nullable LocalDate birthDay,
-            @Nullable LocalTime birthTime,
-            @Nullable LocalDateTime birthDatetime,
-            @Nullable LocalDateTime birthTimestamp
+            @Nullable Long id, @Nullable Year birthYear, @Nullable LocalDate birthDay, @Nullable LocalTime birthTime,
+            @Nullable LocalDateTime birthDatetime, @Nullable LocalDateTime birthTimestamp
         ) {
             this.id = requireNonNull(id, "id must not be null");
             this.birthYear = requireNonNull(birthYear, "birthYear must not be null");

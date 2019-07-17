@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * MySQL authorization provider for connection phase.

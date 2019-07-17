@@ -17,13 +17,13 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.github.mirromutth.r2dbc.mysql.constant.DataType;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Column or parameter definition metadata message.
@@ -55,16 +55,8 @@ public final class DefinitionMetadataMessage {
     private final short decimals;
 
     private DefinitionMetadataMessage(
-        String database,
-        String tableName,
-        String originTableName,
-        String name,
-        String originName,
-        int collationId,
-        int size,
-        short nativeType,
-        short definitions,
-        short decimals
+        String database, String tableName, String originTableName, String name, String originName,
+        int collationId, int size, short nativeType, short definitions, short decimals
     ) {
         require(size >= 0, "size must not be a negative integer");
         require(collationId > 0, "collationId must be a positive integer");

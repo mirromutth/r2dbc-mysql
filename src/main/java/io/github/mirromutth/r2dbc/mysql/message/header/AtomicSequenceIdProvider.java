@@ -19,9 +19,9 @@ package io.github.mirromutth.r2dbc.mysql.message.header;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * An implementation of {@link SequenceIdProvider} based on atomic.
+ * An implementation of {@link SequenceIdProvider.Linkable} based on atomic.
  */
-final class AtomicSequenceIdProvider implements SequenceIdProvider {
+final class AtomicSequenceIdProvider implements SequenceIdProvider.Linkable {
 
     private final AtomicInteger value = new AtomicInteger();
 
@@ -32,16 +32,6 @@ final class AtomicSequenceIdProvider implements SequenceIdProvider {
 
     @Override
     public void last(int value) {
-        setValue(value + 1);
-    }
-
-    @Override
-    public void reset() {
-        setValue(0);
-    }
-
-    private void setValue(int value) {
-        // Can not use get() because of lazySet()
-        this.value.lazySet(value);
+        this.value.set(value + 1);
     }
 }

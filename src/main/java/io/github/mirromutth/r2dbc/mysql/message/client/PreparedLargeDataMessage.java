@@ -17,13 +17,13 @@
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Send parameter long data for prepared statements, it should be used by LOB types. (e.g. BLOB, CLOB)
@@ -46,11 +46,6 @@ public final class PreparedLargeDataMessage extends LargeClientMessage implement
         this.statementId = statementId;
         this.parameterId = parameterId;
         this.data = requireNonNull(data, "data must not be null");
-    }
-
-    @Override
-    public boolean isSequenceIdReset() {
-        return true;
     }
 
     @Override

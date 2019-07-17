@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.constant.DataType;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * An implementation of {@link DecodeContext} for text or binary result.

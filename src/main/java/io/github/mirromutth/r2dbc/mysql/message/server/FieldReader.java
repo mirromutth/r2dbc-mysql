@@ -22,7 +22,7 @@ import io.netty.util.ReferenceCountUtil;
 
 import java.util.List;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A field reader considers read {@link FieldValue}s from {@link ByteBuf}(s) and

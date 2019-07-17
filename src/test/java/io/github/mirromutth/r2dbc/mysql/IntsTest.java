@@ -22,15 +22,14 @@ import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
 import java.math.BigInteger;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.STD5_7;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.SSL_COMMUNITY_5_7;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -78,7 +77,7 @@ class IntsTest {
 
     @Test
     void crudByParametrizedStatement() throws Throwable {
-        STD5_7.run(Duration.ofSeconds(8), connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?")
+        SSL_COMMUNITY_5_7.run(connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?")
             .bind(0, (Integer) INCREMENT_STEP)
             .execute())
             .flatMap(MySqlResult::getRowsUpdated)
@@ -228,17 +227,9 @@ class IntsTest {
         private final BigInteger uint64;
 
         private Entity(
-            @Nullable Long id,
-            @Nullable Byte int8,
-            @Nullable Short uint8,
-            @Nullable Short int16,
-            @Nullable Integer uint16,
-            @Nullable Integer int24,
-            @Nullable Integer uint24,
-            @Nullable Integer int32,
-            @Nullable Long uint32,
-            @Nullable Long int64,
-            @Nullable BigInteger uint64
+            @Nullable Long id, @Nullable Byte int8, @Nullable Short uint8, @Nullable Short int16, @Nullable Integer uint16,
+            @Nullable Integer int24, @Nullable Integer uint24, @Nullable Integer int32, @Nullable Long uint32,
+            @Nullable Long int64, @Nullable BigInteger uint64
         ) {
             this.id = requireNonNull(id, "id must not be null");
             this.int8 = int8;

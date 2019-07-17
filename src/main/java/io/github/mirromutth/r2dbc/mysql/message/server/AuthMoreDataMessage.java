@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Authentication more data request, means continue send auth change response message if is exists.

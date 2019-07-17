@@ -16,26 +16,25 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
+import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
 import io.github.mirromutth.r2dbc.mysql.constant.DataType;
-import io.github.mirromutth.r2dbc.mysql.internal.LazyLoad;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
+import reactor.util.annotation.Nullable;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.time.temporal.TemporalAccessor;
 
 /**
  * Codec for {@link LocalDate}.
  */
 final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
-    static final LazyLoad<LocalDate> ROUND = LazyLoad.of(() -> LocalDate.of(1, 1, 1));
+    static final LocalDate ROUND = LocalDate.of(1, 1, 1);
 
     static final LocalDateCodec INSTANCE = new LocalDateCodec();
 
@@ -50,21 +49,18 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         int bytes = buf.readableBytes();
 
         if (binary) {
-            TemporalAccessor accessor = JavaTimeHelper.readDateTimeBinary(buf);
-
-            if (accessor == null) {
-                return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> ByteBufUtil.hexDump(buf, index, bytes));
-            } else if (accessor instanceof LocalDate) {
-                return (LocalDate) accessor;
-            }
-
-            // Must not null in here, do not use TemporalAccessor.query (it may return null)
-            return LocalDate.from(accessor);
-        } else {
-            LocalDate date = JavaTimeHelper.readDateText(buf);
+            LocalDate date = readDateBinary(buf, bytes);
 
             if (date == null) {
-                return JavaTimeHelper.processZero(session.getZeroDateOption(), ROUND, () -> buf.toString(index, bytes, StandardCharsets.US_ASCII));
+                return ZeroDateHandler.handle(session.getZeroDateOption(), true, buf, index, bytes, ROUND);
+            } else {
+                return date;
+            }
+        } else {
+            LocalDate date = readDateText(buf);
+
+            if (date == null) {
+                return ZeroDateHandler.handle(session.getZeroDateOption(), false, buf, index, bytes, ROUND);
             }
 
             return date;
@@ -84,6 +80,36 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     @Override
     public boolean doCanDecode(FieldInformation info) {
         return DataType.DATE == info.getType();
+    }
+
+    @Nullable
+    static LocalDate readDateText(ByteBuf buf) {
+        int year = CodecUtils.readIntInDigits(buf, true);
+        int month = CodecUtils.readIntInDigits(buf, true);
+        int day = CodecUtils.readIntInDigits(buf, true);
+
+        if (month == 0 || day == 0) {
+            return null;
+        }
+
+        return LocalDate.of(year, month, day);
+    }
+
+    @Nullable
+    static LocalDate readDateBinary(ByteBuf buf, int bytes) {
+        if (bytes < BinaryDateTimes.DATE_SIZE) {
+            return null;
+        }
+
+        short year = buf.readShortLE();
+        byte month = buf.readByte();
+        byte day = buf.readByte();
+
+        if (month == 0 || day == 0) {
+            return null;
+        }
+
+        return LocalDate.of(year, month, day);
     }
 
     private static final class LocalDateValue extends AbstractParameterValue {

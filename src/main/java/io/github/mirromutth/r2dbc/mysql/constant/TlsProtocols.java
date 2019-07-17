@@ -14,26 +14,25 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message;
-
-import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
-import reactor.core.publisher.Mono;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * A parameter value includes encode logic.
+ * All TLS protocol names supported by MySQL.
  */
-public interface ParameterValue {
+public final class TlsProtocols {
 
-    boolean isNull();
+    private TlsProtocols() {
+    }
 
-    Mono<Void> writeTo(ParameterWriter writer);
+    public static final String TLS1 = "TLSv1";
 
-    int getNativeType();
+    public static final String TLS1_1 = "TLSv1.1";
 
     /**
-     * Cancel to binding, do nothing if value has written or has canceled.
+     * Supported only in Community Edition {@literal 8.0.4+} or Enterprise Edition {@literal 5.6.0+}.
+     * The {@literal '+'} means that this version or higher is included.
      * <p>
-     * Note: should NEVER throw any exception.
+     * Note: The Enterprise Edition version will looks like {@literal 5.7.26-enterprise}.
      */
-    void cancel();
+    public static final String TLS1_2 = "TLSv1.2";
 }

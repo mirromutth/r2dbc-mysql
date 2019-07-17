@@ -20,8 +20,9 @@ import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.util.function.Consumer;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * MySQL configuration of connection.
@@ -40,7 +41,8 @@ public final class MySqlConnectionConfiguration {
     @Nullable
     private final Duration connectTimeout;
 
-    private final boolean ssl;
+    @Nullable
+    private final MySqlSslConfiguration sslConfiguration;
 
     private final ZeroDateOption zeroDateOption;
 
@@ -51,19 +53,13 @@ public final class MySqlConnectionConfiguration {
     private final String database;
 
     private MySqlConnectionConfiguration(
-        String host,
-        int port,
-        @Nullable Duration connectTimeout,
-        boolean ssl,
-        ZeroDateOption zeroDateOption,
-        String username,
-        @Nullable CharSequence password,
-        @Nullable String database
+        String host, int port, @Nullable Duration connectTimeout, @Nullable MySqlSslConfiguration sslConfiguration,
+        ZeroDateOption zeroDateOption, String username, @Nullable CharSequence password, @Nullable String database
     ) {
         this.host = requireNonNull(host, "host must not be null");
         this.port = port;
         this.connectTimeout = connectTimeout;
-        this.ssl = ssl;
+        this.sslConfiguration = sslConfiguration;
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
@@ -92,8 +88,9 @@ public final class MySqlConnectionConfiguration {
         return connectTimeout;
     }
 
-    boolean isSsl() {
-        return ssl;
+    @Nullable
+    MySqlSslConfiguration getSslConfiguration() {
+        return sslConfiguration;
     }
 
     ZeroDateOption getZeroDateOption() {
@@ -118,7 +115,7 @@ public final class MySqlConnectionConfiguration {
             "host='" + host + '\'' +
             ", port=" + port +
             ", connectTimeout=" + connectTimeout +
-            ", ssl=" + (ssl ? "enabled" : "disabled") +
+            ", sslConfiguration=" + (sslConfiguration == null ? "disabled" : sslConfiguration.toString()) +
             ", zeroDateOption=" + zeroDateOption +
             ", username='" + username + '\'' +
             ", password=REDACTED" +
@@ -141,7 +138,8 @@ public final class MySqlConnectionConfiguration {
         @Nullable
         private Duration connectTimeout;
 
-        private boolean ssl;
+        @Nullable
+        private MySqlSslConfiguration sslConfiguration;
 
         private String username;
 
@@ -151,7 +149,7 @@ public final class MySqlConnectionConfiguration {
         }
 
         public MySqlConnectionConfiguration build() {
-            return new MySqlConnectionConfiguration(host, port, connectTimeout, ssl, zeroDateOption, username, password, database);
+            return new MySqlConnectionConfiguration(host, port, connectTimeout, sslConfiguration, zeroDateOption, username, password, database);
         }
 
         public Builder database(@Nullable String database) {
@@ -179,13 +177,16 @@ public final class MySqlConnectionConfiguration {
             return this;
         }
 
-        public Builder enableSsl() {
-            this.ssl = true;
+        public Builder enableSsl(Consumer<MySqlSslConfiguration.Builder> options) {
+            MySqlSslConfiguration.Builder builder = MySqlSslConfiguration.builder();
+            options.accept(builder);
+
+            this.sslConfiguration = builder.build();
             return this;
         }
 
         public Builder disableSsl() {
-            this.ssl = false;
+            this.sslConfiguration = null;
             return this;
         }
 

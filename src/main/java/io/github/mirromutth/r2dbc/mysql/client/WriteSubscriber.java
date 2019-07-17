@@ -35,28 +35,22 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     private final ChannelHandlerContext ctx;
 
-    private final SequenceIdProvider provider;
-
-    private final boolean reset;
-
     private final ChannelPromise promise;
+
+    private final SequenceIdProvider provider;
 
     @Nullable
     private final Runnable onComplete;
 
-    WriteSubscriber(ChannelHandlerContext ctx, SequenceIdProvider provider, boolean reset, ChannelPromise promise, @Nullable Runnable onComplete) {
+    private WriteSubscriber(ChannelHandlerContext ctx, ChannelPromise promise, SequenceIdProvider provider, @Nullable Runnable onComplete) {
         this.ctx = ctx;
-        this.provider = provider;
-        this.reset = reset;
         this.promise = promise;
+        this.provider = provider;
         this.onComplete = onComplete;
     }
 
     @Override
     public void onSubscribe(Subscription s) {
-        if (reset) {
-            provider.reset();
-        }
         s.request(Long.MAX_VALUE);
     }
 
@@ -70,17 +64,33 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     @Override
     public void onError(Throwable cause) {
-        ctx.fireExceptionCaught(cause);
-        // Ignore this cause for this promise because it is channel exception.
-        promise.setSuccess();
+        try {
+            ctx.fireExceptionCaught(cause);
+        } finally {
+            // Ignore this cause for this promise because it is channel exception.
+            promise.setSuccess();
+        }
     }
 
     @Override
     public void onComplete() {
-        if (onComplete != null) {
-            onComplete.run();
+        if (onComplete == null) {
+            promise.setSuccess();
+        } else {
+            try {
+                onComplete.run();
+            } finally {
+                promise.setSuccess();
+            }
+        }
+    }
+
+    static WriteSubscriber create(ChannelHandlerContext ctx, ChannelPromise promise, @Nullable SequenceIdProvider provider, @Nullable Runnable onComplete) {
+        if (provider == null) {
+            // Used by this message ByteBuf stream only, can be unsafe.
+            provider = SequenceIdProvider.unsafe();
         }
 
-        promise.setSuccess();
+        return new WriteSubscriber(ctx, promise, provider, onComplete);
     }
 }
