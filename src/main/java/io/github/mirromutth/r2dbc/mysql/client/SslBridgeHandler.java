@@ -35,7 +35,6 @@ import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.CharBuffer;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -54,6 +53,17 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     private static final String SSL_NAME = "R2dbcMySqlSslHandler";
 
     private static final Logger logger = LoggerFactory.getLogger(SslBridgeHandler.class);
+
+    /**
+     * Lowest version of community edition for TLSv1.2 support.
+     */
+    private static final ServerVersion TLS1_2_COMMUNITY_VER = ServerVersion.create(8, 0, 4);
+
+    /**
+     * Lowest version of enterprise edition for TLSv1.2 support. Should be
+     * judged in conjunction with {@link ServerVersion#isEnterprise()}.
+     */
+    private static final ServerVersion TLS1_2_ENTERPRISE_VER = ServerVersion.create(5, 6, 0);
 
     private final MySqlSession session;
 
@@ -97,7 +107,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     private static SslProvider buildProvider(MySqlSslConfiguration sslConfiguration, ServerVersion version) {
         return SslProvider.builder()
             .sslContext(buildContext(sslConfiguration, version))
-            .defaultConfiguration(reactor.netty.tcp.SslProvider.DefaultConfigurationType.TCP)
+            .defaultConfiguration(SslProvider.DefaultConfigurationType.TCP)
             .build();
     }
 
@@ -134,7 +144,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     private static SslContextBuilder withTlsProtocols(SslContextBuilder builder, MySqlSslConfiguration sslConfiguration, ServerVersion version) {
         String[] tlsProtocols = sslConfiguration.getTlsProtocols();
 
-        if (tlsProtocols != null) {
+        if (tlsProtocols.length > 0) {
             builder.protocols(tlsProtocols);
         } else if (isEnabledTls1_2(version)) {
             builder.protocols(TlsProtocols.TLS1, TlsProtocols.TLS1_1, TlsProtocols.TLS1_2);
@@ -206,15 +216,18 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         if (password == null) {
             return null;
         } else {
-            CharBuffer buffer = CharBuffer.wrap(password);
-            char[] result = new char[buffer.remaining()];
+            int length = password.length();
+            char[] result = new char[length];
 
-            buffer.get(result);
+            for (int i = 0; i < length; ++i) {
+                result[i] = password.charAt(i);
+            }
+
             return result;
         }
     }
 
     private static boolean isEnabledTls1_2(ServerVersion version) {
-        return version.compareTo(8, 0, 4) >= 0 || ((version.compareTo(5, 6, 0) >= 0) && version.isEnterprise());
+        return version.isGreaterThanOrEqualTo(TLS1_2_COMMUNITY_VER) || (version.isGreaterThanOrEqualTo(TLS1_2_ENTERPRISE_VER) && version.isEnterprise());
     }
 }

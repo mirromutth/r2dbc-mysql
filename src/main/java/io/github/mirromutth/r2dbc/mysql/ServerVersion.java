@@ -110,6 +110,16 @@ public final class ServerVersion implements Comparable<ServerVersion> {
         return create0(major, minor, patch, "");
     }
 
+    /**
+     * Returns whether the current {@link ServerVersion} is greater (higher, newer) or the same as the given one.
+     *
+     * @param version the give one
+     * @return {@code true} if greater or the same as {@code version}, otherwise {@code false}
+     */
+    public boolean isGreaterThanOrEqualTo(ServerVersion version) {
+        return compareTo(version.major, version.minor, version.patch) >= 0;
+    }
+
     public int compareTo(int major, int minor, int patch) {
         if (this.major != major) {
             return (this.major < major) ? -1 : 1;
