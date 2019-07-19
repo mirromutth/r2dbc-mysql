@@ -75,14 +75,24 @@ final class CharCollations {
                 }
             }
 
-            if (version.isGreaterThanOrEqualTo(UTF8MB4_0900_VER)) {
-                return UTF8MB4_0900_AI_CI;
-            }
-
-            return UTF8MB4_GENERAL_CI;
+            return defaultServerCollation(version);
         }
 
-        return COSMOS[id];
+        CharCollation collation = COSMOS[id];
+
+        if (collation == null) {
+            return defaultServerCollation(version);
+        }
+
+        return collation;
+    }
+
+    private static CharCollation defaultServerCollation(ServerVersion version) {
+        if (version.isGreaterThanOrEqualTo(UTF8MB4_0900_VER)) {
+            return UTF8MB4_0900_AI_CI;
+        }
+
+        return UTF8MB4_GENERAL_CI;
     }
 
     private static int cosmosSize(CharCollation[] universe) {
