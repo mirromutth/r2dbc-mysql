@@ -20,10 +20,9 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
-import java.time.Duration;
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.STD5_7;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.SSL_COMMUNITY_5_7;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -56,7 +55,7 @@ class MySqlBatchTest {
 
     @Test
     void crudAllInOne() throws Throwable {
-        STD5_7.run(Duration.ofSeconds(10), connection -> {
+        SSL_COMMUNITY_5_7.run(connection -> {
             MySqlBatch selectBatch = connection.createBatch();
             MySqlBatch insertBatch = connection.createBatch();
             MySqlBatch updateBatch = connection.createBatch();

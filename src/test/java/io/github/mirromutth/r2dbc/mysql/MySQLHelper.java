@@ -109,6 +109,7 @@ final class MySQLHelper {
                 .host("127.0.0.1")
                 .port(port)
                 .connectTimeout(Duration.ofSeconds(5))
+                .enableSsl(MySqlSslConfiguration.Builder::disableServerVerify) // TODO: should verify server cert
                 .username("root")
                 .password(password)
                 .database("r2dbc")

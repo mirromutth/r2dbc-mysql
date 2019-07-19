@@ -24,7 +24,7 @@ import io.netty.util.ReferenceCountUtil;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
  * A {@link ByteBuf} wrapper for used by {@link ScalarBlob} or {@link ScalarClob}.

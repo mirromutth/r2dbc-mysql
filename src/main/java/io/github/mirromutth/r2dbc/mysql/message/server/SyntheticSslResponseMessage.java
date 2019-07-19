@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.util;
-
-import io.github.mirromutth.r2dbc.mysql.constant.Headers;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+package io.github.mirromutth.r2dbc.mysql.message.server;
 
 /**
- * Unit tests for {@link CodecUtils} protocol.
+ * A synthetic message for trigger SSL handshake complete handler.
  */
-class CodecUtilsTest {
+public final class SyntheticSslResponseMessage implements ServerMessage {
 
-    @Test
-    void eofHeaderEqualsInt64Code() {
-        assertEquals(Headers.EOF, CodecUtils.VAR_INT_8_BYTE_CODE);
+    private static final SyntheticSslResponseMessage INSTANCE = new SyntheticSslResponseMessage();
+
+    private SyntheticSslResponseMessage() {
+    }
+
+    @Override
+    public String toString() {
+        return "SyntheticSslResponseMessage{}";
+    }
+
+    public static SyntheticSslResponseMessage getInstance() {
+        return INSTANCE;
     }
 }

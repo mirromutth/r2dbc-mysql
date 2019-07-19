@@ -15,7 +15,7 @@
  */
 
 /**
- * MySQL client internal common data structure and logic.
+ * Utility code and internal data structure used throughout the project.
  */
 
 @NonNullApi

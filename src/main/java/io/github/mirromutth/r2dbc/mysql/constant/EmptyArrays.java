@@ -14,24 +14,14 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.internal;
-
-import java.util.function.Supplier;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * It is internal util, do NOT use it outer than {@literal r2dbc-mysql}.
- * <p>
- * Lazy loading and caching values ​​for multiple acquisitions,
- * implementations ensure that the value is only loaded once.
- * <p>
- * Can NOT return a null, implementations are thread safety.
+ * Empty arrays, it is internal util, do NOT use it outer than {@literal r2dbc-mysql}.
  */
-public interface LazyLoad<T> extends Supplier<T> {
+public final class EmptyArrays {
 
-    @Override
-    T get();
+    public static final byte[] EMPTY_BYTES = {};
 
-    static <T> LazyLoad<T> of(Supplier<T> supplier) {
-        return new SyncLazyLoad<>(supplier);
-    }
+    public static final String[] EMPTY_STRINGS = {};
 }

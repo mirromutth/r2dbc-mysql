@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
  * Codec for {@link byte[]}.

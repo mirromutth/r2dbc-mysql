@@ -182,7 +182,7 @@
                 <version>3.0.1</version>
                 <configuration>
                     <excludePackageNames>
-                        io.github.mirromutth.r2dbc.mysql.authentication,io.github.mirromutth.r2dbc.mysql.client,io.github.mirromutth.r2dbc.mysql.internal,io.github.mirromutth.r2dbc.mysql.codec,io.github.mirromutth.r2dbc.mysql.message,io.github.mirromutth.r2dbc.mysql.util
+                        io.github.mirromutth.r2dbc.mysql.authentication,io.github.mirromutth.r2dbc.mysql.client,io.github.mirromutth.r2dbc.mysql.internal,io.github.mirromutth.r2dbc.mysql.codec,io.github.mirromutth.r2dbc.mysql.message
                     </excludePackageNames>
                     <links>
                         <link>https://projectreactor.io/docs/core/release/api/</link>

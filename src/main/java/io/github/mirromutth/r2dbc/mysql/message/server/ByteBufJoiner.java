@@ -18,7 +18,6 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 
 import java.util.List;

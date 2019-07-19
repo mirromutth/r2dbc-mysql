@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireValidName;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireValidName;
 
 /**
  * An implementation of {@link Connection} for connecting to the MySQL database.
@@ -43,7 +43,7 @@ public final class MySqlConnection implements Connection {
 
     private static final Consumer<ServerMessage> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
 
-    private static final BiConsumer<ServerMessage, SynchronousSink<ServerMessage>> ONLY_OK_ERROR = (message, sink) -> {
+    private static final BiConsumer<ServerMessage, SynchronousSink<Void>> ONLY_OK_ERROR = (message, sink) -> {
         if (message instanceof ErrorMessage) {
             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
         } else if (message instanceof OkMessage) {
@@ -82,6 +82,11 @@ public final class MySqlConnection implements Connection {
         });
     }
 
+    /**
+     * Validates the connection by the native command "ping".
+     *
+     * WARNING: It is unstable API,
+     */
     public Mono<Void> ping() {
         // Considers create a `CommandFlow` when want support more commands.
         return this.client.exchange(Mono.just(PingMessage.getInstance()))

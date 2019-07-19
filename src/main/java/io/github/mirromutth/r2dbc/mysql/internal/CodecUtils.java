@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.util;
+package io.github.mirromutth.r2dbc.mysql.internal;
 
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Common codec methods util.
@@ -399,5 +399,32 @@ public final class CodecUtils {
         } else {
             buf.writeByte(0);
         }
+    }
+
+    public static int readIntInDigits(ByteBuf buf, boolean skipLast) {
+        int result = 0;
+        int readerIndex = buf.readerIndex();
+        int writerIndex = buf.writerIndex();
+        byte digit;
+
+        for (int i = readerIndex; i < writerIndex; ++i) {
+            digit = buf.getByte(i);
+
+            if (digit >= '0' && digit <= '9') {
+                result = result * 10 + (digit - '0');
+            } else {
+                if (skipLast) {
+                    buf.readerIndex(i + 1);
+                } else {
+                    buf.readerIndex(i);
+                }
+                // Is not digit, means parse completed.
+                return result;
+            }
+        }
+
+        // Parse until end-of-buffer.
+        buf.readerIndex(writerIndex);
+        return result;
     }
 }

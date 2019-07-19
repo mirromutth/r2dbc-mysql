@@ -16,17 +16,26 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import java.nio.charset.StandardCharsets;
+
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * MySQL server version, looks like {@literal "8.0.14"}.
+ * MySQL server version, looks like {@literal "8.0.14"}, or {@literal "8.0.14-rc2"}.
  */
 public final class ServerVersion implements Comparable<ServerVersion> {
 
-    public static final ServerVersion NONE = new ServerVersion(0, 0, 0);
+    public static final ServerVersion NONE = new ServerVersion(0, 0, 0, "");
+
+    private static final String[] ENTERPRISES = new String[] {
+        "enterprise",
+        "commercial",
+        "advanced"
+    };
 
     private final int major;
 
@@ -34,25 +43,58 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     private final int patch;
 
-    private ServerVersion(int major, int minor, int patch) {
+    /**
+     * Don't use it on {@link #hashCode()}, {@link #equals(Object)} or {@link #compareTo(ServerVersion)}.
+     */
+    private transient final String postfix;
+
+    private ServerVersion(int major, int minor, int patch, String postfix) {
         this.major = major;
         this.minor = minor;
         this.patch = patch;
+        this.postfix = postfix;
     }
 
     /**
-     * Parse a {@link ServerVersion} from {@link ByteBuf} encoded by ASCII.
+     * Parse a {@link ServerVersion} from {@link String}.
      *
-     * @param version buffer encoded by ASCII
-     * @return A server version that value decode from {@code version}.
+     * @param version origin version string.
+     * @return A {@link ServerVersion} that value decode from {@code version}.
      * @throws IllegalArgumentException if {@code version} is null, or any version part overflows to a negative integer.
      */
     public static ServerVersion parse(ByteBuf version) {
         requireNonNull(version, "version must not be null");
 
-        int major = readIntBeforePoint(version);
-        int minor = readIntBeforePoint(version);
-        return create(major, minor, readIntBeforePoint(version));
+        int major = CodecUtils.readIntInDigits(version, false);
+
+        if (!version.isReadable()) {
+            // End-of-buffer.
+            return create0(major, 0, 0, "");
+        } else if (version.getByte(version.readerIndex()) != '.') {
+            // Is not '.', has only postfix after major.
+            return create0(major, 0, 0, version.toString(StandardCharsets.US_ASCII));
+        }
+
+        // Skip last point '.' after read major.
+        int minor = CodecUtils.readIntInDigits(version.skipBytes(1), false);
+
+        if (!version.isReadable()) {
+            return create0(major, minor, 0, "");
+        } else if (version.getByte(version.readerIndex()) != '.') {
+            // Is not '.', has only postfix after minor.
+            return create0(major, minor, 0, version.toString(StandardCharsets.US_ASCII));
+        }
+
+        // Skip last point '.' after read minor.
+        int patch = CodecUtils.readIntInDigits(version.skipBytes(1), false);
+
+        if (!version.isReadable()) {
+            // End-of-buffer, version just like X.Y.Z without any postfix.
+            return create0(major, minor, patch, "");
+        } else {
+            // Has a postfix.
+            return create0(major, minor, patch, version.toString(StandardCharsets.US_ASCII));
+        }
     }
 
     /**
@@ -65,34 +107,33 @@ public final class ServerVersion implements Comparable<ServerVersion> {
      * @throws IllegalArgumentException if any version part is negative integer.
      */
     public static ServerVersion create(int major, int minor, int patch) {
-        require(major >= 0, "major version must not be a negative integer");
-        require(minor >= 0, "minor version must not be a negative integer");
-        require(patch >= 0, "patch version must not be a negative integer");
-
-        if (major == 0 && minor == 0 && patch == 0) {
-            return NONE;
-        }
-
-        return new ServerVersion(major, minor, patch);
+        return create0(major, minor, patch, "");
     }
 
-    public int compareTo(int major, int minor, int patch) {
-        if (this.major != major) {
-            return (this.major < major) ? -1 : 1;
-        } else if (this.minor != minor) {
-            return (this.minor < minor) ? -1 : 1;
-        }
-
-        return Integer.compare(this.patch, patch);
+    /**
+     * Returns whether the current {@link ServerVersion} is greater (higher, newer) or the same as the given one.
+     *
+     * @param version the give one
+     * @return {@code true} if greater or the same as {@code version}, otherwise {@code false}
+     */
+    public boolean isGreaterThanOrEqualTo(ServerVersion version) {
+        return compareTo(version) >= 0;
     }
 
     @Override
     public int compareTo(ServerVersion version) {
-        if (version == null) {
-            return compareTo(NONE.major, NONE.minor, NONE.patch);
+        // Standard `Comparable` must throw `NullPointerException` in `compareTo`,
+        // so cannot use `AssertUtils.requireNonNull` in here (throws `IllegalArgumentException`).
+
+        if (this.major != version.major) {
+            return (this.major < version.major) ? -1 : 1;
+        } else if (this.minor != version.minor) {
+            return (this.minor < version.minor) ? -1 : 1;
+        } else if (this.patch != version.patch) {
+            return (this.patch < version.patch) ? -1 : 1;
         }
 
-        return compareTo(version.major, version.minor, version.patch);
+        return 0;
     }
 
     public int getMajor() {
@@ -105,6 +146,22 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     public int getPatch() {
         return patch;
+    }
+
+    public String getPostfix() {
+        return postfix;
+    }
+
+    public boolean isEnterprise() {
+        // TODO: optimize performance using substring matching/searching algorithms, like two-way or KMP.
+        for (String enterprise : ENTERPRISES) {
+            // Maybe should ignore case?
+            if (postfix.contains(enterprise)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override
@@ -137,39 +194,22 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     @Override
     public String toString() {
-        return String.format("%d.%d.%d", major, minor, patch);
+        if (postfix.isEmpty()) {
+            return String.format("%d.%d.%d", major, minor, patch);
+        } else {
+            return String.format("%d.%d.%d%s", major, minor, patch, postfix);
+        }
     }
 
-    private static int readIntBeforePoint(ByteBuf version) {
-        int readerIndex = version.readerIndex();
-        int result = 0;
-        int digits = version.bytesBefore((byte) '.');
-        int completeIndex;
+    private static ServerVersion create0(int major, int minor, int patch, String postfix) {
+        require(major >= 0, "major version must not be a negative integer");
+        require(minor >= 0, "minor version must not be a negative integer");
+        require(patch >= 0, "patch version must not be a negative integer");
 
-        if (digits < 0) {
-            // Contains not '.', read until end of buffer.
-            completeIndex = version.writerIndex();
-
-            if (completeIndex <= readerIndex) {
-                // Cannot read any byte.
-                return 0;
-            }
-        } else {
-            // Read before '.', and ignore last '.'
-            completeIndex = readerIndex + digits + 1;
+        if (major == 0 && minor == 0 && patch == 0) {
+            return NONE;
         }
 
-        for (int i = readerIndex; i < completeIndex; ++i) {
-            byte current = version.getByte(i);
-
-            if (current < '0' || current > '9') { // C style condition, maybe should use `!Character.isDigit(current)`?
-                break;
-            }
-
-            result = result * 10 + (current - '0');
-        }
-
-        version.readerIndex(completeIndex);
-        return result;
+        return new ServerVersion(major, minor, patch, postfix);
     }
 }

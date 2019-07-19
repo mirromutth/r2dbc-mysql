@@ -35,11 +35,6 @@ public final class ExitMessage extends FixedSizeClientMessage {
     }
 
     @Override
-    public boolean isSequenceIdReset() {
-        return true;
-    }
-
-    @Override
     protected int size() {
         return Byte.BYTES;
     }

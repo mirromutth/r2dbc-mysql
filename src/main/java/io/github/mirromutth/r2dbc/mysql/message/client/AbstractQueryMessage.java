@@ -24,7 +24,7 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Base class considers statement logic of prepared statement and simple statement.
@@ -42,11 +42,6 @@ abstract class AbstractQueryMessage extends LargeClientMessage implements Exchan
 
     public CharSequence getSql() {
         return sql;
-    }
-
-    @Override
-    public boolean isSequenceIdReset() {
-        return true;
     }
 
     @Override

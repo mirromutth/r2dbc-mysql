@@ -16,10 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * A message that is start envelope for {@literal SELECT} query result,

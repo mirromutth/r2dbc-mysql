@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.CompositeByteBuf;
@@ -27,7 +27,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * MySQL Handshake Message for protocol version 10
@@ -53,12 +53,8 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
     private final String authType; // default is mysql_native_password
 
     private HandshakeV10Message(
-        HandshakeHeader handshakeHeader,
-        byte[] salt,
-        int serverCapabilities,
-        byte collationLow8Bits,
-        short serverStatuses,
-        String authType
+        HandshakeHeader handshakeHeader, byte[] salt, int serverCapabilities,
+        byte collationLow8Bits, short serverStatuses, String authType
     ) {
         super(handshakeHeader);
 

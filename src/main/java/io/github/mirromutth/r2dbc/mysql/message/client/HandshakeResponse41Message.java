@@ -17,17 +17,16 @@
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
-import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Map;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A handshake response message sent by clients those supporting
@@ -36,18 +35,17 @@ import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * server should use the handshake 320 response message, but
  * protocol 320 should be deprecated on MySQL 5.x.
  * <p>
- * Should make sure {@link #clientCapabilities} is right before construct this instance,
- * e.g. {@link Capabilities#CONNECT_ATTRS}, {@link Capabilities#CONNECT_WITH_DB} or other capabilities.
+ * Should make sure {@code clientCapabilities} is right before
+ * construct this instance, i.e. {@link Capabilities#CONNECT_ATTRS},
+ * {@link Capabilities#CONNECT_WITH_DB} or other capabilities.
+ *
+ * @see SslRequestMessage the head of {@link HandshakeResponse41Message}.
  */
 public final class HandshakeResponse41Message extends EnvelopeClientMessage implements ExchangeableMessage {
 
     private static final int ONE_BYTE_MAX_INT = 0xFF;
 
-    private static final int FILTER_SIZE = 23;
-
-    private final int clientCapabilities;
-
-    private final int collationId;
+    private final SslRequestMessage head;
 
     private final String username;
 
@@ -62,18 +60,11 @@ public final class HandshakeResponse41Message extends EnvelopeClientMessage impl
     private final boolean varIntSizedAuth;
 
     public HandshakeResponse41Message(
-        int clientCapabilities,
-        int collationId,
-        String username,
-        byte[] authentication,
-        String authType,
-        String database,
-        Map<String, String> attributes
+        int clientCapabilities, int collationId, String username, byte[] authentication,
+        String authType, String database, Map<String, String> attributes
     ) {
-        require(collationId > 0, "collationId must be a positive integer");
+        this.head = new SslRequestMessage(clientCapabilities, collationId);
 
-        this.clientCapabilities = clientCapabilities;
-        this.collationId = collationId;
         this.username = requireNonNull(username, "username must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
@@ -88,18 +79,10 @@ public final class HandshakeResponse41Message extends EnvelopeClientMessage impl
     }
 
     @Override
-    public boolean isSequenceIdReset() {
-        return false;
-    }
-
-    @Override
     protected void writeTo(ByteBuf buf, MySqlSession session) {
-        Charset charset = session.getCollation().getCharset();
+        head.writeTo(buf);
 
-        buf.writeIntLE(clientCapabilities)
-            .writeIntLE(Envelopes.MAX_ENVELOPE_SIZE + 1) // 16777216, include sequence id.
-            .writeByte(collationId) // only low 8-bits
-            .writeZero(FILTER_SIZE);
+        Charset charset = session.getCollation().getCharset();
 
         CodecUtils.writeCString(buf, username, charset);
 
@@ -120,6 +103,64 @@ public final class HandshakeResponse41Message extends EnvelopeClientMessage impl
         writeAttrs(buf, charset);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof HandshakeResponse41Message)) {
+            return false;
+        }
+
+        HandshakeResponse41Message that = (HandshakeResponse41Message) o;
+
+        if (varIntSizedAuth != that.varIntSizedAuth) {
+            return false;
+        }
+        if (!head.equals(that.head)) {
+            return false;
+        }
+        if (!username.equals(that.username)) {
+            return false;
+        }
+        if (!Arrays.equals(authentication, that.authentication)) {
+            return false;
+        }
+        if (!authType.equals(that.authType)) {
+            return false;
+        }
+        if (!database.equals(that.database)) {
+            return false;
+        }
+        return attributes.equals(that.attributes);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = head.hashCode();
+        result = 31 * result + username.hashCode();
+        result = 31 * result + Arrays.hashCode(authentication);
+        result = 31 * result + authType.hashCode();
+        result = 31 * result + database.hashCode();
+        result = 31 * result + attributes.hashCode();
+        result = 31 * result + (varIntSizedAuth ? 1 : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "HandshakeResponse41Message{" +
+            "clientCapabilities=" + head.getClientCapabilities() +
+            ", collationId=" + head.getCollationId() +
+            ", username='" + username + '\'' +
+            ", authentication=" + Arrays.toString(authentication) +
+            ", authType='" + authType + '\'' +
+            ", database='" + database + '\'' +
+            ", attributes=" + attributes +
+            ", varIntSizedAuth=" + varIntSizedAuth +
+            '}';
+    }
+
     private void writeAttrs(ByteBuf buf, Charset charset) {
         if (attributes.isEmpty()) {
             // no need write attributes
@@ -138,63 +179,5 @@ public final class HandshakeResponse41Message extends EnvelopeClientMessage impl
         } finally {
             attributesBuf.release();
         }
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof HandshakeResponse41Message)) {
-            return false;
-        }
-
-        HandshakeResponse41Message that = (HandshakeResponse41Message) o;
-
-        if (clientCapabilities != that.clientCapabilities) {
-            return false;
-        }
-        if (collationId != that.collationId) {
-            return false;
-        }
-        if (!username.equals(that.username)) {
-            return false;
-        }
-        if (!Arrays.equals(authentication, that.authentication)) {
-            return false;
-        }
-        if (!authType.equals(that.authType)) {
-            return false;
-        }
-        if (!database.equals(that.database)) {
-            return false;
-        }
-
-        return attributes.equals(that.attributes);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = clientCapabilities;
-        result = 31 * result + collationId;
-        result = 31 * result + username.hashCode();
-        result = 31 * result + Arrays.hashCode(authentication);
-        result = 31 * result + authType.hashCode();
-        result = 31 * result + database.hashCode();
-        result = 31 * result + attributes.hashCode();
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "HandshakeResponse41Message{" +
-            "clientCapabilities=" + clientCapabilities +
-            ", collationId=" + collationId +
-            ", username='" + username + '\'' +
-            ", authentication=REDACTED" +
-            ", authType='" + authType + '\'' +
-            ", database='" + database + '\'' +
-            ", attributes=" + attributes +
-            '}';
     }
 }

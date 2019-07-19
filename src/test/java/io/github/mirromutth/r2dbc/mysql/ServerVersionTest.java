@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 
@@ -74,9 +75,50 @@ class ServerVersionTest {
         assertEquals(v56_78_910, parse("56.78.910RC2"));
         assertEquals(v56_78_910, parse("56.78.910-v2"));
         assertEquals(v56_78_910, parse("56.78.910-RC2"));
+
+        assertEquals(parse("5.7.12.17").toString(), "5.7.12.17");
+        assertEquals(parse("5.7.12-17").toString(), "5.7.12-17");
+        assertEquals(parse("5.7.12.RELEASE").toString(), "5.7.12.RELEASE");
+        assertEquals(parse("5.7.12.RC2").toString(), "5.7.12.RC2");
+        assertEquals(parse("5.7.12RC2").toString(), "5.7.12RC2");
+        assertEquals(parse("5.7.12-v2").toString(), "5.7.12-v2");
+        assertEquals(parse("5.7.12-RC2").toString(), "5.7.12-RC2");
+
+        assertEquals(parse("8").toString(), "8.0.0");
+        assertEquals(parse("8-2").toString(), "8.0.0-2");
+        assertEquals(parse("8v2").toString(), "8.0.0v2");
+        assertEquals(parse("8-v2").toString(), "8.0.0-v2");
+        assertEquals(parse("8.0").toString(), "8.0.0");
+        assertEquals(parse("8.0-2").toString(), "8.0.0-2");
+        assertEquals(parse("8.0v2").toString(), "8.0.0v2");
+        assertEquals(parse("8.0.0-2").toString(), "8.0.0-2");
+        assertEquals(parse("8.0.0v2").toString(), "8.0.0v2");
+        assertEquals(parse("8.0.0-v2").toString(), "8.0.0-v2");
+
+        assertEquals(parse("8.1").toString(), "8.1.0");
+        assertEquals(parse("8.1-2").toString(), "8.1.0-2");
+        assertEquals(parse("8.1v2").toString(), "8.1.0v2");
+        assertEquals(parse("8.1-v2").toString(), "8.1.0-v2");
+        assertEquals(parse("8.1.0-2").toString(), "8.1.0-2");
+        assertEquals(parse("8.1.0v2").toString(), "8.1.0v2");
+        assertEquals(parse("8.1.0-v2").toString(), "8.1.0-v2");
+
+        assertEquals(parse("56.78.910.17").toString(), "56.78.910.17");
+        assertEquals(parse("56.78.910-12").toString(), "56.78.910-12");
+        assertEquals(parse("56.78.910.RELEASE").toString(), "56.78.910.RELEASE");
+        assertEquals(parse("56.78.910.RC2").toString(), "56.78.910.RC2");
+        assertEquals(parse("56.78.910RC2").toString(), "56.78.910RC2");
+        assertEquals(parse("56.78.910-v2").toString(), "56.78.910-v2");
+        assertEquals(parse("56.78.910-RC2").toString(), "56.78.910-RC2");
     }
 
     private static ServerVersion parse(String version) {
-        return ServerVersion.parse(Unpooled.wrappedBuffer(version.getBytes()));
+        ByteBuf buf = Unpooled.wrappedBuffer(version.getBytes());
+
+        try {
+            return ServerVersion.parse(buf);
+        } finally {
+            buf.release();
+        }
     }
 }

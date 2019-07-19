@@ -28,7 +28,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.internal.EmptyArrays.EMPTY_STRINGS;
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_STRINGS;
 
 /**
  * Codec for {@link String[]}.

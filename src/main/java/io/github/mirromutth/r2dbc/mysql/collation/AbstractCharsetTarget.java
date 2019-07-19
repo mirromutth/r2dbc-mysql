@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.collation;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * Base class for {@link CharsetTarget}.

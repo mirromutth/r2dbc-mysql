@@ -17,12 +17,12 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * OK message.
@@ -46,13 +46,7 @@ public final class OkMessage implements ServerMessage, WarningMessage {
 
     private final String information;
 
-    private OkMessage(
-        long affectedRows,
-        long lastInsertId,
-        short serverStatuses,
-        int warnings,
-        String information
-    ) {
+    private OkMessage(long affectedRows, long lastInsertId, short serverStatuses, int warnings, String information) {
         this.affectedRows = affectedRows;
         this.lastInsertId = lastInsertId;
         this.serverStatuses = serverStatuses;

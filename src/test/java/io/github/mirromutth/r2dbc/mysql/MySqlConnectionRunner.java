@@ -19,7 +19,6 @@ package io.github.mirromutth.r2dbc.mysql;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
@@ -34,12 +33,15 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface MySqlConnectionRunner {
 
-    MySqlConnectionRunner STD5_7 = MySqlConnectionRunner.ofVersion("5_7");
+    /**
+     * MySQL 5.7.x community version with SSL.
+     */
+    MySqlConnectionRunner SSL_COMMUNITY_5_7 = MySqlConnectionRunner.ofVersion("5_7");
 
-    void run(Duration timeout, Function<MySqlConnection, Publisher<?>> consumer) throws Throwable;
+    void run(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable;
 
     static MySqlConnectionRunner ofVersion(String version) {
-        return (timeout, consumer) -> {
+        return (consumer) -> {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicReference<Throwable> cause = new AtomicReference<>();
 
@@ -48,9 +50,12 @@ public interface MySqlConnectionRunner {
                     .onErrorResume(e -> connection.close().then(Mono.error(e)))
                     .concatWith(connection.close().then(Mono.empty()))
                     .then())
-                .subscribe(null, cause::set, latch::countDown);
+                .subscribe(null, e -> {
+                    cause.set(e);
+                    latch.countDown();
+                }, latch::countDown);
 
-            latch.await(timeout.toNanos(), TimeUnit.NANOSECONDS);
+            latch.await();
 
             Throwable e = cause.get();
             if (e != null) {

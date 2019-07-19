@@ -27,11 +27,6 @@ import org.reactivestreams.Publisher;
 public interface ClientMessage {
 
     /**
-     * @return {@code true} if sequence id should be reset before {@code this} message encode.
-     */
-    boolean isSequenceIdReset();
-
-    /**
      * Encode a message into a {@link ByteBuf} data buffer without envelope header.
      *
      * @param allocator the {@link ByteBufAllocator} to use to get a {@link ByteBuf} data buffer to write into.

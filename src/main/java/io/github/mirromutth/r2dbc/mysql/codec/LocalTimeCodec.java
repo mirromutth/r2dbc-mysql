@@ -16,14 +16,18 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
+import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
 import io.github.mirromutth.r2dbc.mysql.constant.DataType;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
+import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalTime;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Codec for {@link LocalTime}.
@@ -39,9 +43,9 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     @Override
     public LocalTime decode(NormalFieldValue value, FieldInformation info, Class<? super LocalTime> target, boolean binary, MySqlSession session) {
         if (binary) {
-            return JavaTimeHelper.readTimeBinary(value.getBuffer());
+            return decodeBinary(value.getBuffer());
         } else {
-            return JavaTimeHelper.readTimeText(value.getBuffer());
+            return readTimeText(value.getBuffer());
         }
     }
 
@@ -58,6 +62,38 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     @Override
     public boolean doCanDecode(FieldInformation info) {
         return DataType.TIME == info.getType();
+    }
+
+    static LocalTime readTimeText(ByteBuf buf) {
+        int hour = CodecUtils.readIntInDigits(buf, true);
+        int minute = CodecUtils.readIntInDigits(buf, true);
+        int second = CodecUtils.readIntInDigits(buf, true);
+
+        // Time should always valid, no need check before construct.
+        return LocalTime.of(hour, minute, second);
+    }
+
+    private static LocalTime decodeBinary(ByteBuf buf) {
+        int bytes = buf.readableBytes();
+
+        if (bytes < BinaryDateTimes.TIME_SIZE) {
+            return LocalTime.MIDNIGHT;
+        }
+
+        // Skip sign and day.
+        buf.skipBytes(Byte.BYTES + Integer.BYTES);
+
+        byte hour = buf.readByte();
+        byte minute = buf.readByte();
+        byte second = buf.readByte();
+
+        if (bytes < BinaryDateTimes.MICRO_TIME_SIZE) {
+            return LocalTime.of(hour, minute, second);
+        }
+
+        long micros = buf.readUnsignedIntLE();
+
+        return LocalTime.of(hour, minute, second, (int) TimeUnit.MICROSECONDS.toNanos(micros));
     }
 
     private static final class LocalTimeValue extends AbstractParameterValue {

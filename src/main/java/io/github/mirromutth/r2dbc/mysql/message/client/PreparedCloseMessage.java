@@ -34,11 +34,6 @@ public final class PreparedCloseMessage extends FixedSizeClientMessage implement
     }
 
     @Override
-    public boolean isSequenceIdReset() {
-        return true;
-    }
-
-    @Override
     protected int size() {
         return SIZE;
     }

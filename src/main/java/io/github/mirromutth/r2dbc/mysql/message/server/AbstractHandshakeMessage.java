@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A handshake message from the MySQL server

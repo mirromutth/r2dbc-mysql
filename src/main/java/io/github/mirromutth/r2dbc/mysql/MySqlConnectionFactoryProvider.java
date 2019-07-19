@@ -22,7 +22,7 @@ import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static io.r2dbc.spi.ConnectionFactoryOptions.CONNECT_TIMEOUT;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
@@ -60,9 +60,9 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.port(port);
         }
 
-        Boolean ssl = options.getValue(SSL);
-        if (ssl != null && ssl) {
-            builder.enableSsl();
+        Boolean isSsl = options.getValue(SSL);
+        if (isSsl != null && isSsl) {
+            builder.enableSsl(ssl -> {});
         }
 
         MySqlConnectionConfiguration configuration = builder.host(options.getRequiredValue(HOST))

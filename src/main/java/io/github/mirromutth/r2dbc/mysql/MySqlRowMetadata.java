@@ -22,7 +22,7 @@ import io.r2dbc.spi.RowMetadata;
 import java.util.List;
 import java.util.Set;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link RowMetadata} for MySQL database text/binary results.

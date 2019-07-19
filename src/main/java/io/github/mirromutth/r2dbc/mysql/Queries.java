@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.IntPredicate;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Utility for parse {@link Query} from sql and format {@code Batch} element statement.

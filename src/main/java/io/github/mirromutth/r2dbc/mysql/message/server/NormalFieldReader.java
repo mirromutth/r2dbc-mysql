@@ -18,11 +18,11 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
-import io.github.mirromutth.r2dbc.mysql.util.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * An implementation of {@link FieldReader} considers result bytes is less or equals than {@link Integer#MAX_VALUE}.

@@ -18,8 +18,8 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireValidName;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireValidName;
 
 /**
  * Base class considers {@link #returnGeneratedValues(String...)} for {@link MySqlStatement} implementations.

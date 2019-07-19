@@ -14,26 +14,19 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message;
-
-import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
-import reactor.core.publisher.Mono;
+package io.github.mirromutth.r2dbc.mysql.message.header;
 
 /**
- * A parameter value includes encode logic.
+ * An implementation of {@link SequenceIdProvider} based on unsafe increment.
+ * <p>
+ * It is NOT thread-safety, used only for temporary use of a single message.
  */
-public interface ParameterValue {
+final class UnsafeSequenceIdProvider implements SequenceIdProvider {
 
-    boolean isNull();
+    private int i = 0;
 
-    Mono<Void> writeTo(ParameterWriter writer);
-
-    int getNativeType();
-
-    /**
-     * Cancel to binding, do nothing if value has written or has canceled.
-     * <p>
-     * Note: should NEVER throw any exception.
-     */
-    void cancel();
+    @Override
+    public byte next() {
+        return (byte) ((i++) & 0xFF);
+    }
 }

@@ -21,6 +21,7 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
+import io.github.mirromutth.r2dbc.mysql.message.client.SslRequestMessage;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.github.mirromutth.r2dbc.mysql.message.server.AbstractSyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
@@ -42,7 +43,7 @@ import reactor.util.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Client/server messages encode/decode logic.
@@ -57,7 +58,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     private volatile boolean binaryResult = false;
 
-    private final SequenceIdProvider sequenceIdProvider = SequenceIdProvider.atomic();
+    @Nullable
+    private volatile SequenceIdProvider.Linkable linkableIdProvider;
 
     private final MySqlSession session;
 
@@ -77,16 +79,30 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     }
 
     @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        if (evt instanceof Lifecycle) {
+            if (Lifecycle.COMMAND == evt) {
+                // Message sequence id always from 0 in command phase.
+                this.linkableIdProvider = null;
+            }
+        } else {
+            super.userEventTriggered(ctx, evt);
+        }
+    }
+
+    @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ByteBuf) {
             DecodeContext context = this.decodeContext;
-            ServerMessage message = decoder.decode((ByteBuf) msg, sequenceIdProvider, session, context);
+            ServerMessage message = decoder.decode((ByteBuf) msg, session, context, this.linkableIdProvider);
 
             if (message != null) {
-                if (readFilter(message)) {
+                if (decodeFilter(message)) {
                     ctx.fireChannelRead(message);
                 }
             }
+        } else if (msg instanceof ServerMessage) {
+            ctx.fireChannelRead(msg);
         } else {
             if (logger.isWarnEnabled()) {
                 logger.warn("Unknown message type {} on reading", msg.getClass());
@@ -99,9 +115,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         if (msg instanceof ClientMessage) {
             ClientMessage message = (ClientMessage) msg;
-            WriteSubscriber writer = new WriteSubscriber(ctx, this.sequenceIdProvider, message.isSequenceIdReset(), promise, onDone(message));
-
-            message.encode(ctx.alloc(), this.session).subscribe(writer);
+            message.encode(ctx.alloc(), this.session)
+                .subscribe(WriteSubscriber.create(ctx, promise, this.linkableIdProvider, onDone(ctx, message)));
         } else {
             if (logger.isWarnEnabled()) {
                 logger.warn("Unknown message type {} on writing", msg.getClass());
@@ -123,20 +138,32 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         ctx.fireChannelInactive();
     }
 
+    @Override
+    public void handlerAdded(ChannelHandlerContext ctx) {
+        this.linkableIdProvider = SequenceIdProvider.atomic();
+    }
+
+    @Override
+    public void handlerRemoved(ChannelHandlerContext ctx) {
+        this.linkableIdProvider = null;
+    }
+
     @Nullable
-    private Runnable onDone(ClientMessage message) {
+    private Runnable onDone(ChannelHandlerContext ctx, ClientMessage message) {
         if (message instanceof SimpleQueryMessage) {
             return FORMAT_TEXT;
         } else if (message instanceof PrepareQueryMessage) {
             return WAIT_PREPARE;
         } else if (message instanceof PreparedExecuteMessage) {
             return FORMAT_BIN;
+        } else if (message instanceof SslRequestMessage) {
+            return () -> ctx.channel().pipeline().fireUserEventTriggered(SslState.ENABLED);
         }
 
         return null;
     }
 
-    private boolean readFilter(ServerMessage msg) {
+    private boolean decodeFilter(ServerMessage msg) {
         if (msg instanceof WarningMessage) {
             loggingWarnings((WarningMessage) msg);
         }

@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
+import io.github.mirromutth.r2dbc.mysql.MySqlSslConfiguration;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
@@ -25,12 +26,13 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
+import reactor.netty.tcp.SslProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 
-import static io.github.mirromutth.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An abstraction that wraps the networking part of exchanging methods.
@@ -50,11 +52,8 @@ public interface Client {
     Mono<Void> close();
 
     static Mono<Client> connect(
-        ConnectionProvider connectionProvider,
-        String host,
-        int port,
-        @Nullable Duration connectTimeout,
-        MySqlSession session
+        ConnectionProvider connectionProvider, String host, int port, MySqlSession session,
+        @Nullable MySqlSslConfiguration sslConfiguration, @Nullable Duration connectTimeout
     ) {
         requireNonNull(connectionProvider, "connectionProvider must not be null");
         requireNonNull(host, "host must not be null");
@@ -68,6 +67,6 @@ public interface Client {
         return client.host(host)
             .port(port)
             .connect()
-            .map(conn -> new ReactorNettyClient(conn, session));
+            .map(conn -> new ReactorNettyClient(conn, session, sslConfiguration));
     }
 }

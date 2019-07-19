@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.util;
+package io.github.mirromutth.r2dbc.mysql.internal;
 
 import reactor.util.annotation.Nullable;
 

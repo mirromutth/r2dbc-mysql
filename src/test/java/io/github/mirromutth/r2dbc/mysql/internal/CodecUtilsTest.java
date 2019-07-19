@@ -14,11 +14,21 @@
  * limitations under the License.
  */
 
+package io.github.mirromutth.r2dbc.mysql.internal;
+
+import io.github.mirromutth.r2dbc.mysql.constant.Headers;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 /**
- * Utility code used throughout the project.
+ * Unit tests for {@link CodecUtils} protocol.
  */
+class CodecUtilsTest {
 
-@NonNullApi
-package io.github.mirromutth.r2dbc.mysql.util;
-
-import reactor.util.annotation.NonNullApi;
+    @Test
+    void eofHeaderEqualsInt64Code() {
+        assertEquals(Headers.EOF, CodecUtils.VAR_INT_8_BYTE_CODE);
+    }
+}
