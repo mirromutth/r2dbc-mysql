@@ -23,4 +23,4 @@ services:
     # For testing from the host:
     # mysql --host=127.0.0.1 --port=7321 --user root -p'fTQeXC35l3Qf'
     ports:
-      - "7321:3306"
+      - "7321:3305"
