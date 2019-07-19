@@ -34,6 +34,11 @@ import java.util.function.Function;
 public interface MySqlConnectionRunner {
 
     /**
+     * MySQL 5.6.x community version with SSL.
+     */
+    MySqlConnectionRunner SSL_COMMUNITY_5_6 = MySqlConnectionRunner.ofVersion("5_6");
+
+    /**
      * MySQL 5.7.x community version with SSL.
      */
     MySqlConnectionRunner SSL_COMMUNITY_5_7 = MySqlConnectionRunner.ofVersion("5_7");
