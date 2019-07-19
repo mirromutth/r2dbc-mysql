@@ -37,8 +37,6 @@ public final class MySqlSession {
 
     private volatile ServerVersion serverVersion = ServerVersion.NONE;
 
-    private volatile int serverCapabilities = 0;
-
     private final String database;
 
     private final ZeroDateOption zeroDateOption;
@@ -48,7 +46,7 @@ public final class MySqlSession {
      */
     private final CharCollation collation = CharCollation.clientCharCollation();
 
-    private volatile int clientCapabilities = 0;
+    private volatile int capabilities = 0;
 
     /**
      * It would be null after connection phase completed.
@@ -97,14 +95,6 @@ public final class MySqlSession {
         this.serverVersion = serverVersion;
     }
 
-    public int getServerCapabilities() {
-        return serverCapabilities;
-    }
-
-    public void setServerCapabilities(int serverCapabilities) {
-        this.serverCapabilities = serverCapabilities;
-    }
-
     public CharCollation getCollation() {
         return collation;
     }
@@ -117,12 +107,12 @@ public final class MySqlSession {
         return zeroDateOption;
     }
 
-    public int getClientCapabilities() {
-        return clientCapabilities;
+    public int getCapabilities() {
+        return capabilities;
     }
 
-    public void setClientCapabilities(int clientCapabilities) {
-        this.clientCapabilities = clientCapabilities;
+    public void setCapabilities(int capabilities) {
+        this.capabilities = capabilities;
     }
 
     @Nullable

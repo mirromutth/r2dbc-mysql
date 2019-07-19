@@ -17,7 +17,6 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.MySqlSslConfiguration;
-import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
@@ -175,7 +174,7 @@ final class ReactorNettyClient implements Client {
         })
             .thenMany(Flux.defer(() -> {
                 if (this.isSsl) {
-                    return exchange(Mono.just(SslRequestMessage.create(session.getClientCapabilities(), session.getCollation().getId())))
+                    return exchange(Mono.just(SslRequestMessage.create(session.getCapabilities(), session.getCollation().getId())))
                         .<Void>handle((message, sink) -> {
                             if (message instanceof ErrorMessage) {
                                 ErrorMessage msg = (ErrorMessage) message;
@@ -270,19 +269,15 @@ final class ReactorNettyClient implements Client {
 
     private void initSession(HandshakeV10Message message) {
         HandshakeHeader header = message.getHandshakeHeader();
-        ServerVersion version = header.getServerVersion();
-        int serverCapabilities = message.getServerCapabilities();
-        MySqlAuthProvider authProvider = MySqlAuthProvider.build(message.getAuthType());
 
         this.session.setConnectionId(header.getConnectionId());
-        this.session.setServerVersion(version);
-        this.session.setAuthProvider(authProvider);
+        this.session.setServerVersion(header.getServerVersion());
+        this.session.setAuthProvider(MySqlAuthProvider.build(message.getAuthType()));
         this.session.setSalt(message.getSalt());
-        this.session.setServerCapabilities(serverCapabilities);
 
-        int clientCapabilities = calculateClientCapabilities(serverCapabilities);
+        int clientCapabilities = calculateClientCapabilities(message.getServerCapabilities());
 
-        this.session.setClientCapabilities(clientCapabilities);
+        this.session.setCapabilities(clientCapabilities);
     }
 
     private ExchangeableMessage createHandshakeResponse() {
@@ -295,7 +290,7 @@ final class ReactorNettyClient implements Client {
         requireNonNull(authType, "authType must not be null at authentication phase");
 
         return new HandshakeResponse41Message(
-            session.getClientCapabilities(),
+            session.getCapabilities(),
             session.getCollation().getId(),
             username,
             authorization,
@@ -306,17 +301,8 @@ final class ReactorNettyClient implements Client {
     }
 
     private int calculateClientCapabilities(int serverCapabilities) {
-        int clientCapabilities = serverCapabilities |
-            Capabilities.LONG_PASSWORD | // support long password
-            Capabilities.TRANSACTIONS | // support transactions
-            Capabilities.PROTOCOL_41 | // must be protocol 41
-            Capabilities.DEPRECATE_EOF | // must deprecate EOF
-            Capabilities.MULTI_STATEMENTS | // support multi-statements
-            Capabilities.MULTI_RESULTS | // support multi-results
-            Capabilities.PREPARED_MULTI_RESULTS; // support prepared statements' multi-results
-
-        // server should always return metadata, and no compress, and without session track
-        clientCapabilities &= ~(Capabilities.OPTIONAL_RESULT_SET_METADATA | Capabilities.COMPRESS | Capabilities.SESSION_TRACK);
+        // Server should always return metadata, and no compress, and without session track
+        int clientCapabilities = serverCapabilities & ~(Capabilities.OPTIONAL_RESULT_SET_METADATA | Capabilities.COMPRESS | Capabilities.SESSION_TRACK);
 
         if (isSsl) {
             clientCapabilities |= Capabilities.SSL;
