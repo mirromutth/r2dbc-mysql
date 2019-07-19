@@ -117,28 +117,23 @@ public final class ServerVersion implements Comparable<ServerVersion> {
      * @return {@code true} if greater or the same as {@code version}, otherwise {@code false}
      */
     public boolean isGreaterThanOrEqualTo(ServerVersion version) {
-        return compareTo(version.major, version.minor, version.patch) >= 0;
-    }
-
-    public int compareTo(int major, int minor, int patch) {
-        if (this.major != major) {
-            return (this.major < major) ? -1 : 1;
-        } else if (this.minor != minor) {
-            return (this.minor < minor) ? -1 : 1;
-        } else if (this.patch != patch) {
-            return (this.patch < patch) ? -1 : 1;
-        }
-
-        return 0;
+        return compareTo(version) >= 0;
     }
 
     @Override
     public int compareTo(ServerVersion version) {
-        if (version == null) {
-            return compareTo(NONE.major, NONE.minor, NONE.patch);
+        // Standard `Comparable` must throw `NullPointerException` in `compareTo`,
+        // so cannot use `AssertUtils.requireNonNull` in here (throws `IllegalArgumentException`).
+
+        if (this.major != version.major) {
+            return (this.major < version.major) ? -1 : 1;
+        } else if (this.minor != version.minor) {
+            return (this.minor < version.minor) ? -1 : 1;
+        } else if (this.patch != version.patch) {
+            return (this.patch < version.patch) ? -1 : 1;
         }
 
-        return compareTo(version.major, version.minor, version.patch);
+        return 0;
     }
 
     public int getMajor() {

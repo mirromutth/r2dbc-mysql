@@ -45,6 +45,8 @@ final class CharCollations {
      */
     private static final CharCollation[] EXTRA;
 
+    private static final ServerVersion UTF8MB4_0900_VER = ServerVersion.create(8, 0, 1);
+
     static {
         // The initialization of character collation constants is the premise of the universe big bang.
         ASCII_GENERAL_CI = createCollation(11, "ascii_general_ci", CharsetTargets.ASCII);
@@ -73,7 +75,7 @@ final class CharCollations {
                 }
             }
 
-            if (version.compareTo(8, 0, 1) >= 0) {
+            if (version.isGreaterThanOrEqualTo(UTF8MB4_0900_VER)) {
                 return UTF8MB4_0900_AI_CI;
             }
 
