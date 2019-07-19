@@ -33,17 +33,18 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface MySqlConnectionRunner {
 
-    /**
-     * MySQL 5.6.x community version with SSL.
-     */
-    MySqlConnectionRunner SSL_COMMUNITY_5_6 = MySqlConnectionRunner.ofVersion("5_6");
-
-    /**
-     * MySQL 5.7.x community version with SSL.
-     */
-    MySqlConnectionRunner SSL_COMMUNITY_5_7 = MySqlConnectionRunner.ofVersion("5_7");
+    MySqlConnectionRunner[] ALL_RUNNER = {
+        MySqlConnectionRunner.ofVersion("5_6"), // MySQL 5.6.x community version with SSL.
+        MySqlConnectionRunner.ofVersion("5_7") // MySQL 5.7.x community version with SSL.
+    };
 
     void run(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable;
+
+    static void runAll(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable {
+        for (MySqlConnectionRunner runner : ALL_RUNNER) {
+            runner.run(consumer);
+        }
+    }
 
     static MySqlConnectionRunner ofVersion(String version) {
         return (consumer) -> {

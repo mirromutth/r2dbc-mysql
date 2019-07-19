@@ -22,7 +22,7 @@ import reactor.util.annotation.Nullable;
 
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.SSL_COMMUNITY_5_7;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.runAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -55,7 +55,7 @@ class MySqlBatchTest {
 
     @Test
     void crudAllInOne() throws Throwable {
-        SSL_COMMUNITY_5_7.run(connection -> {
+        runAll(connection -> {
             MySqlBatch selectBatch = connection.createBatch();
             MySqlBatch insertBatch = connection.createBatch();
             MySqlBatch updateBatch = connection.createBatch();

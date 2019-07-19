@@ -30,7 +30,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.SSL_COMMUNITY_5_7;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.runAll;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -75,7 +75,7 @@ class SimpleQueryDateTimeTest {
 
     @Test
     void crudBySimpleStatement() throws Throwable {
-        SSL_COMMUNITY_5_7.run(connection -> {
+        runAll(connection -> {
             MySqlStatement insertFirstStmt = connection.createStatement(formattedInsert(firstBirth));
             MySqlStatement insertSecondStmt = connection.createStatement(formattedInsert(secondBirth));
             MySqlStatement selectStmt = connection.createStatement("SELECT * FROM `birth` ORDER BY `id`");
