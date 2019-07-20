@@ -31,9 +31,13 @@ final class ResultDecodeContext extends MetadataDecodeContext {
 
     private final DefinitionMetadataMessage[] metadataMessages;
 
-    private final AtomicInteger columns = new AtomicInteger(0);
+    private final AtomicInteger columns = new AtomicInteger();
 
-    ResultDecodeContext(boolean binary, int totalColumns) {
+    private volatile boolean inMetadata = true;
+
+    ResultDecodeContext(boolean binary, boolean deprecateEof, int totalColumns) {
+        super(deprecateEof);
+
         require(totalColumns > 0, "result must has least 1 column");
 
         this.binary = binary;
@@ -50,12 +54,24 @@ final class ResultDecodeContext extends MetadataDecodeContext {
     }
 
     @Override
-    boolean isMetadata() {
-        return columns.get() < metadataMessages.length;
+    boolean isInMetadata() {
+        return inMetadata;
     }
 
     @Override
-    SyntheticRowMetadataMessage pushAndGetMetadata(DefinitionMetadataMessage metadata) {
+    protected SyntheticMetadataMessage checkComplete(int index) {
+        if (index == metadataMessages.length) {
+            inMetadata = false;
+
+            // In results, row metadata has filled-up does not means complete. (has rows or OK/EOF following)
+            return new SyntheticMetadataMessage(false, metadataMessages);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    protected int putMetadata(DefinitionMetadataMessage metadata) {
         int index = columns.getAndIncrement();
         int size = metadataMessages.length;
 
@@ -65,12 +81,12 @@ final class ResultDecodeContext extends MetadataDecodeContext {
 
         metadataMessages[index] = metadata;
 
-        if (index == size - 1) {
-            // In results, read row metadata means not complete. (has rows or OK following)
-            return new SyntheticRowMetadataMessage(false, metadataMessages);
-        } else {
-            return null;
-        }
+        return index + 1;
+    }
+
+    @Override
+    protected int currentIndex() {
+        return columns.get();
     }
 
     DataType getType(int index) {

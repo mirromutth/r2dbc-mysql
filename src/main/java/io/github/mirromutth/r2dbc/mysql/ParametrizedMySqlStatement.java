@@ -21,7 +21,7 @@ import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.AbstractSyntheticMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
 import io.netty.util.ReferenceCountUtil;
@@ -133,8 +133,8 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
                 .<StatementMetadata>handle((message, sink) -> {
                     if (message instanceof ErrorMessage) {
                         sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
-                    } else if (message instanceof AbstractSyntheticMetadataMessage) {
-                        if (((AbstractSyntheticMetadataMessage) message).isCompleted()) {
+                    } else if (message instanceof SyntheticMetadataMessage) {
+                        if (((SyntheticMetadataMessage) message).isCompleted()) {
                             sink.complete();
                         }
                     } else if (message instanceof PreparedOkMessage) {

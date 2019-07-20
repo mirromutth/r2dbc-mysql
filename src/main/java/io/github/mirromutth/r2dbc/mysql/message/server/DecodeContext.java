@@ -33,11 +33,11 @@ public interface DecodeContext {
         return WaitPrepareDecodeContext.INSTANCE;
     }
 
-    static DecodeContext result(boolean binary, int totalColumns) {
-        return new ResultDecodeContext(binary, totalColumns);
+    static DecodeContext result(boolean binary, boolean deprecateEof, int totalColumns) {
+        return new ResultDecodeContext(binary, deprecateEof, totalColumns);
     }
 
-    static DecodeContext preparedMetadata(int totalColumns, int totalParameters) {
-        return new PreparedMetadataDecodeContext(totalColumns, totalParameters);
+    static DecodeContext preparedMetadata(boolean deprecateEof, int totalColumns, int totalParameters) {
+        return new PreparedMetadataDecodeContext(deprecateEof, totalColumns, totalParameters);
     }
 }

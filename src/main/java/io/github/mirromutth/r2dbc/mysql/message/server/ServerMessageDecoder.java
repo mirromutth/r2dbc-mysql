@@ -101,11 +101,11 @@ public final class ServerMessageDecoder {
             return ErrorMessage.decode(buf);
         }
 
-        if (context.isMetadata() && DefinitionMetadataMessage.isLooksLike(buf)) {
-            return decodeMetadata(buf, session, context);
+        if (context.isInMetadata()) {
+            return decodeInMetadata(buf, header, session, context);
         }
 
-        throw new R2dbcNonTransientResourceException("unknown message header " + header + " on prepared metadata phase");
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on prepared metadata phase", header, buf.readableBytes()));
     }
 
     @Nullable
@@ -113,7 +113,7 @@ public final class ServerMessageDecoder {
         ByteBuf firstBuf = buffers.get(0);
         short header = firstBuf.getUnsignedByte(firstBuf.readerIndex());
 
-        if (header == Headers.ERROR) {
+        if (Headers.ERROR == header) {
             // 0xFF is not header of var integer,
             // not header of text result null (0xFB) and
             // not header of column metadata (0x03 + "def")
@@ -125,28 +125,28 @@ public final class ServerMessageDecoder {
             }
         }
 
-        if (context.isMetadata()) {
-            if (DefinitionMetadataMessage.isLooksLike(firstBuf)) {
-                ByteBuf joined = JOINER.join(buffers);
-                try {
-                    return decodeMetadata(joined, session, context);
-                } finally {
-                    joined.release();
+        if (context.isInMetadata()) {
+            ByteBuf joined = JOINER.join(buffers);
+            try {
+                return decodeInMetadata(joined, header, session, context);
+            } finally {
+                joined.release();
+            }
+            // Should not has other messages when metadata reading.
+        }
+
+        if (context.isBinary()) {
+            if (Headers.OK == header) {
+                // If header is 0, SHOULD NOT be OK message.
+                // Binary row message always starts with 0x00 (i.e. binary row header).
+                // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
+                try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
+                    return BinaryRowMessage.decode(reader, context);
                 }
             }
-        } else {
-            if (context.isBinary()) {
-                if (header == Headers.OK) {
-                    // If header is 0, SHOULD NOT be OK message.
-                    // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
-                    try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
-                        return BinaryRowMessage.decode(reader, context);
-                    }
-                }
-            } else if (isTextRow(buffers, firstBuf, header)) {
-                try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
-                    return TextRowMessage.decode(reader, context.getTotalColumns());
-                }
+        } else if (isTextRow(buffers, firstBuf, header)) {
+            try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
+                return TextRowMessage.decode(reader, context.getTotalColumns());
             }
         }
 
@@ -360,9 +360,17 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static AbstractSyntheticMetadataMessage decodeMetadata(ByteBuf buf, MySqlSession session, MetadataDecodeContext context) {
-        DefinitionMetadataMessage columnMetadata = DefinitionMetadataMessage.decode(buf, session.getCollation().getCharset());
+    private static SyntheticMetadataMessage decodeInMetadata(ByteBuf buf, short header, MySqlSession session, MetadataDecodeContext context) {
+        ServerMessage message;
 
-        return context.pushAndGetMetadata(columnMetadata);
+        if (Headers.EOF == header && AbstractEofMessage.isValidSize(buf.readableBytes())) {
+            message = AbstractEofMessage.decode(buf);
+        } else if (DefinitionMetadataMessage.isLooksLike(buf)) {
+            message = DefinitionMetadataMessage.decode(buf, session.getCollation().getCharset());
+        } else {
+            throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d when reading metadata", header, buf.readableBytes()));
+        }
+
+        return context.putPart(message);
     }
 }

@@ -21,17 +21,18 @@ import java.util.Arrays;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * Base message considers bundle of {@link DefinitionMetadataMessage}s.
+ * A message contains a bundle of {@link DefinitionMetadataMessage}s, {@link #isCompleted()} returning
+ * {@code true} means it is last metadata bundle of current query.
  * <p>
  * Note: all subclasses are synthetic messages, not real exists.
  */
-public abstract class AbstractSyntheticMetadataMessage implements ServerMessage {
+public final class SyntheticMetadataMessage implements ServerMessage {
 
     private final boolean completed;
 
     private final DefinitionMetadataMessage[] messages;
 
-    AbstractSyntheticMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages) {
+    SyntheticMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages) {
         this.completed = completed;
         this.messages = requireNonNull(messages, "messages must not be null");
     }
@@ -49,16 +50,15 @@ public abstract class AbstractSyntheticMetadataMessage implements ServerMessage 
         if (this == o) {
             return true;
         }
-        if (!(o instanceof AbstractSyntheticMetadataMessage)) {
+        if (!(o instanceof SyntheticMetadataMessage)) {
             return false;
         }
 
-        AbstractSyntheticMetadataMessage that = (AbstractSyntheticMetadataMessage) o;
+        SyntheticMetadataMessage that = (SyntheticMetadataMessage) o;
 
         if (completed != that.completed) {
             return false;
         }
-        // Probably incorrect - comparing Object[] arrays with Arrays.equals
         return Arrays.equals(messages, that.messages);
     }
 
@@ -71,10 +71,11 @@ public abstract class AbstractSyntheticMetadataMessage implements ServerMessage 
 
     @Override
     public String toString() {
-        if (messages.length < 3) {
-            return String.format("%s{completed=%s, messages=%s}", getClass().getSimpleName(), completed, Arrays.toString(messages));
+        if (messages.length <= 3) {
+            return String.format("SyntheticMetadataMessage{completed=%s, messages=%s}", completed, Arrays.toString(messages));
         }
 
-        return String.format("%s{completed=%s, messages=[%s, %s, ...more %d messages]}", getClass().getSimpleName(), completed, messages[0], messages[1], messages.length - 2);
+        // MySQL support 4096 columns for pre-table, no need print large bundle of messages in here.
+        return String.format("SyntheticMetadataMessage{completed=%s, messages=[%s, %s, ...more %d messages]}", completed, messages[0], messages[1], messages.length - 2);
     }
 }

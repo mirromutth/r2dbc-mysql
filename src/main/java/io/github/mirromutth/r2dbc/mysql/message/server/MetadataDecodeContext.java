@@ -23,8 +23,49 @@ import reactor.util.annotation.Nullable;
  */
 abstract class MetadataDecodeContext implements DecodeContext {
 
-    abstract boolean isMetadata();
+    private final boolean deprecateEof;
+
+    MetadataDecodeContext(boolean deprecateEof) {
+        this.deprecateEof = deprecateEof;
+    }
+
+    abstract boolean isInMetadata();
 
     @Nullable
-    abstract AbstractSyntheticMetadataMessage pushAndGetMetadata(DefinitionMetadataMessage metadata);
+    final SyntheticMetadataMessage putPart(ServerMessage message) {
+        if (message instanceof DefinitionMetadataMessage) {
+            // Index of metadata after put, see `putMetadata`.
+            int index = putMetadata((DefinitionMetadataMessage) message);
+
+            if (deprecateEof) {
+                // If EOF has deprecated, has no EOF for complete signal, should check complete always.
+                return checkComplete(index);
+            } else {
+                // Should not check complete, EOF message will be complete signal.
+                return null;
+            }
+        } else if (message instanceof AbstractEofMessage) {
+            if (deprecateEof) {
+                throw new IllegalStateException("Unexpected EOF message because server has deprecated EOF");
+            }
+
+            // Current columns index is also last index of metadata after put, see `putMetadata`.
+            return checkComplete(currentIndex());
+        } else {
+            throw new IllegalStateException(String.format("Unknown message type %s when reading metadata", message.getClass().getSimpleName()));
+        }
+    }
+
+    @Nullable
+    abstract protected SyntheticMetadataMessage checkComplete(int index);
+
+    /**
+     * @return index of metadata after put
+     */
+    abstract protected int putMetadata(DefinitionMetadataMessage metadata);
+
+    /**
+     * @return current index, for {@link #checkComplete(int)} on EOF message come
+     */
+    abstract protected int currentIndex();
 }

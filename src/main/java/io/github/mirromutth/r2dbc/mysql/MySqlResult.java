@@ -18,11 +18,11 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.RowMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticRowMetadataMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Row;
@@ -123,8 +123,8 @@ public final class MySqlResult implements Result {
     }
 
     private <T> void handleResult(ServerMessage message, SynchronousSink<T> sink, BiFunction<Row, RowMetadata, ? extends T> f) {
-        if (message instanceof SyntheticRowMetadataMessage) {
-            DefinitionMetadataMessage[] metadataMessages = ((SyntheticRowMetadataMessage) message).unwrap();
+        if (message instanceof SyntheticMetadataMessage) {
+            DefinitionMetadataMessage[] metadataMessages = ((SyntheticMetadataMessage) message).unwrap();
             if (metadataMessages.length == 0) {
                 return;
             }
