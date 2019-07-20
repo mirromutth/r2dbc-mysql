@@ -27,9 +27,9 @@ public abstract class AbstractEofMessage implements ServerMessage {
 
     static AbstractEofMessage decode(ByteBuf buf) {
         if (buf.readableBytes() >= Eof41Message.SIZE) {
-            return Eof320Message.INSTANCE;
-        } else {
             return Eof41Message.decode(buf);
+        } else {
+            return Eof320Message.INSTANCE;
         }
     }
 
