@@ -19,25 +19,19 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 import io.netty.buffer.ByteBuf;
 
 /**
- * EOF error message.
- * <p>
- * Note: EOF message are deprecated and OK message are also used to indicate EOF as of MySQL 5.7.5.
+ * A EOF message for current context in protocol 4.1.
  */
-public final class EofMessage implements ServerMessage, WarningMessage {
+final class Eof41Message extends AbstractEofMessage implements WarningMessage {
+
+    static final int SIZE = Byte.BYTES + (Short.BYTES << 1);
 
     private final int warnings;
 
     private final short serverStatuses;
 
-    private EofMessage(int warnings, short serverStatuses) {
+    private Eof41Message(int warnings, short serverStatuses) {
         this.warnings = warnings;
         this.serverStatuses = serverStatuses;
-    }
-
-    static EofMessage decode(ByteBuf buf) {
-        buf.skipBytes(1); // skip generic header 0xFE of EOF messages
-        int warnings = buf.readUnsignedShortLE();
-        return new EofMessage(warnings, buf.readShortLE());
     }
 
     @Override
@@ -54,11 +48,11 @@ public final class EofMessage implements ServerMessage, WarningMessage {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof EofMessage)) {
+        if (!(o instanceof Eof41Message)) {
             return false;
         }
 
-        EofMessage that = (EofMessage) o;
+        Eof41Message that = (Eof41Message) o;
 
         if (warnings != that.warnings) {
             return false;
@@ -76,9 +70,16 @@ public final class EofMessage implements ServerMessage, WarningMessage {
     @Override
     public String toString() {
         if (warnings != 0) {
-            return String.format("EofMessage{warnings=%d, serverStatuses=%s}", warnings, serverStatuses);
+            return String.format("Eof41Message{warnings=%d, serverStatuses=%s}", warnings, serverStatuses);
         } else {
-            return String.format("EofMessage{serverStatuses=%s}", serverStatuses);
+            return String.format("Eof41Message{serverStatuses=%s}", serverStatuses);
         }
+    }
+
+    static Eof41Message decode(ByteBuf buf) {
+        buf.skipBytes(1); // skip generic header 0xFE of EOF messages
+
+        int warnings = buf.readUnsignedShortLE();
+        return new Eof41Message(warnings, buf.readShortLE());
     }
 }
