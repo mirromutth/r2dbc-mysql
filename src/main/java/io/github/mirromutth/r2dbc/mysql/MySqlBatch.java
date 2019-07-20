@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
+import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.r2dbc.spi.Batch;
 import reactor.core.publisher.Flux;
@@ -59,16 +60,8 @@ public final class MySqlBatch implements Batch {
 
     @Override
     public Flux<MySqlResult> execute() {
-        return Flux.defer(() -> {
-            int size = statements.size();
-
-            if (size <= 0) {
-                return Flux.empty();
-            }
-
-            return SimpleQueryFlow.execute(client, statements)
-                .map(messages -> new MySqlResult(codecs, session, null, messages));
-        });
+        return SimpleQueryFlow.execute(client, statements, session)
+            .map(messages -> new MySqlResult(codecs, session, null, messages));
     }
 
     @Override

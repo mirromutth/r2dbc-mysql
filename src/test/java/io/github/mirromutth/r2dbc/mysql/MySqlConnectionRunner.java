@@ -34,8 +34,8 @@ import java.util.function.Function;
 public interface MySqlConnectionRunner {
 
     MySqlConnectionRunner[] ALL_RUNNER = {
-        MySqlConnectionRunner.ofVersion("5_6"), // MySQL 5.6.x community version with SSL.
-        MySqlConnectionRunner.ofVersion("5_7") // MySQL 5.7.x community version with SSL.
+        MySqlConnectionRunner.ofVersion("5_6", false), // MySQL 5.6.x community version without SSL.
+        MySqlConnectionRunner.ofVersion("5_7", true) // MySQL 5.7.x community version with SSL.
     };
 
     void run(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable;
@@ -46,12 +46,12 @@ public interface MySqlConnectionRunner {
         }
     }
 
-    static MySqlConnectionRunner ofVersion(String version) {
+    static MySqlConnectionRunner ofVersion(String version, boolean ssl) {
         return (consumer) -> {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicReference<Throwable> cause = new AtomicReference<>();
 
-            MySQLHelper.getFactoryByVersion(version).create()
+            MySQLHelper.getFactoryByVersion(version, ssl).create()
                 .flatMap(connection -> Flux.from(consumer.apply(connection))
                     .onErrorResume(e -> connection.close().then(Mono.error(e)))
                     .concatWith(connection.close().then(Mono.empty()))

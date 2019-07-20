@@ -13,7 +13,7 @@ volumes:
 services:
   test-mysql5_6-r2dbc:
     image: mysql:5.6
-    command: [mysqld, --character-set-server=utf8mb4, --collation-server=utf8mb4_general_ci]
+    command: [mysqld, --character-set-server=utf8mb4, --collation-server=utf8mb4_general_ci, --port=3305]
     # restart: always
     volumes:
       - mysql5_6_dir:/var/lib/mysql

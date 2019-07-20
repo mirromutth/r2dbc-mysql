@@ -58,6 +58,12 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
     @Override
     protected SyntheticMetadataMessage checkComplete(int index) {
         if (index == paramMetadata.length) {
+            if (colMetadata.length == 0) {
+                // Has no column metadata.
+                inMetadata = false;
+                return new SyntheticMetadataMessage(true, paramMetadata);
+            }
+
             return new SyntheticMetadataMessage(false, paramMetadata);
         } else if (index == paramMetadata.length + colMetadata.length) {
             inMetadata = false;

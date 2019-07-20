@@ -20,6 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.AbstractEofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
@@ -43,10 +44,10 @@ public final class MySqlConnection implements Connection {
 
     private static final Consumer<ServerMessage> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
 
-    private static final BiConsumer<ServerMessage, SynchronousSink<Void>> ONLY_OK_ERROR = (message, sink) -> {
+    private static final BiConsumer<ServerMessage, SynchronousSink<Void>> COMPLETE_OR_ERROR = (message, sink) -> {
         if (message instanceof ErrorMessage) {
             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
-        } else if (message instanceof OkMessage) {
+        } else if (message instanceof OkMessage || message instanceof AbstractEofMessage) {
             sink.complete();
         } else {
             ReferenceCountUtil.safeRelease(message);
@@ -84,13 +85,13 @@ public final class MySqlConnection implements Connection {
 
     /**
      * Validates the connection by the native command "ping".
-     *
+     * <p>
      * WARNING: It is unstable API,
      */
     public Mono<Void> ping() {
         // Considers create a `CommandFlow` when want support more commands.
         return this.client.exchange(Mono.just(PingMessage.getInstance()))
-            .handle(ONLY_OK_ERROR)
+            .handle(COMPLETE_OR_ERROR)
             .then();
     }
 

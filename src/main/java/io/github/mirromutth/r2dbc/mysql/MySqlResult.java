@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.message.server.AbstractEofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
@@ -102,6 +103,10 @@ public final class MySqlResult implements Result {
                 if (message instanceof OkMessage) {
                     // No need check terminal because of OkMessage no need release.
                     this.okProcessor.onNext(((OkMessage) message));
+                } else if (message instanceof AbstractEofMessage) {
+                    // Metadata EOF message will be not receive in here.
+                    // EOF message, means it is SELECT statement.
+                    this.okProcessor.onComplete();
                 } else {
                     ReferenceCountUtil.safeRelease(message);
                 }
@@ -117,7 +122,7 @@ public final class MySqlResult implements Result {
         }
 
         // Result mode, no need ok message.
-        okProcessor.cancel();
+        this.okProcessor.onComplete();
 
         return messages;
     }

@@ -17,7 +17,9 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.AbstractEofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
@@ -25,11 +27,16 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Simple (direct) query message flow for {@link MySqlBatch} and {@link SimpleQueryMySqlStatement}.
  */
 final class SimpleQueryFlow {
+
+    // Metadata EOF message will be not receive in here.
+    private static final Predicate<ServerMessage> RESULT_END =
+        message -> message instanceof OkMessage || message instanceof AbstractEofMessage;
 
     private SimpleQueryFlow() {
     }
@@ -43,15 +50,21 @@ final class SimpleQueryFlow {
      * @return the messages received in response to this exchange, and will be
      * completed by {@link OkMessage} for each statement.
      */
-    static Flux<Flux<ServerMessage>> execute(Client client, List<? extends CharSequence> statements) {
+    static Flux<Flux<ServerMessage>> execute(Client client, List<String> statements, MySqlSession session) {
         return Flux.defer(() -> {
             int size = statements.size();
 
-            if (size <= 0) {
-                return Flux.empty();
+            switch (size) {
+                case 0:
+                    return Flux.empty();
+                case 1:
+                    return Flux.just(execute(client, statements.get(0)));
             }
 
+            // TODO: check multi-statement capability
+
             String sql = String.join(";", statements);
+
             return client.exchange(Mono.just(new SimpleQueryMessage(sql)))
                 .<ServerMessage>handle((message, sink) -> {
                     if (message instanceof ErrorMessage) {
@@ -60,7 +73,7 @@ final class SimpleQueryFlow {
                         sink.next(message);
                     }
                 })
-                .windowUntil(message -> message instanceof OkMessage)
+                .windowUntil(RESULT_END)
                 .take(size);
         });
     }
@@ -83,7 +96,8 @@ final class SimpleQueryFlow {
 
             sink.next(message);
 
-            if (message instanceof OkMessage) {
+            // Metadata EOF message will be not receive in here.
+            if (message instanceof OkMessage || message instanceof AbstractEofMessage) {
                 sink.complete();
             }
         });
