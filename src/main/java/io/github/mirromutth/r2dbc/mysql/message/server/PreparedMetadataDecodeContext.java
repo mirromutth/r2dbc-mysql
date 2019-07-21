@@ -97,6 +97,12 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
         return columns.get();
     }
 
+    @Override
+    protected Object loggingPoints() {
+        int paramSize = paramMetadata.length;
+        return String.format("[%d, %d]", paramSize, paramSize + colMetadata.length);
+    }
+
     private static DefinitionMetadataMessage[] createArray(int size) {
         if (size > 0) {
             return new DefinitionMetadataMessage[size];

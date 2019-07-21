@@ -89,6 +89,11 @@ final class ResultDecodeContext extends MetadataDecodeContext {
         return columns.get();
     }
 
+    @Override
+    protected Object loggingPoints() {
+        return metadataMessages.length;
+    }
+
     DataType getType(int index) {
         return metadataMessages[index].getType();
     }

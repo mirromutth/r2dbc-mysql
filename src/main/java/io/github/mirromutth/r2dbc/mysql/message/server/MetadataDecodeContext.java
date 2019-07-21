@@ -16,12 +16,16 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.util.annotation.Nullable;
 
 /**
  * Base class considers {@link DefinitionMetadataMessage} for {@link DecodeContext} implementations.
  */
 abstract class MetadataDecodeContext implements DecodeContext {
+
+    private static final Logger logger = LoggerFactory.getLogger(MetadataDecodeContext.class);
 
     private final boolean deprecateEof;
 
@@ -39,7 +43,13 @@ abstract class MetadataDecodeContext implements DecodeContext {
 
             if (deprecateEof) {
                 // If EOF has deprecated, has no EOF for complete signal, should check complete always.
-                return checkComplete(index);
+                SyntheticMetadataMessage bundle = checkComplete(index);
+
+                if (bundle != null) {
+                    logger.debug("Respond a metadata bundle by filled-up");
+                }
+
+                return bundle;
             } else {
                 // Should not check complete, EOF message will be complete signal.
                 return null;
@@ -50,7 +60,18 @@ abstract class MetadataDecodeContext implements DecodeContext {
             }
 
             // Current columns index is also last index of metadata after put, see `putMetadata`.
-            return checkComplete(currentIndex());
+            int currentIndex = currentIndex();
+            SyntheticMetadataMessage bundle = checkComplete(currentIndex);
+
+            if (bundle == null) {
+                if (logger.isErrorEnabled()) {
+                    logger.error("Unexpected EOF message when metadata unfilled, fill index: {}, checkpoint(s): {}", currentIndex, loggingPoints());
+                }
+            } else {
+                logger.debug("Respond a metadata bundle by EOF");
+            }
+
+            return bundle;
         } else {
             throw new IllegalStateException(String.format("Unknown message type %s when reading metadata", message.getClass().getSimpleName()));
         }
@@ -68,4 +89,9 @@ abstract class MetadataDecodeContext implements DecodeContext {
      * @return current index, for {@link #checkComplete(int)} on EOF message come
      */
     abstract protected int currentIndex();
+
+    /**
+     * @return serialized checkpoints used by logger
+     */
+    abstract protected Object loggingPoints();
 }
