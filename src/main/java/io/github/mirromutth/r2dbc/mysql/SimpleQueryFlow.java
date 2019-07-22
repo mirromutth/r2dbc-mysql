@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.AbstractEofMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
@@ -40,7 +40,7 @@ final class SimpleQueryFlow {
 
     // Metadata EOF message will be not receive in here.
     private static final Predicate<ServerMessage> RESULT_END =
-        message -> message instanceof OkMessage || message instanceof AbstractEofMessage;
+        message -> message instanceof OkMessage || message instanceof EofMessage;
 
     private SimpleQueryFlow() {
     }
@@ -104,7 +104,7 @@ final class SimpleQueryFlow {
             sink.next(message);
 
             // Metadata EOF message will be not receive in here.
-            if (message instanceof OkMessage || message instanceof AbstractEofMessage) {
+            if (message instanceof OkMessage || message instanceof EofMessage) {
                 sink.complete();
             }
         });
@@ -128,7 +128,7 @@ final class SimpleQueryFlow {
                     sink.next(response);
 
                     // Metadata EOF message will be not receive in here.
-                    if (response instanceof OkMessage || response instanceof AbstractEofMessage) {
+                    if (response instanceof OkMessage || response instanceof EofMessage) {
                         try {
                             nextSql(iterator, statements);
                         } catch (Exception e) {

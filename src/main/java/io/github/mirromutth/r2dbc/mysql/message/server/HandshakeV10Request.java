@@ -32,11 +32,13 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 /**
  * MySQL Handshake Message for protocol version 10
  */
-final class HandshakeV10Message extends AbstractHandshakeMessage {
+final class HandshakeV10Request implements HandshakeRequest {
 
     private static final int RESERVED_SIZE = 10;
 
     private static final int MIN_SALT_SECOND_PART_SIZE = 12;
+
+    private final HandshakeHeader header;
 
     private final byte[] salt;
 
@@ -52,12 +54,11 @@ final class HandshakeV10Message extends AbstractHandshakeMessage {
 
     private final String authType; // default is mysql_native_password
 
-    private HandshakeV10Message(
-        HandshakeHeader handshakeHeader, byte[] salt, int serverCapabilities,
+    private HandshakeV10Request(
+        HandshakeHeader header, byte[] salt, int serverCapabilities,
         byte collationLow8Bits, short serverStatuses, String authType
     ) {
-        super(handshakeHeader);
-
+        this.header = requireNonNull(header, "header must not be null");
         this.salt = requireNonNull(salt, "salt must not be null");
         this.serverCapabilities = serverCapabilities;
         this.collationLow8Bits = collationLow8Bits;
@@ -65,7 +66,73 @@ final class HandshakeV10Message extends AbstractHandshakeMessage {
         this.authType = requireNonNull(authType, "authType must not be null");
     }
 
-    static HandshakeV10Message decodeV10(ByteBuf buf, HandshakeHeader header) {
+    @Override
+    public HandshakeHeader getHeader() {
+        return header;
+    }
+
+    @Override
+    public byte[] getSalt() {
+        return salt;
+    }
+
+    @Override
+    public int getServerCapabilities() {
+        return serverCapabilities;
+    }
+
+    @Override
+    public String getAuthType() {
+        return authType;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof HandshakeV10Request)) {
+            return false;
+        }
+
+        HandshakeV10Request that = (HandshakeV10Request) o;
+
+        if (serverCapabilities != that.serverCapabilities) {
+            return false;
+        }
+        if (collationLow8Bits != that.collationLow8Bits) {
+            return false;
+        }
+        if (serverStatuses != that.serverStatuses) {
+            return false;
+        }
+        if (!header.equals(that.header)) {
+            return false;
+        }
+        if (!Arrays.equals(salt, that.salt)) {
+            return false;
+        }
+        return authType.equals(that.authType);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = header.hashCode();
+        result = 31 * result + Arrays.hashCode(salt);
+        result = 31 * result + serverCapabilities;
+        result = 31 * result + (int) collationLow8Bits;
+        result = 31 * result + (int) serverStatuses;
+        result = 31 * result + authType.hashCode();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("HandshakeV10Request{header=%s, salt=REDACTED, serverCapabilities=%x, collationLow8Bits=%s, serverStatuses=%s, authType=%s}",
+            header, serverCapabilities, collationLow8Bits, serverStatuses, authType);
+    }
+
+    static HandshakeV10Request decodeV10(ByteBuf buf, HandshakeHeader header) {
         Builder builder = new Builder().header(header);
         CompositeByteBuf salt = buf.alloc().compositeBuffer(2);
 
@@ -140,73 +207,6 @@ final class HandshakeV10Message extends AbstractHandshakeMessage {
         return builder;
     }
 
-    @Override
-    public byte[] getSalt() {
-        return salt;
-    }
-
-    @Override
-    public int getServerCapabilities() {
-        return serverCapabilities;
-    }
-
-    @Override
-    public String getAuthType() {
-        return authType;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof HandshakeV10Message)) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-
-        HandshakeV10Message that = (HandshakeV10Message) o;
-
-        if (serverCapabilities != that.serverCapabilities) {
-            return false;
-        }
-        if (collationLow8Bits != that.collationLow8Bits) {
-            return false;
-        }
-        if (serverStatuses != that.serverStatuses) {
-            return false;
-        }
-        if (!Arrays.equals(salt, that.salt)) {
-            return false;
-        }
-        return authType.equals(that.authType);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + Arrays.hashCode(salt);
-        result = 31 * result + serverCapabilities;
-        result = 31 * result + (int) collationLow8Bits;
-        result = 31 * result + (int) serverStatuses;
-        result = 31 * result + authType.hashCode();
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "HandshakeV10Message{" +
-            "salt=REDACTED" +
-            ", serverCapabilities=" + serverCapabilities +
-            ", collationLow8Bits=" + collationLow8Bits +
-            ", serverStatuses=" + serverStatuses +
-            ", authType=" + authType +
-            ", header=" + getHeader() +
-            '}';
-    }
-
     private static final class Builder {
 
         private HandshakeHeader header;
@@ -224,15 +224,8 @@ final class HandshakeV10Message extends AbstractHandshakeMessage {
         private Builder() {
         }
 
-        HandshakeV10Message build() {
-            return new HandshakeV10Message(
-                header,
-                salt,
-                serverCapabilities,
-                collationLow8Bits,
-                serverStatuses,
-                authType
-            );
+        HandshakeV10Request build() {
+            return new HandshakeV10Request(header, salt, serverCapabilities, collationLow8Bits, serverStatuses, authType);
         }
 
         void authType(String authType) {

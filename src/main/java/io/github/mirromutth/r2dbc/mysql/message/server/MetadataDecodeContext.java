@@ -54,7 +54,7 @@ abstract class MetadataDecodeContext implements DecodeContext {
                 // Should not check complete, EOF message will be complete signal.
                 return null;
             }
-        } else if (message instanceof AbstractEofMessage) {
+        } else if (message instanceof EofMessage) {
             if (deprecateEof) {
                 throw new IllegalStateException("Unexpected EOF message because server has deprecated EOF");
             }

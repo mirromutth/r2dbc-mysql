@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 /**
  * A EOF message for current context in protocol 3.20.
  */
-final class Eof320Message extends AbstractEofMessage {
+final class Eof320Message implements EofMessage {
 
     static final int SIZE = Byte.BYTES;
 

@@ -19,19 +19,28 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
+import java.util.Arrays;
+
 import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * TODO: write comment for this class or object
  */
-final class HandshakeV9Message extends AbstractHandshakeMessage {
+final class HandshakeV9Request implements HandshakeRequest {
+
+    private final HandshakeHeader header;
 
     private final byte[] salt;
 
-    private HandshakeV9Message(HandshakeHeader header, byte[] salt) {
-        super(header);
+    private HandshakeV9Request(HandshakeHeader header, byte[] salt) {
+        this.header = requireNonNull(header, "header must not be null");
         this.salt = requireNonNull(salt, "salt must not be null");
+    }
+
+    @Override
+    public HandshakeHeader getHeader() {
+        return header;
     }
 
     @Override
@@ -51,11 +60,40 @@ final class HandshakeV9Message extends AbstractHandshakeMessage {
         return salt;
     }
 
-    static HandshakeV9Message decodeV9(ByteBuf buf, HandshakeHeader header) {
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof HandshakeV9Request)) {
+            return false;
+        }
+
+        HandshakeV9Request that = (HandshakeV9Request) o;
+
+        if (!header.equals(that.header)) {
+            return false;
+        }
+        return Arrays.equals(salt, that.salt);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = header.hashCode();
+        result = 31 * result + Arrays.hashCode(salt);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("HandshakeV9Request{header=%s, salt=REDACTED}", header);
+    }
+
+    static HandshakeV9Request decodeV9(ByteBuf buf, HandshakeHeader header) {
         int bytes = buf.readableBytes();
 
         if (bytes <= 0) {
-            return new HandshakeV9Message(header, EMPTY_BYTES);
+            return new HandshakeV9Request(header, EMPTY_BYTES);
         }
 
         byte[] salt;
@@ -66,6 +104,6 @@ final class HandshakeV9Message extends AbstractHandshakeMessage {
             salt = ByteBufUtil.getBytes(buf);
         }
 
-        return new HandshakeV9Message(header, salt);
+        return new HandshakeV9Request(header, salt);
     }
 }

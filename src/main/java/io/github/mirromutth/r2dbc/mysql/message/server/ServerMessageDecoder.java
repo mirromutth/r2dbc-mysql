@@ -174,11 +174,11 @@ public final class ServerMessageDecoder {
                     } finally {
                         joined.release();
                     }
-                } else if (AbstractEofMessage.isValidSize(byteSize)) {
+                } else if (EofMessage.isValidSize(byteSize)) {
                     ByteBuf joined = JOINER.join(buffers);
 
                     try {
-                        return AbstractEofMessage.decode(joined);
+                        return EofMessage.decode(joined);
                     } finally {
                         joined.release();
                     }
@@ -219,8 +219,8 @@ public final class ServerMessageDecoder {
                     // column count is already upper than (1 << 24) - 1 = 16777215, it is impossible.
                     // So it must be OK message, not be column count.
                     return OkMessage.decode(buf, session);
-                } else if (AbstractEofMessage.isValidSize(byteSize)) {
-                    return AbstractEofMessage.decode(buf);
+                } else if (EofMessage.isValidSize(byteSize)) {
+                    return EofMessage.decode(buf);
                 }
         }
 
@@ -253,8 +253,8 @@ public final class ServerMessageDecoder {
 
                 if (OkMessage.isValidSize(byteSize)) {
                     return OkMessage.decode(buf, session);
-                } else if (AbstractEofMessage.isValidSize(byteSize)) {
-                    return AbstractEofMessage.decode(buf);
+                } else if (EofMessage.isValidSize(byteSize)) {
+                    return EofMessage.decode(buf);
                 }
         }
 
@@ -274,12 +274,12 @@ public final class ServerMessageDecoder {
                 return AuthMoreDataMessage.decode(buf);
             case Headers.HANDSHAKE_V9:
             case Headers.HANDSHAKE_V10: // Handshake V9 (not supported) or V10
-                return AbstractHandshakeMessage.decode(buf);
+                return HandshakeRequest.decode(buf);
             case Headers.ERROR: // Error
                 return ErrorMessage.decode(buf);
             case Headers.EOF: // Auth exchange message or EOF message
-                if (AbstractEofMessage.isValidSize(buf.readableBytes())) {
-                    return AbstractEofMessage.decode(buf);
+                if (EofMessage.isValidSize(buf.readableBytes())) {
+                    return EofMessage.decode(buf);
                 } else {
                     return AuthChangeMessage.decode(buf);
                 }
@@ -363,8 +363,8 @@ public final class ServerMessageDecoder {
     private static SyntheticMetadataMessage decodeInMetadata(ByteBuf buf, short header, MySqlSession session, MetadataDecodeContext context) {
         ServerMessage message;
 
-        if (Headers.EOF == header && AbstractEofMessage.isValidSize(buf.readableBytes())) {
-            message = AbstractEofMessage.decode(buf);
+        if (Headers.EOF == header && EofMessage.isValidSize(buf.readableBytes())) {
+            message = EofMessage.decode(buf);
         } else if (DefinitionMetadataMessage.isLooksLike(buf)) {
             message = DefinitionMetadataMessage.decode(buf, session.getCollation().getCharset());
         } else {

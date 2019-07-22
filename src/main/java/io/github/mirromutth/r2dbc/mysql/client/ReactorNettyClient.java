@@ -26,11 +26,11 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.HandshakeResponse;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
-import io.github.mirromutth.r2dbc.mysql.message.server.AbstractHandshakeMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.AuthChangeMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.AuthMoreDataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeHeader;
+import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeRequest;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
@@ -160,8 +160,8 @@ final class ReactorNettyClient implements Client {
             if (message instanceof ErrorMessage) {
                 ErrorMessage msg = (ErrorMessage) message;
                 sink.error(new R2dbcPermissionDeniedException(msg.getErrorMessage(), msg.getSqlState(), msg.getErrorCode()));
-            } else if (message instanceof AbstractHandshakeMessage) {
-                initSession((AbstractHandshakeMessage) message);
+            } else if (message instanceof HandshakeRequest) {
+                initSession((HandshakeRequest) message);
                 sink.complete();
             } else {
                 sink.error(new R2dbcPermissionDeniedException("unknown message type '" + message.getClass().getSimpleName() + "' in handshake phase"));
@@ -264,7 +264,7 @@ final class ReactorNettyClient implements Client {
         return connection.outbound().sendObject(requests).then();
     }
 
-    private void initSession(AbstractHandshakeMessage message) {
+    private void initSession(HandshakeRequest message) {
         HandshakeHeader header = message.getHeader();
 
         this.session.setConnectionId(header.getConnectionId());
