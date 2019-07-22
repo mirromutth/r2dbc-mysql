@@ -22,7 +22,7 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.SslRequestMessage;
+import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.github.mirromutth.r2dbc.mysql.message.server.AbstractEofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
@@ -158,7 +158,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             return WAIT_PREPARE;
         } else if (message instanceof PreparedExecuteMessage) {
             return FORMAT_BIN;
-        } else if (message instanceof SslRequestMessage) {
+        } else if (message instanceof SslRequest) {
             return () -> ctx.channel().pipeline().fireUserEventTriggered(SslState.ENABLED);
         }
 

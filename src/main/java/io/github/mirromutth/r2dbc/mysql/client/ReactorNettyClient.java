@@ -23,14 +23,14 @@ import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.HandshakeResponse41Message;
+import io.github.mirromutth.r2dbc.mysql.message.client.HandshakeResponse;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.SslRequestMessage;
+import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
 import io.github.mirromutth.r2dbc.mysql.message.server.AbstractHandshakeMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.AuthChangeMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.AuthMoreDataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeHeader;
-import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeV10Message;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
@@ -161,20 +161,15 @@ final class ReactorNettyClient implements Client {
                 ErrorMessage msg = (ErrorMessage) message;
                 sink.error(new R2dbcPermissionDeniedException(msg.getErrorMessage(), msg.getSqlState(), msg.getErrorCode()));
             } else if (message instanceof AbstractHandshakeMessage) {
-                if (message instanceof HandshakeV10Message) {
-                    initSession((HandshakeV10Message) message);
-                    sink.complete();
-                } else {
-                    int handshakeVersion = ((AbstractHandshakeMessage) message).getHandshakeHeader().getProtocolVersion();
-                    sink.error(new R2dbcPermissionDeniedException("unsupported handshake version " + handshakeVersion));
-                }
+                initSession((AbstractHandshakeMessage) message);
+                sink.complete();
             } else {
                 sink.error(new R2dbcPermissionDeniedException("unknown message type '" + message.getClass().getSimpleName() + "' in handshake phase"));
             }
         })
             .thenMany(Flux.defer(() -> {
                 if (this.isSsl) {
-                    return exchange(Mono.just(SslRequestMessage.create(session.getCapabilities(), session.getCollation().getId())))
+                    return exchange(Mono.just(createSslRequest()))
                         .<Void>handle((message, sink) -> {
                             if (message instanceof ErrorMessage) {
                                 ErrorMessage msg = (ErrorMessage) message;
@@ -194,6 +189,8 @@ final class ReactorNettyClient implements Client {
                 if (message instanceof ErrorMessage) {
                     ErrorMessage msg = (ErrorMessage) message;
                     sink.error(new R2dbcPermissionDeniedException(msg.getErrorMessage(), msg.getSqlState(), msg.getErrorCode()));
+                } else if (message instanceof AuthChangeMessage) {
+                    // TODO: authentication type changed
                 } else if (message instanceof AuthMoreDataMessage) {
                     if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != 3) {
                         if (this.isSsl) {
@@ -267,8 +264,8 @@ final class ReactorNettyClient implements Client {
         return connection.outbound().sendObject(requests).then();
     }
 
-    private void initSession(HandshakeV10Message message) {
-        HandshakeHeader header = message.getHandshakeHeader();
+    private void initSession(AbstractHandshakeMessage message) {
+        HandshakeHeader header = message.getHeader();
 
         this.session.setConnectionId(header.getConnectionId());
         this.session.setServerVersion(header.getServerVersion());
@@ -280,7 +277,11 @@ final class ReactorNettyClient implements Client {
         this.session.setCapabilities(clientCapabilities);
     }
 
-    private ExchangeableMessage createHandshakeResponse() {
+    private SslRequest createSslRequest() {
+        return SslRequest.from(session.getCapabilities(), session.getCollation().getId());
+    }
+
+    private HandshakeResponse createHandshakeResponse() {
         String username = session.getUsername();
         byte[] authorization = session.fastPhaseAuthorization();
         String authType = session.getAuthType();
@@ -289,7 +290,7 @@ final class ReactorNettyClient implements Client {
         requireNonNull(authorization, "authorization must not be null at first authentication");
         requireNonNull(authType, "authType must not be null at authentication phase");
 
-        return new HandshakeResponse41Message(
+        return HandshakeResponse.from(
             session.getCapabilities(),
             session.getCollation().getId(),
             username,
@@ -314,16 +315,12 @@ final class ReactorNettyClient implements Client {
             clientCapabilities &= ~(Capabilities.SSL | Capabilities.SSL_VERIFY_SERVER_CERT);
         }
 
-        if (session.getDatabase().isEmpty()) {
+        if (session.getDatabase().isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
             clientCapabilities &= ~Capabilities.CONNECT_WITH_DB;
-        } else {
-            clientCapabilities |= Capabilities.CONNECT_WITH_DB;
         }
 
-        if (clientAttrs.isEmpty()) {
+        if (clientAttrs.isEmpty() && (clientCapabilities & Capabilities.CONNECT_ATTRS) != 0) {
             clientCapabilities &= ~Capabilities.CONNECT_ATTRS;
-        } else {
-            clientCapabilities |= Capabilities.CONNECT_ATTRS;
         }
 
         return clientCapabilities;

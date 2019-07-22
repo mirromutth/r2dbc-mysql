@@ -28,7 +28,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 /**
  * Change authentication plugin type and salt message.
  */
-final class AuthChangeMessage implements ServerMessage {
+public final class AuthChangeMessage implements ServerMessage {
 
     private final String authType;
 
@@ -78,9 +78,6 @@ final class AuthChangeMessage implements ServerMessage {
 
     @Override
     public String toString() {
-        return "AuthChangeMessage{" +
-            "authType=" + authType +
-            ", salt=" + Arrays.toString(salt) +
-            '}';
+        return String.format("AuthChangeMessage{authType=%s, salt=%s}", authType, Arrays.toString(salt));
     }
 }

@@ -292,7 +292,16 @@ public final class CodecUtils {
         if (!value.isEmpty()) {
             buf.writeCharSequence(value, charset);
         }
+        buf.writeByte(TERMINAL);
+    }
 
+    public static void writeCString(ByteBuf buf, byte[] value) {
+        requireNonNull(buf, "buf must not be null");
+        requireNonNull(value, "value must not be null");
+
+        if (value.length > 0) {
+            buf.writeBytes(value);
+        }
         buf.writeByte(TERMINAL);
     }
 

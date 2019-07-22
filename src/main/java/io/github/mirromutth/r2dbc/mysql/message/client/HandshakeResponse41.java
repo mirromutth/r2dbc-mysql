@@ -22,30 +22,30 @@ import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
 
-import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A handshake response message sent by clients those supporting
  * {@link Capabilities#PROTOCOL_41} if the server announced it in
- * it's {@code HandshakeV10Message}, otherwise talking to an old
- * server should use the handshake 320 response message, but
- * protocol 320 should be deprecated on MySQL 5.x.
+ * it's {@code HandshakeV10Message}, otherwise sending to an old
+ * server should use the {@link HandshakeResponse320}.
  * <p>
  * Should make sure {@code clientCapabilities} is right before
  * construct this instance, i.e. {@link Capabilities#CONNECT_ATTRS},
  * {@link Capabilities#CONNECT_WITH_DB} or other capabilities.
  *
- * @see SslRequestMessage the head of {@link HandshakeResponse41Message}.
+ * @see SslRequest41 the head of {@link HandshakeResponse41}.
  */
-public final class HandshakeResponse41Message extends EnvelopeClientMessage implements ExchangeableMessage {
+final class HandshakeResponse41 extends EnvelopeClientMessage implements HandshakeResponse {
 
     private static final int ONE_BYTE_MAX_INT = 0xFF;
 
-    private final SslRequestMessage head;
+    private final SslRequest41 head;
 
     private final String username;
 
@@ -59,18 +59,18 @@ public final class HandshakeResponse41Message extends EnvelopeClientMessage impl
 
     private final boolean varIntSizedAuth;
 
-    public HandshakeResponse41Message(
-        int clientCapabilities, int collationId, String username, byte[] authentication,
+    HandshakeResponse41(
+        int capabilities, int collationId, String username, byte[] authentication,
         String authType, String database, Map<String, String> attributes
     ) {
-        this.head = new SslRequestMessage(clientCapabilities, collationId);
+        this.head = new SslRequest41(capabilities, collationId);
 
         this.username = requireNonNull(username, "username must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
         this.authType = requireNonNull(authType, "authType must not be null");
         this.attributes = requireNonNull(attributes, "attributes must not be null");
-        this.varIntSizedAuth = (clientCapabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0;
+        this.varIntSizedAuth = (capabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0;
 
         // authentication can not longer than 255 if server is not support use var int encode authentication
         if (!this.varIntSizedAuth && authentication.length > ONE_BYTE_MAX_INT) {
@@ -79,40 +79,15 @@ public final class HandshakeResponse41Message extends EnvelopeClientMessage impl
     }
 
     @Override
-    protected void writeTo(ByteBuf buf, MySqlSession session) {
-        head.writeTo(buf);
-
-        Charset charset = session.getCollation().getCharset();
-
-        CodecUtils.writeCString(buf, username, charset);
-
-        if (varIntSizedAuth) {
-            CodecUtils.writeVarIntSizedBytes(buf, authentication);
-        } else {
-            buf.writeByte(authentication.length).writeBytes(authentication);
-        }
-
-        if (!database.isEmpty()) {
-            CodecUtils.writeCString(buf, database, charset);
-        }
-
-        if (authType != null) {
-            CodecUtils.writeCString(buf, authType, charset);
-        }
-
-        writeAttrs(buf, charset);
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof HandshakeResponse41Message)) {
+        if (!(o instanceof HandshakeResponse41)) {
             return false;
         }
 
-        HandshakeResponse41Message that = (HandshakeResponse41Message) o;
+        HandshakeResponse41 that = (HandshakeResponse41) o;
 
         if (varIntSizedAuth != that.varIntSizedAuth) {
             return false;
@@ -149,21 +124,44 @@ public final class HandshakeResponse41Message extends EnvelopeClientMessage impl
 
     @Override
     public String toString() {
-        return "HandshakeResponse41Message{" +
-            "clientCapabilities=" + head.getClientCapabilities() +
-            ", collationId=" + head.getCollationId() +
-            ", username='" + username + '\'' +
-            ", authentication=" + Arrays.toString(authentication) +
-            ", authType='" + authType + '\'' +
-            ", database='" + database + '\'' +
-            ", attributes=" + attributes +
-            ", varIntSizedAuth=" + varIntSizedAuth +
-            '}';
+        return String.format("HandshakeResponse41{capabilities=%x, collationId=%d, username='%s', authentication=%s, authType='%s', database='%s', attributes=%s, varIntSizedAuth=%s}",
+            head.getCapabilities(), head.getCollationId(), username, Arrays.toString(authentication), authType, database, attributes, varIntSizedAuth);
+    }
+
+    @Override
+    protected void writeTo(ByteBuf buf, MySqlSession session) {
+        head.writeTo(buf);
+
+        Charset charset = session.getCollation().getCharset();
+
+        CodecUtils.writeCString(buf, username, charset);
+
+        if (varIntSizedAuth) {
+            // (capabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0
+            CodecUtils.writeVarIntSizedBytes(buf, authentication);
+        } else {
+            buf.writeByte(authentication.length).writeBytes(authentication);
+        }
+
+        int capabilities = head.getCapabilities();
+
+        if ((capabilities & Capabilities.CONNECT_WITH_DB) != 0) {
+            CodecUtils.writeCString(buf, database, charset);
+        }
+
+        if ((capabilities & Capabilities.PLUGIN_AUTH) != 0) {
+            // This must be an UTF-8 string.
+            CodecUtils.writeCString(buf, authType, StandardCharsets.UTF_8);
+        }
+
+        if ((capabilities & Capabilities.CONNECT_ATTRS) != 0) {
+            writeAttrs(buf, charset);
+        }
     }
 
     private void writeAttrs(ByteBuf buf, Charset charset) {
         if (attributes.isEmpty()) {
-            // no need write attributes
+            CodecUtils.writeVarIntSizedBytes(buf, EMPTY_BYTES);
             return;
         }
 

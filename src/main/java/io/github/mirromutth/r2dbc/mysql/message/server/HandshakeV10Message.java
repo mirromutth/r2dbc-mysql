@@ -32,7 +32,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 /**
  * MySQL Handshake Message for protocol version 10
  */
-public final class HandshakeV10Message extends AbstractHandshakeMessage {
+final class HandshakeV10Message extends AbstractHandshakeMessage {
 
     private static final int RESERVED_SIZE = 10;
 
@@ -65,8 +65,8 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
         this.authType = requireNonNull(authType, "authType must not be null");
     }
 
-    static HandshakeV10Message decode(ByteBuf buf, HandshakeHeader handshakeHeader) {
-        Builder builder = new Builder().handshakeHeader(handshakeHeader);
+    static HandshakeV10Message decodeV10(ByteBuf buf, HandshakeHeader header) {
+        Builder builder = new Builder().header(header);
         CompositeByteBuf salt = buf.alloc().compositeBuffer(2);
 
         try {
@@ -140,18 +140,17 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
         return builder;
     }
 
+    @Override
     public byte[] getSalt() {
         return salt;
     }
 
+    @Override
     public int getServerCapabilities() {
         return serverCapabilities;
     }
 
-    public short getServerStatuses() {
-        return serverStatuses;
-    }
-
+    @Override
     public String getAuthType() {
         return authType;
     }
@@ -204,13 +203,13 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
             ", collationLow8Bits=" + collationLow8Bits +
             ", serverStatuses=" + serverStatuses +
             ", authType=" + authType +
-            ", handshakeHeader=" + getHandshakeHeader() +
+            ", header=" + getHeader() +
             '}';
     }
 
     private static final class Builder {
 
-        private HandshakeHeader handshakeHeader;
+        private HandshakeHeader header;
 
         private String authType; // null if PLUGIN_AUTH flag not exists in serverCapabilities
 
@@ -227,7 +226,7 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
 
         HandshakeV10Message build() {
             return new HandshakeV10Message(
-                handshakeHeader,
+                header,
                 salt,
                 serverCapabilities,
                 collationLow8Bits,
@@ -245,8 +244,8 @@ public final class HandshakeV10Message extends AbstractHandshakeMessage {
             return this;
         }
 
-        Builder handshakeHeader(HandshakeHeader handshakeHeader) {
-            this.handshakeHeader = handshakeHeader;
+        Builder header(HandshakeHeader header) {
+            this.header = header;
             return this;
         }
 

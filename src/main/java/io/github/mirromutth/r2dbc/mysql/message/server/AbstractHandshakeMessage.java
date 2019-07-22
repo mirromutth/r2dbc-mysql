@@ -26,15 +26,21 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  */
 public abstract class AbstractHandshakeMessage implements ServerMessage {
 
-    private final HandshakeHeader handshakeHeader;
+    private final HandshakeHeader header;
 
-    AbstractHandshakeMessage(HandshakeHeader handshakeHeader) {
-        this.handshakeHeader = requireNonNull(handshakeHeader, "handshakeHeader must not be null");
+    AbstractHandshakeMessage(HandshakeHeader header) {
+        this.header = requireNonNull(header, "header must not be null");
     }
 
-    public final HandshakeHeader getHandshakeHeader() {
-        return handshakeHeader;
+    public final HandshakeHeader getHeader() {
+        return header;
     }
+
+    abstract public int getServerCapabilities();
+
+    abstract public String getAuthType();
+
+    abstract public byte[] getSalt();
 
     @Override
     public boolean equals(Object o) {
@@ -47,29 +53,32 @@ public abstract class AbstractHandshakeMessage implements ServerMessage {
 
         AbstractHandshakeMessage that = (AbstractHandshakeMessage) o;
 
-        return handshakeHeader.equals(that.handshakeHeader);
+        return header.equals(that.header);
     }
 
     @Override
     public int hashCode() {
-        return handshakeHeader.hashCode();
+        return header.hashCode();
     }
 
     @Override
     public String toString() {
         return "AbstractHandshakeMessage{" +
-            "handshakeHeader=" + handshakeHeader +
+            "header=" + header +
             '}';
     }
 
     static AbstractHandshakeMessage decode(ByteBuf buf) {
-        HandshakeHeader handshakeHeader = HandshakeHeader.decode(buf);
-        short version = handshakeHeader.getProtocolVersion();
+        HandshakeHeader header = HandshakeHeader.decode(buf);
+        int version = header.getProtocolVersion();
 
-        if (version == 10) {
-            return HandshakeV10Message.decode(buf, handshakeHeader);
+        switch (version) {
+            case 10:
+                return HandshakeV10Message.decodeV10(buf, header);
+            case 9:
+                return HandshakeV9Message.decodeV9(buf, header);
+            default:
+                throw new R2dbcPermissionDeniedException(String.format("Handshake protocol version %d not support.", version));
         }
-
-        throw new R2dbcPermissionDeniedException("Handshake protocol version " + version + " not support.");
     }
 }

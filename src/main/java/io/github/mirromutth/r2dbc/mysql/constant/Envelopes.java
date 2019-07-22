@@ -29,7 +29,10 @@ public final class Envelopes {
 
     public static final int PART_HEADER_SIZE = SIZE_FIELD_SIZE + 1;
 
-    public static final int MAX_ENVELOPE_SIZE = ~(-(1 << (SIZE_FIELD_SIZE << 3)));
+    /**
+     * The max bytes size of each envelope, value is 16777215. (i.e. max value of int24, (2 ** 24) - 1)
+     */
+    public static final int MAX_ENVELOPE_SIZE = (1 << (SIZE_FIELD_SIZE << 3)) - 1;
 
     private Envelopes() {
     }

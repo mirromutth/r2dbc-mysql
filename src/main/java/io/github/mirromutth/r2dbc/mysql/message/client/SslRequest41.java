@@ -23,29 +23,61 @@ import io.netty.buffer.ByteBuf;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
- * The ssl request message. It is also first part of {@link HandshakeResponse41Message}.
- * <p>
- * Note: protocol 41 ALWAYS be used.
+ * The ssl request message on protocol 4.1. It is also first part of {@link HandshakeResponse41}.
  */
-public final class SslRequestMessage extends FixedSizeClientMessage implements ExchangeableMessage {
+final class SslRequest41 extends FixedSizeClientMessage implements SslRequest {
 
     private static final int FILTER_SIZE = 23;
 
     private static final int BUF_SIZE = Integer.BYTES + Integer.BYTES + Byte.BYTES + FILTER_SIZE;
 
-    private final int clientCapabilities;
+    private final int capabilities;
 
     private final int collationId;
 
     /**
-     * @param clientCapabilities client capabilities, see {@link Capabilities}
+     * @param capabilities client capabilities, see {@link Capabilities}
      * @param collationId  0 if server not support protocol 41 or has been not give collation
      */
-    SslRequestMessage(int clientCapabilities, int collationId) {
+    SslRequest41(int capabilities, int collationId) {
         require(collationId > 0, "collationId must be a positive integer");
 
-        this.clientCapabilities = clientCapabilities;
+        this.capabilities = capabilities;
         this.collationId = collationId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof SslRequest41)) {
+            return false;
+        }
+
+        SslRequest41 that = (SslRequest41) o;
+
+        if (capabilities != that.capabilities) {
+            return false;
+        }
+        return collationId == that.collationId;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = capabilities;
+        result = 31 * result + collationId;
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("SslRequest41{capabilities=%x, collationId=%d}", capabilities, collationId);
+    }
+
+    @Override
+    public int getCapabilities() {
+        return capabilities;
     }
 
     @Override
@@ -55,55 +87,13 @@ public final class SslRequestMessage extends FixedSizeClientMessage implements E
 
     @Override
     protected void writeTo(ByteBuf buf) {
-        buf.writeIntLE(clientCapabilities)
-            .writeIntLE(Envelopes.MAX_ENVELOPE_SIZE + 1) // 16777216, include sequence id.
-            .writeByte(collationId) // only low 8-bits
+        buf.writeIntLE(capabilities)
+            .writeIntLE(Envelopes.MAX_ENVELOPE_SIZE)
+            .writeByte(collationId & 0xFF) // only low 8-bits
             .writeZero(FILTER_SIZE);
-    }
-
-    int getClientCapabilities() {
-        return clientCapabilities;
     }
 
     int getCollationId() {
         return collationId;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof SslRequestMessage)) {
-            return false;
-        }
-
-        SslRequestMessage that = (SslRequestMessage) o;
-
-        if (clientCapabilities != that.clientCapabilities) {
-            return false;
-        }
-        return collationId == that.collationId;
-
-    }
-
-    @Override
-    public int hashCode() {
-        int result = clientCapabilities;
-        result = 31 * result + collationId;
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "SslRequestMessage{" +
-            "clientCapabilities=" + clientCapabilities +
-            ", collationId=" + collationId +
-            '}';
-    }
-
-    public static SslRequestMessage create(int clientCapabilities, int collationId) {
-        require((clientCapabilities & Capabilities.SSL) != 0, "client capabilities must enable SSL");
-        return new SslRequestMessage(clientCapabilities, collationId);
     }
 }
