@@ -18,10 +18,12 @@ package io.github.mirromutth.r2dbc.mysql.internal;
 
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
 import reactor.util.annotation.Nullable;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
@@ -134,12 +136,11 @@ public final class MySqlSession {
         this.salt = salt;
     }
 
-    @Nullable
     public String getAuthType() {
         MySqlAuthProvider machine = this.authProvider;
 
         if (machine == null) {
-            return null;
+            return AuthTypes.NO_AUTH_PROVIDER;
         }
 
         return machine.getType();
@@ -151,16 +152,12 @@ public final class MySqlSession {
 
     /**
      * Generate an authorization for fast authentication phase.
-     *
-     * @return {@code null} means connection phase has completed and password is clear,
-     * can not generate any authorization.
      */
-    @Nullable
     public byte[] fastPhaseAuthorization() {
         MySqlAuthProvider authProvider = this.authProvider;
 
         if (authProvider == null) {
-            return null;
+            return EMPTY_BYTES;
         }
 
         return authProvider.fastAuthPhase(password, salt, collation);

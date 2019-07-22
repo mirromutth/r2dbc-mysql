@@ -23,7 +23,7 @@ import io.netty.buffer.ByteBuf;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
- * TODO: write comment for this class or object
+ * The ssl request message on protocol 3.20. It is also first part of {@link HandshakeResponse320}.
  */
 final class SslRequest320 extends FixedSizeClientMessage implements SslRequest {
 

@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
@@ -25,7 +26,7 @@ import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * TODO: write comment for this class or object
+ * MySQL Handshake Message for protocol version 9.
  */
 final class HandshakeV9Request implements HandshakeRequest {
 
@@ -51,8 +52,7 @@ final class HandshakeV9Request implements HandshakeRequest {
 
     @Override
     public String getAuthType() {
-        // TODO: old_password
-        return "";
+        return AuthTypes.MYSQL_OLD_PASSWORD;
     }
 
     @Override

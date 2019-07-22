@@ -287,8 +287,6 @@ final class ReactorNettyClient implements Client {
         String authType = session.getAuthType();
 
         requireNonNull(username, "username must not be null at authentication phase");
-        requireNonNull(authorization, "authorization must not be null at first authentication");
-        requireNonNull(authType, "authType must not be null at authentication phase");
 
         return HandshakeResponse.from(
             session.getCapabilities(),

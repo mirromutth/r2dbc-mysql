@@ -19,14 +19,13 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "sha256_password".
  */
 final class Sha256AuthProvider implements MySqlAuthProvider {
-
-    static final String TYPE = "sha256_password";
 
     static final Sha256AuthProvider INSTANCE = new Sha256AuthProvider();
 
@@ -52,6 +51,6 @@ final class Sha256AuthProvider implements MySqlAuthProvider {
 
     @Override
     public String getType() {
-        return TYPE;
+        return SHA256_PASSWORD;
     }
 }

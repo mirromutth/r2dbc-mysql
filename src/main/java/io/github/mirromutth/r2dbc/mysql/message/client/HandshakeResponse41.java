@@ -57,12 +57,7 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     private final Map<String, String> attributes;
 
-    private final boolean varIntSizedAuth;
-
-    HandshakeResponse41(
-        int capabilities, int collationId, String username, byte[] authentication,
-        String authType, String database, Map<String, String> attributes
-    ) {
+    HandshakeResponse41(int capabilities, int collationId, String username, byte[] authentication, String authType, String database, Map<String, String> attributes) {
         this.head = new SslRequest41(capabilities, collationId);
 
         this.username = requireNonNull(username, "username must not be null");
@@ -70,12 +65,6 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
         this.database = requireNonNull(database, "database must not be null");
         this.authType = requireNonNull(authType, "authType must not be null");
         this.attributes = requireNonNull(attributes, "attributes must not be null");
-        this.varIntSizedAuth = (capabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0;
-
-        // authentication can not longer than 255 if server is not support use var int encode authentication
-        if (!this.varIntSizedAuth && authentication.length > ONE_BYTE_MAX_INT) {
-            throw new IllegalArgumentException("authentication too long, server not support size " + authentication.length);
-        }
     }
 
     @Override
@@ -89,9 +78,6 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
         HandshakeResponse41 that = (HandshakeResponse41) o;
 
-        if (varIntSizedAuth != that.varIntSizedAuth) {
-            return false;
-        }
         if (!head.equals(that.head)) {
             return false;
         }
@@ -118,32 +104,32 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
         result = 31 * result + authType.hashCode();
         result = 31 * result + database.hashCode();
         result = 31 * result + attributes.hashCode();
-        result = 31 * result + (varIntSizedAuth ? 1 : 0);
         return result;
     }
 
     @Override
     public String toString() {
-        return String.format("HandshakeResponse41{capabilities=%x, collationId=%d, username='%s', authentication=%s, authType='%s', database='%s', attributes=%s, varIntSizedAuth=%s}",
-            head.getCapabilities(), head.getCollationId(), username, Arrays.toString(authentication), authType, database, attributes, varIntSizedAuth);
+        return String.format("HandshakeResponse41{capabilities=%x, collationId=%d, username='%s', authentication=%s, authType='%s', database='%s', attributes=%s}",
+            head.getCapabilities(), head.getCollationId(), username, Arrays.toString(authentication), authType, database, attributes);
     }
 
     @Override
     protected void writeTo(ByteBuf buf, MySqlSession session) {
         head.writeTo(buf);
 
+        int capabilities = head.getCapabilities();
         Charset charset = session.getCollation().getCharset();
 
         CodecUtils.writeCString(buf, username, charset);
 
-        if (varIntSizedAuth) {
-            // (capabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0
+        if ((capabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0) {
             CodecUtils.writeVarIntSizedBytes(buf, authentication);
-        } else {
+        } else if (authentication.length <= ONE_BYTE_MAX_INT) {
             buf.writeByte(authentication.length).writeBytes(authentication);
+        } else {
+            // Auth change message will be sent by server.
+            buf.writeByte(0);
         }
-
-        int capabilities = head.getCapabilities();
 
         if ((capabilities & Capabilities.CONNECT_WITH_DB) != 0) {
             CodecUtils.writeCString(buf, database, charset);

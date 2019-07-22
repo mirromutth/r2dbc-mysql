@@ -20,7 +20,7 @@ import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 
 /**
- * TODO: write comment for this class or object
+ * A MySQL Handshake Request message for multi-versions.
  */
 public interface HandshakeRequest extends ServerMessage {
 

@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.authentication;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import reactor.util.annotation.Nullable;
 
@@ -24,9 +25,6 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 
 /**
  * MySQL authorization provider for connection phase.
- * <p>
- * Old Password Authentication ("mysql_old_password") will NEVER support, the hashing algorithm
- * has broken that is used for this authentication type (as shown in CVE-2000-0981).
  * <p>
  * More information for MySQL authentication type:
  * <p>
@@ -36,20 +34,20 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  */
 public interface MySqlAuthProvider {
 
-    static String defaultAuthType() {
-        return MySqlNativeAuthProvider.TYPE;
-    }
-
     static MySqlAuthProvider build(String type) {
         requireNonNull(type, "type must not be null");
 
         switch (type) {
-            case CachingSha2AuthProvider.TYPE:
+            case AuthTypes.CACHING_SHA2_PASSWORD:
                 return CachingSha2AuthProvider.INSTANCE;
-            case MySqlNativeAuthProvider.TYPE:
+            case AuthTypes.MYSQL_NATIVE_PASSWORD:
                 return MySqlNativeAuthProvider.INSTANCE;
-            case Sha256AuthProvider.TYPE:
+            case AuthTypes.SHA256_PASSWORD:
                 return Sha256AuthProvider.INSTANCE;
+            case AuthTypes.MYSQL_OLD_PASSWORD:
+                return OldAuthProvider.INSTANCE;
+            case AuthTypes.NO_AUTH_PROVIDER:
+                return NoAuthProvider.INSTANCE;
         }
 
         throw new R2dbcPermissionDeniedException("Authentication type '" + type + "' not supported");

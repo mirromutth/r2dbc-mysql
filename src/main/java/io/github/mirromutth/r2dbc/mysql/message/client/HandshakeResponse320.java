@@ -27,7 +27,15 @@ import java.util.Arrays;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * TODO: write comment for this class or object
+ * A handshake response message sent by clients those do not supporting
+ * {@link Capabilities#PROTOCOL_41} if the server announced it in
+ * it's {@code HandshakeV10Message}, otherwise sending to an old
+ * server should use the {@link HandshakeResponse41}.
+ * <p>
+ * Should make sure {@code clientCapabilities} is right before
+ * construct this instance, i.e. {@link Capabilities#CONNECT_WITH_DB}.
+ *
+ * @see SslRequest320 the head of {@link HandshakeResponse320}.
  */
 final class HandshakeResponse320 extends EnvelopeClientMessage implements HandshakeResponse {
 

@@ -21,7 +21,7 @@ import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
- * TODO: write comment for this class or object
+ * A ssl request for multi-versions.
  */
 public interface SslRequest extends ExchangeableMessage {
 

@@ -19,20 +19,23 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.NO_AUTH_PROVIDER;
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
- * An implementation of {@link MySqlAuthProvider} for type "mysql_native_password".
+ * A special authentication provider when server capabilities does not set {@code Capabilities.PLUGIN_AUTH}.
+ * And {@code AuthChangeMessage} will be send by server after handshake response.
  */
-final class MySqlNativeAuthProvider implements MySqlAuthProvider {
+final class NoAuthProvider implements MySqlAuthProvider {
 
-    static final MySqlNativeAuthProvider INSTANCE = new MySqlNativeAuthProvider();
+    static final NoAuthProvider INSTANCE = new NoAuthProvider();
 
-    private static final String ALGORITHM = "SHA-1";
+    private NoAuthProvider() {
+    }
 
-    private static final boolean IS_LEFT_SALT = true;
-
-    private MySqlNativeAuthProvider() {
+    @Override
+    public String getType() {
+        return NO_AUTH_PROVIDER;
     }
 
     @Override
@@ -40,24 +43,14 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
         return false;
     }
 
-    /**
-     * SHA1(password) all bytes xor SHA1( "random data from MySQL server" + SHA1(SHA1(password)) )
-     * <p>
-     * {@inheritDoc}
-     */
     @Override
     public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
-        return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
+        // Has no authentication provider in here.
+        return EMPTY_BYTES;
     }
 
     @Override
     public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
-        // "mysql_native_password" does not support full authentication.
         return null;
-    }
-
-    @Override
-    public String getType() {
-        return MYSQL_NATIVE_PASSWORD;
     }
 }

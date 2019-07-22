@@ -16,8 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
-import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -30,7 +30,7 @@ import java.util.Arrays;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * MySQL Handshake Message for protocol version 10
+ * MySQL Handshake Message for protocol version 10.
  */
 final class HandshakeV10Request implements HandshakeRequest {
 
@@ -169,26 +169,30 @@ final class HandshakeV10Request implements HandshakeRequest {
     private static Builder afterCapabilities(Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf salt) {
         // Special charset on handshake process, just use ascii.
         Charset charset = StandardCharsets.US_ASCII;
-        short saltSize = 0;
+        short saltSize;
         boolean isPluginAuth = (serverCapabilities & Capabilities.PLUGIN_AUTH) != 0;
 
         if (isPluginAuth) {
             saltSize = buf.readUnsignedByte();
         } else {
+            saltSize = 0;
             buf.skipBytes(1); // if PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
         }
 
         // Reserved field, all bytes are 0x00.
         buf.skipBytes(RESERVED_SIZE);
 
-        int saltSecondPartSize = Math.max(MIN_SALT_SECOND_PART_SIZE, saltSize - salt.readableBytes() - 1);
-        ByteBuf saltSecondPart = buf.readSlice(saltSecondPartSize);
+        if ((serverCapabilities & Capabilities.SECURE_CONNECTION) != 0) {
+            int saltSecondPartSize = Math.max(MIN_SALT_SECOND_PART_SIZE, saltSize - salt.readableBytes() - 1);
+            ByteBuf saltSecondPart = buf.readSlice(saltSecondPartSize);
+            // Always 0x00, and it is not the part of salt, ignore.
+            buf.skipBytes(1);
 
-        // Always 0x00, and it is not salt part, ignore.
-        buf.skipBytes(1);
+            // No need release salt second part, it will release with `salt`.
+            salt.addComponent(true, saltSecondPart.retain());
+        }
 
-        // No need release salt second part, it will release with `salt`
-        builder.salt(ByteBufUtil.getBytes(salt.addComponent(true, saltSecondPart.retain())));
+        builder.salt(ByteBufUtil.getBytes(salt));
 
         if (isPluginAuth) {
             if (CodecUtils.hasNextCString(buf)) {
@@ -201,7 +205,7 @@ final class HandshakeV10Request implements HandshakeRequest {
                 builder.authType(buf.toString(charset));
             }
         } else {
-            builder.authType(MySqlAuthProvider.defaultAuthType());
+            builder.authType(AuthTypes.NO_AUTH_PROVIDER);
         }
 
         return builder;
