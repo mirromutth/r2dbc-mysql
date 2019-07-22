@@ -47,11 +47,6 @@ public final class AuthChangeMessage implements ServerMessage {
         return salt;
     }
 
-    static AuthChangeMessage decode(ByteBuf buf) {
-        String authType = CodecUtils.readCString(buf, StandardCharsets.US_ASCII);
-        return new AuthChangeMessage(authType, ByteBufUtil.getBytes(buf));
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -63,7 +58,7 @@ public final class AuthChangeMessage implements ServerMessage {
 
         AuthChangeMessage that = (AuthChangeMessage) o;
 
-        if (authType != that.authType) {
+        if (!authType.equals(that.authType)) {
             return false;
         }
         return Arrays.equals(salt, that.salt);
@@ -79,5 +74,17 @@ public final class AuthChangeMessage implements ServerMessage {
     @Override
     public String toString() {
         return String.format("AuthChangeMessage{authType=%s, salt=%s}", authType, Arrays.toString(salt));
+    }
+
+    static AuthChangeMessage decode(ByteBuf buf) {
+        String authType = CodecUtils.readCString(buf, StandardCharsets.US_ASCII);
+        int bytes = buf.readableBytes();
+
+        if (bytes > 0 && buf.getByte(buf.writerIndex() - 1) == 0) {
+            // Remove last 0.
+            return new AuthChangeMessage(authType, ByteBufUtil.getBytes(buf, buf.readerIndex(), bytes - 1));
+        } else {
+            return new AuthChangeMessage(authType, ByteBufUtil.getBytes(buf));
+        }
     }
 }
