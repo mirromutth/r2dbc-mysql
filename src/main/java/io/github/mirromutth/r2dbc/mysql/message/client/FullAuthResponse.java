@@ -24,7 +24,7 @@ import java.util.Arrays;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * TODO: write comment for this class or object
+ * Full authentication response, i.e. authentication change response.
  */
 public final class FullAuthResponse extends EnvelopeClientMessage implements ExchangeableMessage {
 
