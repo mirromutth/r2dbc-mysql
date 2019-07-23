@@ -33,7 +33,6 @@ public interface SslRequest extends ExchangeableMessage {
         if ((capabilities & Capabilities.PROTOCOL_41) == 0) {
             return new SslRequest320(capabilities);
         } else {
-
             return new SslRequest41(capabilities, collationId);
         }
     }
