@@ -19,11 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import java.nio.CharBuffer;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
-import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in fast authentication phase.

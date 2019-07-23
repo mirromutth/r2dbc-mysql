@@ -19,7 +19,6 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;

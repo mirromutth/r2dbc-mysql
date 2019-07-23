@@ -22,7 +22,6 @@ import reactor.util.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
-import java.util.Spliterators;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.MYSQL_OLD_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;

@@ -18,12 +18,8 @@ package io.github.mirromutth.r2dbc.mysql.internal;
 
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
-import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
-import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
