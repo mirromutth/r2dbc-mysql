@@ -113,23 +113,8 @@ public final class OkMessage implements ServerMessage, WarningMessage {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder()
-            .append("OkMessage{affectedRows=")
-            .append(affectedRows)
-            .append(", lastInsertId=")
-            .append(lastInsertId)
-            .append(", serverStatuses=")
-            .append(serverStatuses);
-
-        if (warnings != 0) {
-            builder.append(", warnings=").append(warnings);
-        }
-
-        return builder.append(", information='")
-            .append(information)
-            .append('\'')
-            .append('}')
-            .toString();
+        return String.format("OkMessage{affectedRows=%d, lastInsertId=%d, serverStatuses=%x, warnings=%d, information='%s'}",
+            affectedRows, lastInsertId, serverStatuses, warnings, information);
     }
 
     static boolean isValidSize(int bytes) {

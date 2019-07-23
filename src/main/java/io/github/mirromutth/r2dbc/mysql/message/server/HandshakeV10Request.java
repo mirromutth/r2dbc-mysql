@@ -128,7 +128,7 @@ final class HandshakeV10Request implements HandshakeRequest {
 
     @Override
     public String toString() {
-        return String.format("HandshakeV10Request{header=%s, salt=REDACTED, serverCapabilities=%x, collationLow8Bits=%s, serverStatuses=%s, authType=%s}",
+        return String.format("HandshakeV10Request{header=%s, salt=REDACTED, serverCapabilities=%x, collationLow8Bits=%d, serverStatuses=%x, authType=%s}",
             header, serverCapabilities, collationLow8Bits, serverStatuses, authType);
     }
 

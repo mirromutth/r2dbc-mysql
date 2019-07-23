@@ -119,11 +119,6 @@ public final class PreparedOkMessage implements ServerMessage, WarningMessage {
 
     @Override
     public String toString() {
-        return "PreparedOkMessage{" +
-            "statementId=" + statementId +
-            ", totalColumns=" + totalColumns +
-            ", totalParameters=" + totalParameters +
-            ", warnings=" + warnings +
-            '}';
+        return String.format("PreparedOkMessage{statementId=%d, totalColumns=%d, totalParameters=%d, warnings=%d}", statementId, totalColumns, totalParameters, warnings);
     }
 }

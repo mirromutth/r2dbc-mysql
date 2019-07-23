@@ -72,10 +72,10 @@ public final class SyntheticMetadataMessage implements ServerMessage {
     @Override
     public String toString() {
         if (messages.length <= 3) {
-            return String.format("SyntheticMetadataMessage{completed=%s, messages=%s}", completed, Arrays.toString(messages));
+            return String.format("SyntheticMetadataMessage{completed=%b, messages=%s}", completed, Arrays.toString(messages));
         }
 
         // MySQL support 4096 columns for pre-table, no need print large bundle of messages in here.
-        return String.format("SyntheticMetadataMessage{completed=%s, messages=[%s, %s, ...more %d messages]}", completed, messages[0], messages[1], messages.length - 2);
+        return String.format("SyntheticMetadataMessage{completed=%b, messages=[%s, %s, ...more %d messages]}", completed, messages[0], messages[1], messages.length - 2);
     }
 }

@@ -66,9 +66,9 @@ final class Eof41Message implements EofMessage, WarningMessage {
     @Override
     public String toString() {
         if (warnings != 0) {
-            return String.format("Eof41Message{warnings=%d, serverStatuses=%s}", warnings, serverStatuses);
+            return String.format("Eof41Message{warnings=%d, serverStatuses=%x}", warnings, serverStatuses);
         } else {
-            return String.format("Eof41Message{serverStatuses=%s}", serverStatuses);
+            return String.format("Eof41Message{serverStatuses=%x}", serverStatuses);
         }
     }
 

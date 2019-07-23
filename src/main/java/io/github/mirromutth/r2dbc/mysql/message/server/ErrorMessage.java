@@ -105,10 +105,6 @@ public final class ErrorMessage implements ServerMessage {
 
     @Override
     public String toString() {
-        return "ErrorMessage{" +
-            "errorCode=" + errorCode +
-            ", sqlState=" + (sqlState == null ? "null" : '\'' + sqlState + '\'') +
-            ", errorMessage='" + errorMessage + '\'' +
-            '}';
+        return String.format("ErrorMessage{errorCode=%d, sqlState='%s', errorMessage='%s'}", errorCode, sqlState, errorMessage);
     }
 }

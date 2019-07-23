@@ -67,8 +67,6 @@ public final class AuthMoreDataMessage implements ServerMessage {
 
     @Override
     public String toString() {
-        return "AuthMoreDataMessage{" +
-            "authMethodData=" + Arrays.toString(authMethodData) +
-            '}';
+        return String.format("AuthMoreDataMessage{authMethodData=%s}", Arrays.toString(authMethodData));
     }
 }

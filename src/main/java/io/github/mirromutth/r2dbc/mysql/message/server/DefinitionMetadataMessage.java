@@ -146,7 +146,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         result = 31 * result + originName.hashCode();
         result = 31 * result + collationId;
         result = 31 * result + size;
-        result = 31 * result + nativeType;
+        result = 31 * result + (int) nativeType;
         result = 31 * result + (int) definitions;
         result = 31 * result + (int) decimals;
         return result;
@@ -154,18 +154,8 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     @Override
     public String toString() {
-        return "DefinitionMetadataMessage{" +
-                "database='" + database + '\'' +
-                ", tableName='" + tableName + '\'' +
-                ", originTableName='" + originTableName + '\'' +
-                ", name='" + name + '\'' +
-                ", originName='" + originName + '\'' +
-                ", collationId=" + collationId +
-                ", size=" + size +
-                ", nativeType=" + nativeType +
-                ", definitions=" + definitions +
-                ", decimals=" + decimals +
-                '}';
+        return String.format("DefinitionMetadataMessage{database='%s', tableName='%s' (origin:'%s'), name='%s' (origin:'%s'), collationId=%d, size=%d, nativeType=%d, definitions=%x, decimals=%d}",
+            database, tableName, originTableName, name, originName, collationId, size, nativeType, definitions, decimals);
     }
 
     static boolean isLooksLike(ByteBuf buf) {

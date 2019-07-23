@@ -75,7 +75,7 @@ public final class HandshakeHeader {
 
     @Override
     public String toString() {
-        return String.format("HandshakeHeader{protocolVersion=%s, serverVersion=%s, connectionId=%d}", protocolVersion, serverVersion, connectionId);
+        return String.format("HandshakeHeader{protocolVersion=%d, serverVersion=%s, connectionId=%d}", protocolVersion, serverVersion, connectionId);
     }
 
     @Override

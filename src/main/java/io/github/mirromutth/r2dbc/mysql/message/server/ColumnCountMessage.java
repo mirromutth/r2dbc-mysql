@@ -65,8 +65,6 @@ public final class ColumnCountMessage implements ServerMessage {
 
     @Override
     public String toString() {
-        return "ColumnCountMessage{" +
-            "totalColumns=" + totalColumns +
-            '}';
+        return String.format("ColumnCountMessage{totalColumns=%d}", totalColumns);
     }
 }
