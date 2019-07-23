@@ -34,23 +34,23 @@ final class NoAuthProvider implements MySqlAuthProvider {
     }
 
     @Override
-    public String getType() {
-        return NO_AUTH_PROVIDER;
-    }
-
-    @Override
     public boolean isSslNecessary() {
         return false;
     }
 
     @Override
-    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         // Has no authentication provider in here.
         return EMPTY_BYTES;
     }
 
     @Override
-    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
-        return null;
+    public MySqlAuthProvider next() {
+        return this;
+    }
+
+    @Override
+    public String getType() {
+        return NO_AUTH_PROVIDER;
     }
 }

@@ -26,7 +26,6 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
-import reactor.netty.tcp.SslProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 
@@ -45,11 +44,17 @@ public interface Client {
      */
     Flux<ServerMessage> exchange(Publisher<? extends ExchangeableMessage> requests);
 
+    Flux<ServerMessage> readOnly();
+
     Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages);
 
-    Mono<Void> initialize();
-
     Mono<Void> close();
+
+    Mono<Void> forceClose();
+
+    void sslUnsupported();
+
+    void loginSuccess();
 
     static Mono<Client> connect(
         ConnectionProvider connectionProvider, String host, int port, MySqlSession session,

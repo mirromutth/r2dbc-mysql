@@ -19,10 +19,14 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.util.Spliterators;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.MYSQL_OLD_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "mysql_old_password".
@@ -33,6 +37,8 @@ import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 final class OldAuthProvider implements MySqlAuthProvider {
 
     static final OldAuthProvider INSTANCE = new OldAuthProvider();
+
+    private static final int MAX_SALT_LENGTH = 8;
 
     private static final long FIRST_HASHING = 0x50305735L;
 
@@ -56,20 +62,17 @@ final class OldAuthProvider implements MySqlAuthProvider {
     }
 
     @Override
-    public String getType() {
-        return MYSQL_OLD_PASSWORD;
-    }
-
-    @Override
     public boolean isSslNecessary() {
         return false;
     }
 
     @Override
-    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
             return EMPTY_BYTES;
         }
+
+        requireNonNull(collation, "collation must not be null when password exists");
 
         Charset charset = collation.getCharset();
         String saltString;
@@ -78,7 +81,14 @@ final class OldAuthProvider implements MySqlAuthProvider {
             saltString = "";
             salt = EMPTY_BYTES;
         } else {
-            saltString = new String(salt, charset);
+            String newString = new String(salt, charset);
+
+            if (newString.length() > MAX_SALT_LENGTH) {
+                saltString = newString.substring(0, MAX_SALT_LENGTH);
+                salt = saltString.getBytes(charset);
+            } else {
+                saltString = newString;
+            }
         }
 
         // Authentication results
@@ -105,15 +115,17 @@ final class OldAuthProvider implements MySqlAuthProvider {
             results[i] ^= mark;
         }
 
-        // Maybe without creating String? but it must be better than copy ByteBuffer:
-        // copyToByteArray(charset.encode(CharBuffer.wrap(results)))
-        return new String(results).getBytes(charset);
+        return AuthHelper.encodeTerminal(CharBuffer.wrap(results), charset);
     }
 
     @Override
-    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
-        // "mysql_old_password" does not support full authentication.
-        return null;
+    public MySqlAuthProvider next() {
+        return this;
+    }
+
+    @Override
+    public String getType() {
+        return MYSQL_OLD_PASSWORD;
     }
 
     private static byte[] encodePurely(CharSequence password, Charset charset) {
@@ -129,7 +141,12 @@ final class OldAuthProvider implements MySqlAuthProvider {
             }
         }
 
-        return builder.toString().getBytes(charset);
+        ByteBuffer buffer = charset.encode(CharBuffer.wrap(builder));
+        byte[] bytes = new byte[buffer.remaining()];
+
+        buffer.get(bytes);
+
+        return bytes;
     }
 
     private static long firstPart(long results) {

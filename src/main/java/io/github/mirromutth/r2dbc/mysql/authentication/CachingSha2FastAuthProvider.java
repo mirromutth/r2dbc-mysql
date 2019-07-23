@@ -19,26 +19,30 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
+import java.nio.CharBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
- * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password".
+ * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in fast authentication phase.
  */
-final class CachingSha2AuthProvider implements MySqlAuthProvider {
+final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
 
-    static final CachingSha2AuthProvider INSTANCE = new CachingSha2AuthProvider();
+    static final CachingSha2FastAuthProvider INSTANCE = new CachingSha2FastAuthProvider();
 
     private static final String ALGORITHM = "SHA-256";
 
     private static final boolean IS_LEFT_SALT = false;
 
-    private CachingSha2AuthProvider() {
+    private CachingSha2FastAuthProvider() {
     }
 
     @Override
     public boolean isSslNecessary() {
-        return true;
+        // "caching_sha2_password" no need SSL in fast authentication phase.
+        return false;
     }
 
     /**
@@ -47,14 +51,13 @@ final class CachingSha2AuthProvider implements MySqlAuthProvider {
      * {@inheritDoc}
      */
     @Override
-    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
-    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
-        // TODO: implement full authentication
-        return EMPTY_BYTES;
+    public MySqlAuthProvider next() {
+        return CachingSha2FullAuthProvider.INSTANCE;
     }
 
     @Override

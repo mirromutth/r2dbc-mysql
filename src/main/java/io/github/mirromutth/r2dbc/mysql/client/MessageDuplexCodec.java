@@ -159,7 +159,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         } else if (message instanceof PreparedExecuteMessage) {
             return FORMAT_BIN;
         } else if (message instanceof SslRequest) {
-            return () -> ctx.channel().pipeline().fireUserEventTriggered(SslState.ENABLED);
+            return () -> ctx.channel().pipeline().fireUserEventTriggered(SslState.BRIDGING);
         }
 
         return null;

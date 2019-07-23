@@ -50,35 +50,9 @@ public final class MySqlSession {
 
     private volatile int capabilities = 0;
 
-    /**
-     * It would be null after connection phase completed.
-     */
-    @Nullable
-    private volatile MySqlAuthProvider authProvider;
-
-    /**
-     * It would be null after connection phase completed.
-     */
-    @Nullable
-    private volatile String username;
-
-    /**
-     * It would be null after connection phase completed.
-     */
-    @Nullable
-    private volatile CharSequence password;
-
-    /**
-     * It would be null after connection phase completed.
-     */
-    @Nullable
-    private volatile byte[] salt;
-
-    public MySqlSession(String database, ZeroDateOption zeroDateOption, String username, @Nullable CharSequence password) {
+    public MySqlSession(String database, ZeroDateOption zeroDateOption) {
         this.database = requireNonNull(database, "database must not be null");
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
-        this.username = requireNonNull(username, "username must not be null");
-        this.password = password;
     }
 
     public int getConnectionId() {
@@ -115,61 +89,5 @@ public final class MySqlSession {
 
     public void setCapabilities(int capabilities) {
         this.capabilities = capabilities;
-    }
-
-    @Nullable
-    public String getUsername() {
-        return username;
-    }
-
-    @Nullable
-    public CharSequence getPassword() {
-        return password;
-    }
-
-    @Nullable
-    public byte[] getSalt() {
-        return salt;
-    }
-
-    public void setSalt(@Nullable byte[] salt) {
-        this.salt = salt;
-    }
-
-    public String getAuthType() {
-        MySqlAuthProvider machine = this.authProvider;
-
-        if (machine == null) {
-            return AuthTypes.NO_AUTH_PROVIDER;
-        }
-
-        return machine.getType();
-    }
-
-    public void setAuthProvider(MySqlAuthProvider authProvider) {
-        this.authProvider = authProvider;
-    }
-
-    /**
-     * Generate an authorization for fast authentication phase.
-     */
-    public byte[] fastPhaseAuthorization() {
-        MySqlAuthProvider authProvider = this.authProvider;
-
-        if (authProvider == null) {
-            return EMPTY_BYTES;
-        }
-
-        return authProvider.fastAuthPhase(password, salt, collation);
-    }
-
-    /**
-     * All authentication data should be remove when connection phase completed or client closed in connection phase.
-     */
-    public void clearAuthentication() {
-        this.username = null;
-        this.password = null;
-        this.salt = null;
-        this.authProvider = null;
     }
 }

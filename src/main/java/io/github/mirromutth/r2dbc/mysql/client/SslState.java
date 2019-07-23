@@ -21,5 +21,13 @@ package io.github.mirromutth.r2dbc.mysql.client;
  */
 enum SslState {
 
-    ENABLED,
+    /**
+     * Both of server and client want SSL, just bridging it!
+     */
+    BRIDGING,
+
+    /**
+     * Server unsupported SSL.
+     */
+    UNSUPPORTED
 }

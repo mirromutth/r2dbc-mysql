@@ -88,8 +88,8 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
 
     @Override
     public String toString() {
-        return String.format("HandshakeResponse320{capabilities=%x, username='%s', authentication=%s, database='%s'}",
-            head.getCapabilities(), username, Arrays.toString(authentication), database);
+        return String.format("HandshakeResponse320{capabilities=%x, username='%s', authentication=REDACTED, database='%s'}",
+            head.getCapabilities(), username, database);
     }
 
     @Override

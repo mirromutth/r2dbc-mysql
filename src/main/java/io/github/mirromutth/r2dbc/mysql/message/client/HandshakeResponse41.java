@@ -109,8 +109,8 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     @Override
     public String toString() {
-        return String.format("HandshakeResponse41{capabilities=%x, collationId=%d, username='%s', authentication=%s, authType='%s', database='%s', attributes=%s}",
-            head.getCapabilities(), head.getCollationId(), username, Arrays.toString(authentication), authType, database, attributes);
+        return String.format("HandshakeResponse41{capabilities=%x, collationId=%d, username='%s', authentication=REDACTED, authType='%s', database='%s', attributes=%s}",
+            head.getCapabilities(), head.getCollationId(), username, authType, database, attributes);
     }
 
     @Override

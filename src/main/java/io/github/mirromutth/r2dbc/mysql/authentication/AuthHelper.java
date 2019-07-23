@@ -57,6 +57,17 @@ final class AuthHelper {
         }
     }
 
+    static byte[] encodeTerminal(CharBuffer chars, Charset charset) {
+        ByteBuffer buffer = charset.encode(chars);
+        int maxIndex = buffer.remaining();
+        byte[] bytes = new byte[maxIndex + 1];
+
+        buffer.get(bytes, 0, maxIndex);
+        bytes[maxIndex] = 0; // TERMINAL
+
+        return bytes;
+    }
+
     private static MessageDigest loadDigest(String name) {
         try {
             return MessageDigest.getInstance(name);

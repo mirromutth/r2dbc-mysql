@@ -46,14 +46,13 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
      * {@inheritDoc}
      */
     @Override
-    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
-    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
-        // "mysql_native_password" does not support full authentication.
-        return null;
+    public MySqlAuthProvider next() {
+        return this;
     }
 
     @Override

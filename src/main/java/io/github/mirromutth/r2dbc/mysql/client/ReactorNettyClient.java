@@ -17,28 +17,16 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.MySqlSslConfiguration;
-import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
-import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.HandshakeResponse;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
-import io.github.mirromutth.r2dbc.mysql.message.server.AuthChangeMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.AuthMoreDataMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeHeader;
-import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeRequest;
-import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
 import io.netty.util.internal.logging.InternalLoggerFactory;
-import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,8 +37,6 @@ import reactor.netty.Connection;
 import reactor.netty.FutureMono;
 import reactor.util.annotation.Nullable;
 
-import java.util.Collections;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -66,10 +52,6 @@ final class ReactorNettyClient implements Client {
     private static final Consumer<ClientMessage> LOG_REQUEST = message -> logger.debug("Request: {}", message);
 
     private static final Consumer<ServerMessage> LOG_RESPONSE = message -> logger.debug("Response: {}", message);
-
-    private static final Map<String, String> clientAttrs = calculateAttrs();
-
-    private final boolean isSsl;
 
     private final Connection connection;
 
@@ -91,10 +73,7 @@ final class ReactorNettyClient implements Client {
             .addHandlerLast(MessageDuplexCodec.NAME, new MessageDuplexCodec(session, this.closing));
 
         if (sslConfiguration != null) {
-            this.isSsl = true;
             connection.addHandlerFirst(SslBridgeHandler.NAME, new SslBridgeHandler(session, sslConfiguration));
-        } else {
-            this.isSsl = false;
         }
 
         if (InternalLoggerFactory.getInstance(ReactorNettyClient.class).isTraceEnabled()) {
@@ -142,6 +121,17 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
+    public Flux<ServerMessage> readOnly() {
+        return Flux.defer(() -> {
+            if (this.closing.get()) {
+                return Flux.error(new IllegalStateException("can not read messages because the connection is closed"));
+            }
+
+            return this.responseProcessor;
+        });
+    }
+
+    @Override
     public Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages) {
         requireNonNull(messages, "messages must not be null");
 
@@ -152,75 +142,6 @@ final class ReactorNettyClient implements Client {
 
             return send(messages);
         });
-    }
-
-    @Override
-    public Mono<Void> initialize() {
-        return this.responseProcessor.<Void>handle((message, sink) -> {
-            if (message instanceof ErrorMessage) {
-                ErrorMessage msg = (ErrorMessage) message;
-                sink.error(new R2dbcPermissionDeniedException(msg.getErrorMessage(), msg.getSqlState(), msg.getErrorCode()));
-            } else if (message instanceof HandshakeRequest) {
-                initSession((HandshakeRequest) message);
-                sink.complete();
-            } else {
-                sink.error(new R2dbcPermissionDeniedException("unknown message type '" + message.getClass().getSimpleName() + "' in handshake phase"));
-            }
-        })
-            .thenMany(Flux.defer(() -> {
-                if (this.isSsl) {
-                    return exchange(Mono.just(createSslRequest()))
-                        .<Void>handle((message, sink) -> {
-                            if (message instanceof ErrorMessage) {
-                                ErrorMessage msg = (ErrorMessage) message;
-                                sink.error(new R2dbcPermissionDeniedException(msg.getErrorMessage(), msg.getSqlState(), msg.getErrorCode()));
-                            } else if (message instanceof SyntheticSslResponseMessage) {
-                                sink.complete();
-                            } else {
-                                sink.error(new R2dbcPermissionDeniedException("unknown message type '" + message.getClass().getSimpleName() + "' in ssl handshake phase"));
-                            }
-                        })
-                        .thenMany(exchange(Mono.fromSupplier(this::createHandshakeResponse)));
-                } else {
-                    return exchange(Mono.fromSupplier(this::createHandshakeResponse));
-                }
-            }))
-            .<Void>handle((message, sink) -> {
-                if (message instanceof ErrorMessage) {
-                    ErrorMessage msg = (ErrorMessage) message;
-                    sink.error(new R2dbcPermissionDeniedException(msg.getErrorMessage(), msg.getSqlState(), msg.getErrorCode()));
-                } else if (message instanceof AuthChangeMessage) {
-                    // TODO: authentication type changed
-                } else if (message instanceof AuthMoreDataMessage) {
-                    if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != 3) {
-                        if (this.isSsl) {
-                            if (logger.isWarnEnabled()) {
-                                logger.warn("Connection (id {}) fast authentication failed, auto-try to use full authentication", this.session.getConnectionId());
-                            }
-                        } else {
-                            sink.error(new R2dbcPermissionDeniedException("Fast authentication failed and connection is not SSL, authentication all failed"));
-                        }
-                    } else if (logger.isDebugEnabled()) {
-                        logger.debug("Connection (id {}) fast authentication success", this.session.getConnectionId());
-                    }
-                } else if (message instanceof OkMessage) {
-                    if (logger.isInfoEnabled()) {
-                        logger.info("Connection (id {}) authentication phase accepted", this.session.getConnectionId());
-                    }
-                    sink.complete();
-                } else {
-                    sink.error(new R2dbcPermissionDeniedException("unknown message type '" + message.getClass().getSimpleName() + "' in authentication phase"));
-                }
-            })
-            .doOnComplete(() -> {
-                this.connection.channel().pipeline().fireUserEventTriggered(Lifecycle.COMMAND);
-                this.session.clearAuthentication();
-            })
-            .doOnError(e -> {
-                this.session.clearAuthentication();
-                this.connection.channel().close();
-            })
-            .then();
     }
 
     @Override
@@ -237,8 +158,23 @@ final class ReactorNettyClient implements Client {
                     return it.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully, close the connection"));
                 }
                 return it;
-            }).then(FutureMono.deferFuture(() -> connection.channel().close()));
+            }).then(forceClose());
         });
+    }
+
+    @Override
+    public Mono<Void> forceClose() {
+        return FutureMono.deferFuture(() -> connection.channel().close());
+    }
+
+    @Override
+    public void sslUnsupported() {
+        connection.channel().pipeline().fireUserEventTriggered(SslState.UNSUPPORTED);
+    }
+
+    @Override
+    public void loginSuccess() {
+        connection.channel().pipeline().fireUserEventTriggered(Lifecycle.COMMAND);
     }
 
     @Override
@@ -262,70 +198,5 @@ final class ReactorNettyClient implements Client {
         }
 
         return connection.outbound().sendObject(requests).then();
-    }
-
-    private void initSession(HandshakeRequest message) {
-        HandshakeHeader header = message.getHeader();
-
-        this.session.setConnectionId(header.getConnectionId());
-        this.session.setServerVersion(header.getServerVersion());
-        this.session.setAuthProvider(MySqlAuthProvider.build(message.getAuthType()));
-        this.session.setSalt(message.getSalt());
-
-        int clientCapabilities = calculateClientCapabilities(message.getServerCapabilities());
-
-        this.session.setCapabilities(clientCapabilities);
-    }
-
-    private SslRequest createSslRequest() {
-        return SslRequest.from(session.getCapabilities(), session.getCollation().getId());
-    }
-
-    private HandshakeResponse createHandshakeResponse() {
-        String username = session.getUsername();
-        byte[] authorization = session.fastPhaseAuthorization();
-        String authType = session.getAuthType();
-
-        requireNonNull(username, "username must not be null at authentication phase");
-
-        return HandshakeResponse.from(
-            session.getCapabilities(),
-            session.getCollation().getId(),
-            username,
-            authorization,
-            authType,
-            session.getDatabase(),
-            clientAttrs
-        );
-    }
-
-    private int calculateClientCapabilities(int serverCapabilities) {
-        if ((serverCapabilities & Capabilities.MULTI_STATEMENTS) == 0) {
-            logger.warn("The MySQL server does not support batch executing, fallback to executing one-by-one");
-        }
-
-        // Server should always return metadata, and no compress, and without session track
-        int clientCapabilities = serverCapabilities & ~(Capabilities.OPTIONAL_RESULT_SET_METADATA | Capabilities.COMPRESS | Capabilities.SESSION_TRACK);
-
-        if (isSsl) {
-            clientCapabilities |= Capabilities.SSL;
-        } else {
-            clientCapabilities &= ~(Capabilities.SSL | Capabilities.SSL_VERIFY_SERVER_CERT);
-        }
-
-        if (session.getDatabase().isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
-            clientCapabilities &= ~Capabilities.CONNECT_WITH_DB;
-        }
-
-        if (clientAttrs.isEmpty() && (clientCapabilities & Capabilities.CONNECT_ATTRS) != 0) {
-            clientCapabilities &= ~Capabilities.CONNECT_ATTRS;
-        }
-
-        return clientCapabilities;
-    }
-
-    private static Map<String, String> calculateAttrs() {
-        // maybe write some OS or JVM message in here?
-        return Collections.emptyMap();
     }
 }

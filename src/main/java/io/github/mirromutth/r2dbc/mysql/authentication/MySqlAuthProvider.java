@@ -39,7 +39,7 @@ public interface MySqlAuthProvider {
 
         switch (type) {
             case AuthTypes.CACHING_SHA2_PASSWORD:
-                return CachingSha2AuthProvider.INSTANCE;
+                return CachingSha2FastAuthProvider.INSTANCE;
             case AuthTypes.MYSQL_NATIVE_PASSWORD:
                 return MySqlNativeAuthProvider.INSTANCE;
             case AuthTypes.SHA256_PASSWORD:
@@ -56,27 +56,19 @@ public interface MySqlAuthProvider {
     String getType();
 
     /**
-     * @return true if the authentication type should be used on SSL.
+     * @return true if the authentication type should be used on SSL for next authentication.
      */
     boolean isSslNecessary();
 
     /**
-     * Generate an authorization for fast authentication phase.
+     * Generate next authorization.
      *
      * @param password  user password
      * @param salt      password salt for hash algorithm
      * @param collation password character collation
      * @return fast authentication phase must not be null.
      */
-    byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation);
+    byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation);
 
-    /**
-     * Generate an authorization for full authentication phase.
-     *
-     * @param password  user password
-     * @param collation password character collation
-     * @return {@code null} means has no full authentication phase.
-     */
-    @Nullable
-    byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation);
+    MySqlAuthProvider next();
 }

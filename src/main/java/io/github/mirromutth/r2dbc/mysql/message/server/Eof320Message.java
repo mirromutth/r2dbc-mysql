@@ -18,6 +18,8 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 
 /**
  * A EOF message for current context in protocol 3.20.
+ * <p>
+ * Note: It is also Old Authentication Change Request.
  */
 final class Eof320Message implements EofMessage {
 
