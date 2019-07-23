@@ -28,7 +28,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 /**
  * Column or parameter definition metadata message.
  */
-public final class DefinitionMetadataMessage {
+public final class DefinitionMetadataMessage implements ServerMessage {
 
     private static final int MIN_SIZE = 20;
 

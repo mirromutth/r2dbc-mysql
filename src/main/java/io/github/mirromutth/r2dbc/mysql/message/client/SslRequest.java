@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.server;
+package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.netty.buffer.ByteBuf;
+import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
+
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
- * Base message considers EOF.
- * <p>
- * Note: EOF message are deprecated and OK message are also used to indicate EOF as of MySQL 5.7.5.
+ * A ssl request for multi-versions.
  */
-public interface EofMessage extends ServerMessage {
+public interface SslRequest extends ExchangeableMessage {
 
-    static EofMessage decode(ByteBuf buf) {
-        if (buf.readableBytes() >= Eof41Message.SIZE) {
-            return Eof41Message.decode(buf);
+    int getCapabilities();
+
+    static SslRequest from(int capabilities, int collationId) {
+        require((capabilities & Capabilities.SSL) != 0, "capabilities must be SSL enabled");
+
+        if ((capabilities & Capabilities.PROTOCOL_41) == 0) {
+            return new SslRequest320(capabilities);
         } else {
-            return Eof320Message.INSTANCE;
+            return new SslRequest41(capabilities, collationId);
         }
-    }
-
-    static boolean isValidSize(int readableBytes) {
-        return readableBytes == Eof320Message.SIZE || readableBytes == Eof41Message.SIZE;
     }
 }

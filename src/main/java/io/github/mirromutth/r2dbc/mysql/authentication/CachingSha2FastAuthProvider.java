@@ -19,37 +19,45 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
-import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
 
 /**
- * An implementation of {@link MySqlAuthProvider} for type "sha256_password".
+ * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in fast authentication phase.
  */
-final class Sha256AuthProvider implements MySqlAuthProvider {
+final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
 
-    static final Sha256AuthProvider INSTANCE = new Sha256AuthProvider();
+    static final CachingSha2FastAuthProvider INSTANCE = new CachingSha2FastAuthProvider();
 
-    private Sha256AuthProvider() {
+    private static final String ALGORITHM = "SHA-256";
+
+    private static final boolean IS_LEFT_SALT = false;
+
+    private CachingSha2FastAuthProvider() {
     }
 
     @Override
     public boolean isSslNecessary() {
-        return true;
+        // "caching_sha2_password" no need SSL in fast authentication phase.
+        return false;
     }
 
+    /**
+     * SHA256(password) `all bytes xor` SHA256( SHA256( ~SHA256(password) ) + "random data from MySQL server" )
+     * <p>
+     * {@inheritDoc}
+     */
     @Override
     public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
-        // TODO: implement fast authentication
-        return EMPTY_BYTES;
+        return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
     public MySqlAuthProvider next() {
-        return this;
+        return CachingSha2FullAuthProvider.INSTANCE;
     }
 
     @Override
     public String getType() {
-        return SHA256_PASSWORD;
+        return CACHING_SHA2_PASSWORD;
     }
 }

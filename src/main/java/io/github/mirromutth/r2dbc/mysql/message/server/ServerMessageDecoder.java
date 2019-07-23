@@ -101,11 +101,11 @@ public final class ServerMessageDecoder {
             return ErrorMessage.decode(buf);
         }
 
-        if (context.isMetadata() && DefinitionMetadataMessage.isLooksLike(buf)) {
-            return decodeMetadata(buf, session, context);
+        if (context.isInMetadata()) {
+            return decodeInMetadata(buf, header, session, context);
         }
 
-        throw new R2dbcNonTransientResourceException("unknown message header " + header + " on prepared metadata phase");
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on prepared metadata phase", header, buf.readableBytes()));
     }
 
     @Nullable
@@ -113,7 +113,7 @@ public final class ServerMessageDecoder {
         ByteBuf firstBuf = buffers.get(0);
         short header = firstBuf.getUnsignedByte(firstBuf.readerIndex());
 
-        if (header == Headers.ERROR) {
+        if (Headers.ERROR == header) {
             // 0xFF is not header of var integer,
             // not header of text result null (0xFB) and
             // not header of column metadata (0x03 + "def")
@@ -125,50 +125,77 @@ public final class ServerMessageDecoder {
             }
         }
 
-        if (context.isMetadata()) {
-            if (DefinitionMetadataMessage.isLooksLike(firstBuf)) {
-                ByteBuf joined = JOINER.join(buffers);
-                try {
-                    return decodeMetadata(joined, session, context);
-                } finally {
-                    joined.release();
-                }
-            }
-        } else {
-            if (context.isBinary()) {
-                if (header == Headers.OK) {
-                    // If header is 0, SHOULD NOT be OK message.
-                    // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
-                    try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
-                        return BinaryRowMessage.decode(reader, context);
-                    }
-                }
-            } else if (isTextRow(buffers, firstBuf, header)) {
-                try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
-                    return TextRowMessage.decode(reader, context.getTotalColumns());
-                }
-            }
-        }
-
-        if ((header == Headers.OK || header == Headers.EOF) && firstBuf.readableBytes() >= OkMessage.MIN_SIZE) {
+        if (context.isInMetadata()) {
             ByteBuf joined = JOINER.join(buffers);
-
             try {
-                return OkMessage.decode(joined, session);
+                return decodeInMetadata(joined, header, session, context);
             } finally {
                 joined.release();
             }
+            // Should not has other messages when metadata reading.
         }
 
+        if (context.isBinary()) {
+            if (Headers.OK == header) {
+                // If header is 0, SHOULD NOT be OK message.
+                // Binary row message always starts with 0x00 (i.e. binary row header).
+                // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
+                try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
+                    return BinaryRowMessage.decode(reader, context);
+                }
+            }
+        } else if (isTextRow(buffers, firstBuf, header)) {
+            try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
+                return TextRowMessage.decode(reader, context.getTotalColumns());
+            }
+        }
+
+        switch (header) {
+            case Headers.OK:
+                if (OkMessage.isValidSize(firstBuf.readableBytes())) {
+                    ByteBuf joined = JOINER.join(buffers);
+
+                    try {
+                        return OkMessage.decode(joined, session);
+                    } finally {
+                        joined.release();
+                    }
+                }
+
+                break;
+            case Headers.EOF:
+                int byteSize = firstBuf.readableBytes();
+
+                if (OkMessage.isValidSize(byteSize)) {
+                    ByteBuf joined = JOINER.join(buffers);
+
+                    try {
+                        return OkMessage.decode(joined, session);
+                    } finally {
+                        joined.release();
+                    }
+                } else if (EofMessage.isValidSize(byteSize)) {
+                    ByteBuf joined = JOINER.join(buffers);
+
+                    try {
+                        return EofMessage.decode(joined);
+                    } finally {
+                        joined.release();
+                    }
+                }
+        }
+
+        long totalBytes = 0;
         try {
             for (ByteBuf buffer : buffers) {
+                totalBytes += buffer.readableBytes();
                 ReferenceCountUtil.safeRelease(buffer);
             }
         } finally {
             buffers.clear();
         }
 
-        throw new R2dbcNonTransientResourceException(String.format("unknown message header %d on %s result phase", header, context.isBinary() ? "binary" : "text"));
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on %s result phase", header, totalBytes, context.isBinary() ? "binary" : "text"));
     }
 
     private static ServerMessage decodeCommandMessage(ByteBuf buf, MySqlSession session) {
@@ -177,16 +204,24 @@ public final class ServerMessageDecoder {
             case Headers.ERROR:
                 return ErrorMessage.decode(buf);
             case Headers.OK:
+                if (OkMessage.isValidSize(buf.readableBytes())) {
+                    return OkMessage.decode(buf, session);
+                }
+
+                break;
             case Headers.EOF:
-                // maybe OK, maybe column count (unsupported EOF on command phase)
-                if (buf.readableBytes() >= OkMessage.MIN_SIZE) {
+                int byteSize = buf.readableBytes();
+
+                // Maybe OK, maybe column count (unsupported EOF on command phase)
+                if (OkMessage.isValidSize(byteSize)) {
                     // MySQL has hard limit of 4096 columns per-table,
                     // so if readable bytes upper than 7, it means if it is column count,
                     // column count is already upper than (1 << 24) - 1 = 16777215, it is impossible.
                     // So it must be OK message, not be column count.
                     return OkMessage.decode(buf, session);
+                } else if (EofMessage.isValidSize(byteSize)) {
+                    return EofMessage.decode(buf);
                 }
-                break;
         }
 
         if (CodecUtils.checkNextVarInt(buf) == 0) {
@@ -195,54 +230,62 @@ public final class ServerMessageDecoder {
             return ColumnCountMessage.decode(buf);
         }
 
-        // Always deprecate EOF
-        throw new R2dbcNonTransientResourceException("unknown message header " + header + " on command phase");
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on command phase", header, buf.readableBytes()));
     }
 
     private static ServerMessage decodeOnWaitPrepare(ByteBuf buf, MySqlSession session) {
         short header = buf.getUnsignedByte(buf.readerIndex());
 
-        if (Headers.ERROR == header) {
-            return ErrorMessage.decode(buf);
-        } else if (Headers.OK == header) {
-            // should be prepared ok, but test in here...
-            if (PreparedOkMessage.isLooksLike(buf)) {
-                return PreparedOkMessage.decode(buf);
-            } else if (buf.readableBytes() >= OkMessage.MIN_SIZE) {
-                return OkMessage.decode(buf, session);
-            }
-        } else if (Headers.EOF == header && buf.readableBytes() >= OkMessage.MIN_SIZE) {
-            return OkMessage.decode(buf, session);
+        switch (header) {
+            case Headers.ERROR:
+                return ErrorMessage.decode(buf);
+            case Headers.OK:
+                // Should be prepared ok, but test in here...
+                if (PreparedOkMessage.isLooksLike(buf)) {
+                    return PreparedOkMessage.decode(buf);
+                } else if (OkMessage.isValidSize(buf.readableBytes())) {
+                    return OkMessage.decode(buf, session);
+                }
+
+                break;
+            case Headers.EOF:
+                int byteSize = buf.readableBytes();
+
+                if (OkMessage.isValidSize(byteSize)) {
+                    return OkMessage.decode(buf, session);
+                } else if (EofMessage.isValidSize(byteSize)) {
+                    return EofMessage.decode(buf);
+                }
         }
 
-        // Always deprecate EOF
-        throw new R2dbcNonTransientResourceException("unknown message header " + header + " on command phase");
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on waiting prepare metadata phase", header, buf.readableBytes()));
     }
 
     private static ServerMessage decodeConnectionMessage(ByteBuf buf, MySqlSession session) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
             case Headers.OK:
-                return OkMessage.decode(buf, requireNonNull(session, "session must not be null"));
+                if (OkMessage.isValidSize(buf.readableBytes())) {
+                    return OkMessage.decode(buf, requireNonNull(session, "session must not be null"));
+                }
+
+                break;
             case Headers.AUTH_MORE_DATA: // Auth more data
                 return AuthMoreDataMessage.decode(buf);
             case Headers.HANDSHAKE_V9:
             case Headers.HANDSHAKE_V10: // Handshake V9 (not supported) or V10
-                return AbstractHandshakeMessage.decode(buf);
+                return HandshakeRequest.decode(buf);
             case Headers.ERROR: // Error
                 return ErrorMessage.decode(buf);
             case Headers.EOF: // Auth exchange message or EOF message
-                int byteSize = buf.readableBytes();
-
-                if (byteSize == 1 || byteSize == 5) { // must be EOF (unsupported EOF 320 message if byte size is 1)
-                    // Should decode EOF because connection phase has no completed.
+                if (EofMessage.isValidSize(buf.readableBytes())) {
                     return EofMessage.decode(buf);
+                } else {
+                    return AuthChangeMessage.decode(buf);
                 }
-
-                return AuthChangeMessage.decode(buf);
         }
 
-        throw new R2dbcPermissionDeniedException("unknown message header " + header + " on connection phase");
+        throw new R2dbcPermissionDeniedException(String.format("Unknown message header 0x%x and readable bytes is %d on connection phase", header, buf.readableBytes()));
     }
 
     @Nullable
@@ -317,9 +360,17 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static AbstractSyntheticMetadataMessage decodeMetadata(ByteBuf buf, MySqlSession session, MetadataDecodeContext context) {
-        DefinitionMetadataMessage columnMetadata = DefinitionMetadataMessage.decode(buf, session.getCollation().getCharset());
+    private static SyntheticMetadataMessage decodeInMetadata(ByteBuf buf, short header, MySqlSession session, MetadataDecodeContext context) {
+        ServerMessage message;
 
-        return context.pushAndGetMetadata(columnMetadata);
+        if (Headers.EOF == header && EofMessage.isValidSize(buf.readableBytes())) {
+            message = EofMessage.decode(buf);
+        } else if (DefinitionMetadataMessage.isLooksLike(buf)) {
+            message = DefinitionMetadataMessage.decode(buf, session.getCollation().getCharset());
+        } else {
+            throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d when reading metadata", header, buf.readableBytes()));
+        }
+
+        return context.putPart(message);
     }
 }

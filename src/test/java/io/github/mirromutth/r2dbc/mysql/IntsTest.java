@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.SSL_COMMUNITY_5_7;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.runAll;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -77,7 +77,7 @@ class IntsTest {
 
     @Test
     void crudByParametrizedStatement() throws Throwable {
-        SSL_COMMUNITY_5_7.run(connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?")
+        runAll(connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?")
             .bind(0, (Integer) INCREMENT_STEP)
             .execute())
             .flatMap(MySqlResult::getRowsUpdated)

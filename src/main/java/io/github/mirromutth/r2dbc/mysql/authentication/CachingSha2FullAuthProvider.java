@@ -19,47 +19,43 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
+import java.nio.CharBuffer;
+
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
 import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
- * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password".
+ * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in full authentication phase.
  */
-final class CachingSha2AuthProvider implements MySqlAuthProvider {
+final class CachingSha2FullAuthProvider implements MySqlAuthProvider {
 
-    static final String TYPE = "caching_sha2_password";
+    static final CachingSha2FullAuthProvider INSTANCE = new CachingSha2FullAuthProvider();
 
-    static final CachingSha2AuthProvider INSTANCE = new CachingSha2AuthProvider();
-
-    private static final String ALGORITHM = "SHA-256";
-
-    private static final boolean IS_LEFT_SALT = false;
-
-    private CachingSha2AuthProvider() {
+    private CachingSha2FullAuthProvider() {
     }
 
     @Override
     public boolean isSslNecessary() {
+        // "caching_sha2_password" need SSL in full authentication phase.
         return true;
     }
 
-    /**
-     * SHA256(password) `all bytes xor` SHA256( SHA256( ~SHA256(password) ) + "random data from MySQL server" )
-     * <p>
-     * {@inheritDoc}
-     */
     @Override
-    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
-        return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
+    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+        if (password == null || password.length() <= 0) {
+            return EMPTY_BYTES;
+        }
+
+        return AuthHelper.encodeTerminal(CharBuffer.wrap(password), collation.getCharset());
     }
 
     @Override
-    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
-        // TODO: implement full authentication
-        return EMPTY_BYTES;
+    public MySqlAuthProvider next() {
+        return this;
     }
 
     @Override
     public String getType() {
-        return TYPE;
+        return CACHING_SHA2_PASSWORD;
     }
 }

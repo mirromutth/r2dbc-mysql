@@ -17,13 +17,21 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 /**
- * A bundle of {@link DefinitionMetadataMessage}s for parameters' metadata.
+ * A EOF message for current context in protocol 3.20.
  * <p>
- * Note: it is synthetic message, not real exists.
+ * Note: It is also Old Authentication Change Request.
  */
-final class SyntheticParamMetadataMessage extends AbstractSyntheticMetadataMessage {
+final class Eof320Message implements EofMessage {
 
-    SyntheticParamMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages) {
-        super(completed, messages);
+    static final int SIZE = Byte.BYTES;
+
+    static final Eof320Message INSTANCE = new Eof320Message();
+
+    private Eof320Message() {
+    }
+
+    @Override
+    public String toString() {
+        return "Eof320Message{}";
     }
 }

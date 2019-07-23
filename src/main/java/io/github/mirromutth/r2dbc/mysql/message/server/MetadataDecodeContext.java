@@ -16,6 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.util.annotation.Nullable;
 
 /**
@@ -23,8 +25,73 @@ import reactor.util.annotation.Nullable;
  */
 abstract class MetadataDecodeContext implements DecodeContext {
 
-    abstract boolean isMetadata();
+    private static final Logger logger = LoggerFactory.getLogger(MetadataDecodeContext.class);
+
+    private final boolean deprecateEof;
+
+    MetadataDecodeContext(boolean deprecateEof) {
+        this.deprecateEof = deprecateEof;
+    }
+
+    abstract boolean isInMetadata();
 
     @Nullable
-    abstract AbstractSyntheticMetadataMessage pushAndGetMetadata(DefinitionMetadataMessage metadata);
+    final SyntheticMetadataMessage putPart(ServerMessage message) {
+        if (message instanceof DefinitionMetadataMessage) {
+            // Index of metadata after put, see `putMetadata`.
+            int index = putMetadata((DefinitionMetadataMessage) message);
+
+            if (deprecateEof) {
+                // If EOF has deprecated, has no EOF for complete signal, should check complete always.
+                SyntheticMetadataMessage bundle = checkComplete(index);
+
+                if (bundle != null) {
+                    logger.debug("Respond a metadata bundle by filled-up");
+                }
+
+                return bundle;
+            } else {
+                // Should not check complete, EOF message will be complete signal.
+                return null;
+            }
+        } else if (message instanceof EofMessage) {
+            if (deprecateEof) {
+                throw new IllegalStateException("Unexpected EOF message because server has deprecated EOF");
+            }
+
+            // Current columns index is also last index of metadata after put, see `putMetadata`.
+            int currentIndex = currentIndex();
+            SyntheticMetadataMessage bundle = checkComplete(currentIndex);
+
+            if (bundle == null) {
+                if (logger.isErrorEnabled()) {
+                    logger.error("Unexpected EOF message when metadata unfilled, fill index: {}, checkpoint(s): {}", currentIndex, loggingPoints());
+                }
+            } else {
+                logger.debug("Respond a metadata bundle by EOF");
+            }
+
+            return bundle;
+        } else {
+            throw new IllegalStateException(String.format("Unknown message type %s when reading metadata", message.getClass().getSimpleName()));
+        }
+    }
+
+    @Nullable
+    abstract protected SyntheticMetadataMessage checkComplete(int index);
+
+    /**
+     * @return index of metadata after put
+     */
+    abstract protected int putMetadata(DefinitionMetadataMessage metadata);
+
+    /**
+     * @return current index, for {@link #checkComplete(int)} on EOF message come
+     */
+    abstract protected int currentIndex();
+
+    /**
+     * @return serialized checkpoints used by logger
+     */
+    abstract protected Object loggingPoints();
 }

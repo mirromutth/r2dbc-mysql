@@ -42,7 +42,7 @@ final class MySQLHelper {
 
     private static final ConcurrentMap<String, MySqlConnectionFactory> CONNECTION_FACTORY_MAP = new ConcurrentHashMap<>();
 
-    static MySqlConnectionFactory getFactoryByVersion(String version) {
+    static MySqlConnectionFactory getFactoryByVersion(String version, boolean ssl) {
         MySqlConnectionFactory nowFactory = CONNECTION_FACTORY_MAP.get(version);
 
         if (nowFactory == null) {
@@ -51,7 +51,7 @@ final class MySQLHelper {
             MySqlConnectionConfiguration newConfig;
 
             try {
-                newConfig = buildConfig(version);
+                newConfig = buildConfig(version, ssl);
             } catch (IOException e) {
                 throw new IllegalStateException("Read configuration failed", e);
             }
@@ -80,7 +80,8 @@ final class MySQLHelper {
             throw new IllegalStateException("JDBC driver not found", e);
         }
 
-        String url = String.format("jdbc:mysql://%s:%d", configuration.getHost(), configuration.getPort());
+        // Disable connector/J SSL for testing more fast.
+        String url = String.format("jdbc:mysql://%s:%d?useSSL=false", configuration.getHost(), configuration.getPort());
 
         try (Connection conn = DriverManager.getConnection(url, configuration.getUsername(), configuration.getPassword().toString())) {
             try (Statement stmt = conn.createStatement()) {
@@ -91,7 +92,7 @@ final class MySQLHelper {
         }
     }
 
-    private static MySqlConnectionConfiguration buildConfig(String version) throws IOException {
+    private static MySqlConnectionConfiguration buildConfig(String version, boolean ssl) throws IOException {
         String filename = buildFilename(version);
         InputStream resource = MySQLHelper.class.getClassLoader().getResourceAsStream(filename);
 
@@ -105,12 +106,16 @@ final class MySQLHelper {
             CharSequence password = getRootPassword(getMap(service, "environment"));
             int port = Integer.parseInt(getPorts(service).get(0).split(":")[0]);
 
-            return MySqlConnectionConfiguration.builder()
+            MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder()
                 .host("127.0.0.1")
                 .port(port)
-                .connectTimeout(Duration.ofSeconds(5))
-                .enableSsl(MySqlSslConfiguration.Builder::disableServerVerify) // TODO: should verify server cert
-                .username("root")
+                .connectTimeout(Duration.ofSeconds(5));
+
+            if (ssl) {
+                builder.enableSsl(MySqlSslConfiguration.Builder::disableServerVerify); // TODO: should verify server cert
+            }
+
+            return builder.username("root")
                 .password(password)
                 .database("r2dbc")
                 .build();

@@ -16,14 +16,16 @@
 
 package io.github.mirromutth.r2dbc.mysql.client;
 
+import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.SslRequestMessage;
+import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
-import io.github.mirromutth.r2dbc.mysql.message.server.AbstractSyntheticMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
@@ -156,8 +158,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             return WAIT_PREPARE;
         } else if (message instanceof PreparedExecuteMessage) {
             return FORMAT_BIN;
-        } else if (message instanceof SslRequestMessage) {
-            return () -> ctx.channel().pipeline().fireUserEventTriggered(SslState.ENABLED);
+        } else if (message instanceof SslRequest) {
+            return () -> ctx.channel().pipeline().fireUserEventTriggered(SslState.BRIDGING);
         }
 
         return null;
@@ -169,14 +171,16 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         }
 
         if (msg instanceof ColumnCountMessage) {
-            setDecodeContext(DecodeContext.result(this.binaryResult, ((ColumnCountMessage) msg).getTotalColumns()));
+            boolean deprecateEof = (this.session.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
+            setDecodeContext(DecodeContext.result(this.binaryResult, deprecateEof, ((ColumnCountMessage) msg).getTotalColumns()));
             return false;
         }
 
-        if (msg instanceof OkMessage) {
+        if (msg instanceof OkMessage || msg instanceof EofMessage) {
+            // Metadata EOF message will be not receive in here.
             setDecodeContext(DecodeContext.command());
-        } else if (msg instanceof AbstractSyntheticMetadataMessage) {
-            if (((AbstractSyntheticMetadataMessage) msg).isCompleted()) {
+        } else if (msg instanceof SyntheticMetadataMessage) {
+            if (((SyntheticMetadataMessage) msg).isCompleted()) {
                 setDecodeContext(DecodeContext.command());
             }
         } else if (msg instanceof PreparedOkMessage) {
@@ -184,9 +188,10 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             int columns = message.getTotalColumns();
             int parameters = message.getTotalParameters();
 
+            // columns + parameters > 0
             if (columns > -parameters) {
-                // columns + parameters > 0
-                setDecodeContext(DecodeContext.preparedMetadata(columns, parameters));
+                boolean deprecateEof = (this.session.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
+                setDecodeContext(DecodeContext.preparedMetadata(deprecateEof, columns, parameters));
             } else {
                 setDecodeContext(DecodeContext.command());
             }

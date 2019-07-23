@@ -19,12 +19,12 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
+
 /**
  * An implementation of {@link MySqlAuthProvider} for type "mysql_native_password".
  */
 final class MySqlNativeAuthProvider implements MySqlAuthProvider {
-
-    static final String TYPE = "mysql_native_password";
 
     static final MySqlNativeAuthProvider INSTANCE = new MySqlNativeAuthProvider();
 
@@ -46,18 +46,17 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
      * {@inheritDoc}
      */
     @Override
-    public byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
-    public byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation) {
-        // "mysql_native_password" not support full authentication.
-        return null;
+    public MySqlAuthProvider next() {
+        return this;
     }
 
     @Override
     public String getType() {
-        return TYPE;
+        return MYSQL_NATIVE_PASSWORD;
     }
 }

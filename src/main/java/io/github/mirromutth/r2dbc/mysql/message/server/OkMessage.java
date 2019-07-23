@@ -31,7 +31,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  */
 public final class OkMessage implements ServerMessage, WarningMessage {
 
-    static final int MIN_SIZE = 7;
+    private static final int MIN_SIZE = 7;
 
     private final long affectedRows;
 
@@ -52,38 +52,6 @@ public final class OkMessage implements ServerMessage, WarningMessage {
         this.serverStatuses = serverStatuses;
         this.warnings = warnings;
         this.information = requireNonNull(information, "information must not be null");
-    }
-
-    public static OkMessage decode(ByteBuf buf, MySqlSession session) {
-        buf.skipBytes(1); // OK message header, 0x00 or 0xFE
-
-        long affectedRows = CodecUtils.readVarInt(buf);
-        long lastInsertId = CodecUtils.readVarInt(buf);
-        short serverStatuses = buf.readShortLE();
-        int warnings = buf.readUnsignedShortLE();
-
-        if (buf.isReadable()) {
-            Charset charset = session.getCollation().getCharset();
-            int sizeAfterVarInt = CodecUtils.checkNextVarInt(buf);
-
-            if (sizeAfterVarInt < 0) {
-                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, buf.toString(charset));
-            } else {
-                int readerIndex = buf.readerIndex();
-                long size = CodecUtils.readVarInt(buf);
-                String information;
-
-                if (size > sizeAfterVarInt) {
-                    information = buf.toString(readerIndex, buf.writerIndex() - readerIndex, charset);
-                } else {
-                    information = buf.toString(buf.readerIndex(), (int) size, charset);
-                }
-                // ignore session state information, it is not human readable and useless for client
-                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);
-            }
-        } else { // maybe have no human-readable message
-            return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, "");
-        }
     }
 
     public long getAffectedRows() {
@@ -162,5 +130,41 @@ public final class OkMessage implements ServerMessage, WarningMessage {
             .append('\'')
             .append('}')
             .toString();
+    }
+
+    static boolean isValidSize(int bytes) {
+        return bytes >= MIN_SIZE;
+    }
+
+    static OkMessage decode(ByteBuf buf, MySqlSession session) {
+        buf.skipBytes(1); // OK message header, 0x00 or 0xFE
+
+        long affectedRows = CodecUtils.readVarInt(buf);
+        long lastInsertId = CodecUtils.readVarInt(buf);
+        short serverStatuses = buf.readShortLE();
+        int warnings = buf.readUnsignedShortLE();
+
+        if (buf.isReadable()) {
+            Charset charset = session.getCollation().getCharset();
+            int sizeAfterVarInt = CodecUtils.checkNextVarInt(buf);
+
+            if (sizeAfterVarInt < 0) {
+                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, buf.toString(charset));
+            } else {
+                int readerIndex = buf.readerIndex();
+                long size = CodecUtils.readVarInt(buf);
+                String information;
+
+                if (size > sizeAfterVarInt) {
+                    information = buf.toString(readerIndex, buf.writerIndex() - readerIndex, charset);
+                } else {
+                    information = buf.toString(buf.readerIndex(), (int) size, charset);
+                }
+                // ignore session state information, it is not human readable and useless for client
+                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);
+            }
+        } else { // maybe have no human-readable message
+            return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, "");
+        }
     }
 }

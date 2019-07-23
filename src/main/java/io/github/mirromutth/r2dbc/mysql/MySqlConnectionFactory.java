@@ -22,7 +22,6 @@ import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
-import reactor.netty.tcp.SslProvider;
 
 import java.time.Duration;
 
@@ -53,19 +52,15 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
         requireNonNull(configuration, "configuration must not be null");
 
         return new MySqlConnectionFactory(Mono.defer(() -> {
-            MySqlSession session = new MySqlSession(
-                configuration.getDatabase(),
-                configuration.getZeroDateOption(),
-                configuration.getUsername(),
-                configuration.getPassword()
-            );
+            MySqlSession session = new MySqlSession(configuration.getDatabase(), configuration.getZeroDateOption());
             String host = configuration.getHost();
             int port = configuration.getPort();
             Duration connectTimeout = configuration.getConnectTimeout();
             MySqlSslConfiguration sslConfiguration = configuration.getSslConfiguration();
+            Boolean requireSsl = sslConfiguration == null ? null : false;
 
             return Client.connect(ConnectionProvider.newConnection(), host, port, session, sslConfiguration, connectTimeout)
-                .flatMap(client -> client.initialize().thenReturn(client))
+                .flatMap(client -> LoginFlow.login(client, session, configuration.getUsername(), configuration.getPassword(), requireSsl))
                 .map(client -> new MySqlConnection(client, session));
         }));
     }

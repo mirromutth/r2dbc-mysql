@@ -20,9 +20,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
@@ -30,37 +28,47 @@ import java.util.function.Function;
  * Simple to execute a task in the newly connection, any exceptions in the
  * execution will be thrown, connection will always be closed after use.
  */
-@FunctionalInterface
-public interface MySqlConnectionRunner {
+final class MySqlConnectionRunner {
 
-    /**
-     * MySQL 5.7.x community version with SSL.
-     */
-    MySqlConnectionRunner SSL_COMMUNITY_5_7 = MySqlConnectionRunner.ofVersion("5_7");
+    private static final MySqlConnectionRunner[] ALL_RUNNER = {
+        new MySqlConnectionRunner("5_6", false), // MySQL 5.6.x community version without SSL.
+        new MySqlConnectionRunner("5_7", true) // MySQL 5.7.x community version with SSL.
+    };
 
-    void run(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable;
+    private final String version;
 
-    static MySqlConnectionRunner ofVersion(String version) {
-        return (consumer) -> {
-            CountDownLatch latch = new CountDownLatch(1);
-            AtomicReference<Throwable> cause = new AtomicReference<>();
+    private final boolean ssl;
 
-            MySQLHelper.getFactoryByVersion(version).create()
-                .flatMap(connection -> Flux.from(consumer.apply(connection))
-                    .onErrorResume(e -> connection.close().then(Mono.error(e)))
-                    .concatWith(connection.close().then(Mono.empty()))
-                    .then())
-                .subscribe(null, e -> {
-                    cause.set(e);
-                    latch.countDown();
-                }, latch::countDown);
+    private MySqlConnectionRunner(String version, boolean ssl) {
+        this.version = version;
+        this.ssl = ssl;
+    }
 
-            latch.await();
+    private void run(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<Throwable> cause = new AtomicReference<>();
 
-            Throwable e = cause.get();
-            if (e != null) {
-                throw e;
-            }
-        };
+        MySQLHelper.getFactoryByVersion(version, ssl).create()
+            .flatMap(connection -> Flux.from(consumer.apply(connection))
+                .onErrorResume(e -> connection.close().then(Mono.error(e)))
+                .concatWith(connection.close().then(Mono.empty()))
+                .then())
+            .subscribe(null, e -> {
+                cause.set(e);
+                latch.countDown();
+            }, latch::countDown);
+
+        latch.await();
+
+        Throwable e = cause.get();
+        if (e != null) {
+            throw e;
+        }
+    }
+
+    static void runAll(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable {
+        for (MySqlConnectionRunner runner : ALL_RUNNER) {
+            runner.run(consumer);
+        }
     }
 }

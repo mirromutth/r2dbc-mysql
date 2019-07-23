@@ -77,19 +77,26 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof SslState) {
-            if (SslState.ENABLED == evt) {
-                logger.debug("SSL event triggered, enable SSL handler to pipeline");
+            switch ((SslState) evt) {
+                case BRIDGING:
+                    logger.debug("SSL event triggered, enable SSL handler to pipeline");
 
-                MySqlSslConfiguration sslConfiguration = this.sslConfiguration;
-                this.sslConfiguration = null;
+                    MySqlSslConfiguration sslConfiguration = this.sslConfiguration;
+                    this.sslConfiguration = null;
 
-                if (sslConfiguration == null) {
-                    ctx.fireExceptionCaught(new IllegalStateException("The SSL bridge has used, cannot build SSL handler twice"));
-                    return;
-                }
+                    if (sslConfiguration == null) {
+                        ctx.fireExceptionCaught(new IllegalStateException("The SSL bridge has used, cannot build SSL handler twice"));
+                        return;
+                    }
 
-                SslProvider sslProvider = buildProvider(sslConfiguration, session.getServerVersion());
-                ctx.pipeline().addBefore(NAME, SSL_NAME, sslProvider.getSslContext().newHandler(ctx.alloc()));
+                    SslProvider sslProvider = buildProvider(sslConfiguration, session.getServerVersion());
+                    ctx.pipeline().addBefore(NAME, SSL_NAME, sslProvider.getSslContext().newHandler(ctx.alloc()));
+                    break;
+                case UNSUPPORTED:
+                    // Remove self because it is useless. (kick down the ladder!)
+                    logger.debug("Server unsupported SSL, remove SSL bridge in pipeline");
+                    ctx.pipeline().remove(NAME);
+                    break;
             }
             // Ignore custom SSL state because it is useless.
         } else if (SslHandshakeCompletionEvent.SUCCESS == evt) {

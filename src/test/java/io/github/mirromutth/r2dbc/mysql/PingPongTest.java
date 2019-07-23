@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.SSL_COMMUNITY_5_7;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.runAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -35,7 +35,7 @@ class PingPongTest {
 
     @Test
     void selectOne() throws Throwable {
-        SSL_COMMUNITY_5_7.run(connection -> Mono.from(connection.createStatement("SELECT 1").execute())
+        runAll(connection -> Mono.from(connection.createStatement("SELECT 1").execute())
             .flatMapMany(result -> result.map((row, metadata) -> row.get(0, Number.class)))
             .doOnNext(number -> assertEquals(number.intValue(), 1))
             .reduce((x, y) -> Math.addExact(x.intValue(), y.intValue()))
@@ -44,6 +44,6 @@ class PingPongTest {
 
     @Test
     void realPing() throws Throwable {
-        SSL_COMMUNITY_5_7.run(MySqlConnection::ping);
+        runAll(MySqlConnection::ping);
     }
 }

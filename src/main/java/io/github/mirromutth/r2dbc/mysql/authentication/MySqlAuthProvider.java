@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.authentication;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import reactor.util.annotation.Nullable;
 
@@ -24,9 +25,6 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 
 /**
  * MySQL authorization provider for connection phase.
- * <p>
- * Old Password Authentication ("mysql_old_password") will NEVER support, the hashing algorithm
- * has broken that is used for this authentication type (as shown in CVE-2000-0981).
  * <p>
  * More information for MySQL authentication type:
  * <p>
@@ -36,20 +34,20 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  */
 public interface MySqlAuthProvider {
 
-    static String defaultAuthType() {
-        return MySqlNativeAuthProvider.TYPE;
-    }
-
     static MySqlAuthProvider build(String type) {
         requireNonNull(type, "type must not be null");
 
         switch (type) {
-            case CachingSha2AuthProvider.TYPE:
-                return CachingSha2AuthProvider.INSTANCE;
-            case MySqlNativeAuthProvider.TYPE:
+            case AuthTypes.CACHING_SHA2_PASSWORD:
+                return CachingSha2FastAuthProvider.INSTANCE;
+            case AuthTypes.MYSQL_NATIVE_PASSWORD:
                 return MySqlNativeAuthProvider.INSTANCE;
-            case Sha256AuthProvider.TYPE:
+            case AuthTypes.SHA256_PASSWORD:
                 return Sha256AuthProvider.INSTANCE;
+            case AuthTypes.MYSQL_OLD_PASSWORD:
+                return OldAuthProvider.INSTANCE;
+            case AuthTypes.NO_AUTH_PROVIDER:
+                return NoAuthProvider.INSTANCE;
         }
 
         throw new R2dbcPermissionDeniedException("Authentication type '" + type + "' not supported");
@@ -58,27 +56,22 @@ public interface MySqlAuthProvider {
     String getType();
 
     /**
-     * @return true if the authentication type should be used on SSL.
+     * @return true if the authentication type should be used on SSL for next authentication.
      */
     boolean isSslNecessary();
 
     /**
-     * Generate an authorization for fast authentication phase.
+     * Generate an authorization of the current provider.
      *
      * @param password  user password
      * @param salt      password salt for hash algorithm
      * @param collation password character collation
      * @return fast authentication phase must not be null.
      */
-    byte[] fastAuthPhase(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation);
+    byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation);
 
     /**
-     * Generate an authorization for full authentication phase.
-     *
-     * @param password  user password
-     * @param collation password character collation
-     * @return {@code null} means has no full authentication phase.
+     * @return next authentication provider for same authentication type, or {@code this} if has not next provider.
      */
-    @Nullable
-    byte[] fullAuthPhase(@Nullable CharSequence password, CharCollation collation);
+    MySqlAuthProvider next();
 }

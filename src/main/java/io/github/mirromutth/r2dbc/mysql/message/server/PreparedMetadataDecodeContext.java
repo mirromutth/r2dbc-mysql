@@ -25,13 +25,22 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
 
     private static final DefinitionMetadataMessage[] EMPTY_METADATA = {};
 
+    /**
+     * First part of metadata which is parameters metadata.
+     */
     private final DefinitionMetadataMessage[] paramMetadata;
 
+    /**
+     * Second part of metadata which is columns metadata.
+     */
     private final DefinitionMetadataMessage[] colMetadata;
 
-    private final AtomicInteger columns = new AtomicInteger(0);
+    private final AtomicInteger columns = new AtomicInteger();
 
-    PreparedMetadataDecodeContext(int totalColumns, int totalParameters) {
+    private volatile boolean inMetadata = true;
+
+    PreparedMetadataDecodeContext(boolean deprecateEof, int totalColumns, int totalParameters) {
+        super(deprecateEof);
         this.paramMetadata = createArray(totalParameters);
         this.colMetadata = createArray(totalColumns);
     }
@@ -42,39 +51,56 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
     }
 
     @Override
-    boolean isMetadata() {
-        return columns.get() < paramMetadata.length + colMetadata.length;
+    boolean isInMetadata() {
+        return inMetadata;
     }
 
     @Override
-    AbstractSyntheticMetadataMessage pushAndGetMetadata(DefinitionMetadataMessage metadata) {
-        int columns = this.columns.getAndIncrement();
+    protected SyntheticMetadataMessage checkComplete(int index) {
+        if (index == paramMetadata.length) {
+            if (colMetadata.length == 0) {
+                // Has no column metadata.
+                inMetadata = false;
+                return new SyntheticMetadataMessage(true, paramMetadata);
+            }
+
+            return new SyntheticMetadataMessage(false, paramMetadata);
+        } else if (index == paramMetadata.length + colMetadata.length) {
+            inMetadata = false;
+            return new SyntheticMetadataMessage(true, colMetadata);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    protected int putMetadata(DefinitionMetadataMessage metadata) {
+        int index = columns.getAndIncrement();
         int paramSize = paramMetadata.length;
         int colSize = colMetadata.length;
 
-        if (columns >= paramSize + colSize) {
-            throw new IllegalStateException(String.format("columns' metadata has filled up, now index: %d, param length: %d, column length: %d", columns, paramSize, colSize));
+        if (index >= paramSize + colSize) {
+            throw new IllegalStateException(String.format("columns' metadata has filled up, now index: %d, param length: %d, column length: %d", index, paramSize, colSize));
         }
 
-        if (columns < paramSize) {
-            paramMetadata[columns] = metadata;
-
-            if (columns == paramSize - 1) {
-                // If colSize is 0 means has no columns' metadata, it is the last message of prepared metadata.
-                return new SyntheticParamMetadataMessage(colSize == 0, paramMetadata);
-            }
-
-            return null;
+        if (index < paramSize) {
+            paramMetadata[index] = metadata;
+        } else {
+            colMetadata[index - paramSize] = metadata;
         }
 
-        colMetadata[columns -= paramSize] = metadata;
+        return index + 1;
+    }
 
-        if (columns == colSize - 1) {
-            // SyntheticRowMetadataMessage must be the last message of prepared metadata.
-            return new SyntheticRowMetadataMessage(true, colMetadata);
-        }
+    @Override
+    protected int currentIndex() {
+        return columns.get();
+    }
 
-        return null;
+    @Override
+    protected Object loggingPoints() {
+        int paramSize = paramMetadata.length;
+        return String.format("[%d, %d]", paramSize, paramSize + colMetadata.length);
     }
 
     private static DefinitionMetadataMessage[] createArray(int size) {

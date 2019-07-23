@@ -59,16 +59,8 @@ public final class MySqlBatch implements Batch {
 
     @Override
     public Flux<MySqlResult> execute() {
-        return Flux.defer(() -> {
-            int size = statements.size();
-
-            if (size <= 0) {
-                return Flux.empty();
-            }
-
-            return SimpleQueryFlow.execute(client, statements)
-                .map(messages -> new MySqlResult(codecs, session, null, messages));
-        });
+        return SimpleQueryFlow.execute(client, statements, session)
+            .map(messages -> new MySqlResult(codecs, session, null, messages));
     }
 
     @Override

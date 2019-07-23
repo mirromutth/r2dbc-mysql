@@ -16,33 +16,46 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * Change authentication plugin type and salt message.
+ * MySQL Handshake Message for protocol version 9.
  */
-public final class AuthChangeMessage implements ServerMessage {
+final class HandshakeV9Request implements HandshakeRequest {
 
-    private final String authType;
+    private final HandshakeHeader header;
 
     private final byte[] salt;
 
-    private AuthChangeMessage(String authType, byte[] salt) {
-        this.authType = requireNonNull(authType, "authType must not be null");
+    private HandshakeV9Request(HandshakeHeader header, byte[] salt) {
+        this.header = requireNonNull(header, "header must not be null");
         this.salt = requireNonNull(salt, "salt must not be null");
     }
 
-    public String getAuthType() {
-        return authType;
+    @Override
+    public HandshakeHeader getHeader() {
+        return header;
     }
 
+    @Override
+    public int getServerCapabilities() {
+        // Unsupported anything.
+        return 0;
+    }
+
+    @Override
+    public String getAuthType() {
+        return AuthTypes.MYSQL_OLD_PASSWORD;
+    }
+
+    @Override
     public byte[] getSalt() {
         return salt;
     }
@@ -52,13 +65,13 @@ public final class AuthChangeMessage implements ServerMessage {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof AuthChangeMessage)) {
+        if (!(o instanceof HandshakeV9Request)) {
             return false;
         }
 
-        AuthChangeMessage that = (AuthChangeMessage) o;
+        HandshakeV9Request that = (HandshakeV9Request) o;
 
-        if (!authType.equals(that.authType)) {
+        if (!header.equals(that.header)) {
             return false;
         }
         return Arrays.equals(salt, that.salt);
@@ -66,25 +79,31 @@ public final class AuthChangeMessage implements ServerMessage {
 
     @Override
     public int hashCode() {
-        int result = authType.hashCode();
+        int result = header.hashCode();
         result = 31 * result + Arrays.hashCode(salt);
         return result;
     }
 
     @Override
     public String toString() {
-        return String.format("AuthChangeMessage{authType=%s, salt=%s}", authType, Arrays.toString(salt));
+        return String.format("HandshakeV9Request{header=%s, salt=REDACTED}", header);
     }
 
-    static AuthChangeMessage decode(ByteBuf buf) {
-        String authType = CodecUtils.readCString(buf, StandardCharsets.US_ASCII);
+    static HandshakeV9Request decodeV9(ByteBuf buf, HandshakeHeader header) {
         int bytes = buf.readableBytes();
 
-        if (bytes > 0 && buf.getByte(buf.writerIndex() - 1) == 0) {
-            // Remove last 0.
-            return new AuthChangeMessage(authType, ByteBufUtil.getBytes(buf, buf.readerIndex(), bytes - 1));
-        } else {
-            return new AuthChangeMessage(authType, ByteBufUtil.getBytes(buf));
+        if (bytes <= 0) {
+            return new HandshakeV9Request(header, EMPTY_BYTES);
         }
+
+        byte[] salt;
+
+        if (buf.getByte(buf.writerIndex() - 1) == 0) {
+            salt = ByteBufUtil.getBytes(buf, buf.readerIndex(),  bytes - 1);
+        } else {
+            salt = ByteBufUtil.getBytes(buf);
+        }
+
+        return new HandshakeV9Request(header, salt);
     }
 }

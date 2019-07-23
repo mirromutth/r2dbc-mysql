@@ -19,27 +19,28 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.NO_AUTH_PROVIDER;
 import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
- * An implementation of {@link MySqlAuthProvider} for type "sha256_password".
+ * A special authentication provider when server capabilities does not set {@code Capabilities.PLUGIN_AUTH}.
+ * And {@code AuthChangeMessage} will be send by server after handshake response.
  */
-final class Sha256AuthProvider implements MySqlAuthProvider {
+final class NoAuthProvider implements MySqlAuthProvider {
 
-    static final Sha256AuthProvider INSTANCE = new Sha256AuthProvider();
+    static final NoAuthProvider INSTANCE = new NoAuthProvider();
 
-    private Sha256AuthProvider() {
+    private NoAuthProvider() {
     }
 
     @Override
     public boolean isSslNecessary() {
-        return true;
+        return false;
     }
 
     @Override
     public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
-        // TODO: implement fast authentication
+        // Has no authentication provider in here.
         return EMPTY_BYTES;
     }
 
@@ -50,6 +51,6 @@ final class Sha256AuthProvider implements MySqlAuthProvider {
 
     @Override
     public String getType() {
-        return SHA256_PASSWORD;
+        return NO_AUTH_PROVIDER;
     }
 }

@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.client;
+package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * Represents the SSL state aspect of a connection.
+ * All authentication types from handshake requests.
  */
-enum SslState {
+public final class AuthTypes {
+
+    public static final String CACHING_SHA2_PASSWORD = "caching_sha2_password";
+
+    public static final String MYSQL_NATIVE_PASSWORD = "mysql_native_password";
+
+    public static final String SHA256_PASSWORD = "sha256_password";
+
+    public static final String MYSQL_OLD_PASSWORD = "mysql_old_password";
 
     /**
-     * Both of server and client want SSL, just bridging it!
+     * Try use empty string to represent has no authentication provider
+     * when {@code Capabilities.PLUGIN_AUTH} does not set.
      */
-    BRIDGING,
-
-    /**
-     * Server unsupported SSL.
-     */
-    UNSUPPORTED
+    public static final String NO_AUTH_PROVIDER = "";
 }
