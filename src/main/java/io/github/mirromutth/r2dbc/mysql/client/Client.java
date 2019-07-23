@@ -44,8 +44,6 @@ public interface Client {
      */
     Flux<ServerMessage> exchange(Publisher<? extends ExchangeableMessage> requests);
 
-    Flux<ServerMessage> readOnly();
-
     Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages);
 
     Mono<Void> close();

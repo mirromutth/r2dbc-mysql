@@ -121,17 +121,6 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
-    public Flux<ServerMessage> readOnly() {
-        return Flux.defer(() -> {
-            if (this.closing.get()) {
-                return Flux.error(new IllegalStateException("can not read messages because the connection is closed"));
-            }
-
-            return this.responseProcessor;
-        });
-    }
-
-    @Override
     public Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages) {
         requireNonNull(messages, "messages must not be null");
 

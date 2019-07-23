@@ -240,7 +240,8 @@ final class LoginFlow {
         INIT {
             @Override
             Mono<State> handle(LoginFlow flow) {
-                return flow.client.readOnly().next().handle((message, sink) -> {
+                // Server send first, so no need send anything to server in here.
+                return flow.client.exchange(Mono.empty()).next().handle((message, sink) -> {
                     if (message instanceof ErrorMessage) {
                         sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
                     } else if (message instanceof HandshakeRequest) {
