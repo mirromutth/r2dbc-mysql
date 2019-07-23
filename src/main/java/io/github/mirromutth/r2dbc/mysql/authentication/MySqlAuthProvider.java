@@ -61,7 +61,7 @@ public interface MySqlAuthProvider {
     boolean isSslNecessary();
 
     /**
-     * Generate next authorization.
+     * Generate an authorization of the current provider.
      *
      * @param password  user password
      * @param salt      password salt for hash algorithm
@@ -70,5 +70,8 @@ public interface MySqlAuthProvider {
      */
     byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation);
 
+    /**
+     * @return next authentication provider for same authentication type, or {@code this} if has not next provider.
+     */
     MySqlAuthProvider next();
 }
