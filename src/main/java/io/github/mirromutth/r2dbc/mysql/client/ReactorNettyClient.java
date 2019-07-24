@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.MySqlSslConfiguration;
+import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
@@ -35,7 +36,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
 import reactor.netty.FutureMono;
-import reactor.util.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -61,9 +61,10 @@ final class ReactorNettyClient implements Client {
 
     private final AtomicBoolean closing = new AtomicBoolean();
 
-    ReactorNettyClient(Connection connection, MySqlSession session, @Nullable MySqlSslConfiguration sslConfiguration) {
+    ReactorNettyClient(Connection connection, MySqlSslConfiguration ssl, MySqlSession session) {
         requireNonNull(connection, "connection must not be null");
         requireNonNull(session, "session must not be null");
+        requireNonNull(ssl, "ssl must not be null");
 
         this.connection = connection;
         this.session = session;
@@ -72,8 +73,8 @@ final class ReactorNettyClient implements Client {
         connection.addHandlerLast(EnvelopeSlicer.NAME, new EnvelopeSlicer())
             .addHandlerLast(MessageDuplexCodec.NAME, new MessageDuplexCodec(session, this.closing));
 
-        if (sslConfiguration != null) {
-            connection.addHandlerFirst(SslBridgeHandler.NAME, new SslBridgeHandler(session, sslConfiguration));
+        if (ssl.getSslMode().startSsl()) {
+            connection.addHandlerFirst(SslBridgeHandler.NAME, new SslBridgeHandler(session, ssl));
         }
 
         if (InternalLoggerFactory.getInstance(ReactorNettyClient.class).isTraceEnabled()) {

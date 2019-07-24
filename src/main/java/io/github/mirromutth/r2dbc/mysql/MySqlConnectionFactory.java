@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
+import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
@@ -56,11 +57,13 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             String host = configuration.getHost();
             int port = configuration.getPort();
             Duration connectTimeout = configuration.getConnectTimeout();
-            MySqlSslConfiguration sslConfiguration = configuration.getSslConfiguration();
-            Boolean requireSsl = sslConfiguration == null ? null : false;
+            MySqlSslConfiguration ssl = configuration.getSsl();
+            SslMode sslMode = ssl.getSslMode();
+            String username = configuration.getUsername();
+            CharSequence password = configuration.getPassword();
 
-            return Client.connect(ConnectionProvider.newConnection(), host, port, session, sslConfiguration, connectTimeout)
-                .flatMap(client -> LoginFlow.login(client, session, configuration.getUsername(), configuration.getPassword(), requireSsl))
+            return Client.connect(ConnectionProvider.newConnection(), host, port, ssl, session, connectTimeout)
+                .flatMap(client -> LoginFlow.login(client, sslMode, session, username, password))
                 .map(client -> new MySqlConnection(client, session));
         }));
     }

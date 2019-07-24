@@ -18,28 +18,20 @@ package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.MySqlSslConfiguration;
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
-import io.github.mirromutth.r2dbc.mysql.constant.TlsProtocols;
+import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
+import io.github.mirromutth.r2dbc.mysql.constant.TlsVersions;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.netty.tcp.SslProvider;
-import reactor.util.annotation.Nullable;
 
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.TrustManagerFactory;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
+import java.io.File;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -67,11 +59,11 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
 
     private final MySqlSession session;
 
-    private volatile MySqlSslConfiguration sslConfiguration;
+    private volatile MySqlSslConfiguration ssl;
 
-    SslBridgeHandler(MySqlSession session, MySqlSslConfiguration sslConfiguration) {
+    SslBridgeHandler(MySqlSession session, MySqlSslConfiguration ssl) {
         this.session = requireNonNull(session, "session must not be null");
-        this.sslConfiguration = requireNonNull(sslConfiguration, "sslConfiguration must not be null");
+        this.ssl = requireNonNull(ssl, "ssl must not be null");
     }
 
     @Override
@@ -81,15 +73,15 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                 case BRIDGING:
                     logger.debug("SSL event triggered, enable SSL handler to pipeline");
 
-                    MySqlSslConfiguration sslConfiguration = this.sslConfiguration;
-                    this.sslConfiguration = null;
+                    MySqlSslConfiguration ssl = this.ssl;
+                    this.ssl = null;
 
-                    if (sslConfiguration == null) {
+                    if (ssl == null) {
                         ctx.fireExceptionCaught(new IllegalStateException("The SSL bridge has used, cannot build SSL handler twice"));
                         return;
                     }
 
-                    SslProvider sslProvider = buildProvider(sslConfiguration, session.getServerVersion());
+                    SslProvider sslProvider = buildProvider(ssl, session.getServerVersion());
                     ctx.pipeline().addBefore(NAME, SSL_NAME, sslProvider.getSslContext().newHandler(ctx.alloc()));
                     break;
                 case UNSUPPORTED:
@@ -111,127 +103,56 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         }
     }
 
-    private static SslProvider buildProvider(MySqlSslConfiguration sslConfiguration, ServerVersion version) {
+    private static SslProvider buildProvider(MySqlSslConfiguration ssl, ServerVersion version) {
         return SslProvider.builder()
-            .sslContext(buildContext(sslConfiguration, version))
+            .sslContext(buildContext(ssl, version))
             .defaultConfiguration(SslProvider.DefaultConfigurationType.TCP)
             .build();
     }
 
-    private static SslContextBuilder buildContext(MySqlSslConfiguration sslConfiguration, ServerVersion version) {
-        SslContextBuilder builder = withTlsProtocols(SslContextBuilder.forClient(), sslConfiguration, version)
-            .sslProvider(sslConfiguration.getSslProvider())
-            .clientAuth(sslConfiguration.getClientAuth());
+    private static SslContextBuilder buildContext(MySqlSslConfiguration ssl, ServerVersion version) {
+        SslContextBuilder builder = withTlsVersion(SslContextBuilder.forClient(), ssl, version);
+        String sslKey = ssl.getSslKey();
 
-        KeyManagerFactory keyManagerFactory = buildKeyManager(
-            sslConfiguration.getKeyManagerFactory(),
-            sslConfiguration.getKeyCertType(),
-            sslConfiguration.getKeyCertUrl(),
-            sslConfiguration.getKeyCertPassword()
-        );
+        if (sslKey != null) {
+            CharSequence keyPassword = ssl.getSslKeyPassword();
+            String sslCert = ssl.getSslCert();
 
-        if (keyManagerFactory != null) {
-            builder.keyManager(keyManagerFactory);
+            if (sslCert == null) {
+                throw new IllegalStateException("SSL key param requires but SSL cert param to be present");
+            }
+
+            builder.keyManager(new File(sslCert), new File(sslKey), keyPassword == null ? null : keyPassword.toString());
         }
 
-        TrustManagerFactory trustManagerFactory = buildTrustManager(
-            sslConfiguration.getTrustManagerFactory(),
-            sslConfiguration.getTrustCertType(),
-            sslConfiguration.getTrustCertUrl(),
-            sslConfiguration.getTrustCertPassword()
-        );
+        SslMode mode = ssl.getSslMode();
+        if (mode.verifyCertificate()) {
+            String sslCa = ssl.getSslCa();
 
-        if (trustManagerFactory != null) {
-            builder.trustManager(trustManagerFactory);
+            if (sslCa == null) {
+                throw new IllegalStateException(String.format("SSL mode %s requires SSL CA parameter", mode));
+            }
+
+            builder.trustManager(new File(sslCa));
+        } else {
+            builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }
 
         return builder;
     }
 
-    private static SslContextBuilder withTlsProtocols(SslContextBuilder builder, MySqlSslConfiguration sslConfiguration, ServerVersion version) {
-        String[] tlsProtocols = sslConfiguration.getTlsProtocols();
+    private static SslContextBuilder withTlsVersion(SslContextBuilder builder, MySqlSslConfiguration ssl, ServerVersion version) {
+        String[] tlsProtocols = ssl.getTlsVersion();
 
         if (tlsProtocols.length > 0) {
             builder.protocols(tlsProtocols);
         } else if (isEnabledTls1_2(version)) {
-            builder.protocols(TlsProtocols.TLS1, TlsProtocols.TLS1_1, TlsProtocols.TLS1_2);
+            builder.protocols(TlsVersions.TLS1, TlsVersions.TLS1_1, TlsVersions.TLS1_2);
         } else {
-            builder.protocols(TlsProtocols.TLS1, TlsProtocols.TLS1_1);
+            builder.protocols(TlsVersions.TLS1, TlsVersions.TLS1_1);
         }
 
         return builder;
-    }
-
-    @Nullable
-    private static KeyManagerFactory buildKeyManager(
-        @Nullable KeyManagerFactory managerFactory,
-        String keyCertType, @Nullable URL keyCertUrl, @Nullable CharSequence keyCertPassword
-    ) {
-        if (managerFactory != null) {
-            return managerFactory;
-        } else if (keyCertUrl == null) {
-            return null;
-        }
-
-        try {
-            char[] password = convertPlainPassword(keyCertPassword);
-            KeyStore keyStore = buildKeyStore(keyCertType, keyCertUrl, password);
-            KeyManagerFactory factory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-
-            factory.init(keyStore, password);
-            return factory;
-        } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
-            throw new IllegalStateException("Load key cert (client-side) failed!", e);
-        }
-    }
-
-    @Nullable
-    private static TrustManagerFactory buildTrustManager(
-        @Nullable TrustManagerFactory managerFactory,
-        String trustCertType, @Nullable URL trustCertUrl, @Nullable CharSequence trustCertPassword
-    ) {
-        if (managerFactory != null) {
-            return managerFactory;
-        } else if (trustCertUrl == null) {
-            return null;
-        }
-
-        try {
-            char[] password = convertPlainPassword(trustCertPassword);
-            KeyStore keyStore = buildKeyStore(trustCertType, trustCertUrl, password);
-            TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-
-            factory.init(keyStore);
-            return factory;
-        } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Load trust cert (server-side) failed!", e);
-        }
-    }
-
-    private static KeyStore buildKeyStore(String certType, URL certUrl, @Nullable char[] password)
-        throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException {
-        KeyStore keyStore = KeyStore.getInstance(certType);
-
-        try (InputStream inputStream = certUrl.openStream()) {
-            keyStore.load(inputStream, password);
-            return keyStore;
-        }
-    }
-
-    @Nullable
-    private static char[] convertPlainPassword(@Nullable CharSequence password) {
-        if (password == null) {
-            return null;
-        } else {
-            int length = password.length();
-            char[] result = new char[length];
-
-            for (int i = 0; i < length; ++i) {
-                result[i] = password.charAt(i);
-            }
-
-            return result;
-        }
     }
 
     private static boolean isEnabledTls1_2(ServerVersion version) {

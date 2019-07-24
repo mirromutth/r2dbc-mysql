@@ -21,6 +21,7 @@ import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.SqlStates;
+import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.FullAuthResponse;
 import io.github.mirromutth.r2dbc.mysql.message.client.HandshakeResponse;
@@ -62,8 +63,7 @@ final class LoginFlow {
 
     private final MySqlSession session;
 
-    @Nullable
-    private final Boolean requireSsl;
+    private final SslMode sslMode;
 
     private volatile boolean sslCompleted = false;
 
@@ -75,12 +75,12 @@ final class LoginFlow {
 
     private volatile byte[] salt;
 
-    private LoginFlow(Client client, MySqlSession session, String username, @Nullable CharSequence password, @Nullable Boolean requireSsl) {
+    private LoginFlow(Client client, SslMode sslMode, MySqlSession session, String username, @Nullable CharSequence password) {
         this.client = requireNonNull(client, "client must not be null");
+        this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
         this.session = requireNonNull(session, "session must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
-        this.requireSsl = requireSsl;
     }
 
     /**
@@ -169,19 +169,30 @@ final class LoginFlow {
             logger.warn("The MySQL server does not support batch executing, fallback to executing one-by-one");
         }
 
-        // Server should always return metadata, and no compress, and without session track
+        // Server should always return metadata, and no compress, and without session track.
         int clientCapabilities = serverCapabilities & ~(Capabilities.OPTIONAL_RESULT_SET_METADATA | Capabilities.COMPRESS | Capabilities.SESSION_TRACK);
 
         if ((clientCapabilities & Capabilities.SSL) == 0) {
-            if (requireSsl != null) {
-                if (requireSsl) {
-                    throw new R2dbcPermissionDeniedException("Server unsupported SSL but user required SSL", SqlStates.CLI_SPECIFIC_CONDITION);
-                } else {
-                    client.sslUnsupported();
-                }
+            // Server unsupported SSL.
+            if (sslMode.requireSsl()) {
+                throw new R2dbcPermissionDeniedException(String.format("Server version %s unsupported SSL but SSL required by mode %s", session.getServerVersion(), sslMode), SqlStates.CLI_SPECIFIC_CONDITION);
             }
-        } else if (requireSsl == null) {
-            clientCapabilities &= ~(Capabilities.SSL | Capabilities.SSL_VERIFY_SERVER_CERT);
+
+            if (sslMode.startSsl()) {
+                // SSL has start yet, and client can be disable SSL, disable now.
+                client.sslUnsupported();
+            }
+        } else {
+            // Server supports SSL.
+            if (!sslMode.startSsl()) {
+                // SSL does not start, just remove flag.
+                clientCapabilities &= ~Capabilities.SSL;
+            }
+
+            if (!sslMode.verifyCertificate()) {
+                // No need verify server cert, remove flag.
+                clientCapabilities &= ~Capabilities.SSL_VERIFY_SERVER_CERT;
+            }
         }
 
         if (session.getDatabase().isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
@@ -205,15 +216,12 @@ final class LoginFlow {
         this.authProvider = null;
     }
 
-    static Mono<Client> login(
-        Client client, MySqlSession session,
-        String username, @Nullable CharSequence password, @Nullable Boolean requireSsl
-    ) {
-        LoginFlow flow = new LoginFlow(client, session, username, password, requireSsl);
+    static Mono<Client> login(Client client, SslMode sslMode, MySqlSession session, String username, @Nullable CharSequence password) {
+        LoginFlow flow = new LoginFlow(client, sslMode, session, username, password);
         EmitterProcessor<State> stateMachine = EmitterProcessor.create(true);
 
         return stateMachine.startWith(State.INIT)
-            .handle((state, sink) -> {
+            .<Void>handle((state, sink) -> {
                 if (State.COMPLETED == state) {
                     sink.complete();
                 } else {
@@ -222,7 +230,8 @@ final class LoginFlow {
                     }
                     state.handle(flow).subscribe(stateMachine::onNext, stateMachine::onError);
                 }
-            }).doOnComplete(() -> {
+            })
+            .doOnComplete(() -> {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Login succeed, cleanup intermediate variables");
                 }
@@ -232,7 +241,8 @@ final class LoginFlow {
             .doOnError(e -> {
                 flow.clearAuthentication();
                 flow.client.forceClose().subscribe();
-            }).then(Mono.just(client));
+            })
+            .then(Mono.just(client));
     }
 
     private enum State {

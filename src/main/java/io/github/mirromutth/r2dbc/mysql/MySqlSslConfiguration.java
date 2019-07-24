@@ -16,19 +16,13 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslProvider;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import reactor.util.annotation.Nullable;
 
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.TrustManagerFactory;
-import java.net.URL;
 import java.util.Arrays;
 import java.util.Objects;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_STRINGS;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
@@ -36,108 +30,61 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  */
 public final class MySqlSslConfiguration {
 
-    private static final String DEFAULT_CERT_TYPE = "JKS";
+    private final SslMode sslMode;
 
-    private static final ClientAuth DEFAULT_CLIENT_AUTH = ClientAuth.NONE;
-
-    private final SslProvider sslProvider;
-
-    private final ClientAuth clientAuth;
-
-    private final String keyCertType;
-
-    private final String trustCertType;
-
-    private final String[] tlsProtocols;
+    private final String[] tlsVersion;
 
     @Nullable
-    private final KeyManagerFactory keyManagerFactory;
+    private final String sslCa;
 
     @Nullable
-    private final URL keyCertUrl;
+    private final String sslKey;
 
     @Nullable
-    private final CharSequence keyCertPassword;
+    private final CharSequence sslKeyPassword;
 
     @Nullable
-    private final TrustManagerFactory trustManagerFactory;
+    private final String sslCert;
 
-    @Nullable
-    private final URL trustCertUrl;
+    MySqlSslConfiguration(SslMode sslMode, String[] tlsVersion, @Nullable String sslCa, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert) {
+        requireNonNull(sslMode, "sslMode must not be null");
+        require(!sslMode.verifyCertificate() || sslCa != null, "SSL CA must not be null when verifying mode has set");
+        require((sslKey == null && sslCert == null) || (sslKey != null && sslCert != null), "SSL key and cert must be both null or both non-null");
 
-    @Nullable
-    private final CharSequence trustCertPassword;
-
-    /**
-     * Make sure it is private and only called by {@link Builder} because
-     * of {@code tlsProtocols} will not copy in constructor.
-     */
-    private MySqlSslConfiguration(
-        SslProvider sslProvider, ClientAuth clientAuth, String[] tlsProtocols,
-        @Nullable KeyManagerFactory keyManagerFactory, String keyCertType, @Nullable URL keyCertUrl, @Nullable CharSequence keyCertPassword,
-        @Nullable TrustManagerFactory trustManagerFactory, String trustCertType, @Nullable URL trustCertUrl, @Nullable CharSequence trustCertPassword
-    ) {
-        this.sslProvider = requireNonNull(sslProvider, "sslProvider must not be null");
-        this.clientAuth = requireNonNull(clientAuth, "clientAuth must not be null");
-        this.tlsProtocols = requireNonNull(tlsProtocols, "tlsProtocols must not be null");
-        this.keyManagerFactory = keyManagerFactory;
-        this.keyCertType = requireNonNull(keyCertType, "keyCertType must not be null");
-        this.keyCertUrl = keyCertUrl;
-        this.keyCertPassword = keyCertPassword;
-        this.trustManagerFactory = trustManagerFactory;
-        this.trustCertType = requireNonNull(trustCertType, "trustCertType must not be null");
-        this.trustCertUrl = trustCertUrl;
-        this.trustCertPassword = trustCertPassword;
+        this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
+        this.tlsVersion = requireNonNull(tlsVersion, "tlsVersion must not be null");
+        this.sslCa = sslCa;
+        this.sslKey = sslKey;
+        this.sslKeyPassword = sslKeyPassword;
+        this.sslCert = sslCert;
     }
 
-    public SslProvider getSslProvider() {
-        return sslProvider;
+    public SslMode getSslMode() {
+        return sslMode;
     }
 
-    public ClientAuth getClientAuth() {
-        return clientAuth;
-    }
-
-    public String getKeyCertType() {
-        return keyCertType;
-    }
-
-    public String getTrustCertType() {
-        return trustCertType;
-    }
-
-    public String[] getTlsProtocols() {
-        return tlsProtocols;
+    public String[] getTlsVersion() {
+        return tlsVersion;
     }
 
     @Nullable
-    public KeyManagerFactory getKeyManagerFactory() {
-        return keyManagerFactory;
+    public String getSslCa() {
+        return sslCa;
     }
 
     @Nullable
-    public URL getKeyCertUrl() {
-        return keyCertUrl;
+    public String getSslKey() {
+        return sslKey;
     }
 
     @Nullable
-    public CharSequence getKeyCertPassword() {
-        return keyCertPassword;
+    public CharSequence getSslKeyPassword() {
+        return sslKeyPassword;
     }
 
     @Nullable
-    public TrustManagerFactory getTrustManagerFactory() {
-        return trustManagerFactory;
-    }
-
-    @Nullable
-    public URL getTrustCertUrl() {
-        return trustCertUrl;
-    }
-
-    @Nullable
-    public CharSequence getTrustCertPassword() {
-        return trustCertPassword;
+    public String getSslCert() {
+        return sslCert;
     }
 
     @Override
@@ -148,202 +95,29 @@ public final class MySqlSslConfiguration {
         if (!(o instanceof MySqlSslConfiguration)) {
             return false;
         }
-
         MySqlSslConfiguration that = (MySqlSslConfiguration) o;
-
-        if (sslProvider != that.sslProvider) {
-            return false;
-        }
-        if (clientAuth != that.clientAuth) {
-            return false;
-        }
-        if (!keyCertType.equals(that.keyCertType)) {
-            return false;
-        }
-        if (!trustCertType.equals(that.trustCertType)) {
-            return false;
-        }
-        if (!Arrays.equals(tlsProtocols, that.tlsProtocols)) {
-            return false;
-        }
-        if (!Objects.equals(keyManagerFactory, that.keyManagerFactory)) {
-            return false;
-        }
-        if (!Objects.equals(keyCertUrl, that.keyCertUrl)) {
-            return false;
-        }
-        if (!Objects.equals(keyCertPassword, that.keyCertPassword)) {
-            return false;
-        }
-        if (!Objects.equals(trustManagerFactory, that.trustManagerFactory)) {
-            return false;
-        }
-        if (!Objects.equals(trustCertUrl, that.trustCertUrl)) {
-            return false;
-        }
-        return Objects.equals(trustCertPassword, that.trustCertPassword);
+        return sslMode == that.sslMode &&
+            Arrays.equals(tlsVersion, that.tlsVersion) &&
+            Objects.equals(sslCa, that.sslCa) &&
+            Objects.equals(sslKey, that.sslKey) &&
+            Objects.equals(sslKeyPassword, that.sslKeyPassword) &&
+            Objects.equals(sslCert, that.sslCert);
     }
 
     @Override
     public int hashCode() {
-        int result = sslProvider.hashCode();
-        result = 31 * result + clientAuth.hashCode();
-        result = 31 * result + keyCertType.hashCode();
-        result = 31 * result + trustCertType.hashCode();
-        result = 31 * result + Arrays.hashCode(tlsProtocols);
-        result = 31 * result + Objects.hashCode(keyManagerFactory);
-        result = 31 * result + Objects.hashCode(keyCertUrl);
-        result = 31 * result + Objects.hashCode(keyCertPassword);
-        result = 31 * result + Objects.hashCode(trustManagerFactory);
-        result = 31 * result + Objects.hashCode(trustCertUrl);
-        result = 31 * result + Objects.hashCode(trustCertPassword);
+        int result = Objects.hash(sslMode, sslCa, sslKey, sslKeyPassword, sslCert);
+        result = 31 * result + Arrays.hashCode(tlsVersion);
         return result;
     }
 
     @Override
     public String toString() {
-        return "MySqlSslConfiguration{" +
-            "sslProvider=" + sslProvider +
-            ", clientAuth=" + clientAuth +
-            ", keyCertType='" + keyCertType + '\'' +
-            ", trustCertType='" + trustCertType + '\'' +
-            ", tlsProtocols=" + Arrays.toString(tlsProtocols) +
-            ", keyManagerFactory=" + keyManagerFactory +
-            ", keyCertUrl=" + keyCertUrl +
-            ", keyCertPassword=REDACTED" +
-            ", trustManagerFactory=" + trustManagerFactory +
-            ", trustCertUrl=" + trustCertUrl +
-            ", trustCertPassword=REDACTED" +
-            '}';
-    }
-
-    static Builder builder() {
-        return new Builder();
-    }
-
-    public static final class Builder {
-
-        private SslProvider sslProvider = SslContext.defaultClientProvider();
-
-        private ClientAuth clientAuth = DEFAULT_CLIENT_AUTH;
-
-        private String keyCertType = DEFAULT_CERT_TYPE;
-
-        private String trustCertType = DEFAULT_CERT_TYPE;
-
-        private String[] tlsProtocols = EMPTY_STRINGS;
-
-        @Nullable
-        private KeyManagerFactory keyManagerFactory;
-
-        @Nullable
-        private URL keyCertUrl;
-
-        @Nullable
-        private CharSequence keyCertPassword;
-
-        @Nullable
-        private TrustManagerFactory trustManagerFactory;
-
-        @Nullable
-        private URL trustCertUrl;
-
-        @Nullable
-        private CharSequence trustCertPassword;
-
-        private Builder() {
+        if (sslMode.startSsl()) {
+            return String.format("MySqlSslConfiguration{sslMode=%s, tlsVersion=%s, sslCa='%s', sslKey='%s', sslKeyPassword=REDACTED, sslCert='%s'}",
+                sslMode, Arrays.toString(tlsVersion), sslCa, sslKey, sslCert);
         }
 
-        public Builder sslProvider(SslProvider sslProvider) {
-            this.sslProvider = requireNonNull(sslProvider, "sslProvider must not be null");
-            return this;
-        }
-
-        public Builder clientAuth(ClientAuth clientAuth) {
-            this.clientAuth = requireNonNull(clientAuth, "clientAuth must not be null");
-            return this;
-        }
-
-        public Builder disableServerVerify() {
-            return trustManagerFactory(InsecureTrustManagerFactory.INSTANCE);
-        }
-
-        public Builder tlsProtocols(String... protocols) {
-            requireNonNull(protocols, "protocols array must not be null");
-
-            int length = protocols.length;
-
-            if (length > 0) {
-                String[] tlsProtocols = new String[length];
-                System.arraycopy(protocols, 0, tlsProtocols, 0, length);
-                this.tlsProtocols = tlsProtocols;
-            } else {
-                this.tlsProtocols = EMPTY_STRINGS;
-            }
-
-            return this;
-        }
-
-        public Builder keyCertType(String keyCertType) {
-            this.keyCertType = requireNonNull(keyCertType, "keyCertType must not be null");
-            return this;
-        }
-
-        public Builder keyCertUrl(URL keyCertUrl) {
-            return keyCertUrl(keyCertUrl, null);
-        }
-
-        public Builder keyCertUrl(URL keyCertUrl, @Nullable CharSequence keyCertPassword) {
-            this.keyCertUrl = keyCertUrl;
-            this.keyCertPassword = keyCertPassword;
-            this.keyManagerFactory = null;
-            return this;
-        }
-
-        public Builder keyManagerFactory(KeyManagerFactory keyManagerFactory) {
-            this.keyManagerFactory = keyManagerFactory;
-            this.keyCertUrl = null;
-            this.keyCertPassword = null;
-            return this;
-        }
-
-        public Builder trustCertType(String trustCertType) {
-            this.trustCertType = requireNonNull(trustCertType, "trustCertType must not be null");
-            return this;
-        }
-
-        public Builder trustCertUrl(URL trustCertUrl) {
-            return trustCertUrl(trustCertUrl, null);
-        }
-
-        public Builder trustCertUrl(URL trustCertUrl, @Nullable CharSequence trustCertPassword) {
-            this.trustCertUrl = trustCertUrl;
-            this.trustCertPassword = trustCertPassword;
-            this.trustManagerFactory = null;
-            return this;
-        }
-
-        public Builder trustManagerFactory(TrustManagerFactory trustManagerFactory) {
-            this.trustManagerFactory = trustManagerFactory;
-            this.trustCertUrl = null;
-            this.trustCertPassword = null;
-            return this;
-        }
-
-        MySqlSslConfiguration build() {
-            checkTrustIntegrity();
-
-            return new MySqlSslConfiguration(
-                sslProvider, clientAuth, tlsProtocols,
-                keyManagerFactory, keyCertType, keyCertUrl, keyCertPassword,
-                trustManagerFactory, trustCertType, trustCertUrl, trustCertPassword
-            );
-        }
-
-        private void checkTrustIntegrity() {
-            if (trustManagerFactory == null && trustCertUrl == null) {
-                throw new IllegalStateException("Contain at least one trust anchor for verifying server, or just disable verification (insecure)");
-            }
-        }
+        return "DISABLED";
     }
 }

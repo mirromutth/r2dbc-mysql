@@ -101,7 +101,6 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
         if (!Objects.equals(fallbackCharset, that.fallbackCharset)) {
             return false;
         }
-        // Probably incorrect - comparing Object[] arrays with Arrays.equals
         return Arrays.equals(targets, that.targets);
     }
 

@@ -54,10 +54,7 @@ public interface Client {
 
     void loginSuccess();
 
-    static Mono<Client> connect(
-        ConnectionProvider connectionProvider, String host, int port, MySqlSession session,
-        @Nullable MySqlSslConfiguration sslConfiguration, @Nullable Duration connectTimeout
-    ) {
+    static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port, MySqlSslConfiguration ssl, MySqlSession session, @Nullable Duration connectTimeout) {
         requireNonNull(connectionProvider, "connectionProvider must not be null");
         requireNonNull(host, "host must not be null");
 
@@ -70,6 +67,6 @@ public interface Client {
         return client.host(host)
             .port(port)
             .connect()
-            .map(conn -> new ReactorNettyClient(conn, session, sslConfiguration));
+            .map(conn -> new ReactorNettyClient(conn, ssl, session));
     }
 }

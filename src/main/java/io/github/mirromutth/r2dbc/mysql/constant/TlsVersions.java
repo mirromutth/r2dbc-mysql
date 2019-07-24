@@ -17,11 +17,11 @@
 package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * All TLS protocol names supported by MySQL.
+ * All TLS protocol version names supported by MySQL.
  */
-public final class TlsProtocols {
+public final class TlsVersions {
 
-    private TlsProtocols() {
+    private TlsVersions() {
     }
 
     public static final String TLS1 = "TLSv1";
@@ -35,4 +35,12 @@ public final class TlsProtocols {
      * Note: The Enterprise Edition version will looks like {@literal 5.7.26-enterprise}.
      */
     public static final String TLS1_2 = "TLSv1.2";
+
+    /**
+     * The {@literal TLSv1.3} is available as of MySQL 8.0.16 or higher,
+     * but requires compiling MySQL using OpenSSL 1.1.1 or higher.
+     * <p>
+     * It will not be used unless user has set it up.
+     */
+    public static final String TLS1_3 = "TLSv1.3";
 }
