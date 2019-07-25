@@ -75,12 +75,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         }
 
         Boolean isSsl = options.getValue(SSL);
-        if (isSsl != null) {
-            if (isSsl) {
-                builder.sslMode(SslMode.REQUIRED);
-            } else {
-                builder.sslMode(SslMode.DISABLED);
-            }
+        if (isSsl != null && !isSsl) {
+            builder.sslMode(SslMode.DISABLED);
         }
 
         String sslMode = options.getValue(SSL_MODE);
