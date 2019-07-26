@@ -25,13 +25,16 @@ import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticSslResponseMessa
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.netty.tcp.SslProvider;
 
+import javax.net.ssl.SSLEngine;
 import java.io.File;
+import java.net.InetSocketAddress;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -59,48 +62,86 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
 
     private final MySqlSession session;
 
+    private final boolean verifyIdentity;
+
+    private volatile SSLEngine sslEngine;
+
     private volatile MySqlSslConfiguration ssl;
 
     SslBridgeHandler(MySqlSession session, MySqlSslConfiguration ssl) {
         this.session = requireNonNull(session, "session must not be null");
         this.ssl = requireNonNull(ssl, "ssl must not be null");
+        this.verifyIdentity = ssl.getSslMode().verifyIdentity();
     }
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof SslState) {
-            switch ((SslState) evt) {
-                case BRIDGING:
-                    logger.debug("SSL event triggered, enable SSL handler to pipeline");
-
-                    MySqlSslConfiguration ssl = this.ssl;
-                    this.ssl = null;
-
-                    if (ssl == null) {
-                        ctx.fireExceptionCaught(new IllegalStateException("The SSL bridge has used, cannot build SSL handler twice"));
-                        return;
-                    }
-
-                    SslProvider sslProvider = buildProvider(ssl, session.getServerVersion());
-                    ctx.pipeline().addBefore(NAME, SSL_NAME, sslProvider.getSslContext().newHandler(ctx.alloc()));
-                    break;
-                case UNSUPPORTED:
-                    // Remove self because it is useless. (kick down the ladder!)
-                    logger.debug("Server unsupported SSL, remove SSL bridge in pipeline");
-                    ctx.pipeline().remove(NAME);
-                    break;
-            }
-            // Ignore custom SSL state because it is useless.
-        } else if (SslHandshakeCompletionEvent.SUCCESS == evt) {
-            ctx.fireChannelRead(SyntheticSslResponseMessage.getInstance());
-            super.userEventTriggered(ctx, evt);
-
-            // Remove self because it is useless. (kick down the ladder!)
-            logger.debug("SSL handshake completed, remove SSL bridge in pipeline");
-            ctx.pipeline().remove(NAME);
-        } else {
-            super.userEventTriggered(ctx, evt);
+            handleSslState(ctx, (SslState) evt);
+            // Ignore event trigger for next handler, because it used only by this handler.
+            return;
         }
+
+        if (SslHandshakeCompletionEvent.SUCCESS == evt) {
+            handleSslCompleted(ctx);
+        }
+
+        super.userEventTriggered(ctx, evt);
+    }
+
+    private void handleSslCompleted(ChannelHandlerContext ctx) {
+        if (verifyIdentity) {
+            SSLEngine sslEngine = this.sslEngine;
+            String hostname = ((InetSocketAddress) ctx.channel().remoteAddress()).getHostName();
+
+            if (sslEngine == null) {
+                ctx.fireExceptionCaught(new IllegalStateException("sslEngine must not be null when verify identity"));
+                return;
+            }
+
+            try {
+                MySqlHostVerifier.accept(hostname, sslEngine.getSession());
+            } catch (Exception e) {
+                ctx.fireExceptionCaught(e);
+                return;
+            }
+        }
+
+        ctx.fireChannelRead(SyntheticSslResponseMessage.getInstance());
+
+        // Remove self because it is useless. (kick down the ladder!)
+        logger.debug("SSL handshake completed, remove SSL bridge in pipeline");
+        ctx.pipeline().remove(NAME);
+    }
+
+    private void handleSslState(ChannelHandlerContext ctx, SslState state) {
+        switch (state) {
+            case BRIDGING:
+                logger.debug("SSL event triggered, enable SSL handler to pipeline");
+
+                MySqlSslConfiguration ssl = this.ssl;
+                this.ssl = null;
+
+                if (ssl == null) {
+                    ctx.fireExceptionCaught(new IllegalStateException("The SSL bridge has used, cannot build SSL handler twice"));
+                    return;
+                }
+
+                SslProvider sslProvider = buildProvider(ssl, session.getServerVersion());
+                SslHandler sslHandler = sslProvider.getSslContext().newHandler(ctx.alloc());
+
+                this.sslEngine = sslHandler.engine();
+
+                ctx.pipeline().addBefore(NAME, SSL_NAME, sslHandler);
+
+                break;
+            case UNSUPPORTED:
+                // Remove self because it is useless. (kick down the ladder!)
+                logger.debug("Server unsupported SSL, remove SSL bridge in pipeline");
+                ctx.pipeline().remove(NAME);
+                break;
+        }
+        // Ignore another custom SSL states because they are useless.
     }
 
     private static SslProvider buildProvider(MySqlSslConfiguration ssl, ServerVersion version) {
