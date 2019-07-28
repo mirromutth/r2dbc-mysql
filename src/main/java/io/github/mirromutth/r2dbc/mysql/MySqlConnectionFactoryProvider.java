@@ -89,11 +89,6 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.tlsVersion(tlsVersion.split(","));
         }
 
-        String sslCa = options.getValue(SSL_CA);
-        if (sslCa != null) {
-            builder.sslCa(sslCa);
-        }
-
         String sslCert = options.getValue(SSL_CERT);
         String sslKey = options.getValue(SSL_KEY);
         CharSequence sslKeyPassword = options.getValue(SSL_KEY_PASSWORD);
@@ -108,6 +103,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             .password(options.getValue(PASSWORD))
             .connectTimeout(options.getValue(CONNECT_TIMEOUT))
             .database(options.getValue(DATABASE))
+            .sslCa(options.getValue(SSL_CA))
             .build();
 
         return MySqlConnectionFactory.from(configuration);
@@ -121,25 +117,11 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             return false;
         }
 
-        String zeroDate = options.getValue(ZERO_DATE);
-        if (zeroDate != null && !isValidZeroDate(zeroDate)) {
-            return false;
-        }
-
         return options.hasOption(HOST) && options.hasOption(USER);
     }
 
     @Override
     public String getDriver() {
         return MYSQL_DRIVER;
-    }
-
-    private static boolean isValidZeroDate(String value) {
-        for (ZeroDateOption zeroDate : ZeroDateOption.values()) {
-            if (zeroDate.name().equalsIgnoreCase(value)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

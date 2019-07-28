@@ -235,7 +235,7 @@ public final class MySqlConnectionConfiguration {
             return this;
         }
 
-        public Builder sslCa(String sslCa) {
+        public Builder sslCa(@Nullable String sslCa) {
             this.sslCa = sslCa;
             return this;
         }
