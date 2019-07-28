@@ -126,7 +126,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
     private void writeTypes(ByteBuf buf, int size) {
         for (int i = 0; i < size; ++i) {
-            buf.writeShortLE(parameters[i].getNativeType());
+            buf.writeShortLE(parameters[i].getType());
         }
     }
 

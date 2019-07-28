@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -61,7 +61,7 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        return TypeConditions.isInt(info.getType());
+        return TypePredicates.isInt(info.getType());
     }
 
     private static boolean isGreaterThanMaxValue(String num) {
@@ -94,7 +94,7 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     private static BigInteger decodeText(NormalFieldValue value, FieldInformation info) {
         ByteBuf buf = value.getBuffer();
 
-        if (info.getType() == DataType.BIGINT && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
+        if (info.getType() == DataTypes.BIGINT && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
             if (buf.getByte(buf.readerIndex()) == '+') {
                 buf.skipBytes(1);
             }
@@ -118,29 +118,29 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
         switch (info.getType()) {
-            case BIGINT:
+            case DataTypes.BIGINT:
                 long v = buf.readLongLE();
                 if (isUnsigned && v < 0) {
                     return unsignedBigInteger(v);
                 }
 
                 return BigInteger.valueOf(v);
-            case INT:
+            case DataTypes.INT:
                 if (isUnsigned) {
                     return BigInteger.valueOf(buf.readUnsignedIntLE());
                 } else {
                     return BigInteger.valueOf(buf.readIntLE());
                 }
-            case MEDIUMINT:
+            case DataTypes.MEDIUMINT:
                 // Note: MySQL return 32-bits two's complement for 24-bits integer
                 return BigInteger.valueOf(buf.readIntLE());
-            case SMALLINT:
+            case DataTypes.SMALLINT:
                 if (isUnsigned) {
                     return BigInteger.valueOf(buf.readUnsignedShortLE());
                 } else {
                     return BigInteger.valueOf(buf.readShortLE());
                 }
-            case YEAR:
+            case DataTypes.YEAR:
                 return BigInteger.valueOf(buf.readShortLE());
             default: // TINYINT
                 if (isUnsigned) {

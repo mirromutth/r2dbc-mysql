@@ -16,7 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
@@ -96,18 +95,14 @@ final class DefaultCodecs implements Codecs {
         requireNonNull(session, "session must not be null");
         requireNonNull(type, "type must not be null");
 
-        if (value.isNull()) {
-            return null;
-        }
-
-        if (DataType.UNKNOWN == info.getType()) {
-            throw new IllegalArgumentException(String.format("Unknown native column type %d, can not decode", info.getNativeTypeMetadata()));
-        }
-
         Type target = chooseTarget(info, type);
 
         // Fast map for primitive classes.
         if (target instanceof Class<?> && ((Class<?>) target).isPrimitive()) {
+            if (value.isNull()) {
+                throw new IllegalArgumentException(String.format("Cannot decode null for type %d", info.getType()));
+            }
+
             @SuppressWarnings("unchecked")
             Class<T> targetClass = (Class<T>) target;
             @SuppressWarnings("unchecked")
@@ -117,8 +112,12 @@ final class DefaultCodecs implements Codecs {
                 return codec.decode((NormalFieldValue) value, info, targetClass, binary, session);
             } else {
                 // Primitive mismatch, no `Codec` support this primitive class.
-                throw new IllegalArgumentException(String.format("Cannot decode value of type '%s' with column type '%s'", targetClass, info.getType()));
+                throw new IllegalArgumentException(String.format("Cannot decode value of type %s for type %d", targetClass, info.getType()));
             }
+        }
+
+        if (value.isNull()) {
+            return null;
         }
 
         for (Codec<?, ?, ?> codec : codecs) {
@@ -129,7 +128,7 @@ final class DefaultCodecs implements Codecs {
             }
         }
 
-        throw new IllegalArgumentException(String.format("Cannot decode value of type '%s' with column type '%s'", target, info.getType()));
+        throw new IllegalArgumentException(String.format("Cannot decode value of type %s for type %d", target, info.getType()));
     }
 
     @SuppressWarnings("unchecked")

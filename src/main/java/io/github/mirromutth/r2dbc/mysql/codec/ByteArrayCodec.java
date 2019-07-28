@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -62,8 +62,8 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        DataType type = info.getType();
-        return DataType.BIT == type || DataType.GEOMETRY == type || TypeConditions.isString(type) || TypeConditions.isLob(type);
+        short type = info.getType();
+        return DataTypes.BIT == type || DataTypes.GEOMETRY == type || TypePredicates.isString(type) || TypePredicates.isLob(type);
     }
 
     private static final class ByteArrayValue extends AbstractParameterValue {
@@ -80,8 +80,8 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.LONG_BLOB.getType();
+        public short getType() {
+            return DataTypes.LONG_BLOB;
         }
 
         @Override

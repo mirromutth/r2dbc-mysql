@@ -28,7 +28,7 @@ public interface ParameterValue {
 
     Mono<Void> writeTo(ParameterWriter writer);
 
-    int getNativeType();
+    short getType();
 
     /**
      * Cancel to binding, do nothing if value has written or has canceled.

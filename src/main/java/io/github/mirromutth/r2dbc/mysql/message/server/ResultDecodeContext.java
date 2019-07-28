@@ -16,8 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
@@ -94,7 +92,7 @@ final class ResultDecodeContext extends MetadataDecodeContext {
         return metadataMessages.length;
     }
 
-    DataType getType(int index) {
+    short getType(int index) {
         return metadataMessages[index].getType();
     }
 

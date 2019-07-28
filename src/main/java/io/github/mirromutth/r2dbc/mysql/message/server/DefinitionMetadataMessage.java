@@ -16,11 +16,13 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
+import java.util.Objects;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
@@ -46,9 +48,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     private final int size;
 
-    private final DataType type;
-
-    private final short nativeType;
+    private final short type;
 
     private final short definitions;
 
@@ -56,7 +56,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     private DefinitionMetadataMessage(
         String database, String tableName, String originTableName, String name, String originName,
-        int collationId, int size, short nativeType, short definitions, short decimals
+        int collationId, int size, short type, short definitions, short decimals
     ) {
         require(size >= 0, "size must not be a negative integer");
         require(collationId > 0, "collationId must be a positive integer");
@@ -68,8 +68,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         this.originName = requireNonNull(originName, "originName must not be null");
         this.collationId = collationId;
         this.size = size;
-        this.nativeType = nativeType;
-        this.type = DataType.valueOfNativeType(nativeType, definitions);
+        this.type = type;
         this.definitions = definitions;
         this.decimals = decimals;
     }
@@ -78,20 +77,8 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         return database;
     }
 
-    public String getTableName() {
-        return tableName;
-    }
-
-    public String getOriginTableName() {
-        return originTableName;
-    }
-
     public String getName() {
         return name;
-    }
-
-    public String getOriginName() {
-        return originName;
     }
 
     public int getCollationId() {
@@ -102,11 +89,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         return size;
     }
 
-    public short getNativeType() {
-        return nativeType;
-    }
-
-    public DataType getType() {
+    public short getType() {
         return type;
     }
 
@@ -120,42 +103,34 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof DefinitionMetadataMessage)) return false;
-
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof DefinitionMetadataMessage)) {
+            return false;
+        }
         DefinitionMetadataMessage that = (DefinitionMetadataMessage) o;
-
-        if (collationId != that.collationId) return false;
-        if (size != that.size) return false;
-        if (nativeType != that.nativeType) return false;
-        if (definitions != that.definitions) return false;
-        if (decimals != that.decimals) return false;
-        if (!database.equals(that.database)) return false;
-        if (!tableName.equals(that.tableName)) return false;
-        if (!originTableName.equals(that.originTableName)) return false;
-        if (!name.equals(that.name)) return false;
-        return originName.equals(that.originName);
+        return collationId == that.collationId &&
+            size == that.size &&
+            type == that.type &&
+            definitions == that.definitions &&
+            decimals == that.decimals &&
+            database.equals(that.database) &&
+            tableName.equals(that.tableName) &&
+            originTableName.equals(that.originTableName) &&
+            name.equals(that.name) &&
+            originName.equals(that.originName);
     }
 
     @Override
     public int hashCode() {
-        int result = database.hashCode();
-        result = 31 * result + tableName.hashCode();
-        result = 31 * result + originTableName.hashCode();
-        result = 31 * result + name.hashCode();
-        result = 31 * result + originName.hashCode();
-        result = 31 * result + collationId;
-        result = 31 * result + size;
-        result = 31 * result + (int) nativeType;
-        result = 31 * result + (int) definitions;
-        result = 31 * result + (int) decimals;
-        return result;
+        return Objects.hash(database, tableName, originTableName, name, originName, collationId, size, type, definitions, decimals);
     }
 
     @Override
     public String toString() {
-        return String.format("DefinitionMetadataMessage{database='%s', tableName='%s' (origin:'%s'), name='%s' (origin:'%s'), collationId=%d, size=%d, nativeType=%d, definitions=%x, decimals=%d}",
-            database, tableName, originTableName, name, originName, collationId, size, nativeType, definitions, decimals);
+        return String.format("DefinitionMetadataMessage{database='%s', tableName='%s' (origin:'%s'), name='%s' (origin:'%s'), collationId=%d, size=%d, type=%d, definitions=%x, decimals=%d}",
+            database, tableName, originTableName, name, originName, collationId, size, type, definitions, decimals);
     }
 
     static boolean isLooksLike(ByteBuf buf) {
@@ -192,7 +167,15 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         int collationId = buf.readUnsignedShortLE();
         int size = buf.readIntLE();
         short type = buf.readUnsignedByte();
-        short definition = buf.readShortLE();
+        short definitions = buf.readShortLE();
+
+        if ((definitions & ColumnDefinitions.SET) != 0) {
+            // Maybe need to check if it is a string-like type?
+            type = DataTypes.SET;
+        } else if ((definitions & ColumnDefinitions.ENUMERABLE) != 0) {
+            // Maybe need to check if it is a string-like type?
+            type = DataTypes.ENUMERABLE;
+        }
 
         return new DefinitionMetadataMessage(
             database,
@@ -203,7 +186,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
             collationId,
             size,
             type,
-            definition,
+            definitions,
             buf.readUnsignedByte()
         );
     }

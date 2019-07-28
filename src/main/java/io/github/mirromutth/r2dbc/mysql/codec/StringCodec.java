@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -59,9 +59,9 @@ final class StringCodec extends AbstractClassedCodec<String> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        DataType type = info.getType();
+        short type = info.getType();
         // Note: TEXT is also BLOB with char collation in MySQL.
-        return (TypeConditions.isString(type) || TypeConditions.isLob(type)) && info.getCollationId() != CharCollation.BINARY_ID;
+        return (TypePredicates.isString(type) || TypePredicates.isLob(type)) && info.getCollationId() != CharCollation.BINARY_ID;
     }
 
     private static class StringValue extends AbstractParameterValue {
@@ -81,8 +81,8 @@ final class StringCodec extends AbstractClassedCodec<String> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.VARCHAR.getType();
+        public short getType() {
+            return DataTypes.VARCHAR;
         }
 
         @Override

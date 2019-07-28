@@ -17,12 +17,22 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.codec.FieldInformation;
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
+import io.r2dbc.spi.Blob;
+import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import reactor.util.annotation.NonNull;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Objects;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
@@ -36,9 +46,7 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     private final int index;
 
-    private final DataType type;
-
-    private final int nativeType;
+    private final short type;
 
     private final String name;
 
@@ -52,9 +60,8 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     private final int collationId;
 
-    private MySqlColumnMetadata(int index, DataType type, int nativeType, String name, short definitions, boolean nonNull, int size, int decimals, int collationId) {
+    private MySqlColumnMetadata(int index, short type, String name, short definitions, boolean nonNull, int size, int decimals, int collationId) {
         require(index >= 0, "index must not be a negative integer");
-        requireNonNull(type, "type must not be null");
         require(size >= 0, "size must not be a negative integer");
         require(decimals >= 0, "decimals must not be a negative integer");
         requireNonNull(name, "name must not be null");
@@ -62,7 +69,6 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
         this.index = index;
         this.type = type;
-        this.nativeType = nativeType;
         this.name = name;
         this.definitions = definitions;
 
@@ -78,13 +84,13 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
     }
 
     static MySqlColumnMetadata create(int index, DefinitionMetadataMessage message) {
+        short definitions = message.getDefinitions();
         return new MySqlColumnMetadata(
             index,
             message.getType(),
-            message.getNativeType(),
             message.getName(),
-            message.getDefinitions(),
-            (message.getDefinitions() & ColumnDefinitions.NOT_NULL) != 0,
+            definitions,
+            (definitions & ColumnDefinitions.NOT_NULL) != 0,
             message.getSize(),
             message.getDecimals(),
             message.getCollationId()
@@ -95,7 +101,7 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         return index;
     }
 
-    public DataType getType() {
+    public short getType() {
         return type;
     }
 
@@ -105,11 +111,75 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     @Override
     public Class<?> getJavaType() {
-        if (type == null) {
-            return null;
+        // Note: must not be primitive type because it may be null.
+        switch (type) {
+            case DataTypes.DECIMAL:
+            case DataTypes.NEW_DECIMAL:
+                return BigDecimal.class;
+            case DataTypes.TINYINT:
+                if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
+                    return Short.class;
+                } else {
+                    return Byte.class;
+                }
+            case DataTypes.SMALLINT:
+                if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
+                    return Integer.class;
+                } else {
+                    return Short.class;
+                }
+            case DataTypes.INT:
+                if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
+                    return Long.class;
+                } else {
+                    return Integer.class;
+                }
+            case DataTypes.FLOAT:
+                return Float.class;
+            case DataTypes.DOUBLE:
+                return Double.class;
+            case DataTypes.TIMESTAMP:
+            case DataTypes.DATETIME:
+            case DataTypes.TIMESTAMP2:
+                return LocalDateTime.class;
+            case DataTypes.BIGINT:
+                if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
+                    return BigInteger.class;
+                } else {
+                    return Long.class;
+                }
+            case DataTypes.MEDIUMINT:
+                return Integer.class;
+            case DataTypes.DATE:
+                return LocalDate.class;
+            case DataTypes.TIME:
+                return LocalTime.class;
+            case DataTypes.YEAR:
+                // MySQL return 2-bytes in binary result for type YEAR.
+                return Short.class;
+            case DataTypes.VARCHAR:
+            case DataTypes.JSON:
+            case DataTypes.ENUMERABLE:
+            case DataTypes.VAR_STRING:
+            case DataTypes.STRING:
+                return String.class;
+            case DataTypes.BIT:
+            case DataTypes.GEOMETRY:
+                return byte[].class;
+            case DataTypes.SET:
+                return String[].class;
+            case DataTypes.TINY_BLOB:
+            case DataTypes.MEDIUM_BLOB:
+            case DataTypes.LONG_BLOB:
+            case DataTypes.BLOB:
+                if (collationId == CharCollation.BINARY_ID) {
+                    return Blob.class;
+                } else {
+                    return Clob.class;
+                }
+            default:
+                return null;
         }
-
-        return type.getJavaType(definitions, size, collationId);
     }
 
     @Override
@@ -117,9 +187,8 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         return name;
     }
 
-    @Override
     public Integer getNativeTypeMetadata() {
-        return nativeType;
+        return (int) type;
     }
 
     @Override
@@ -143,7 +212,7 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         // 0x00 means it is an integer or a static string.
         // 0x1f means it is a dynamic string, an original-double or an original-float.
         // 0x00 to 0x51 for the number of digits to right of the decimal point.
-        if (type == DataType.DECIMAL || type == DataType.NEW_DECIMAL || type == DataType.DOUBLE || type == DataType.FLOAT) {
+        if (type == DataTypes.DECIMAL || type == DataTypes.NEW_DECIMAL || type == DataTypes.DOUBLE || type == DataTypes.FLOAT) {
             if (decimals >= 0 && decimals <= 0x51) {
                 return decimals;
             }
@@ -164,57 +233,25 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         if (!(o instanceof MySqlColumnMetadata)) {
             return false;
         }
-
-        MySqlColumnMetadata that = (MySqlColumnMetadata) o;
-
-        if (index != that.index) {
-            return false;
-        }
-        if (nativeType != that.nativeType) {
-            return false;
-        }
-        if (definitions != that.definitions) {
-            return false;
-        }
-        if (size != that.size) {
-            return false;
-        }
-        if (decimals != that.decimals) {
-            return false;
-        }
-        if (collationId != that.collationId) {
-            return false;
-        }
-        if (!name.equals(that.name)) {
-            return false;
-        }
-        return nullability == that.nullability;
+        MySqlColumnMetadata metadata = (MySqlColumnMetadata) o;
+        return index == metadata.index &&
+            type == metadata.type &&
+            definitions == metadata.definitions &&
+            size == metadata.size &&
+            decimals == metadata.decimals &&
+            collationId == metadata.collationId &&
+            name.equals(metadata.name) &&
+            nullability == metadata.nullability;
     }
 
     @Override
     public int hashCode() {
-        int result = index;
-        result = 31 * result + nativeType;
-        result = 31 * result + name.hashCode();
-        result = 31 * result + (int) definitions;
-        result = 31 * result + nullability.hashCode();
-        result = 31 * result + size;
-        result = 31 * result + decimals;
-        result = 31 * result + collationId;
-        return result;
+        return Objects.hash(index, type, name, definitions, nullability, size, decimals, collationId);
     }
 
     @Override
     public String toString() {
-        return "MySqlColumnMetadata{" +
-            "index=" + index +
-            ", nativeType=" + nativeType +
-            ", name='" + name + '\'' +
-            ", definitions=" + definitions +
-            ", nullability=" + nullability +
-            ", size=" + size +
-            ", decimals=" + decimals +
-            ", collationId=" + collationId +
-            '}';
+        return String.format("MySqlColumnMetadata{index=%d, type=%d, name='%s', definitions=%x, nullability=%s, size=%d, decimals=%d, collationId=%d}",
+            index, type, name, definitions, nullability, size, decimals, collationId);
     }
 }

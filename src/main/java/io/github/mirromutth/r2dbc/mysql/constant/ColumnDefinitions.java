@@ -22,19 +22,27 @@ package io.github.mirromutth.r2dbc.mysql.constant;
 public final class ColumnDefinitions {
 
     public static final int NOT_NULL = 1;
-    public static final int PRIMARY_PART = 1 << 1; // a part of the primary key
-    public static final int UNIQUE_PART = 1 << 2; // a part of a unique key
-    public static final int KEY_PART = 1 << 3; // a part of a normal key
+
+//    public static final int PRIMARY_PART = 1 << 1; // a part of the primary key
+//    public static final int UNIQUE_PART = 1 << 2; // a part of a unique key
+//    public static final int KEY_PART = 1 << 3; // a part of a normal key
+
     public static final int BLOB = 1 << 4;
+
     public static final int UNSIGNED = 1 << 5; // useful for integer types, like: use `BigInteger` for BIGINT UNSIGNED.
-    public static final int ZEROFILL = 1 << 6;
-    public static final int BINARY = 1 << 7;
+
+//    public static final int ZEROFILL = 1 << 6;
+//    public static final int BINARY = 1 << 7;
+
     public static final int ENUMERABLE = 1 << 8; // type is enum
-    public static final int AUTO_INCREMENT = 1 << 9;
-    public static final int TIMESTAMP = 1 << 10;
-    public static final int SET = 1 << 11;
-    public static final int NO_DEFAULT = 1 << 12; // column has no default value
-    public static final int ON_UPDATE_NOW = 1 << 13; // field will be set to NOW() in UPDATE statement
+
+//    public static final int AUTO_INCREMENT = 1 << 9;
+//    public static final int TIMESTAMP = 1 << 10;
+
+    public static final int SET = 1 << 11; // type is set
+
+//    public static final int NO_DEFAULT = 1 << 12; // column has no default value
+//    public static final int ON_UPDATE_NOW = 1 << 13; // field will be set to NOW() in UPDATE statement
 
     // more flags are useless
 

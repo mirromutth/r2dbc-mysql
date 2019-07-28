@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
@@ -53,7 +53,9 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
     @Override
     public boolean canDecode(FieldValue value, FieldInformation info, Type target) {
-        if (!TypeConditions.isInt(info.getType()) || !(value instanceof NormalFieldValue) || !(target instanceof Class<?>)) {
+        short type = info.getType();
+
+        if (!TypePredicates.isInt(type) || !(value instanceof NormalFieldValue) || !(target instanceof Class<?>)) {
             return false;
         }
 
@@ -61,7 +63,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
         // BIGINT UNSIGNED usually for make sure the ID is not negative, in fact they just use 63-bits.
         // If users force the requirement to convert BIGINT UNSIGNED to Long, should allow this behavior
         // for better performance (BigInteger is obviously slower than long).
-        if (DataType.BIGINT == info.getType() && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
+        if (DataTypes.BIGINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
             return Long.class == target;
         } else {
             return ((Class<?>) target).isAssignableFrom(Long.class);
@@ -81,7 +83,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
     @Override
     public boolean canPrimitiveDecode(FieldInformation info) {
         // Here is a special condition. see `canDecode`.
-        return TypeConditions.isInt(info.getType());
+        return TypePredicates.isInt(info.getType());
     }
 
     @Override
@@ -125,27 +127,27 @@ final class LongCodec implements PrimitiveCodec<Long> {
         return new LongValue(value);
     }
 
-    private static long decodeBinary(ByteBuf buf, DataType type, boolean isUnsigned) {
+    private static long decodeBinary(ByteBuf buf, short type, boolean isUnsigned) {
         switch (type) {
-            case BIGINT:
+            case DataTypes.BIGINT:
                 // Note: no check overflow for BIGINT UNSIGNED
                 return buf.readLongLE();
-            case INT:
+            case DataTypes.INT:
                 if (isUnsigned) {
                     return buf.readUnsignedIntLE();
                 } else {
                     return buf.readIntLE();
                 }
-            case MEDIUMINT:
+            case DataTypes.MEDIUMINT:
                 // Note: MySQL return 32-bits two's complement for 24-bits integer
                 return buf.readIntLE();
-            case SMALLINT:
+            case DataTypes.SMALLINT:
                 if (isUnsigned) {
                     return buf.readUnsignedShortLE();
                 } else {
                     return buf.readShortLE();
                 }
-            case YEAR:
+            case DataTypes.YEAR:
                 return buf.readShortLE();
             default: // TINYINT
                 if (isUnsigned) {
@@ -170,8 +172,8 @@ final class LongCodec implements PrimitiveCodec<Long> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.BIGINT.getType();
+        public short getType() {
+            return DataTypes.BIGINT;
         }
 
         @Override

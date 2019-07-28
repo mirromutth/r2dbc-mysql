@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.codec.lob.ScalarClob;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.LargeFieldValue;
@@ -61,8 +61,8 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
             return false;
         }
 
-        DataType type = info.getType();
-        if (!TypeConditions.isLob(type) && DataType.JSON != type) {
+        short type = info.getType();
+        if (!TypePredicates.isLob(type) && DataTypes.JSON != type) {
             return false;
         }
 

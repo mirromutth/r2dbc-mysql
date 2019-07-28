@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -25,20 +25,10 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
-import java.util.EnumSet;
-import java.util.Set;
-
 /**
  * Codec for {@link int}.
  */
 final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
-
-    private static final Set<DataType> LESS_TYPES = EnumSet.of(
-        DataType.TINYINT,
-        DataType.YEAR,
-        DataType.SMALLINT,
-        DataType.MEDIUMINT
-    );
 
     static final IntegerCodec INSTANCE = new IntegerCodec();
 
@@ -70,13 +60,8 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        DataType type = info.getType();
-
-        if (LESS_TYPES.contains(type)) {
-            return true;
-        }
-
-        return DataType.INT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
+        short type = info.getType();
+        return isLowerInt(type) || (DataTypes.INT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0);
     }
 
     /**
@@ -111,18 +96,25 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         return new IntValue(value);
     }
 
-    private static int decodeBinary(ByteBuf buf, DataType type, boolean isUnsigned) {
+    private static boolean isLowerInt(short type) {
+        return DataTypes.TINYINT == type ||
+            DataTypes.YEAR == type ||
+            DataTypes.SMALLINT == type ||
+            DataTypes.MEDIUMINT == type;
+    }
+
+    private static int decodeBinary(ByteBuf buf, short type, boolean isUnsigned) {
         switch (type) {
-            case INT: // Already check overflow in `doCanDecode`
-            case MEDIUMINT:
+            case DataTypes.INT: // Already check overflow in `doCanDecode`
+            case DataTypes.MEDIUMINT:
                 return buf.readIntLE();
-            case SMALLINT:
+            case DataTypes.SMALLINT:
                 if (isUnsigned) {
                     return buf.readUnsignedShortLE();
                 } else {
                     return buf.readShortLE();
                 }
-            case YEAR:
+            case DataTypes.YEAR:
                 return buf.readShortLE();
             default: // TINYINT
                 if (isUnsigned) {
@@ -147,8 +139,8 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.INT.getType();
+        public short getType() {
+            return DataTypes.INT;
         }
 
         @Override

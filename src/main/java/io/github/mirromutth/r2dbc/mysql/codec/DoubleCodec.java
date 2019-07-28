@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -43,9 +43,9 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
 
         if (binary) {
             switch (info.getType()) {
-                case DOUBLE:
+                case DataTypes.DOUBLE:
                     return buf.readDoubleLE();
-                case FLOAT:
+                case DataTypes.FLOAT:
                     return (double) buf.readFloatLE();
             }
             // DECIMAL and size less than 16, encoded by text.
@@ -65,8 +65,8 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        DataType type = info.getType();
-        return DataType.DOUBLE == type || DataType.FLOAT == type || (info.getSize() < 16 && TypeConditions.isDecimal(type));
+        short type = info.getType();
+        return DataTypes.DOUBLE == type || DataTypes.FLOAT == type || (info.getSize() < 16 && TypePredicates.isDecimal(type));
     }
 
     private static final class DoubleValue extends AbstractParameterValue {
@@ -83,8 +83,8 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.DOUBLE.getType();
+        public short getType() {
+            return DataTypes.DOUBLE;
         }
 
         @Override

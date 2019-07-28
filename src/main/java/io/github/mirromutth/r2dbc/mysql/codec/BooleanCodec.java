@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -51,7 +51,7 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
 
     @Override
     public boolean doCanDecode(FieldInformation info) {
-        return DataType.BIT == info.getType() && info.getSize() == 1;
+        return DataTypes.BIT == info.getType() && info.getSize() == 1;
     }
 
     private static final class BooleanValue extends AbstractParameterValue {
@@ -72,10 +72,10 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
         }
 
         @Override
-        public int getNativeType() {
+        public short getType() {
             // Note: BIT will least 2-bytes in binary parameter (var integer size and content),
             // so use TINYINT will encode to buffer faster and shorter.
-            return DataType.TINYINT.getType();
+            return DataTypes.TINYINT;
         }
 
         @Override

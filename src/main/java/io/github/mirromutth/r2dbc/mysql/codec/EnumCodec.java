@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
@@ -48,7 +48,7 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
 
     @Override
     public boolean canDecode(FieldValue value, FieldInformation info, Type target) {
-        if (DataType.ENUMERABLE == info.getType() && target instanceof Class<?> && value instanceof NormalFieldValue) {
+        if (DataTypes.ENUMERABLE == info.getType() && target instanceof Class<?> && value instanceof NormalFieldValue) {
             return ((Class<?>) target).isEnum();
         }
 
@@ -82,8 +82,8 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.VARCHAR.getType();
+        public short getType() {
+            return DataTypes.VARCHAR;
         }
 
         @Override

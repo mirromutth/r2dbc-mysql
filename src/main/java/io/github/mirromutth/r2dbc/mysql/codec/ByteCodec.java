@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -56,7 +56,7 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        return DataType.TINYINT == info.getType() && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
+        return DataTypes.TINYINT == info.getType() && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
     }
 
     private static final class ByteValue extends AbstractParameterValue {
@@ -73,8 +73,8 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.TINYINT.getType();
+        public short getType() {
+            return DataTypes.TINYINT;
         }
 
         @Override

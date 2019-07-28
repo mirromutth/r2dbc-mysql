@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -79,7 +79,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     @Override
     public boolean doCanDecode(FieldInformation info) {
-        return DataType.DATE == info.getType();
+        return DataTypes.DATE == info.getType();
     }
 
     @Nullable
@@ -126,8 +126,8 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.DATE.getType();
+        public short getType() {
+            return DataTypes.DATE;
         }
 
         @Override

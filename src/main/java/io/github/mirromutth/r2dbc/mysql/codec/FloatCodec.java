@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -41,7 +41,7 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     public Float decode(NormalFieldValue value, FieldInformation info, Class<? super Float> target, boolean binary, MySqlSession session) {
         ByteBuf buf = value.getBuffer();
 
-        if (binary && info.getType() == DataType.FLOAT) {
+        if (binary && info.getType() == DataTypes.FLOAT) {
             return buf.readFloatLE();
         }
         // otherwise encoded by text (must not be DOUBLE).
@@ -60,8 +60,8 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        DataType type = info.getType();
-        return DataType.FLOAT == type || (info.getSize() < 7 && TypeConditions.isDecimal(type));
+        short type = info.getType();
+        return DataTypes.FLOAT == type || (info.getSize() < 7 && TypePredicates.isDecimal(type));
     }
 
     private static final class FloatValue extends AbstractParameterValue {
@@ -78,8 +78,8 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.FLOAT.getType();
+        public short getType() {
+            return DataTypes.FLOAT;
         }
 
         @Override

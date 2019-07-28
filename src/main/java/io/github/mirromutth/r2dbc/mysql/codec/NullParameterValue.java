@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
 import reactor.core.publisher.Mono;
@@ -45,8 +45,8 @@ final class NullParameterValue implements ParameterValue {
     }
 
     @Override
-    public int getNativeType() {
-        return DataType.NULL.getType();
+    public short getType() {
+        return DataTypes.NULL;
     }
 
     @Override

@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -71,7 +71,7 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        return DataType.SET == info.getType();
+        return DataTypes.SET == info.getType();
     }
 
     private static final class StringArrayValue extends AbstractParameterValue {
@@ -91,8 +91,8 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.VARCHAR.getType();
+        public short getType() {
+            return DataTypes.VARCHAR;
         }
 
         @Override

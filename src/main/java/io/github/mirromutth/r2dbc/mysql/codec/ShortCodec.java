@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -43,8 +43,8 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
             switch (info.getType()) {
-                case SMALLINT: // Already check overflow in `doCanDecode`
-                case YEAR:
+                case DataTypes.SMALLINT: // Already check overflow in `doCanDecode`
+                case DataTypes.YEAR:
                     return buf.readShortLE();
                 default: // TINYINT
                     if (isUnsigned) {
@@ -70,14 +70,14 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        DataType type = info.getType();
+        short type = info.getType();
 
-        if (DataType.TINYINT == type || DataType.YEAR == type) {
+        if (DataTypes.TINYINT == type || DataTypes.YEAR == type) {
             // Note: MySQL not support negative integer for year.
             return true;
         }
 
-        return DataType.SMALLINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
+        return DataTypes.SMALLINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
     }
 
     private static final class ShortValue extends AbstractParameterValue {
@@ -94,8 +94,8 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.SMALLINT.getType();
+        public short getType() {
+            return DataTypes.SMALLINT;
         }
 
         @Override

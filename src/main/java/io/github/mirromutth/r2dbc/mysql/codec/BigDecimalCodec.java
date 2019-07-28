@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -43,12 +43,12 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
         ByteBuf buf = value.getBuffer();
 
         if (binary) {
-            DataType type = info.getType();
+            short type = info.getType();
 
             switch (type) {
-                case FLOAT:
+                case DataTypes.FLOAT:
                     return BigDecimal.valueOf(buf.readFloatLE());
-                case DOUBLE:
+                case DataTypes.DOUBLE:
                     return BigDecimal.valueOf(buf.readDoubleLE());
             }
             // Not float or double, is text-encoded yet.
@@ -80,8 +80,8 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        DataType type = info.getType();
-        return TypeConditions.isDecimal(type) || DataType.FLOAT == type || DataType.DOUBLE == type;
+        short type = info.getType();
+        return TypePredicates.isDecimal(type) || DataTypes.FLOAT == type || DataTypes.DOUBLE == type;
     }
 
     private static final class BigDecimalValue extends AbstractParameterValue {
@@ -98,8 +98,8 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
         }
 
         @Override
-        public int getNativeType() {
-            return DataType.NEW_DECIMAL.getType();
+        public short getType() {
+            return DataTypes.NEW_DECIMAL;
         }
 
         @Override

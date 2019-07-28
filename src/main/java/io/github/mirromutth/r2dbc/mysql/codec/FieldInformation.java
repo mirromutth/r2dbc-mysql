@@ -16,7 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
 import reactor.util.annotation.Nullable;
 
 /**
@@ -24,9 +23,7 @@ import reactor.util.annotation.Nullable;
  */
 public interface FieldInformation {
 
-    DataType getType();
-
-    Integer getNativeTypeMetadata();
+    short getType();
 
     short getDefinitions();
 

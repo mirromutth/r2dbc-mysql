@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import io.r2dbc.spi.Row;
@@ -104,7 +104,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
 
     @Override
     public Integer getNativeTypeMetadata() {
-        return DataType.BIGINT.getType();
+        return (int) DataTypes.BIGINT;
     }
 
     @Override

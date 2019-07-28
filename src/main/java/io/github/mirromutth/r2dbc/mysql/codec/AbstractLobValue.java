@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.constant.DataType;
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +32,9 @@ abstract class AbstractLobValue extends AbstractParameterValue {
     private static final Logger logger = LoggerFactory.getLogger(AbstractLobValue.class);
 
     @Override
-    public final int getNativeType() {
+    public final short getType() {
         // Clob (i.e. TEXT) is also BLOB with character collation.
-        return DataType.LONG_BLOB.getType();
+        return DataTypes.LONG_BLOB;
     }
 
     @Override

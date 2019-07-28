@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 
 /**
@@ -47,7 +48,7 @@ final class BinaryRowMessage extends AbstractRowMessage {
             if ((nullBitmap[bitmapIndex] & bitMask) != 0) {
                 fields[i] = FieldValue.nullField();
             } else {
-                int bytes = context.getType(i).getFixedBinaryBytes();
+                int bytes = getFixedBinaryBytes(context.getType(i));
                 if (bytes > 0) {
                     fields[i] = reader.readSizeFixedField(bytes);
                 } else {
@@ -74,5 +75,29 @@ final class BinaryRowMessage extends AbstractRowMessage {
         // Row data should NOT be printed as this may contain security information.
         // Of course, if user use trace level logs, row data is still be printed by ByteBuf dump.
         return String.format("BinaryRowMessage{ %d fields }", fieldsCount());
+    }
+
+    /**
+     * @return {@literal 0} means field is var integer sized in binary result.
+     */
+    private static int getFixedBinaryBytes(short type) {
+        switch (type) {
+            case DataTypes.TINYINT:
+                return Byte.BYTES;
+            case DataTypes.SMALLINT:
+            case DataTypes.YEAR:
+                return Short.BYTES;
+            case DataTypes.INT:
+            case DataTypes.MEDIUMINT:
+                return Integer.BYTES;
+            case DataTypes.FLOAT:
+                return Float.BYTES;
+            case DataTypes.DOUBLE:
+                return Double.BYTES;
+            case DataTypes.BIGINT:
+                return Long.BYTES;
+            default:
+                return 0;
+        }
     }
 }
