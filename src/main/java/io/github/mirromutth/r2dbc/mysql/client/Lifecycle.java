@@ -21,9 +21,9 @@ package io.github.mirromutth.r2dbc.mysql.client;
  */
 enum Lifecycle {
 
-    CONNECTION,
+//    CONNECTION, // Useless for signal
 
     COMMAND,
 
-//    REPLICATION // useless for r2dbc driver, just ignore
+//    REPLICATION // Useless for r2dbc driver, just ignore
 }

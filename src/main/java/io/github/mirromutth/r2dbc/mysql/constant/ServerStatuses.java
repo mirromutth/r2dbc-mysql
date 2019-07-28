@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.constant;
 
 /**
- * MySQL server's statuses flag code
+ * MySQL server's statuses flag code.
  */
 public final class ServerStatuses {
 

@@ -62,10 +62,6 @@ public final class OkMessage implements ServerMessage, WarningMessage {
         return lastInsertId;
     }
 
-    public short getServerStatuses() {
-        return serverStatuses;
-    }
-
     @Override
     public int getWarnings() {
         return warnings;

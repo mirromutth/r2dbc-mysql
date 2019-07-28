@@ -21,14 +21,9 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  */
 public final class Capabilities {
 
-    /**
-     * More secure passwords.
-     */
-    public static final int LONG_PASSWORD = 1;
-
-    public static final int FOUND_ROWS = 1 << 1;
-
-    public static final int LONG_FLAG = 1 << 2;
+//    public static final int LONG_PASSWORD = 1; // More secure passwords.
+//    public static final int FOUND_ROWS = 1 << 1;
+//    public static final int LONG_FLAG = 1 << 2;
 
     public static final int CONNECT_WITH_DB = 1 << 3;
 
@@ -37,20 +32,19 @@ public final class Capabilities {
      */
     public static final int COMPRESS = 32;
 
-    public static final int LOCAL_FILES = 128;
+//    public static final int LOCAL_FILES = 128;
 
     /**
      * WARNING: should ALWAYS enable this option before newer protocol comes out.
      */
     public static final int PROTOCOL_41 = 512;
 
-    public static final int INTERACTIVE = 1024;
+//    public static final int INTERACTIVE = 1024;
 
     public static final int SSL = 2048;
 
-    public static final int TRANSACTIONS = 8192;
-
-    public static final int RESERVED = 16384;
+//    public static final int TRANSACTIONS = 8192;
+//    public static final int RESERVED = 16384;
 
     /**
      * Is also RESERVED2, allowing second part of authentication hashing salt.
@@ -59,9 +53,8 @@ public final class Capabilities {
 
     public static final int MULTI_STATEMENTS = 65536;
 
-    public static final int MULTI_RESULTS = 1 << 17;
-
-    public static final int PREPARED_MULTI_RESULTS = 1 << 18;
+//    public static final int MULTI_RESULTS = 1 << 17;
+//    public static final int PREPARED_MULTI_RESULTS = 1 << 18;
 
     public static final int PLUGIN_AUTH = 1 << 19;
 
@@ -72,7 +65,7 @@ public final class Capabilities {
      */
     public static final int PLUGIN_AUTH_VAR_INT_SIZED_DATA = 1 << 21;
 
-    public static final int CAN_HANDLE_EXPIRED_PASSWORD = 1 << 22;
+//    public static final int CAN_HANDLE_EXPIRED_PASSWORD = 1 << 22;
 
     public static final int SESSION_TRACK = 1 << 23;
 
@@ -88,7 +81,7 @@ public final class Capabilities {
 
     public static final int SSL_VERIFY_SERVER_CERT = 1 << 30;
 
-    public static final int REMEMBER_OPTIONS = 1 << 31;
+//    public static final int REMEMBER_OPTIONS = 1 << 31;
 
     private Capabilities() {
     }
