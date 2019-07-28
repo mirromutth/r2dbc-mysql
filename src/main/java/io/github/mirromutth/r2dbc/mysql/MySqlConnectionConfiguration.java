@@ -16,12 +16,15 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
-import java.util.function.Consumer;
+import java.util.Objects;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_STRINGS;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
@@ -41,34 +44,29 @@ public final class MySqlConnectionConfiguration {
     @Nullable
     private final Duration connectTimeout;
 
-    @Nullable
-    private final MySqlSslConfiguration sslConfiguration;
+    private final MySqlSslConfiguration ssl;
 
     private final ZeroDateOption zeroDateOption;
 
     private final String username;
 
+    @Nullable
     private final CharSequence password;
 
     private final String database;
 
     private MySqlConnectionConfiguration(
-        String host, int port, @Nullable Duration connectTimeout, @Nullable MySqlSslConfiguration sslConfiguration,
+        String host, int port, @Nullable Duration connectTimeout, @Nullable MySqlSslConfiguration ssl,
         ZeroDateOption zeroDateOption, String username, @Nullable CharSequence password, @Nullable String database
     ) {
         this.host = requireNonNull(host, "host must not be null");
         this.port = port;
         this.connectTimeout = connectTimeout;
-        this.sslConfiguration = sslConfiguration;
+        this.ssl = requireNonNull(ssl, "ssl must not be null");
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
-
-        if (database == null || database.isEmpty()) {
-            this.database = "";
-        } else {
-            this.database = database; // or use `database.intern()`?
-        }
+        this.database = database == null || database.isEmpty() ? "" : database;
     }
 
     public static Builder builder() {
@@ -88,9 +86,8 @@ public final class MySqlConnectionConfiguration {
         return connectTimeout;
     }
 
-    @Nullable
-    MySqlSslConfiguration getSslConfiguration() {
-        return sslConfiguration;
+    MySqlSslConfiguration getSsl() {
+        return ssl;
     }
 
     ZeroDateOption getZeroDateOption() {
@@ -101,6 +98,7 @@ public final class MySqlConnectionConfiguration {
         return username;
     }
 
+    @Nullable
     CharSequence getPassword() {
         return password;
     }
@@ -110,17 +108,33 @@ public final class MySqlConnectionConfiguration {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof MySqlConnectionConfiguration)) {
+            return false;
+        }
+        MySqlConnectionConfiguration that = (MySqlConnectionConfiguration) o;
+        return port == that.port &&
+            host.equals(that.host) &&
+            Objects.equals(connectTimeout, that.connectTimeout) &&
+            ssl.equals(that.ssl) &&
+            zeroDateOption == that.zeroDateOption &&
+            username.equals(that.username) &&
+            Objects.equals(password, that.password) &&
+            database.equals(that.database);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(host, port, connectTimeout, ssl, zeroDateOption, username, password, database);
+    }
+
+    @Override
     public String toString() {
-        return "MySqlConnectionConfiguration{" +
-            "host='" + host + '\'' +
-            ", port=" + port +
-            ", connectTimeout=" + connectTimeout +
-            ", sslConfiguration=" + (sslConfiguration == null ? "disabled" : sslConfiguration.toString()) +
-            ", zeroDateOption=" + zeroDateOption +
-            ", username='" + username + '\'' +
-            ", password=REDACTED" +
-            ", database='" + database + '\'' +
-            '}';
+        return String.format("MySqlConnectionConfiguration{host='%s', port=%d, connectTimeout=%s, ssl=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s'}",
+            host, port, connectTimeout, ssl, zeroDateOption, username, database);
     }
 
     public static final class Builder {
@@ -138,18 +152,32 @@ public final class MySqlConnectionConfiguration {
         @Nullable
         private Duration connectTimeout;
 
-        @Nullable
-        private MySqlSslConfiguration sslConfiguration;
-
         private String username;
 
         private ZeroDateOption zeroDateOption = ZeroDateOption.USE_NULL;
+
+        private SslMode sslMode = SslMode.PREFERRED;
+
+        private String[] tlsVersion = EMPTY_STRINGS;
+
+        @Nullable
+        private String sslCa;
+
+        @Nullable
+        private String sslKey;
+
+        @Nullable
+        private CharSequence sslKeyPassword;
+
+        @Nullable
+        private String sslCert;
 
         private Builder() {
         }
 
         public MySqlConnectionConfiguration build() {
-            return new MySqlConnectionConfiguration(host, port, connectTimeout, sslConfiguration, zeroDateOption, username, password, database);
+            MySqlSslConfiguration ssl = new MySqlSslConfiguration(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert);
+            return new MySqlConnectionConfiguration(host, port, connectTimeout, ssl, zeroDateOption, username, password, database);
         }
 
         public Builder database(@Nullable String database) {
@@ -177,19 +205,6 @@ public final class MySqlConnectionConfiguration {
             return this;
         }
 
-        public Builder enableSsl(Consumer<MySqlSslConfiguration.Builder> options) {
-            MySqlSslConfiguration.Builder builder = MySqlSslConfiguration.builder();
-            options.accept(builder);
-
-            this.sslConfiguration = builder.build();
-            return this;
-        }
-
-        public Builder disableSsl() {
-            this.sslConfiguration = null;
-            return this;
-        }
-
         public Builder username(String username) {
             this.username = requireNonNull(username, "username must not be null");
             return this;
@@ -197,6 +212,44 @@ public final class MySqlConnectionConfiguration {
 
         public Builder zeroDateOption(ZeroDateOption zeroDate) {
             this.zeroDateOption = requireNonNull(zeroDate, "zeroDateOption must not be null");
+            return this;
+        }
+
+        public Builder sslMode(SslMode sslMode) {
+            this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
+            return this;
+        }
+
+        public Builder tlsVersion(String... tlsVersion) {
+            requireNonNull(tlsVersion, "tlsVersion must not be null");
+
+            int size = tlsVersion.length;
+
+            if (size > 0) {
+                String[] versions = new String[size];
+                System.arraycopy(tlsVersion, 0, versions, 0, size);
+                this.tlsVersion = versions;
+            } else {
+                this.tlsVersion = EMPTY_STRINGS;
+            }
+            return this;
+        }
+
+        public Builder sslCa(String sslCa) {
+            this.sslCa = sslCa;
+            return this;
+        }
+
+        public Builder sslKeyAndCert(@Nullable String sslCert, @Nullable String sslKey) {
+            return sslKeyAndCert(sslCert, sslKey, null);
+        }
+
+        public Builder sslKeyAndCert(@Nullable String sslCert, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword) {
+            require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null), "SSL key and cert must be both null or both non-null");
+
+            this.sslCert = sslCert;
+            this.sslKey = sslKey;
+            this.sslKeyPassword = sslKeyPassword;
             return this;
         }
     }

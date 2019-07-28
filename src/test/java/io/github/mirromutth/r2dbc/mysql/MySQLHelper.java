@@ -16,9 +16,11 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import reactor.util.annotation.Nullable;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -42,7 +44,7 @@ final class MySQLHelper {
 
     private static final ConcurrentMap<String, MySqlConnectionFactory> CONNECTION_FACTORY_MAP = new ConcurrentHashMap<>();
 
-    static MySqlConnectionFactory getFactoryByVersion(String version, boolean ssl) {
+    static MySqlConnectionFactory getFactoryByVersion(String version, SslMode sslMode, @Nullable String sslCa) {
         MySqlConnectionFactory nowFactory = CONNECTION_FACTORY_MAP.get(version);
 
         if (nowFactory == null) {
@@ -51,7 +53,7 @@ final class MySQLHelper {
             MySqlConnectionConfiguration newConfig;
 
             try {
-                newConfig = buildConfig(version, ssl);
+                newConfig = buildConfig(version, sslMode, sslCa);
             } catch (IOException e) {
                 throw new IllegalStateException("Read configuration failed", e);
             }
@@ -82,8 +84,9 @@ final class MySQLHelper {
 
         // Disable connector/J SSL for testing more fast.
         String url = String.format("jdbc:mysql://%s:%d?useSSL=false", configuration.getHost(), configuration.getPort());
+        CharSequence password = configuration.getPassword();
 
-        try (Connection conn = DriverManager.getConnection(url, configuration.getUsername(), configuration.getPassword().toString())) {
+        try (Connection conn = DriverManager.getConnection(url, configuration.getUsername(), password == null ? null : password.toString())) {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("CREATE DATABASE IF NOT EXISTS `r2dbc`");
             }
@@ -92,7 +95,7 @@ final class MySQLHelper {
         }
     }
 
-    private static MySqlConnectionConfiguration buildConfig(String version, boolean ssl) throws IOException {
+    private static MySqlConnectionConfiguration buildConfig(String version, SslMode sslMode, @Nullable String sslCa) throws IOException {
         String filename = buildFilename(version);
         InputStream resource = MySQLHelper.class.getClassLoader().getResourceAsStream(filename);
 
@@ -109,10 +112,11 @@ final class MySQLHelper {
             MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder()
                 .host("127.0.0.1")
                 .port(port)
-                .connectTimeout(Duration.ofSeconds(5));
+                .connectTimeout(Duration.ofSeconds(5))
+                .sslMode(sslMode);
 
-            if (ssl) {
-                builder.enableSsl(MySqlSslConfiguration.Builder::disableServerVerify); // TODO: should verify server cert
+            if (sslCa != null) {
+                builder.sslCa(sslCa);
             }
 
             return builder.username("root")
