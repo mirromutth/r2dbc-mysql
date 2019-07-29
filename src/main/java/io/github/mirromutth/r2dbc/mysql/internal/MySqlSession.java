@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.internal;
 
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
+import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
 import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
@@ -43,6 +44,12 @@ public final class MySqlSession {
      * Client character collation.
      */
     private final CharCollation collation = CharCollation.clientCharCollation();
+
+    /**
+     * Assume that the auto commit is always turned on, it will be set after handshake V10 request message,
+     * or OK message which means handshake V9 completed.
+     */
+    private volatile short serverStatuses = ServerStatuses.AUTO_COMMIT;
 
     private volatile int capabilities = 0;
 
@@ -77,6 +84,14 @@ public final class MySqlSession {
 
     public ZeroDateOption getZeroDateOption() {
         return zeroDateOption;
+    }
+
+    public short getServerStatuses() {
+        return serverStatuses;
+    }
+
+    public void setServerStatuses(short serverStatuses) {
+        this.serverStatuses = serverStatuses;
     }
 
     public int getCapabilities() {

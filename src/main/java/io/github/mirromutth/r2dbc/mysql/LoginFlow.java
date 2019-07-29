@@ -95,6 +95,7 @@ final class LoginFlow {
             logger.warn("The MySQL server use old handshake V{}, server version is {}, maybe most features are not available", handshakeVersion, serverVersion);
         }
 
+        // No need initialize server statuses because it has initialized by read filter.
         this.session.setConnectionId(header.getConnectionId());
         this.session.setServerVersion(serverVersion);
         this.session.setCapabilities(calculateClientCapabilities(message.getServerCapabilities()));

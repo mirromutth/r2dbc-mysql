@@ -25,6 +25,7 @@ import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.ServerStatusMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
@@ -166,8 +167,15 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     }
 
     private boolean decodeFilter(ServerMessage msg) {
-        if (msg instanceof WarningMessage) {
-            loggingWarnings((WarningMessage) msg);
+        if (msg instanceof WarningMessage && logger.isInfoEnabled()) {
+            int warnings = ((WarningMessage) msg).getWarnings();
+            if (warnings > 0) {
+                logger.info("MySQL server has {} warnings", warnings);
+            }
+        }
+
+        if (msg instanceof ServerStatusMessage) {
+            this.session.setServerStatuses(((ServerStatusMessage) msg).getServerStatuses());
         }
 
         if (msg instanceof ColumnCountMessage) {
@@ -212,14 +220,6 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         this.decodeContext = context;
         if (logger.isDebugEnabled()) {
             logger.debug("Decode context change to {}", context);
-        }
-    }
-
-    private void loggingWarnings(WarningMessage message) {
-        int warnings = message.getWarnings();
-
-        if (warnings > 0 && logger.isInfoEnabled()) {
-            logger.info("MySQL server has {} warnings", warnings);
         }
     }
 }

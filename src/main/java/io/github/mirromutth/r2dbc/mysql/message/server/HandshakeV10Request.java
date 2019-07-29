@@ -32,7 +32,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 /**
  * MySQL Handshake Message for protocol version 10.
  */
-final class HandshakeV10Request implements HandshakeRequest {
+final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage {
 
     private static final int RESERVED_SIZE = 10;
 
@@ -79,6 +79,11 @@ final class HandshakeV10Request implements HandshakeRequest {
     @Override
     public int getServerCapabilities() {
         return serverCapabilities;
+    }
+
+    @Override
+    public short getServerStatuses() {
+        return serverStatuses;
     }
 
     @Override

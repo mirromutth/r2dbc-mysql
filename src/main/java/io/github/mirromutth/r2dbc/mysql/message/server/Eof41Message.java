@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBuf;
 /**
  * A EOF message for current context in protocol 4.1.
  */
-final class Eof41Message implements EofMessage, WarningMessage {
+final class Eof41Message implements EofMessage, WarningMessage, ServerStatusMessage {
 
     static final int SIZE = Byte.BYTES + (Short.BYTES << 1);
 
@@ -32,6 +32,11 @@ final class Eof41Message implements EofMessage, WarningMessage {
     private Eof41Message(int warnings, short serverStatuses) {
         this.warnings = warnings;
         this.serverStatuses = serverStatuses;
+    }
+
+    @Override
+    public short getServerStatuses() {
+        return serverStatuses;
     }
 
     @Override

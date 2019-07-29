@@ -18,6 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
+import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
@@ -30,7 +31,6 @@ import io.r2dbc.spi.IsolationLevel;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -60,8 +60,6 @@ public final class MySqlConnection implements Connection {
 
     private final MySqlSession session;
 
-    private final AtomicBoolean autoCommit = new AtomicBoolean(true);
-
     MySqlConnection(Client client, MySqlSession session) {
         this.client = requireNonNull(client, "client must not be null");
         this.session = requireNonNull(session, "session must not be null");
@@ -71,15 +69,13 @@ public final class MySqlConnection implements Connection {
     @Override
     public Mono<Void> beginTransaction() {
         return Mono.defer(() -> {
-            Mono<Void> prepare;
+            Mono<Void> transaction = executeVoid("START TRANSACTION");
 
-            if (this.autoCommit.get()) {
-                prepare = executeVoid("SET autocommit=0").doOnSuccess(ignore -> this.autoCommit.set(false));
+            if ((this.session.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0) {
+                return executeVoid("SET autocommit=0").then(transaction);
             } else {
-                prepare = Mono.empty();
+                return transaction;
             }
-
-            return prepare.then(executeVoid("START TRANSACTION"));
         });
     }
 
