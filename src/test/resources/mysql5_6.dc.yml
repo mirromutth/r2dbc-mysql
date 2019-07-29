@@ -18,6 +18,7 @@ services:
     volumes:
       - mysql5_6_dir:/var/lib/mysql
     environment:
+      MYSQL_DATABASE: r2dbc
       # Just a random password
       MYSQL_ROOT_PASSWORD: fTQeXC35l3Qf
     # For testing from the host:

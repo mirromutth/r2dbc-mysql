@@ -22,7 +22,8 @@ import reactor.util.annotation.Nullable;
 import java.nio.CharBuffer;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
-import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in full authentication phase.
@@ -43,8 +44,10 @@ final class CachingSha2FullAuthProvider implements MySqlAuthProvider {
     @Override
     public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
-            return EMPTY_BYTES;
+            return new byte[]{TERMINAL};
         }
+
+        requireNonNull(collation, "collation must not be null when password exists");
 
         return AuthHelper.encodeTerminal(CharBuffer.wrap(password), collation.getCharset());
     }

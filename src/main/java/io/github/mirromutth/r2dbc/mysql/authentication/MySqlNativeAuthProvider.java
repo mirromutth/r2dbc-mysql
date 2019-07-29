@@ -20,6 +20,8 @@ import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "mysql_native_password".
@@ -47,6 +49,13 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
      */
     @Override
     public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+        if (password == null || password.length() <= 0) {
+            return EMPTY_BYTES;
+        }
+
+        requireNonNull(salt, "salt must not be null when password exists");
+        requireNonNull(collation, "collation must not be null when password exists");
+
         return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 

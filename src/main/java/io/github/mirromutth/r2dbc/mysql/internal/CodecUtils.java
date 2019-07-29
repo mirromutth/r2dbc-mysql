@@ -20,6 +20,7 @@ import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 
+import static io.github.mirromutth.r2dbc.mysql.constant.DataValues.TERMINAL;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -49,8 +50,6 @@ public final class CodecUtils {
     private static final int MEDIUM_BYTES = 3;
 
     private static final int MEDIUM_SIZE = MEDIUM_BYTES * Byte.SIZE;
-
-    private static final byte TERMINAL = 0;
 
     /**
      * @param buf     C-style string readable buffer.

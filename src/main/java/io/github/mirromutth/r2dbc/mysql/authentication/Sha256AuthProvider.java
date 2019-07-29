@@ -19,8 +19,11 @@ package io.github.mirromutth.r2dbc.mysql.authentication;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
+import java.nio.CharBuffer;
+
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
-import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static io.github.mirromutth.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "sha256_password".
@@ -39,8 +42,13 @@ final class Sha256AuthProvider implements MySqlAuthProvider {
 
     @Override
     public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
-        // TODO: implement fast authentication
-        return EMPTY_BYTES;
+        if (password == null || password.length() <= 0) {
+            return new byte[]{TERMINAL};
+        }
+
+        requireNonNull(collation, "collation must not be null when password exists");
+
+        return AuthHelper.encodeTerminal(CharBuffer.wrap(password), collation.getCharset());
     }
 
     @Override

@@ -126,6 +126,10 @@ final class LoginFlow {
         return Mono.fromSupplier(() -> {
             MySqlAuthProvider authProvider = getAndNextProvider();
 
+            if (authProvider.isSslNecessary() && !sslCompleted) {
+                throw new R2dbcPermissionDeniedException(String.format("Authentication type '%s' must require SSL in fast authentication phase", authProvider.getType()), SqlStates.CLI_SPECIFIC_CONDITION);
+            }
+
             String username = this.username;
             if (username == null) {
                 throw new IllegalStateException("username must not be null when login");
@@ -157,7 +161,7 @@ final class LoginFlow {
             MySqlAuthProvider authProvider = getAndNextProvider();
 
             if (authProvider.isSslNecessary() && !sslCompleted) {
-                throw new R2dbcPermissionDeniedException(String.format("Authentication type '%s' must require SSL in full authentication", authProvider.getType()), SqlStates.CLI_SPECIFIC_CONDITION);
+                throw new R2dbcPermissionDeniedException(String.format("Authentication type '%s' must require SSL in full authentication phase", authProvider.getType()), SqlStates.CLI_SPECIFIC_CONDITION);
             }
 
             return new FullAuthResponse(authProvider.authentication(password, salt, session.getCollation()));

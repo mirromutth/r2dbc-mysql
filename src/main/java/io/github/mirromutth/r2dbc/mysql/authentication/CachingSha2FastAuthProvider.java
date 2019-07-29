@@ -20,6 +20,8 @@ import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
 import static io.github.mirromutth.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
+import static io.github.mirromutth.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in fast authentication phase.
@@ -48,6 +50,13 @@ final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
      */
     @Override
     public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+        if (password == null || password.length() <= 0) {
+            return new byte[]{TERMINAL};
+        }
+
+        requireNonNull(salt, "salt must not be null when password exists");
+        requireNonNull(collation, "collation must not be null when password exists");
+
         return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 

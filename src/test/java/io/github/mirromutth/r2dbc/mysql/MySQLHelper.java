@@ -25,10 +25,6 @@ import reactor.util.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -62,8 +58,7 @@ final class MySQLHelper {
             MySqlConnectionFactory lastFactory = CONNECTION_FACTORY_MAP.putIfAbsent(version, newFactory);
 
             if (lastFactory == null) {
-                logger.info("Version {} connection factory build success, try init", version);
-                initMySQL(newConfig);
+                logger.info("Version {} connection factory build success", version);
                 return newFactory;
             } else {
                 logger.info("Version {} connection factory already build by other thread", version);
@@ -72,26 +67,6 @@ final class MySQLHelper {
         } else {
             logger.debug("Version {} connection factory found, use factory on cache", version);
             return nowFactory;
-        }
-    }
-
-    private static void initMySQL(MySqlConnectionConfiguration configuration) {
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("JDBC driver not found", e);
-        }
-
-        // Disable connector/J SSL for testing more fast.
-        String url = String.format("jdbc:mysql://%s:%d?useSSL=false", configuration.getHost(), configuration.getPort());
-        CharSequence password = configuration.getPassword();
-
-        try (Connection conn = DriverManager.getConnection(url, configuration.getUsername(), password == null ? null : password.toString())) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute("CREATE DATABASE IF NOT EXISTS `r2dbc`");
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Init MySQL database failed!", e);
         }
     }
 

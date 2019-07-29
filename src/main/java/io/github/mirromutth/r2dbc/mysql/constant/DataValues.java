@@ -23,6 +23,8 @@ public final class DataValues {
 
     public static final short NULL_VALUE = 0xFB;
 
+    public static final byte TERMINAL = 0;
+
     private DataValues() {
     }
 }

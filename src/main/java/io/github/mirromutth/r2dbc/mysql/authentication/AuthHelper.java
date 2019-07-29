@@ -17,7 +17,6 @@
 package io.github.mirromutth.r2dbc.mysql.authentication;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
-import reactor.util.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -25,8 +24,7 @@ import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import static io.github.mirromutth.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
-import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static io.github.mirromutth.r2dbc.mysql.constant.DataValues.TERMINAL;
 
 /**
  * A utility for general authentication hashing algorithm.
@@ -36,14 +34,7 @@ final class AuthHelper {
     private AuthHelper() {
     }
 
-    static byte[] generalHash(String algorithm, boolean leftSalt, @Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
-        if (password == null || password.length() <= 0) {
-            return EMPTY_BYTES;
-        }
-
-        requireNonNull(salt, "salt must not be null when password exists");
-        requireNonNull(collation, "collation must not be null when password exists");
-
+    static byte[] generalHash(String algorithm, boolean leftSalt, CharSequence password, byte[] salt, CharCollation collation) {
         Charset charset = collation.getCharset();
         MessageDigest digest = loadDigest(algorithm);
 
@@ -63,7 +54,7 @@ final class AuthHelper {
         byte[] bytes = new byte[maxIndex + 1];
 
         buffer.get(bytes, 0, maxIndex);
-        bytes[maxIndex] = 0; // TERMINAL
+        bytes[maxIndex] = TERMINAL;
 
         return bytes;
     }
