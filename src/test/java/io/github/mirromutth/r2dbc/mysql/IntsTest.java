@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.runAll;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.completeAll;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -77,7 +77,7 @@ class IntsTest {
 
     @Test
     void crudByParametrizedStatement() throws Throwable {
-        runAll(connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?")
+        completeAll(connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?")
             .bind(0, (Integer) INCREMENT_STEP)
             .execute())
             .flatMap(MySqlResult::getRowsUpdated)

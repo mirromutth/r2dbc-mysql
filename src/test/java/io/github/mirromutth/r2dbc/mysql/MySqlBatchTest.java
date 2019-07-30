@@ -22,7 +22,7 @@ import reactor.util.annotation.Nullable;
 
 import java.util.Arrays;
 
-import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.runAll;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.completeAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -55,7 +55,7 @@ class MySqlBatchTest {
 
     @Test
     void crudAllInOne() throws Throwable {
-        runAll(connection -> {
+        completeAll(connection -> {
             MySqlBatch selectBatch = connection.createBatch();
             MySqlBatch insertBatch = connection.createBatch();
             MySqlBatch updateBatch = connection.createBatch();

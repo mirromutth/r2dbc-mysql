@@ -16,190 +16,86 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
 import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.R2dbcBadGrammarException;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
-import java.util.List;
-
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.completeAll;
+import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.exceptAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.internal.verification.VerificationModeFactory.times;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for {@link MySqlConnection}.
- * <p>
- * TODO: modify library or test cases to pass the test.
  */
 class MySqlConnectionTest {
 
-    private final Client client = mock(Client.class);
-
-    private final MySqlSession session = mock(MySqlSession.class);
-
-    private final MySqlConnection connection = new MySqlConnection(client, session);
-
-    private final ArgumentCaptor<ExchangeableMessage> captor = ArgumentCaptor.forClass(ExchangeableMessage.class);
-
     @Test
-    void shouldStartTransaction() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.beginTransaction()
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client, times(2)).exchange(Mono.just(this.captor.capture()))
-            .as(StepVerifier::create).verifyComplete();
-
-        List<ExchangeableMessage> allValues = this.captor.getAllValues();
-
-        SimpleQueryMessage autoCommit = (SimpleQueryMessage) allValues.get(0);
-        assertEquals("SET autocommit=0", autoCommit.getSql());
-
-        SimpleQueryMessage begin = (SimpleQueryMessage) allValues.get(1);
-        assertEquals("START TRANSACTION", begin.getSql());
+    void beginTransaction() {
+        completeAll(connection -> Mono.<Void>fromRunnable(() -> assertTrue(connection.isAutoCommit()))
+            .then(connection.beginTransaction())
+            .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
+            .then(connection.beginTransaction())
+            .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit())));
     }
 
     @Test
-    void shouldNotDisableAutoCommitIfTransactionWasStarted() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.beginTransaction()
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        this.connection.beginTransaction()
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client, times(3)).exchange(Mono.just(this.captor.capture()))
-            .as(StepVerifier::create).verifyComplete();
-
-        List<ExchangeableMessage> allValues = this.captor.getAllValues();
-
-        SimpleQueryMessage autoCommit = (SimpleQueryMessage) allValues.get(0);
-        assertEquals("SET autocommit=0", autoCommit.getSql());
-
-        SimpleQueryMessage begin1 = (SimpleQueryMessage) allValues.get(1);
-        assertEquals("START TRANSACTION", begin1.getSql());
-
-        SimpleQueryMessage begin2 = (SimpleQueryMessage) allValues.get(2);
-        assertEquals("START TRANSACTION", begin2.getSql());
+    void commitTransactionWithoutBegin() {
+        completeAll(MySqlConnection::commitTransaction);
     }
 
     @Test
-    void shouldCommitTransaction() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.commitTransaction()
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client).exchange(Mono.just(this.captor.capture())).as(StepVerifier::create).verifyComplete();
-
-        SimpleQueryMessage commit = (SimpleQueryMessage) this.captor.getValue();
-        assertEquals("COMMIT", commit.getSql());
+    void rollbackTransactionWithoutBegin() {
+        completeAll(MySqlConnection::rollbackTransaction);
     }
 
     @Test
-    void shouldRollbackTransaction() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.rollbackTransaction()
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client).exchange(Mono.just(this.captor.capture())).as(StepVerifier::create).verifyComplete();
-
-        SimpleQueryMessage rollback = (SimpleQueryMessage) this.captor.getValue();
-        assertEquals("ROLLBACK", rollback.getSql());
+    void rejectInvalidSavepoint() {
+        completeAll(connection -> {
+            assertThrows(IllegalArgumentException.class, () -> connection.createSavepoint(""));
+            assertThrows(IllegalArgumentException.class, () -> connection.createSavepoint("`"));
+            return Mono.empty();
+        });
     }
 
     @Test
-    void shouldRejectInvalidSavepoint() {
-        assertThrows(IllegalArgumentException.class, () -> this.connection.createSavepoint(null));
-        assertThrows(IllegalArgumentException.class, () -> this.connection.createSavepoint(""));
-        assertThrows(IllegalArgumentException.class, () -> this.connection.createSavepoint("`"));
+    void createSavepoint() {
+        completeAll(connection -> connection.createSavepoint("foo"));
     }
 
     @Test
-    void shouldCreateSavepoint() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.createSavepoint("foo")
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client).exchange(Mono.just(this.captor.capture())).as(StepVerifier::create).verifyComplete();
-
-        SimpleQueryMessage savepoint = (SimpleQueryMessage) this.captor.getValue();
-        assertEquals("SAVEPOINT `foo`", savepoint.getSql());
+    void releaseSavepointWithoutTransaction() {
+        exceptAll(
+            R2dbcBadGrammarException.class,
+            connection -> connection.releaseSavepoint("foo"),
+            e -> {
+                assertTrue(e instanceof R2dbcBadGrammarException);
+                R2dbcBadGrammarException r2dbcExcept = (R2dbcBadGrammarException) e;
+                assertEquals(r2dbcExcept.getErrorCode(), 1305);
+                assertEquals(r2dbcExcept.getOffendingSql(), "RELEASE SAVEPOINT `foo`");
+            }
+        );
     }
 
     @Test
-    void shouldReleaseSavepoint() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.releaseSavepoint("foo")
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client).exchange(Mono.just(this.captor.capture())).as(StepVerifier::create).verifyComplete();
-
-        SimpleQueryMessage savepoint = (SimpleQueryMessage) this.captor.getValue();
-        assertEquals("RELEASE SAVEPOINT `foo`", savepoint.getSql());
+    void rollbackTransactionToSavepointWithoutTransaction() {
+        exceptAll(
+            R2dbcBadGrammarException.class,
+            connection -> connection.rollbackTransactionToSavepoint("foo"),
+            e -> {
+                assertTrue(e instanceof R2dbcBadGrammarException);
+                R2dbcBadGrammarException r2dbcExcept = (R2dbcBadGrammarException) e;
+                assertEquals(r2dbcExcept.getErrorCode(), 1305);
+                assertEquals(r2dbcExcept.getOffendingSql(), "ROLLBACK TO SAVEPOINT `foo`");
+            }
+        );
     }
 
     @Test
-    void shouldRollbackToSavepoint() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.rollbackTransactionToSavepoint("foo")
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client).exchange(Mono.just(this.captor.capture())).as(StepVerifier::create).verifyComplete();
-
-        SimpleQueryMessage savepoint = (SimpleQueryMessage) this.captor.getValue();
-        assertEquals("ROLLBACK TO SAVEPOINT `foo`", savepoint.getSql());
-    }
-
-    @Test
-    void shouldSetTransactionIsolationLevel() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.setTransactionIsolationLevel(IsolationLevel.READ_COMMITTED)
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client).exchange(Mono.just(this.captor.capture())).as(StepVerifier::create).verifyComplete();
-
-        SimpleQueryMessage isolation = (SimpleQueryMessage) this.captor.getValue();
-        assertEquals("SET TRANSACTION ISOLATION LEVEL READ COMMITTED", isolation.getSql());
-    }
-
-    @Test
-    void shouldPingServer() {
-        when(this.client.exchange(any())).thenReturn(Flux.empty());
-
-        this.connection.ping()
-            .as(StepVerifier::create)
-            .verifyComplete();
-
-        verify(this.client).exchange(Mono.just(PingMessage.getInstance()))
-            .as(StepVerifier::create).verifyComplete();
+    void setTransactionIsolationLevel() {
+        completeAll(connection -> connection.setTransactionIsolationLevel(IsolationLevel.READ_COMMITTED));
     }
 }

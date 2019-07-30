@@ -71,7 +71,7 @@ public final class MySqlConnection implements Connection {
         return Mono.defer(() -> {
             Mono<Void> transaction = executeVoid("START TRANSACTION");
 
-            if ((this.session.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0) {
+            if (isAutoCommit()) {
                 return executeVoid("SET autocommit=0").then(transaction);
             } else {
                 return transaction;
@@ -153,6 +153,10 @@ public final class MySqlConnection implements Connection {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
 
         return executeVoid(String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()));
+    }
+
+    boolean isAutoCommit() {
+        return (session.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0;
     }
 
     private Mono<Void> executeVoid(String sql) {

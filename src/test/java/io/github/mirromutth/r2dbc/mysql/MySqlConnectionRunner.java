@@ -20,10 +20,10 @@ import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -55,31 +55,38 @@ final class MySqlConnectionRunner {
         this.sslCa = sslCa;
     }
 
-    private void run(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable {
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<Throwable> cause = new AtomicReference<>();
+    private void complete(Function<MySqlConnection, Publisher<?>> f) {
+        verifier(f, null).verifyComplete();
+    }
 
-        MySQLHelper.getFactoryByVersion(version, sslMode, sslCa).create()
-            .flatMap(connection -> Flux.from(consumer.apply(connection))
+    private void except(Class<? extends Throwable> e, Function<MySqlConnection, Publisher<?>> f, Consumer<Throwable> consumer) {
+        verifier(f, consumer).verifyError(e);
+    }
+
+    private StepVerifier.FirstStep<Void> verifier(Function<MySqlConnection, Publisher<?>> f, @Nullable Consumer<Throwable> consumer) {
+        return StepVerifier.create(MySQLHelper.getFactoryByVersion(version, sslMode, sslCa).create()
+            .flatMap(connection -> Flux.from(f.apply(connection))
                 .onErrorResume(e -> connection.close().then(Mono.error(e)))
                 .concatWith(connection.close().then(Mono.empty()))
-                .then())
-            .subscribe(null, e -> {
-                cause.set(e);
-                latch.countDown();
-            }, latch::countDown);
+                .then()
+                .as(r -> {
+                    if (consumer == null) {
+                        return r;
+                    } else {
+                        return r.doOnError(consumer);
+                    }
+                })));
+    }
 
-        latch.await();
-
-        Throwable e = cause.get();
-        if (e != null) {
-            throw e;
+    static void completeAll(Function<MySqlConnection, Publisher<?>> f) {
+        for (MySqlConnectionRunner runner : ALL_RUNNER) {
+            runner.complete(f);
         }
     }
 
-    static void runAll(Function<MySqlConnection, Publisher<?>> consumer) throws Throwable {
+    static void exceptAll(Class<? extends Throwable> e, Function<MySqlConnection, Publisher<?>> f, Consumer<Throwable> consumer) {
         for (MySqlConnectionRunner runner : ALL_RUNNER) {
-            runner.run(consumer);
+            runner.except(e, f, consumer);
         }
     }
 }
