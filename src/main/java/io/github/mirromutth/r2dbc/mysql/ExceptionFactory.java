@@ -47,22 +47,6 @@ final class ExceptionFactory {
         String sqlState = message.getSqlState();
         String errorMessage = message.getErrorMessage();
 
-        R2dbcException exception = mappingErrorCode(errorMessage, sqlState, errorCode, sql);
-
-        if (exception == null && sqlState != null) {
-            exception = mappingSqlState(errorMessage, sqlState, errorCode, sql);
-        }
-
-        if (exception != null) {
-            return exception;
-        }
-
-        // Fallback when all exceptions mismatch.
-        return new R2dbcNonTransientResourceException(errorMessage, sqlState, errorCode);
-    }
-
-    @Nullable
-    private static R2dbcException mappingErrorCode(String errorMessage, @Nullable String sqlState, int errorCode, @Nullable String sql) {
         // Should keep looking more error codes
         switch (errorCode) {
             case 1044: // Database access denied
@@ -85,10 +69,14 @@ final class ExceptionFactory {
                 return new R2dbcTimeoutException(errorMessage, sqlState, errorCode);
             case 1613: // Transaction rollback because of took too long
                 return new R2dbcRollbackException(errorMessage, sqlState, errorCode);
+            case 1050: // Table already exists
+            case 1051: // Unknown table
             case 1054: // Unknown column name in existing table
             case 1064: // Bad syntax
             case 1247: // Unsupported reference
             case 1146: // Unknown table name
+            case 1304: // Something already exists, like savepoint
+            case 1305: // Something does not exists, like savepoint
             case 1630: // Function not exists
                 return new R2dbcBadGrammarException(errorMessage, sqlState, errorCode, sql);
             case 1022: // Duplicate key
@@ -106,19 +94,24 @@ final class ExceptionFactory {
                 return new R2dbcDataIntegrityViolationException(errorMessage, sqlState, errorCode);
         }
 
-        return null;
+        if (sqlState == null) {
+            // Has no SQL state, all exceptions mismatch, fallback.
+            return new R2dbcNonTransientResourceException(errorMessage, null, errorCode);
+        }
+
+        return mappingSqlState(errorMessage, sqlState, errorCode, sql);
     }
 
-    @Nullable
     private static R2dbcException mappingSqlState(String errorMessage, String sqlState, int errorCode, @Nullable String sql) {
-        if (sqlState.startsWith(CONSTRAINT_VIOLATION_PREFIX)) {
+        if (sqlState.startsWith(SYNTAX_ERROR_PREFIX)) {
+            return new R2dbcBadGrammarException(errorMessage, sqlState, errorCode, sql);
+        } else if (sqlState.startsWith(CONSTRAINT_VIOLATION_PREFIX)) {
             return new R2dbcDataIntegrityViolationException(errorMessage, sqlState, errorCode);
         } else if (sqlState.startsWith(TRANSACTION_ROLLBACK_PREFIX)) {
             return new R2dbcRollbackException(errorMessage, sqlState, errorCode);
-        } else if (sqlState.startsWith(SYNTAX_ERROR_PREFIX)) {
-            return new R2dbcBadGrammarException(errorMessage, sqlState, errorCode, sql);
         }
 
-        return null;
+        // Uncertain SQL state, all exceptions mismatch, fallback.
+        return new R2dbcNonTransientResourceException(errorMessage, null, errorCode);
     }
 }
