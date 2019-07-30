@@ -25,6 +25,7 @@ import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.completeAll
 import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.exceptAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -32,6 +33,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Unit tests for {@link MySqlConnection}.
  */
 class MySqlConnectionTest {
+
+    private static final String SYNTAX_ERROR = "42000";
+
+    private static final int ERROR_SOMEONE_NOT_FOUND = 1305;
 
     @Test
     void beginTransaction() {
@@ -68,13 +73,18 @@ class MySqlConnectionTest {
 
     @Test
     void releaseSavepointWithoutTransaction() {
+        // MySQL treats savepoint not found as a syntax error (SQL state: 42000).
         exceptAll(
             R2dbcBadGrammarException.class,
             connection -> connection.releaseSavepoint("foo"),
             e -> {
                 assertTrue(e instanceof R2dbcBadGrammarException);
                 R2dbcBadGrammarException r2dbcExcept = (R2dbcBadGrammarException) e;
-                assertEquals(r2dbcExcept.getErrorCode(), 1305);
+                String sqlState = r2dbcExcept.getSqlState();
+
+                assertEquals(r2dbcExcept.getErrorCode(), ERROR_SOMEONE_NOT_FOUND);
+                assertNotNull(sqlState);
+                assertEquals(sqlState, SYNTAX_ERROR);
                 assertEquals(r2dbcExcept.getOffendingSql(), "RELEASE SAVEPOINT `foo`");
             }
         );
@@ -82,13 +92,18 @@ class MySqlConnectionTest {
 
     @Test
     void rollbackTransactionToSavepointWithoutTransaction() {
+        // MySQL treats savepoint not found as a syntax error (SQL state: 42000).
         exceptAll(
             R2dbcBadGrammarException.class,
             connection -> connection.rollbackTransactionToSavepoint("foo"),
             e -> {
                 assertTrue(e instanceof R2dbcBadGrammarException);
                 R2dbcBadGrammarException r2dbcExcept = (R2dbcBadGrammarException) e;
-                assertEquals(r2dbcExcept.getErrorCode(), 1305);
+                String sqlState = r2dbcExcept.getSqlState();
+
+                assertEquals(r2dbcExcept.getErrorCode(), ERROR_SOMEONE_NOT_FOUND);
+                assertNotNull(sqlState);
+                assertEquals(sqlState, SYNTAX_ERROR);
                 assertEquals(r2dbcExcept.getOffendingSql(), "ROLLBACK TO SAVEPOINT `foo`");
             }
         );
