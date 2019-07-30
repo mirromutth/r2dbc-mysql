@@ -78,6 +78,7 @@ final class ExceptionFactory {
             case 1159: // Read interrupted, reading basic packet timeout because of network jitter in most cases
             case 1161: // Write interrupted, writing basic packet timeout because of network jitter in most cases
             case 1213: // Dead lock :-( no one wants this
+            case 1317: // Statement execution interrupted
                 return new R2dbcTransientResourceException(errorMessage, sqlState, errorCode);
             case 1205: // Wait lock timeout
             case 1907: // Statement executing timeout
