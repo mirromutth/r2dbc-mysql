@@ -33,27 +33,16 @@ import java.util.function.Function;
 final class MySqlConnectionRunner {
 
     private static final MySqlConnectionRunner[] ALL_RUNNER = {
-        new MySqlConnectionRunner("5_5"), // MySQL 5.5.x community version.
-        new MySqlConnectionRunner("5_6"), // MySQL 5.6.x community version.
-        new MySqlConnectionRunner("5_7"), // MySQL 5.7.x community version.
-        new MySqlConnectionRunner("8_0")  // MySQL 8.0.x community version.
+        new MySqlConnectionRunner(MySql55Example.CONFIGURATION),
+        new MySqlConnectionRunner(MySql56Example.CONFIGURATION),
+        new MySqlConnectionRunner(MySql57Example.CONFIGURATION),
+        new MySqlConnectionRunner(MySql80Example.CONFIGURATION)
     };
 
-    private final String version;
+    private final MySqlConnectionConfiguration configuration;
 
-    private final SslMode sslMode;
-
-    @Nullable
-    private final String sslCa;
-
-    private MySqlConnectionRunner(String version) {
-        this(version, SslMode.PREFERRED, null);
-    }
-
-    private MySqlConnectionRunner(String version, SslMode sslMode, @Nullable String sslCa) {
-        this.version = version;
-        this.sslMode = sslMode;
-        this.sslCa = sslCa;
+    private MySqlConnectionRunner(MySqlConnectionConfiguration configuration) {
+        this.configuration = configuration;
     }
 
     private void complete(Function<MySqlConnection, Publisher<?>> f) {
@@ -65,7 +54,8 @@ final class MySqlConnectionRunner {
     }
 
     private StepVerifier.FirstStep<Void> verifier(Function<MySqlConnection, Publisher<?>> f, @Nullable Consumer<Throwable> consumer) {
-        return StepVerifier.create(MySQLHelper.getFactoryByVersion(version, sslMode, sslCa).create()
+        return StepVerifier.create(MySqlConnectionFactory.from(configuration)
+            .create()
             .flatMap(connection -> Flux.from(f.apply(connection))
                 .onErrorResume(e -> connection.close().then(Mono.error(e)))
                 .concatWith(connection.close().then(Mono.empty()))

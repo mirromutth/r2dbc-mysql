@@ -16,9 +16,13 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.yaml.snakeyaml.Yaml;
 import reactor.util.annotation.Nullable;
 
@@ -28,54 +32,29 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * A helper for loading a factory that config is come from docker compose file.
+ * Test containers for MySQL.
  */
-final class MySQLHelper {
+final class MySqlContainers {
 
-    private static final Logger logger = LoggerFactory.getLogger(MySQLHelper.class);
-
-    private static final ConcurrentMap<String, MySqlConnectionFactory> CONNECTION_FACTORY_MAP = new ConcurrentHashMap<>();
-
-    static MySqlConnectionFactory getFactoryByVersion(String version, SslMode sslMode, @Nullable String sslCa) {
-        MySqlConnectionFactory nowFactory = CONNECTION_FACTORY_MAP.get(version);
-
-        if (nowFactory == null) {
-            logger.info("Version {} connection factory not found, try build a new factory", version);
-
-            MySqlConnectionConfiguration newConfig;
-
-            try {
-                newConfig = buildConfig(version, sslMode, sslCa);
-            } catch (IOException e) {
-                throw new IllegalStateException("Read configuration failed", e);
-            }
-
-            MySqlConnectionFactory newFactory = MySqlConnectionFactory.from(newConfig);
-            MySqlConnectionFactory lastFactory = CONNECTION_FACTORY_MAP.putIfAbsent(version, newFactory);
-
-            if (lastFactory == null) {
-                logger.info("Version {} connection factory build success", version);
-                return newFactory;
-            } else {
-                logger.info("Version {} connection factory already build by other thread", version);
-                return lastFactory;
-            }
-        } else {
-            logger.debug("Version {} connection factory found, use factory on cache", version);
-            return nowFactory;
+    static MySqlConnectionConfiguration getConfigurationByVersion(String version, SslMode sslMode, @Nullable String sslCa) {
+        try {
+            return buildConfig(version, sslMode, sslCa);
+        } catch (IOException e) {
+            throw new IllegalStateException("Read configuration failed", e);
         }
     }
 
     private static MySqlConnectionConfiguration buildConfig(String version, SslMode sslMode, @Nullable String sslCa) throws IOException {
         String filename = buildFilename(version);
-        InputStream resource = MySQLHelper.class.getClassLoader().getResourceAsStream(filename);
+        InputStream resource = MySqlContainers.class.getClassLoader().getResourceAsStream(filename);
 
         if (resource == null) {
-            throw new FileNotFoundException("File '" + filename + "' not found in resources.");
+            throw new FileNotFoundException(String.format("File '%s' not found in resources.", filename));
         }
 
         try (InputStream input = resource) {
@@ -106,7 +85,7 @@ final class MySQLHelper {
         List<String> l = (List<String>) map.get("ports");
 
         if (l == null) {
-            throw new IllegalStateException("Key '" + "' not found in " + map);
+            throw new IllegalStateException("Key 'ports' not found in " + map);
         }
 
         return l;
@@ -116,7 +95,7 @@ final class MySQLHelper {
         CharSequence m = (CharSequence) map.get("MYSQL_ROOT_PASSWORD");
 
         if (m == null) {
-            throw new IllegalStateException("Key '" + "' not found in " + map);
+            throw new IllegalStateException("Key 'MYSQL_ROOT_PASSWORD' not found in " + map);
         }
 
         return m;
@@ -127,7 +106,7 @@ final class MySQLHelper {
         Map<String, Object> m = (Map<String, Object>) map.get(key);
 
         if (m == null) {
-            throw new IllegalStateException("Key '" + "' not found in " + map);
+            throw new IllegalStateException(String.format("Key '%s' not found in %s", key, map));
         }
 
         return m;
