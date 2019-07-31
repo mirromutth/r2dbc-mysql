@@ -39,7 +39,7 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
 
     @Override
     public Double decode(NormalFieldValue value, FieldInformation info, Class<? super Double> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (binary) {
             switch (info.getType()) {

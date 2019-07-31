@@ -40,7 +40,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
     @Override
     public Long decode(NormalFieldValue value, FieldInformation info, Class<? super Long> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (binary) {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;

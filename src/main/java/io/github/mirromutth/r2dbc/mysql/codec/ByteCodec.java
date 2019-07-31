@@ -38,9 +38,9 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     @Override
     public Byte decode(NormalFieldValue value, FieldInformation info, Class<? super Byte> target, boolean binary, MySqlSession session) {
         if (binary) {
-            return value.getBuffer().readByte();
+            return value.getBufferSlice().readByte();
         } else {
-            return (byte) IntegerCodec.parse(value.getBuffer());
+            return (byte) IntegerCodec.parse(value.getBufferSlice());
         }
     }
 

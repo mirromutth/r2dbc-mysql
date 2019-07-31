@@ -38,7 +38,7 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
     @Override
     public Integer decode(NormalFieldValue value, FieldInformation info, Class<? super Integer> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (binary) {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;

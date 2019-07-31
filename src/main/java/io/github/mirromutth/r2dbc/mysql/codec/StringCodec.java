@@ -38,7 +38,7 @@ final class StringCodec extends AbstractClassedCodec<String> {
 
     @Override
     public String decode(NormalFieldValue value, FieldInformation info, Class<? super String> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
             return "";

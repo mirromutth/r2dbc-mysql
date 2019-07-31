@@ -39,7 +39,7 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
 
     @Override
     public Float decode(NormalFieldValue value, FieldInformation info, Class<? super Float> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (binary && info.getType() == DataTypes.FLOAT) {
             return buf.readFloatLE();

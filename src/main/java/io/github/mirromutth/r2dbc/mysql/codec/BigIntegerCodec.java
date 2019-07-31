@@ -92,7 +92,7 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     }
 
     private static BigInteger decodeText(NormalFieldValue value, FieldInformation info) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (info.getType() == DataTypes.BIGINT && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
             if (buf.getByte(buf.readerIndex()) == '+') {
@@ -114,7 +114,7 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     }
 
     private static BigInteger decodeBinary(NormalFieldValue value, FieldInformation info) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
         boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
         switch (info.getType()) {

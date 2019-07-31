@@ -48,10 +48,10 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
     @Override
     public Blob decode(FieldValue value, FieldInformation info, Class<? super Blob> target, boolean binary, MySqlSession session) {
         if (value instanceof NormalFieldValue) {
-            return ScalarBlob.retain(((NormalFieldValue) value).getBuffer());
+            return ScalarBlob.retain(((NormalFieldValue) value).getBufferSlice());
         }
 
-        return ScalarBlob.retain(((LargeFieldValue) value).getBuffers());
+        return ScalarBlob.retain(((LargeFieldValue) value).getBufferSlices());
     }
 
     @Override

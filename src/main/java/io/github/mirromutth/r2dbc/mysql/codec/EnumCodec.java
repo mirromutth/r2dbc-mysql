@@ -42,7 +42,7 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
     public Enum<?> decode(NormalFieldValue value, FieldInformation info, Class<?> target, boolean binary, MySqlSession session) {
         Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
         @SuppressWarnings("unchecked")
-        Enum<?> e = Enum.valueOf((Class<Enum>) target, value.getBuffer().toString(charset));
+        Enum<?> e = Enum.valueOf((Class<Enum>) target, value.getBufferSlice().toString(charset));
         return e;
     }
 

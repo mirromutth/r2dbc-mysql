@@ -39,7 +39,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     @Override
     public Short decode(NormalFieldValue value, FieldInformation info, Class<? super Short> target, boolean binary, MySqlSession session) {
         if (binary) {
-            ByteBuf buf = value.getBuffer();
+            ByteBuf buf = value.getBufferSlice();
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
             switch (info.getType()) {
@@ -54,7 +54,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
                     }
             }
         } else {
-            return (short) IntegerCodec.parse(value.getBuffer());
+            return (short) IntegerCodec.parse(value.getBufferSlice());
         }
     }
 

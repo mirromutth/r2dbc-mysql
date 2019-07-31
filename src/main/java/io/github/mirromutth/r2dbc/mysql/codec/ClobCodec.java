@@ -49,10 +49,10 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
     @Override
     public Clob decode(FieldValue value, FieldInformation info, Class<? super Clob> target, boolean binary, MySqlSession session) {
         if (value instanceof NormalFieldValue) {
-            return ScalarClob.retain(((NormalFieldValue) value).getBuffer(), info.getCollationId(), session.getServerVersion());
+            return ScalarClob.retain(((NormalFieldValue) value).getBufferSlice(), info.getCollationId(), session.getServerVersion());
         }
 
-        return ScalarClob.retain(((LargeFieldValue) value).getBuffers(), info.getCollationId(), session.getServerVersion());
+        return ScalarClob.retain(((LargeFieldValue) value).getBufferSlices(), info.getCollationId(), session.getServerVersion());
     }
 
     @Override

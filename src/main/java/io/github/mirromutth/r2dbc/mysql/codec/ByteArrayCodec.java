@@ -42,7 +42,7 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
 
     @Override
     public byte[] decode(NormalFieldValue value, FieldInformation info, Class<? super byte[]> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
             return EMPTY_BYTES;

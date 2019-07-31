@@ -33,8 +33,8 @@ public final class NormalFieldValue extends AbstractReferenceCounted implements 
         this.buf = requireNonNull(buf, "buf must not be null");
     }
 
-    public ByteBuf getBuffer() {
-        return buf;
+    public ByteBuf getBufferSlice() {
+        return buf.slice();
     }
 
     @Override

@@ -36,7 +36,7 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
 
     @Override
     public Boolean decode(NormalFieldValue value, FieldInformation info, Class<? super Boolean> target, boolean binary, MySqlSession session) {
-        return value.getBuffer().readBoolean();
+        return value.getBufferSlice().readBoolean();
     }
 
     @Override

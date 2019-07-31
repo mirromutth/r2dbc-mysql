@@ -43,9 +43,9 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     @Override
     public LocalTime decode(NormalFieldValue value, FieldInformation info, Class<? super LocalTime> target, boolean binary, MySqlSession session) {
         if (binary) {
-            return decodeBinary(value.getBuffer());
+            return decodeBinary(value.getBufferSlice());
         } else {
-            return readTimeText(value.getBuffer());
+            return readTimeText(value.getBufferSlice());
         }
     }
 

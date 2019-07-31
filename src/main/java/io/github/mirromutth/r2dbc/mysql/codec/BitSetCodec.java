@@ -42,7 +42,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
     @Override
     public BitSet decode(NormalFieldValue value, FieldInformation info, Class<? super BitSet> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
             return BitSet.valueOf(EMPTY_BYTES);

@@ -43,9 +43,9 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     @Override
     public Duration decode(NormalFieldValue value, FieldInformation info, Class<? super Duration> target, boolean binary, MySqlSession session) {
         if (binary) {
-            return decodeBinary(value.getBuffer());
+            return decodeBinary(value.getBufferSlice());
         } else {
-            return decodeText(value.getBuffer());
+            return decodeText(value.getBufferSlice());
         }
     }
 

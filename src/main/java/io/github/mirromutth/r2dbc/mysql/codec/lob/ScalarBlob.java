@@ -37,15 +37,14 @@ public abstract class ScalarBlob implements Blob {
         }
     }
 
-    public static ScalarBlob retain(List<ByteBuf> buffers) {
-        int size = buffers.size();
+    public static ScalarBlob retain(ByteBuf[] buffers) {
+        int size = buffers.length;
         int i = 0;
         Node[] nodes = new Node[size];
-        ByteBuf[] buf = buffers.toArray(new ByteBuf[size]);
 
         try {
             for (; i < size; ++i) {
-                nodes[i] = new Node(buf[i].retain());
+                nodes[i] = new Node(buffers[i].retain());
             }
 
             return new MultiBlob(nodes);

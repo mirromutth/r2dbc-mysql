@@ -44,7 +44,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     @Override
     public LocalDate decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDate> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
         int index = buf.readerIndex();
         int bytes = buf.readableBytes();
 

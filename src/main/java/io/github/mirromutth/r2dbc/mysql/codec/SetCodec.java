@@ -50,7 +50,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
     @SuppressWarnings("unchecked")
     @Override
     public Set<?> decode(NormalFieldValue value, FieldInformation info, ParameterizedType target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
             return Collections.emptySet();

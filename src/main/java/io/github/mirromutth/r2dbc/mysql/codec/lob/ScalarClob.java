@@ -38,15 +38,14 @@ public abstract class ScalarClob implements Clob {
         }
     }
 
-    public static ScalarClob retain(List<ByteBuf> buffers, int collationId, ServerVersion version) {
-        int size = buffers.size();
+    public static ScalarClob retain(ByteBuf[] buffers, int collationId, ServerVersion version) {
+        int size = buffers.length;
         int i = 0;
         Node[] nodes = new Node[size];
-        ByteBuf[] buf = buffers.toArray(new ByteBuf[size]);
 
         try {
             for (; i < size; ++i) {
-                nodes[i] = new Node(buf[i].retain());
+                nodes[i] = new Node(buffers[i].retain());
             }
 
             return new MultiClob(nodes, collationId, version);

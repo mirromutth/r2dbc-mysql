@@ -40,7 +40,7 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
 
     @Override
     public BigDecimal decode(NormalFieldValue value, FieldInformation info, Class<? super BigDecimal> target, boolean binary, MySqlSession session) {
-        ByteBuf buf = value.getBuffer();
+        ByteBuf buf = value.getBufferSlice();
 
         if (binary) {
             short type = info.getType();

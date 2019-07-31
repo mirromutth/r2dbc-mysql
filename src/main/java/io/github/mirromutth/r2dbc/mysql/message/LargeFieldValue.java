@@ -40,7 +40,14 @@ public final class LargeFieldValue extends AbstractReferenceCounted implements F
         this.buffers = requireNonNull(buffers, "buffers must not be null");
     }
 
-    public List<ByteBuf> getBuffers() {
+    public ByteBuf[] getBufferSlices() {
+        int size = this.buffers.size();
+        ByteBuf[] buffers = new ByteBuf[size];
+
+        for (int i = 0; i < size; ++i) {
+            buffers[i] = this.buffers.get(i).slice();
+        }
+
         return buffers;
     }
 
