@@ -33,9 +33,10 @@ import java.util.function.Function;
 final class MySqlConnectionRunner {
 
     private static final MySqlConnectionRunner[] ALL_RUNNER = {
+        new MySqlConnectionRunner("5_5"), // MySQL 5.5.x community version.
         new MySqlConnectionRunner("5_6"), // MySQL 5.6.x community version.
         new MySqlConnectionRunner("5_7"), // MySQL 5.7.x community version.
-        new MySqlConnectionRunner("8_0")
+        new MySqlConnectionRunner("8_0")  // MySQL 8.0.x community version.
     };
 
     private final String version;
