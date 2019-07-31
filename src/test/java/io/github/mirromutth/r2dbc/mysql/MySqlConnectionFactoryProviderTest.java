@@ -73,7 +73,7 @@ class MySqlConnectionFactoryProviderTest {
             "r2dbcs:mysql://root:123456@127.0.0.1:3306/r2dbc?" +
                 "zeroDate=use_round&" +
                 "sslMode=verify_identity&" +
-                "tlsVersion=TLSv1.1,TLSv1.2,TLSv1.3&" +
+                String.format("tlsVersion=%s&", URLEncoder.encode("TLSv1.1,TLSv1.2,TLSv1.3", "UTF-8")) +
                 String.format("sslCa=%s&", URLEncoder.encode("/path/to/ca.pem", "UTF-8")) +
                 String.format("sslKey=%s&", URLEncoder.encode("/path/to/client-key.pem", "UTF-8")) +
                 String.format("sslCert=%s&", URLEncoder.encode("/path/to/client-cert.pem", "UTF-8")) +
