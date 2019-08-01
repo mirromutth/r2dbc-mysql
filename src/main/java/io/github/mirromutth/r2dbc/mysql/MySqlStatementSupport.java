@@ -26,6 +26,8 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireValid
  */
 abstract class MySqlStatementSupport implements MySqlStatement {
 
+    private static final String LAST_INSERT_ID = "LAST_INSERT_ID";
+
     @Nullable
     String generatedKeyName = null;
 
@@ -33,10 +35,15 @@ abstract class MySqlStatementSupport implements MySqlStatement {
     public final MySqlStatementSupport returnGeneratedValues(String... columns) {
         requireNonNull(columns, "columns must not be null");
 
-        if (columns.length == 1) {
-            this.generatedKeyName = requireValidName(columns[0], "id name must not be empty and not contain backticks");
-        } else if (columns.length > 1) {
-            throw new IllegalArgumentException("MySQL only supports single generated value");
+        switch (columns.length) {
+            case 0:
+                this.generatedKeyName = LAST_INSERT_ID;
+                break;
+            case 1:
+                this.generatedKeyName = requireValidName(columns[0], "id name must not be empty and not contain backticks");
+                break;
+            default:
+                throw new IllegalArgumentException("MySQL only supports single generated value");
         }
 
         return this;

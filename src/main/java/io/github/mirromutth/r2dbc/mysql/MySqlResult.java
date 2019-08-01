@@ -110,7 +110,7 @@ public final class MySqlResult implements Result {
                 } else {
                     ReferenceCountUtil.safeRelease(message);
                 }
-            }, this.okProcessor::onError);
+            }, this.okProcessor::onError, this.okProcessor::onComplete);
         });
     }
 
