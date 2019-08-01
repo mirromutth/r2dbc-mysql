@@ -114,19 +114,17 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     @Override
     public Flux<MySqlResult> execute() {
-        return Flux.defer(() -> {
-            this.bindings.validatedFinish();
+        if (this.bindings.bindings.isEmpty()) {
+            throw new IllegalStateException("No parameters bound for current statement");
+        }
+        this.bindings.validatedFinish();
 
+        return Flux.defer(() -> {
             if (!this.executed.compareAndSet(false, true)) {
                 throw new IllegalStateException("Statement was already executed");
             }
 
             Iterator<Binding> iterator = this.bindings.iterator();
-
-            if (!iterator.hasNext()) {
-                return Flux.error(new IllegalStateException("No parameters bound for prepared statement"));
-            }
-
             String sql = this.query.getSql();
 
             return this.client.exchange(Mono.just(new PrepareQueryMessage(sql)))
@@ -189,6 +187,8 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
             for (Binding binding : bindings) {
                 binding.clear();
             }
+
+            bindings.clear();
         }
 
         @Override
