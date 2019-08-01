@@ -47,6 +47,6 @@ final class StatementMetadata {
 
     Mono<Void> close() {
         // Note: close statement is idempotent.
-        return client.sendOnly(Mono.just(new PreparedCloseMessage(statementId)));
+        return client.sendOnly(new PreparedCloseMessage(statementId));
     }
 }

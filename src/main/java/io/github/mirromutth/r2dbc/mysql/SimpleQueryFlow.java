@@ -27,7 +27,6 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.r2dbc.spi.R2dbcException;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.Iterator;
 import java.util.List;
@@ -69,7 +68,7 @@ final class SimpleQueryFlow {
 
             if (batchSupported) {
                 String sql = String.join(";", statements);
-                return client.exchange(Mono.just(new SimpleQueryMessage(sql)))
+                return client.exchange(new SimpleQueryMessage(sql))
                     .<ServerMessage>handle((message, sink) -> {
                         if (message instanceof ErrorMessage) {
                             sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
@@ -95,7 +94,7 @@ final class SimpleQueryFlow {
      * completed by {@link OkMessage}.
      */
     static Flux<ServerMessage> execute(Client client, String sql) {
-        return client.exchange(Mono.just(new SimpleQueryMessage(sql))).handle((message, sink) -> {
+        return client.exchange(new SimpleQueryMessage(sql)).handle((message, sink) -> {
             if (message instanceof ErrorMessage) {
                 sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
                 return;
@@ -113,7 +112,7 @@ final class SimpleQueryFlow {
     private static Flux<Flux<ServerMessage>> executeOneByOne(Client client, Iterator<String> iterator) {
         EmitterProcessor<String> statements = EmitterProcessor.create(true);
         return statements.startWith(iterator.next())
-            .map(sql -> client.exchange(Mono.just(new SimpleQueryMessage(sql)))
+            .map(sql -> client.exchange(new SimpleQueryMessage(sql))
                 .handle((response, sink) -> {
                     if (response instanceof ErrorMessage) {
                         R2dbcException e = ExceptionFactory.createException((ErrorMessage) response, sql);

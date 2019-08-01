@@ -86,7 +86,7 @@ public final class MySqlConnection implements Connection {
      */
     public Mono<Void> ping() {
         // Considers create a `CommandFlow` when want support more commands.
-        return this.client.exchange(Mono.just(PingMessage.getInstance()))
+        return this.client.exchange(PingMessage.getInstance())
             .handle(COMPLETE_OR_ERROR)
             .then();
     }

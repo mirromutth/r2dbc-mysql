@@ -256,7 +256,7 @@ final class LoginFlow {
             @Override
             Mono<State> handle(LoginFlow flow) {
                 // Server send first, so no need send anything to server in here.
-                return flow.client.exchange(Mono.empty()).next().handle((message, sink) -> {
+                return flow.client.nextMessage().handle((message, sink) -> {
                     if (message instanceof ErrorMessage) {
                         sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
                     } else if (message instanceof HandshakeRequest) {
@@ -278,7 +278,7 @@ final class LoginFlow {
         SSL {
             @Override
             Mono<State> handle(LoginFlow flow) {
-                return flow.client.exchange(Mono.just(flow.createSslRequest())).next().handle((message, sink) -> {
+                return flow.client.exchange(flow.createSslRequest()).next().handle((message, sink) -> {
                     if (message instanceof ErrorMessage) {
                         sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
                     } else if (message instanceof SyntheticSslResponseMessage) {
@@ -295,7 +295,7 @@ final class LoginFlow {
             @Override
             Mono<State> handle(LoginFlow flow) {
                 return flow.createHandshakeResponse()
-                    .flatMapMany(message -> flow.client.exchange(Mono.just(message)))
+                    .flatMapMany(flow.client::exchange)
                     .<State>handle((message, sink) -> {
                         if (message instanceof ErrorMessage) {
                             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
@@ -328,7 +328,7 @@ final class LoginFlow {
             @Override
             Mono<State> handle(LoginFlow flow) {
                 return flow.createFullAuthResponse()
-                    .flatMap(response -> flow.client.exchange(Mono.just(response)).next())
+                    .flatMap(response -> flow.client.exchange(response).next())
                     .handle((message, sink) -> {
                         if (message instanceof ErrorMessage) {
                             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));

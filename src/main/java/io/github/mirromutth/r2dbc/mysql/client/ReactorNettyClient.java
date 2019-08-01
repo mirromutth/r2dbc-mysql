@@ -26,8 +26,8 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
+import io.netty.util.concurrent.Future;
 import io.netty.util.internal.logging.InternalLoggerFactory;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
@@ -37,7 +37,6 @@ import reactor.netty.Connection;
 import reactor.netty.FutureMono;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -47,10 +46,6 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 final class ReactorNettyClient implements Client {
 
     private static final Logger logger = LoggerFactory.getLogger(ReactorNettyClient.class);
-
-    private static final Consumer<ClientMessage> LOG_REQUEST = message -> logger.debug("Request: {}", message);
-
-    private static final Consumer<ServerMessage> LOG_RESPONSE = message -> logger.debug("Response: {}", message);
 
     private final Connection connection;
 
@@ -95,7 +90,7 @@ final class ReactorNettyClient implements Client {
             })
             .as(it -> {
                 if (logger.isDebugEnabled()) {
-                    return it.doOnNext(LOG_RESPONSE);
+                    return it.doOnNext(message -> logger.debug("Response: {}", message));
                 }
 
                 return it;
@@ -108,28 +103,41 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
-    public Flux<ServerMessage> exchange(Publisher<? extends ExchangeableMessage> requests) {
-        requireNonNull(requests, "requests must not be null");
+    public Flux<ServerMessage> exchange(ExchangeableMessage request) {
+        requireNonNull(request, "request must not be null");
 
         return Flux.defer(() -> {
-            if (this.closing.get()) {
-                return Flux.error(new IllegalStateException("can not send messages because the connection is closed"));
+            if (closing.get()) {
+                return Flux.error(new IllegalStateException("cannot send messages because the connection is closed"));
             }
 
-            return this.responseProcessor.doOnSubscribe(s -> send(requests).subscribe());
+            send(request);
+
+            return responseProcessor;
         });
     }
 
     @Override
-    public Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages) {
-        requireNonNull(messages, "messages must not be null");
+    public Mono<Void> sendOnly(SendOnlyMessage message) {
+        requireNonNull(message, "message must not be null");
 
         return Mono.defer(() -> {
-            if (this.closing.get()) {
-                return Mono.error(new IllegalStateException("can not send messages because the connection is closed"));
+            if (closing.get()) {
+                return Mono.error(new IllegalStateException("cannot send messages because the connection is closed"));
             }
 
-            return send(messages);
+            return FutureMono.from(send(message));
+        });
+    }
+
+    @Override
+    public Mono<ServerMessage> nextMessage() {
+        return Mono.defer(() -> {
+            if (closing.get()) {
+                return Mono.error(new IllegalStateException("cannot get messages because the connection is closed"));
+            }
+
+            return responseProcessor.next();
         });
     }
 
@@ -142,7 +150,7 @@ final class ReactorNettyClient implements Client {
             }
 
             // Should force any query which is processing and make sure send exit message.
-            return send(Mono.just(ExitMessage.getInstance())).as(it -> {
+            return FutureMono.from(send(ExitMessage.getInstance())).as(it -> {
                 if (logger.isDebugEnabled()) {
                     return it.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully, close the connection"));
                 }
@@ -171,21 +179,8 @@ final class ReactorNettyClient implements Client {
         return String.format("ReactorNettyClient(%s){connectionId=%d}", this.closing.get() ? "closing or closed" : "activating", session.getConnectionId());
     }
 
-    private Mono<Void> send(Publisher<? extends ClientMessage> messages) {
-        Publisher<? extends ClientMessage> requests;
-
-        if (logger.isDebugEnabled()) {
-            if (messages instanceof Mono) {
-                @SuppressWarnings("unchecked")
-                Mono<? extends ClientMessage> r = ((Mono<? extends ClientMessage>) messages);
-                requests = r.doOnNext(LOG_REQUEST);
-            } else {
-                requests = Flux.from(messages).doOnNext(LOG_REQUEST);
-            }
-        } else {
-            requests = messages;
-        }
-
-        return connection.outbound().sendObject(requests).then();
+    private Future<Void> send(ClientMessage message) {
+        logger.debug("Request: {}", message);
+        return connection.channel().writeAndFlush(message);
     }
 }

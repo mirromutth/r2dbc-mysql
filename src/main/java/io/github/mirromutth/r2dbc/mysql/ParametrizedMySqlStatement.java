@@ -114,36 +114,18 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     @Override
     public Flux<MySqlResult> execute() {
-        if (this.bindings.bindings.isEmpty()) {
+        if (bindings.bindings.isEmpty()) {
             throw new IllegalStateException("No parameters bound for current statement");
         }
-        this.bindings.validatedFinish();
+        bindings.validatedFinish();
 
         return Flux.defer(() -> {
-            if (!this.executed.compareAndSet(false, true)) {
+            if (!executed.compareAndSet(false, true)) {
                 throw new IllegalStateException("Statement was already executed");
             }
 
-            Iterator<Binding> iterator = this.bindings.iterator();
-            String sql = this.query.getSql();
-
-            return this.client.exchange(Mono.just(new PrepareQueryMessage(sql)))
-                .<StatementMetadata>handle((message, sink) -> {
-                    if (message instanceof ErrorMessage) {
-                        sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
-                    } else if (message instanceof SyntheticMetadataMessage) {
-                        if (((SyntheticMetadataMessage) message).isCompleted()) {
-                            sink.complete();
-                        }
-                    } else if (message instanceof PreparedOkMessage) {
-                        PreparedOkMessage preparedOk = (PreparedOkMessage) message;
-                        sink.next(new StatementMetadata(this.client, sql, preparedOk.getStatementId()));
-                    } else {
-                        ReferenceCountUtil.release(message);
-                    }
-                })
-                .last()
-                .flatMapMany(metadata -> PrepareQueryFlow.execute(client, metadata, iterator)
+            return PrepareQueryFlow.prepare(client, query.getSql())
+                .flatMapMany(metadata -> PrepareQueryFlow.execute(client, metadata, bindings.iterator())
                     .map(messages -> new MySqlResult(codecs, session, generatedKeyName, messages)))
                 .doOnCancel(bindings::clear)
                 .doOnError(e -> bindings.clear());

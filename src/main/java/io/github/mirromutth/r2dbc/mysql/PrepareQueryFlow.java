@@ -17,10 +17,14 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
+import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
+import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.R2dbcException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,12 +44,29 @@ final class PrepareQueryFlow {
     private PrepareQueryFlow() {
     }
 
+    static Mono<StatementMetadata> prepare(Client client, String sql) {
+        return client.exchange(new PrepareQueryMessage(sql)).<StatementMetadata>handle((message, sink) -> {
+            if (message instanceof ErrorMessage) {
+                sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+            } else if (message instanceof SyntheticMetadataMessage) {
+                if (((SyntheticMetadataMessage) message).isCompleted()) {
+                    sink.complete(); // Must wait for last metadata message.
+                }
+            } else if (message instanceof PreparedOkMessage) {
+                PreparedOkMessage preparedOk = (PreparedOkMessage) message;
+                sink.next(new StatementMetadata(client, sql, preparedOk.getStatementId()));
+            } else {
+                ReferenceCountUtil.release(message);
+            }
+        }).last(); // Fetch last for wait on complete.
+    }
+
     static Flux<Flux<ServerMessage>> execute(Client client, StatementMetadata metadata, Iterator<Binding> iterator) {
         EmitterProcessor<Binding> bindingEmitter = EmitterProcessor.create(true);
 
         return bindingEmitter.startWith(iterator.next())
             .onErrorResume(e -> metadata.close().then(Mono.error(e)))
-            .map(binding -> client.exchange(Mono.just(binding.toMessage(metadata.getStatementId())))
+            .map(binding -> client.exchange(binding.toMessage(metadata.getStatementId()))
                 .handle((response, sink) -> {
                     if (response instanceof ErrorMessage) {
                         R2dbcException e = ExceptionFactory.createException((ErrorMessage) response, metadata.getSql());
@@ -62,31 +83,37 @@ final class PrepareQueryFlow {
 
                     // Metadata EOF message will be not receive in here.
                     if (response instanceof OkMessage || response instanceof EofMessage) {
-                        tryNextBinding(iterator, bindingEmitter, metadata).subscribe(null, e -> {
-                            logger.error("Statement {} close failed", metadata.getStatementId(), e);
-                            sink.complete();
-                        }, sink::complete);
+                        if (bindingEmitter.isCancelled()) {
+                            metadata.close().subscribe(null, e -> logger.error("Statement {} close failed", metadata.getStatementId(), e));
+                            return;
+                        }
+
+                        if (tryNextBinding(iterator, bindingEmitter)) {
+                            // Completed, close metadata.
+                            metadata.close().subscribe(null, e -> {
+                                logger.error("Statement {} close failed", metadata.getStatementId(), e);
+                                bindingEmitter.onComplete();
+                            }, bindingEmitter::onComplete);
+                        }
+
+                        sink.complete();
                     }
                 }));
     }
 
-    private static Mono<Void> tryNextBinding(Iterator<Binding> iterator, EmitterProcessor<Binding> boundRequests, StatementMetadata metadata) {
-        if (boundRequests.isCancelled()) {
-            return metadata.close();
-        }
-
+    private static boolean tryNextBinding(Iterator<Binding> iterator, EmitterProcessor<Binding> boundRequests) {
         try {
             if (iterator.hasNext()) {
                 boundRequests.onNext(iterator.next());
-                return Mono.empty();
+                return false;
             }
         } catch (Exception e) {
             // Statement will close because of `onError`
             boundRequests.onError(e);
-            return Mono.empty();
+            return false;
         }
 
         // Has completed.
-        return metadata.close().doOnTerminate(boundRequests::onComplete);
+        return true;
     }
 }

@@ -39,12 +39,14 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 public interface Client {
 
     /**
-     * @param requests one or multi request(s) for get the server responses.
+     * @param request one request for get server responses.
      * @return The result should be completed by handler, otherwise it will NEVER be completed.
      */
-    Flux<ServerMessage> exchange(Publisher<? extends ExchangeableMessage> requests);
+    Flux<ServerMessage> exchange(ExchangeableMessage request);
 
-    Mono<Void> sendOnly(Publisher<? extends SendOnlyMessage> messages);
+    Mono<Void> sendOnly(SendOnlyMessage message);
+
+    Mono<ServerMessage> nextMessage();
 
     Mono<Void> close();
 
