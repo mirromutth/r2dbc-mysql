@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class PingPongTest {
 
     @Test
-    void selectOne() throws Throwable {
+    void selectOne() {
         completeAll(connection -> Mono.from(connection.createStatement("SELECT 1").execute())
             .flatMapMany(result -> result.map((row, metadata) -> row.get(0, Number.class)))
             .doOnNext(number -> assertEquals(number.intValue(), 1))
@@ -43,7 +43,7 @@ class PingPongTest {
     }
 
     @Test
-    void realPing() throws Throwable {
+    void realPing() {
         completeAll(MySqlConnection::ping);
     }
 }

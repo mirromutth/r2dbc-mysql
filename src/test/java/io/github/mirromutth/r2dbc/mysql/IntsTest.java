@@ -76,7 +76,7 @@ class IntsTest {
     private static final Entity FULL = new Entity(FIRST_ID + INCREMENT_STEP * 3, (byte) -66, (short) 77, (short) 88, 99, -1010, 1111, 1212, 1313L, -1414L, BigInteger.valueOf(1515));
 
     @Test
-    void crudByParametrizedStatement() throws Throwable {
+    void crudByParametrizedStatement() {
         completeAll(connection -> Mono.from(connection.createStatement("SET @@auto_increment_increment=?")
             .bind(0, (Integer) INCREMENT_STEP)
             .execute())

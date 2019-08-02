@@ -114,7 +114,7 @@ final class MySqlColumnNames {
     static int compare(CharSequence left, CharSequence right) {
         int leftSize = left.length();
         int rightSize = right.length();
-        int minSize = leftSize < rightSize ? leftSize : rightSize;
+        int minSize = Math.min(leftSize, rightSize);
         // Case sensitive comparator result.
         int csCompared = 0;
 

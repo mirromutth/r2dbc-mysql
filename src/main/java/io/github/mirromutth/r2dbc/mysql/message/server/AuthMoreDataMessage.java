@@ -25,9 +25,6 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 
 /**
  * Authentication more data request, means continue send auth change response message if is exists.
- * <p>
- * Note: should implement {@link CompleteMessage} if need support full authentication
- * for "caching_sha2_password" or "sha256_password". (and connection should support SSL)
  */
 public final class AuthMoreDataMessage implements ServerMessage {
 

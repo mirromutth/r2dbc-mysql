@@ -54,7 +54,7 @@ class MySqlBatchTest {
     private final String seventhData = "seventh-data";
 
     @Test
-    void crudAllInOne() throws Throwable {
+    void crudAllInOne() {
         completeAll(connection -> {
             MySqlBatch selectBatch = connection.createBatch();
             MySqlBatch insertBatch = connection.createBatch();

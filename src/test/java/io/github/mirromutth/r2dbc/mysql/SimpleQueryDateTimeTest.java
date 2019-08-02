@@ -74,7 +74,7 @@ class SimpleQueryDateTimeTest {
     private final LocalDateTime thirdBirth = randomDateTime(2020, 2038);
 
     @Test
-    void crudBySimpleStatement() throws Throwable {
+    void crudBySimpleStatement() {
         completeAll(connection -> {
             MySqlStatement insertFirstStmt = connection.createStatement(formattedInsert(firstBirth));
             MySqlStatement insertSecondStmt = connection.createStatement(formattedInsert(secondBirth));
