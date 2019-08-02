@@ -107,7 +107,7 @@ final class YearCodec extends AbstractClassedCodec<Year> {
 
         @Override
         public int hashCode() {
-            return (int) year;
+            return year;
         }
     }
 }

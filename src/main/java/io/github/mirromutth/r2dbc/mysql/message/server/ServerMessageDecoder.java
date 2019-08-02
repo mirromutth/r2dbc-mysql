@@ -288,7 +288,6 @@ public final class ServerMessageDecoder {
         throw new R2dbcPermissionDeniedException(String.format("Unknown message header 0x%x and readable bytes is %d on connection phase", header, buf.readableBytes()));
     }
 
-    @Nullable
     private boolean readNotFinish(ByteBuf envelope, @Nullable SequenceIdProvider.Linkable idProvider) {
         try {
             int size = envelope.readUnsignedMediumLE();

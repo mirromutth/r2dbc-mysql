@@ -151,19 +151,19 @@ public final class CodecUtils {
 
         switch (readable) {
             case 1:
-                low = (long) firstPart.readUnsignedByte();
+                low = firstPart.readUnsignedByte();
                 middle = (secondPart.readUnsignedIntLE() << Byte.SIZE);
                 high = ((long) secondPart.readUnsignedMediumLE()) << (Byte.SIZE + Integer.SIZE);
 
                 return high | middle | low;
             case 2:
-                low = (long) firstPart.readUnsignedShortLE();
+                low = firstPart.readUnsignedShortLE();
                 middle = secondPart.readUnsignedIntLE() << Short.SIZE;
                 high = ((long) secondPart.readUnsignedShortLE()) << (Short.SIZE + Integer.SIZE);
 
                 return high | middle | low;
             case 3:
-                low = (long) firstPart.readUnsignedMediumLE();
+                low = firstPart.readUnsignedMediumLE();
                 middle = secondPart.readUnsignedIntLE() << MEDIUM_SIZE;
                 high = ((long) secondPart.readUnsignedByte()) << (MEDIUM_SIZE + Integer.SIZE);
 

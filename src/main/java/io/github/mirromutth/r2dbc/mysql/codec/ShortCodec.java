@@ -114,7 +114,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
 
         @Override
         public int hashCode() {
-            return (int) value;
+            return value;
         }
     }
 }

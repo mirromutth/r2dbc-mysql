@@ -106,7 +106,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
             isNegative = true;
         } else if (first >= '0' && first <= '9') {
             isNegative = false;
-            value = (long) (first - '0');
+            value = first - '0';
         } else {
             // must be '+'
             isNegative = false;

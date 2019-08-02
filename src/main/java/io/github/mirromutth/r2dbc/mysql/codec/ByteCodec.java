@@ -93,7 +93,7 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
         @Override
         public int hashCode() {
-            return (int) value;
+            return value;
         }
     }
 }

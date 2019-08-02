@@ -100,7 +100,7 @@ public final class HandshakeHeader {
 
     @Override
     public int hashCode() {
-        int result = (int) protocolVersion;
+        int result = protocolVersion;
         result = 31 * result + serverVersion.hashCode();
         result = 31 * result + connectionId;
         return result;

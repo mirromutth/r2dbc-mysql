@@ -78,7 +78,7 @@ abstract class AbstractQueryMessage extends LargeClientMessage implements Exchan
 
     @Override
     public int hashCode() {
-        int result = (int) flag;
+        int result = flag;
         result = 31 * result + sql.hashCode();
         return result;
     }
