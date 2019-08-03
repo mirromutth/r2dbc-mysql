@@ -152,7 +152,7 @@ final class ReactorNettyClient implements Client {
             // Should force any query which is processing and make sure send exit message.
             return FutureMono.from(send(ExitMessage.getInstance())).as(it -> {
                 if (logger.isDebugEnabled()) {
-                    return it.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully, close the connection"));
+                    return it.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully"));
                 }
                 return it;
             }).then(forceClose());

@@ -170,10 +170,6 @@ final class LoginFlow {
     }
 
     private int calculateClientCapabilities(int serverCapabilities) {
-        if ((serverCapabilities & Capabilities.MULTI_STATEMENTS) == 0) {
-            logger.warn("The MySQL server does not support batch executing, fallback to executing one-by-one");
-        }
-
         // Server should always return metadata, and no compress, and without session track.
         int clientCapabilities = serverCapabilities & ~(Capabilities.OPTIONAL_RESULT_SET_METADATA | Capabilities.COMPRESS | Capabilities.SESSION_TRACK);
 

@@ -28,6 +28,8 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 
@@ -41,6 +43,8 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireValid
  * An implementation of {@link Connection} for connecting to the MySQL database.
  */
 public final class MySqlConnection implements Connection {
+
+    private static final Logger logger = LoggerFactory.getLogger(MySqlConnection.class);
 
     private static final Consumer<ServerMessage> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
 
@@ -71,6 +75,12 @@ public final class MySqlConnection implements Connection {
         this.session = requireNonNull(session, "session must not be null");
         this.codecs = Codecs.getInstance();
         this.batchSupported = (session.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
+
+        if (this.batchSupported) {
+            logger.debug("Batch is supported by server");
+        } else {
+            logger.warn("The MySQL server does not support batch executing, fallback to executing one-by-one");
+        }
     }
 
     @Override
@@ -79,8 +89,10 @@ public final class MySqlConnection implements Connection {
             Mono<Void> transaction = executeVoid("START TRANSACTION");
 
             if (isAutoCommit()) {
+                logger.debug("Auto-commit is enabled, disabling before transaction");
                 return executeVoid("SET autocommit=0").then(transaction);
             } else {
+                logger.debug("Auto-commit is already disabled before transaction");
                 return transaction;
             }
         });
@@ -92,15 +104,23 @@ public final class MySqlConnection implements Connection {
      * WARNING: It is unstable API.
      */
     public Mono<Void> ping() {
+        logger.debug("Remote connection validation");
         // Considers create a `CommandFlow` when want support more commands.
-        return this.client.exchange(PingMessage.getInstance())
+        return client.exchange(PingMessage.getInstance())
             .handle(COMPLETE_OR_ERROR)
             .then();
     }
 
     @Override
     public Mono<Void> close() {
-        return this.client.close();
+        Mono<Void> closer = client.close();
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("Connection closing");
+            return closer.doOnSuccess(ignored -> logger.debug("Connection close succeed"));
+        }
+
+        return closer;
     }
 
     @Override
@@ -134,9 +154,11 @@ public final class MySqlConnection implements Connection {
         Query query = Queries.parse(sql);
 
         if (query instanceof PrepareQuery) {
+            logger.debug("Create a statement provided by prepare query");
             return new ParametrizedMySqlStatement(client, codecs, session, (PrepareQuery) query);
         }
 
+        logger.debug("Create a statement provided by simple query");
         return new SimpleQueryMySqlStatement(client, codecs, session, query.getSql());
     }
 
