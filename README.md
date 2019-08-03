@@ -15,7 +15,7 @@ This driver provides the following features:
 - [x] All charsets from MySQL, like `utf8mb4_0900_ai_ci`, `latin1_general_ci`, `utf32_unicode_520_ci`, etc.
 - [x] All authentication types for MySQL, like `caching_sha2_password`, `mysql_native_password`, etc.
 - [x] General exceptions of error code and standard SQL state mappings.
-- [x] Secure connection with verification (SSL/TLS), support to determine TLS version condition for enterprise edition.
+- [x] Secure connection with verification (SSL/TLS), auto-select TLS version for community and enterprise editions.
 - [x] Transactions with savepoint.
 - [x] Native ping command. (**unstable**, target is a future SPI that can be verifying with the selectable depth)
 - [ ] Prepared statements cache.
