@@ -25,7 +25,8 @@ public final class ServerStatuses {
 
     public static final int AUTO_COMMIT = 2;
 
-//    public static final int MORE_RESULTS_EXISTS = 8;
+    public static final int MORE_RESULTS_EXISTS = 8;
+
 //    public static final int QUERY_NO_GOOD_INDEX_USED = 16;
 //    public static final int QUERY_NO_INDEX_USED = 32;
 //    public static final int CURSOR_EXISTS = 64;

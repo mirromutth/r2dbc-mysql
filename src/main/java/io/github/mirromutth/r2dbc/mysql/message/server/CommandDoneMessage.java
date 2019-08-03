@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql;
+package io.github.mirromutth.r2dbc.mysql.message.server;
 
 /**
- * A sealed interface for statement, it has 3-implementations: {@link SimpleQuery}, {@link BatchQuery} and {@link PrepareQuery}.
- * <p>
- * WARNING: it is sealed interface, should NEVER extends or implemented by another interface or class.
+ * A message indicates result completion signal of a command which maybe a query.
  */
-interface Query {
+public interface CommandDoneMessage {
 
-    String getSql();
+    boolean isDone();
 }

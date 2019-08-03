@@ -16,55 +16,17 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.r2dbc.spi.Batch;
 import reactor.core.publisher.Flux;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
-
 /**
- * An implementation of {@link Batch} for executing a collection of statements in a batch against the MySQL database.
+ * Base class considers methods definition for implementations of {@link Batch}.
  */
-public final class MySqlBatch implements Batch {
-
-    private final Client client;
-
-    private final Codecs codecs;
-
-    private final MySqlSession session;
-
-    private final List<String> statements = new ArrayList<>();
-
-    MySqlBatch(Client client, Codecs codecs, MySqlSession session) {
-        this.client = requireNonNull(client, "client must not be null");
-        this.codecs = requireNonNull(codecs, "codecs must not be null");
-        this.session = requireNonNull(session, "session must not be null");
-    }
-
-    /**
-     * @param sql should contain only one-statement.
-     * @return this {@link MySqlBatch}
-     * @throws IllegalArgumentException if {@code sql} is {@code null} or contain multi-statements.
-     */
-    @Override
-    public MySqlBatch add(String sql) {
-        statements.add(Queries.formatBatchElement(sql));
-        return this;
-    }
+public abstract class MySqlBatch implements Batch {
 
     @Override
-    public Flux<MySqlResult> execute() {
-        return SimpleQueryFlow.execute(client, statements, session)
-            .map(messages -> new MySqlResult(codecs, session, null, messages));
-    }
+    abstract public MySqlBatch add(String sql);
 
     @Override
-    public String toString() {
-        return String.format("MySqlBatch{ has %d statements }", statements.size());
-    }
+    abstract public Flux<MySqlResult> execute();
 }

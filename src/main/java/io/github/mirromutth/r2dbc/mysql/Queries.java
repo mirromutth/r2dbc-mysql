@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.IntPredicate;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -30,41 +29,17 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  */
 final class Queries {
 
-    private static final IntPredicate IS_SEMICOLON = c -> c == ';';
-
-    private static final IntPredicate IS_PARAM = c -> c == '?';
-
-    private static final IntPredicate IS_PARAM_OR_SEMI = c -> c == '?' || c == ';';
-
-    private Queries() {
-    }
-
     static Query parse(String sql) {
         requireNonNull(sql, "sql must not be null");
 
-        int offset = findChar(sql, 0, IS_PARAM_OR_SEMI);
+        int offset = findParamMark(sql, 0);
 
         if (offset < 0) {
-            // No parameter mark, no semicolon, it is a simple query clearly.
+            // No parameter mark, it must be simple query.
             return new SimpleQuery(sql);
-        } else if (sql.charAt(offset) == ';') {
-            // Check all character must be whitespace after semicolon.
-            return new SimpleQuery(checkEnd(sql, offset, false));
         } else {
-            // Find parameter mark '?', it must be prepare query.
+            // Find parameter mark '?', it should be prepare query.
             return parsePrepare(sql, offset);
-        }
-    }
-
-    static String formatBatchElement(String sql) {
-        requireNonNull(sql, "sql must not be null");
-
-        int offset = findChar(sql, 0, IS_SEMICOLON);
-        if (offset < 0) {
-            return sql;
-        } else {
-            // Check all character must be whitespace after semicolon, and remove semicolon and whitespace.
-            return checkEnd(sql, offset, true);
         }
     }
 
@@ -81,7 +56,7 @@ final class Queries {
      * parse to {@code SELECT * FROM `test` WHERE `username` = ? OR `nickname` = ? AND `group` = ?}, and
      * mapped {@literal name} to {@literal 0} and {@literal 1}, {@code paramCount} will be {@literal 3}.
      *
-     * @param sql the statement want to parse, must contains least one parameter mark.
+     * @param sql    the statement want to parse, must contains least one parameter mark.
      * @param offset first '?' offset
      * @return parsed {@link PrepareQuery}
      */
@@ -128,7 +103,7 @@ final class Queries {
             } // offset is length or end of a parameter.
 
             if (offset < length) {
-                offset = findChar(sql, offset, IS_PARAM);
+                offset = findParamMark(sql, offset);
             }
         }
 
@@ -157,25 +132,8 @@ final class Queries {
         return new PrepareQuery(parsedSql, indexesMap, paramCount);
     }
 
-    private static String checkEnd(String sql, int endIndex, boolean remove) {
-        int length = sql.length();
-
-        for (int i = endIndex + 1; i < length; ++i) {
-            // MySQL treats lots of character as whitespace, like ' ', '\t', '\r', '\n', '\f', '\u000B', etc.
-            if (!Character.isWhitespace(sql.charAt(i))) {
-                throw new IllegalArgumentException("sql must contain only one statement");
-            }
-        }
-
-        if (remove) {
-            return sql.substring(0, endIndex);
-        } else {
-            return sql;
-        }
-    }
-
     /**
-     * Locates the first occurrence of {@code predicate} return true in {@code sql} starting at {@code offset}.
+     * Locates the first occurrence of {@literal ?} return true in {@code sql} starting at {@code offset}.
      * <p>
      * The SQL string may contain:
      *
@@ -188,18 +146,17 @@ final class Queries {
      * <li>Multi-line comments beginning enclosed</li>
      * </ul>
      *
-     * @param needle the character to search for.
      * @param sql    the SQL string to search in.
      * @param offset the offset to start searching.
      * @return the offset or a negative integer if not found.
      */
-    private static int findChar(CharSequence sql, int offset, IntPredicate predicate) {
-        char character;
+    private static int findParamMark(CharSequence sql, int offset) {
         int length = sql.length();
+        char ch;
 
         while (offset < length && offset >= 0) {
-            character = sql.charAt(offset++);
-            switch (character) {
+            ch = sql.charAt(offset++);
+            switch (ch) {
                 case '/':
                     if (offset == length) {
                         break;
@@ -242,8 +199,8 @@ final class Queries {
                 case '"':
                     // Quote cases, should find same quote
                     while (offset < length) {
-                        if (sql.charAt(offset++) == character) {
-                            if (length == offset || sql.charAt(offset) != character) {
+                        if (sql.charAt(offset++) == ch) {
+                            if (length == offset || sql.charAt(offset) != ch) {
                                 break;
                             }
 
@@ -253,7 +210,7 @@ final class Queries {
 
                     break;
                 default:
-                    if (predicate.test(character)) {
+                    if (ch == '?') {
                         return offset - 1;
                     }
 
@@ -315,5 +272,8 @@ final class Queries {
 
             return builder.toString();
         }
+    }
+
+    private Queries() {
     }
 }
