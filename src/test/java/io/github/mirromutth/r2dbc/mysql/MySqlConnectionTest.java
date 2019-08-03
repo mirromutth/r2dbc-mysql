@@ -113,4 +113,9 @@ class MySqlConnectionTest {
     void setTransactionIsolationLevel() {
         completeAll(connection -> connection.setTransactionIsolationLevel(IsolationLevel.READ_COMMITTED));
     }
+
+    @Test
+    void ping() {
+        completeAll(MySqlConnection::ping);
+    }
 }
