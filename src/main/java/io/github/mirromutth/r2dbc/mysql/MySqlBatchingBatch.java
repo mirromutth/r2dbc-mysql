@@ -27,7 +27,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  * An implementation of {@link MySqlBatch} for executing a collection of statements
  * in a batch against the MySQL database.
  */
-public final class MySqlBatchingBatch extends MySqlBatch {
+final class MySqlBatchingBatch extends MySqlBatch {
 
     private final Client client;
 
@@ -43,11 +43,6 @@ public final class MySqlBatchingBatch extends MySqlBatch {
         this.session = requireNonNull(session, "session must not be null");
     }
 
-    /**
-     * @param sql should contain only one-statement.
-     * @return this {@link MySqlBatchingBatch}
-     * @throws IllegalArgumentException if {@code sql} is {@code null} or contain multi-statements.
-     */
     @Override
     public MySqlBatch add(String sql) {
         query.add(sql);

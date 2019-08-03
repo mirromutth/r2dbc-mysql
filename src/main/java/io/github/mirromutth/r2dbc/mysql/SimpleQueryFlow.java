@@ -22,16 +22,13 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ResultDoneMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
-import io.r2dbc.spi.R2dbcException;
-import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
 
 /**
- * Simple (direct) query message flow for {@link MySqlBatchingBatch} and {@link SimpleQueryMySqlStatement}.
+ * Simple (direct) query message flow for {@link MySqlBatch} and {@link SimpleQueryMySqlStatement}.
  */
 final class SimpleQueryFlow {
 
