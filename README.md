@@ -285,7 +285,7 @@ If you want to raise an issue, please follow the recommendations below:
 - If you need to paste code, or include a stack trace use Markdown **&#96;&#96;&#96;** escapes before and after your text.
 - If possible try to create a test-case or project that replicates the issue. Attach a link to your code or a compressed file containing your code.
 
-## Announcement
+## Before use
 
 - MySQL database does **NOT** support **table definition** in prepare statement, please use simple statement if want to execute table definitions.
 - Native MySQL data fields encoded by index-based, get fields by index will have **better** performance than get by column name.
