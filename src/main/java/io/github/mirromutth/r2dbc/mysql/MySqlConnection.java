@@ -18,12 +18,12 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
+import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.ResultDoneMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
@@ -47,7 +47,7 @@ public final class MySqlConnection implements Connection {
     private static final BiConsumer<ServerMessage, SynchronousSink<Void>> COMPLETE_OR_ERROR = (message, sink) -> {
         if (message instanceof ErrorMessage) {
             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
-        } else if (message instanceof OkMessage || message instanceof EofMessage) {
+        } else if (message instanceof ResultDoneMessage) {
             sink.complete();
         } else {
             ReferenceCountUtil.safeRelease(message);
@@ -58,12 +58,19 @@ public final class MySqlConnection implements Connection {
 
     private final Codecs codecs;
 
+    private final boolean batchSupported;
+
     private final MySqlSession session;
 
+    /**
+     * @param client must be logged-in
+     * @param session capabilities must be initialized
+     */
     MySqlConnection(Client client, MySqlSession session) {
         this.client = requireNonNull(client, "client must not be null");
         this.session = requireNonNull(session, "session must not be null");
         this.codecs = Codecs.getInstance();
+        this.batchSupported = (session.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
     }
 
     @Override
@@ -82,7 +89,7 @@ public final class MySqlConnection implements Connection {
     /**
      * Validates the connection by the native command "ping".
      * <p>
-     * WARNING: It is unstable API,
+     * WARNING: It is unstable API.
      */
     public Mono<Void> ping() {
         // Considers create a `CommandFlow` when want support more commands.
@@ -103,7 +110,11 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public MySqlBatch createBatch() {
-        return new MySqlBatch(client, codecs, session);
+        if (batchSupported) {
+            return new MySqlBatchingBatch(client, codecs, session);
+        } else {
+            return new MySqlSyntheticBatch(client, codecs, session);
+        }
     }
 
     @Override

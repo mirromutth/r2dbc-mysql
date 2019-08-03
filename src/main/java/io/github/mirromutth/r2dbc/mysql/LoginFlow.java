@@ -240,8 +240,8 @@ final class LoginFlow {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Login succeed, cleanup intermediate variables");
                 }
-                flow.client.loginSuccess();
                 flow.clearAuthentication();
+                flow.client.loginSuccess();
             })
             .doOnError(e -> {
                 flow.clearAuthentication();

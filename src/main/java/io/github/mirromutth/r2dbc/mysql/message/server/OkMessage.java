@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
@@ -29,7 +30,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  * <p>
  * Note: OK message are also used to indicate EOF and EOF message are deprecated as of MySQL 5.7.5.
  */
-public final class OkMessage implements WarningMessage, ServerStatusMessage {
+public final class OkMessage implements WarningMessage, ServerStatusMessage, ResultDoneMessage {
 
     private static final int MIN_SIZE = 7;
 
@@ -70,6 +71,11 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage {
     @Override
     public int getWarnings() {
         return warnings;
+    }
+
+    @Override
+    public boolean isLastResult() {
+        return (serverStatuses & ServerStatuses.MORE_RESULTS_EXISTS) == 0;
     }
 
     public String getInformation() {

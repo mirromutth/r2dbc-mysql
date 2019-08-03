@@ -26,7 +26,7 @@ import static io.github.mirromutth.r2dbc.mysql.MySqlConnectionRunner.completeAll
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Unit tests for {@link MySqlBatch}.
+ * Unit tests for {@link MySqlBatchingBatch}.
  */
 class MySqlBatchTest {
 

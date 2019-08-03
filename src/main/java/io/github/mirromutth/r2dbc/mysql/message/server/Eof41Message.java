@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
 import io.netty.buffer.ByteBuf;
 
 /**
@@ -42,6 +43,11 @@ final class Eof41Message implements EofMessage, WarningMessage, ServerStatusMess
     @Override
     public int getWarnings() {
         return warnings;
+    }
+
+    @Override
+    public boolean isLastResult() {
+        return (serverStatuses & ServerStatuses.MORE_RESULTS_EXISTS) == 0;
     }
 
     @Override

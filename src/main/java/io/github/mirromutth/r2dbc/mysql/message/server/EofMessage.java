@@ -23,7 +23,7 @@ import io.netty.buffer.ByteBuf;
  * <p>
  * Note: EOF message are deprecated and OK message are also used to indicate EOF as of MySQL 5.7.5.
  */
-public interface EofMessage extends ServerMessage {
+public interface EofMessage extends ServerMessage, ResultDoneMessage {
 
     static EofMessage decode(ByteBuf buf) {
         if (buf.readableBytes() >= Eof41Message.SIZE) {

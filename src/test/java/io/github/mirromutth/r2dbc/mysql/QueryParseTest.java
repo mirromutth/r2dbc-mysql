@@ -26,22 +26,12 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Unit tests for {@link Query} with the parsing logic in {@link Queries}.
  */
 class QueryParseTest {
-
-    @Test
-    void parseBatchElement() {
-        assertBatchElement("SELECT 1; \t\f\r\n", "SELECT 1");
-        assertBatchElement("SELECT * FROM `;` WHERE `user;s` LIKE 'Hello?world;';    ", "SELECT * FROM `;` WHERE `user;s` LIKE 'Hello?world;'");
-        assertNotBatchElement("SELECT 1; 1");
-        assertNotBatchElement("SELECT 1; -");
-    }
 
     @Test
     void parse() {
@@ -102,19 +92,6 @@ class QueryParseTest {
         );
 
         assertPrepareQuery("UPDATE `user` SET `name` = 2-?", "UPDATE `user` SET `name` = 2-?", Collections.emptyMap(), 1);
-    }
-
-    private static void assertBatchElement(String sql, String parsed) {
-        assertEquals(Queries.formatBatchElement(sql), parsed);
-    }
-
-    private static void assertNotBatchElement(String sql) {
-        assertNotNull(sql);
-        try {
-            Queries.formatBatchElement(sql);
-            fail(); // parse must be fail.
-        } catch (IllegalArgumentException ignored) {
-        }
     }
 
     private static void assertPrepareQuery(String sql, String parsedSql, Map<String, int[]> nameKeyedIndexes, int parameters) {

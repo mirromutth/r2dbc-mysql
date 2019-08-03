@@ -31,6 +31,12 @@ final class Eof320Message implements EofMessage {
     }
 
     @Override
+    public boolean isLastResult() {
+        // If server use protocol 3.20, it should not supports multi-results.
+        return true;
+    }
+
+    @Override
     public String toString() {
         return "Eof320Message{}";
     }
