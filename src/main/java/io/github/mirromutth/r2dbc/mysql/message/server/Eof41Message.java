@@ -46,7 +46,7 @@ final class Eof41Message implements EofMessage, WarningMessage, ServerStatusMess
     }
 
     @Override
-    public boolean isLastResult() {
+    public boolean isDone() {
         return (serverStatuses & ServerStatuses.MORE_RESULTS_EXISTS) == 0;
     }
 

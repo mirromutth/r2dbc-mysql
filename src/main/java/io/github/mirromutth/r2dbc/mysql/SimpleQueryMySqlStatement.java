@@ -19,9 +19,7 @@ package io.github.mirromutth.r2dbc.mysql;
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
-import io.github.mirromutth.r2dbc.mysql.message.server.ResultDoneMessage;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 

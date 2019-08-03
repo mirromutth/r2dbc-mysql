@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.ResultDoneMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 
@@ -33,7 +33,7 @@ import java.util.function.Predicate;
 final class SimpleQueryFlow {
 
     // Metadata EOF message will be not receive in here.
-    static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof ResultDoneMessage;
+    static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof CommandDoneMessage;
 
     /**
      * Execute multi-query with one-by-one. Query execution terminates with a
@@ -66,7 +66,7 @@ final class SimpleQueryFlow {
      * @param client the {@link Client} to exchange messages with.
      * @param sql    the query to execute, must contain only one statement.
      * @return the messages received in response to this exchange, and will be
-     * completed by {@link ResultDoneMessage} when it is last result.
+     * completed by {@link CommandDoneMessage} when it is last result.
      */
     static Flux<ServerMessage> execute(Client client, String sql) {
         return client.exchange(new SimpleQueryMessage(sql)).handle((message, sink) -> {
@@ -78,7 +78,7 @@ final class SimpleQueryFlow {
             sink.next(message);
 
             // Metadata EOF message will be not receive in here.
-            if (message instanceof ResultDoneMessage && ((ResultDoneMessage) message).isLastResult()) {
+            if (message instanceof CommandDoneMessage && ((CommandDoneMessage) message).isDone()) {
                 sink.complete();
             }
         });

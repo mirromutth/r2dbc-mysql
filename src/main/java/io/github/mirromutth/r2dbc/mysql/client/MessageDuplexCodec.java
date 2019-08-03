@@ -28,7 +28,7 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.ResultDoneMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessageDecoder;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerStatusMessage;
@@ -183,7 +183,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             return false;
         }
 
-        if (msg instanceof ResultDoneMessage) {
+        if (msg instanceof CommandDoneMessage) {
             // Metadata EOF message will be not receive in here.
             setDecodeContext(DecodeContext.command());
         } else if (msg instanceof SyntheticMetadataMessage) {

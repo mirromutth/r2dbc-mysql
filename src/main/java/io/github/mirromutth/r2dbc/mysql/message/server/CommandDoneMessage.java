@@ -17,9 +17,9 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 /**
- * A message indicates the result completion signal.
+ * A message indicates result completion signal of a command which maybe a query.
  */
-public interface ResultDoneMessage {
+public interface CommandDoneMessage {
 
-    boolean isLastResult();
+    boolean isDone();
 }

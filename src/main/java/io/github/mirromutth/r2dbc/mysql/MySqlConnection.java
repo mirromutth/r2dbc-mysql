@@ -23,7 +23,7 @@ import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.ResultDoneMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
@@ -51,7 +51,7 @@ public final class MySqlConnection implements Connection {
     private static final BiConsumer<ServerMessage, SynchronousSink<Void>> COMPLETE_OR_ERROR = (message, sink) -> {
         if (message instanceof ErrorMessage) {
             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
-        } else if (message instanceof ResultDoneMessage) {
+        } else if (message instanceof CommandDoneMessage) {
             sink.complete();
         } else {
             ReferenceCountUtil.safeRelease(message);
