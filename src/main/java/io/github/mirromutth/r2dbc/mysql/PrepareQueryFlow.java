@@ -18,10 +18,9 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.ResultDoneMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.netty.util.ReferenceCountUtil;
@@ -82,7 +81,7 @@ final class PrepareQueryFlow {
                     sink.next(response);
 
                     // Metadata EOF message will be not receive in here.
-                    if (response instanceof OkMessage || response instanceof EofMessage) {
+                    if (response instanceof ResultDoneMessage && ((ResultDoneMessage) response).isLastResult()) {
                         if (bindingEmitter.isCancelled()) {
                             metadata.close().subscribe(null, e -> logger.error("Statement {} close failed", metadata.getStatementId(), e));
                             return;
