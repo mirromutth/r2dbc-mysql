@@ -16,12 +16,10 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Statement;
 import io.r2dbc.spi.test.Example;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcOperations;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -42,11 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * Extra unit tests for date/time which append to TCK.
  */
-interface MySqlExampleDateTimeExtra {
-
-    JdbcOperations getJdbcOperations();
-
-    ConnectionFactory getConnectionFactory();
+interface MySqlExampleDateTimeExtra extends MySqlExampleExtra {
 
     DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
         .appendValue(ChronoField.HOUR_OF_DAY, 2)

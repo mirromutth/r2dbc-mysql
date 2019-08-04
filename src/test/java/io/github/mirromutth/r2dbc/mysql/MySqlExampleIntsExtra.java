@@ -17,12 +17,10 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.r2dbc.spi.Connection;
-import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Statement;
 import io.r2dbc.spi.test.Example;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcOperations;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -30,6 +28,7 @@ import reactor.util.annotation.Nullable;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -37,23 +36,18 @@ import java.util.stream.Stream;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Extra unit tests for integers which append to TCK.
  */
-interface MySqlExampleIntsExtra {
-
-    JdbcOperations getJdbcOperations();
-
-    ConnectionFactory getConnectionFactory();
+interface MySqlExampleIntsExtra extends MySqlExampleExtra {
 
     @Test
     default void intsPreparedCrud() {
         long firstId = 6L;
 
-        getJdbcOperations().execute(String.format("DROP TABLE `%s`", "test"));
-        getJdbcOperations().execute(String.format("CREATE TABLE `test`(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY," +
+        getJdbcOperations().execute(String.format("DROP TABLE %s", "test"));
+        getJdbcOperations().execute(String.format("CREATE TABLE test(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY," +
             "data_int8 TINYINT,data_uint8 TINYINT UNSIGNED," +
             "data_int16 SMALLINT,data_uint16 SMALLINT UNSIGNED," +
             "data_int24 MEDIUMINT,data_uint24 MEDIUMINT UNSIGNED," +
@@ -73,34 +67,78 @@ interface MySqlExampleIntsExtra {
                 .bind(0, (Integer) incrementStep)
                 .execute())
                 .flatMap(Example::extractRowsUpdated)
-                .then(Mono.from(connection.createStatement("SELECT * FROM `test`").execute()))
-                .flatMapMany(result -> result.map((row, metadata) -> 1))
-                .collectList()
-                .doOnNext(entities -> assertTrue(entities.isEmpty()))
-                .thenMany(IntsEntity.createInsert(connection, allNull, oddHalfNull, evenHalfNull, full).execute())
-                .concatMap(result -> Example.extractRowsUpdated(result)
+                .thenMany(IntsEntity.createPreparedInsert(connection, allNull, oddHalfNull, evenHalfNull, full).execute())
+                .flatMap(result -> Example.extractRowsUpdated(result)
                     .doOnNext(u -> assertEquals(u.intValue(), 1))
-                    .thenMany(result.map((row, metadata) -> row.get("generated_id", Long.TYPE))))
+                    .thenMany(result.map((row, metadata) -> row.get("generated_id", Long.class))))
                 .collectList()
                 .doOnNext(ids -> assertEquals(ids, Arrays.asList(firstId, firstId + incrementStep, firstId + incrementStep * 2, firstId + incrementStep * 3)))
-                .thenMany(connection.createStatement("SELECT * FROM `test` WHERE `id` % 2 = ?is_odd")
+                .thenMany(connection.createStatement("SELECT * FROM test WHERE id % 2 = ?is_odd")
                     .bind("is_odd", true)
                     .add()
-                    .bind("is_odd", false)
+                    .bind(0, false)
                     .execute())
-                .concatMap(result -> IntsEntity.from(result).collectList())
+                .flatMap(result -> IntsEntity.from(result).collectList())
                 .collectList()
                 .doOnNext(entities -> assertEquals(entities, Arrays.asList(odds, evens)))
-                .thenMany(connection.createStatement("DELETE FROM `test` WHERE `id` % 2 = ?is_odd")
-                    .bind("is_odd", true)
+                .thenMany(connection.createStatement("DELETE FROM test WHERE id % 2 = ?is_odd")
+                    .bind(0, true)
                     .add()
                     .bind("is_odd", false)
                     .execute())
-                .concatMap(Example::extractRowsUpdated)
+                .flatMap(Example::extractRowsUpdated)
                 .collectList()
                 .doOnNext(rowsUpdated -> assertEquals(rowsUpdated, Arrays.asList(2, 2)))
                 .concatWith(Example.close(connection))
                 .then())
+            .as(StepVerifier::create)
+            .verifyComplete();
+    }
+
+    @Test
+    default void intsSimpleCrud() {
+        long firstId = 6L;
+
+        getJdbcOperations().execute(String.format("DROP TABLE %s", "test"));
+        getJdbcOperations().execute(String.format("CREATE TABLE test(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY," +
+            "data_int8 TINYINT,data_uint8 TINYINT UNSIGNED," +
+            "data_int16 SMALLINT,data_uint16 SMALLINT UNSIGNED," +
+            "data_int24 MEDIUMINT,data_uint24 MEDIUMINT UNSIGNED," +
+            "data_int32 INT,data_uint32 INT UNSIGNED," +
+            "data_int64 BIGINT,data_uint64 BIGINT UNSIGNED)AUTO_INCREMENT=%d", firstId));
+
+        int incrementStep = 5;
+        IntsEntity allNull = new IntsEntity(firstId, null, null, null, null, null, null, null, null, null, null);
+        IntsEntity oddHalfNull = new IntsEntity(firstId + incrementStep, null, (short) 11, null, 22, null, 33, null, 44L, null, BigInteger.valueOf(55));
+        IntsEntity evenHalfNull = new IntsEntity(firstId + incrementStep * 2, (byte) -11, null, (short) -22, null, -33, null, -44, null, -44L, null);
+        IntsEntity full = new IntsEntity(firstId + incrementStep * 3, (byte) -66, (short) 77, (short) 88, 99, -1010, 1111, 1212, 1313L, -1414L, BigInteger.valueOf(1515));
+        List<IntsEntity> odds = IntsEntity.selectOdd(true, allNull, oddHalfNull, evenHalfNull, full);
+        List<IntsEntity> evens = IntsEntity.selectOdd(false, allNull, oddHalfNull, evenHalfNull, full);
+
+        Mono.from(getConnectionFactory().create())
+            .flatMap(connection -> Mono.from(connection.createStatement(String.format("SET @@auto_increment_increment=%d", incrementStep))
+                .execute())
+                .flatMap(Example::extractRowsUpdated)
+                .thenMany(IntsEntity.createSimpleInsert(connection, allNull, oddHalfNull, evenHalfNull, full)
+                    .execute())
+                .flatMap(result -> Example.extractRowsUpdated(result)
+                    .doOnNext(u -> assertEquals(u, 4))
+                    .thenMany(result.map((row, metadata) -> row.get("generated_id", Long.class))))
+                .collectList()
+                .doOnNext(ids -> assertEquals(ids, Collections.singletonList(firstId)))
+                .thenMany(connection.createStatement("SELECT * FROM test WHERE id % 2 = true; SELECT * FROM test WHERE id % 2 = false")
+                    .execute())
+                .flatMap(result -> IntsEntity.from(result).collectList())
+                .collectList()
+                .doOnNext(entities -> assertEquals(entities, Arrays.asList(odds, evens)))
+                .thenMany(connection.createStatement("DELETE FROM test WHERE id % 2 = true; DELETE FROM test WHERE id % 2 = false")
+                    .execute())
+                .flatMap(Example::extractRowsUpdated)
+                .collectList()
+                .doOnNext(rowsUpdated -> assertEquals(rowsUpdated, Arrays.asList(2, 2)))
+                .concatWith(Example.close(connection))
+                .then()
+            )
             .as(StepVerifier::create)
             .verifyComplete();
     }
@@ -190,6 +228,19 @@ interface MySqlExampleIntsExtra {
                 id, int8, uint8, int16, uint16, int24, uint24, int32, uint32, int64, uint64);
         }
 
+        private String values() {
+            return String.format("(DEFAULT,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                intValue(int8), intValue(uint8),
+                intValue(int16), intValue(uint16),
+                intValue(int24), intValue(uint24),
+                intValue(int32), intValue(uint32),
+                intValue(int64), intValue(uint64));
+        }
+
+        private static Object intValue(@Nullable Number number) {
+            return number == null ? "NULL" : number;
+        }
+
         private void bind(Statement statement) {
             if (int8 != null) {
                 statement.bind(0, int8);
@@ -270,8 +321,19 @@ interface MySqlExampleIntsExtra {
             )));
         }
 
-        private static Statement createInsert(Connection connection, IntsEntity... entities) {
-            Statement statement = connection.createStatement("INSERT INTO `test`VALUES(DEFAULT,?,?,?,?,?,?,?,?,?,?)");
+        private static Statement createSimpleInsert(Connection connection, IntsEntity... entities) {
+            String[] values = new String[entities.length];
+
+            for (int i = 0; i < values.length; ++i) {
+                values[i] = entities[i].values();
+            }
+
+            return connection.createStatement(String.format("INSERT INTO test VALUES %s", String.join(",", values)))
+                .returnGeneratedValues("generated_id");
+        }
+
+        private static Statement createPreparedInsert(Connection connection, IntsEntity... entities) {
+            Statement statement = connection.createStatement("INSERT INTO test VALUES(DEFAULT,?,?,?,?,?,?,?,?,?,?)");
 
             for (IntsEntity entity : entities) {
                 entity.bind(statement);
