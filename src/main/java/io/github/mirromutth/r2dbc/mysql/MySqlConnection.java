@@ -116,8 +116,8 @@ public final class MySqlConnection implements Connection {
         Mono<Void> closer = client.close();
 
         if (logger.isDebugEnabled()) {
-            logger.debug("Connection closing");
-            return closer.doOnSuccess(ignored -> logger.debug("Connection close succeed"));
+            return closer.doOnSubscribe(s -> logger.debug("Connection closing"))
+                .doOnSuccess(ignored -> logger.debug("Connection close succeed"));
         }
 
         return closer;
