@@ -34,12 +34,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.stream.IntStream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 /**
  * Base class considers implementations of {@link Example}.
  */
-abstract class MySqlExampleSupport implements Example<String>, MySqlExampleBatchExtra, MySqlExampleDateTimeExtra, MySqlExampleIntsExtra {
+abstract class MySqlExampleSupport implements Example<String> {
 
     private final MySqlConnectionFactory connectionFactory;
 
@@ -169,27 +167,6 @@ abstract class MySqlExampleSupport implements Example<String>, MySqlExampleBatch
                 .concatWith(Example.close(connection)))
             .as(StepVerifier::create)
             .expectNextCount(1).as("rows inserted")
-            .verifyComplete();
-    }
-
-    /**
-     * SQL query {@code SELECT 1} is a ping approach which is cross-database (maybe some are not
-     * supported) and is easy to understand.
-     * <p>
-     * Note: looks like {@code SELECT 1} result value type returned by the MySQL server is BIGINT,
-     * try using Number.class to eliminate {@code assertEquals} fail because of the value type.
-     */
-    @Test
-    void selectOne() {
-        Mono.from(getConnectionFactory().create())
-            .flatMap(connection -> Mono.from(connection.createStatement("SELECT 1").execute())
-                .flatMapMany(result -> result.map((row, metadata) -> row.get(0, Number.class)))
-                .doOnNext(number -> assertEquals(number.intValue(), 1))
-                .reduce((x, y) -> Math.addExact(x.intValue(), y.intValue()))
-                .doOnNext(number -> assertEquals(number.intValue(), 1))
-                .concatWith(Example.close(connection))
-                .then())
-            .as(StepVerifier::create)
             .verifyComplete();
     }
 

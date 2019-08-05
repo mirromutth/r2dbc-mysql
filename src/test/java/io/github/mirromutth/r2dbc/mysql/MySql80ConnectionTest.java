@@ -16,15 +16,12 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.r2dbc.spi.ConnectionFactory;
-import org.springframework.jdbc.core.JdbcOperations;
-
 /**
- * Base interface considers extra unit tests for {@code Example}.
+ * An implementation of {@link ConnectionTestSupport} for {@link MySqlConnection} unit tests in MySQL 8.0.
  */
-interface MySqlExampleExtra {
+final class MySql80ConnectionTest extends ConnectionTestSupport {
 
-    JdbcOperations getJdbcOperations();
-
-    ConnectionFactory getConnectionFactory();
+    MySql80ConnectionTest() {
+        super(MySql80Example.CONFIGURATION);
+    }
 }
