@@ -170,6 +170,14 @@ public final class ParameterWriter implements Disposable {
         }
     }
 
+    public void writeAsciiString(CharSequence sequence) {
+        int bytes = sequence.length();
+        ByteBuf buf = writableBuffer(CodecUtils.varIntBytes(bytes) + bytes);
+
+        CodecUtils.writeVarInt(buf, bytes);
+        buf.writeCharSequence(sequence, StandardCharsets.US_ASCII);
+    }
+
     public void writeCharSequence(CharSequence sequence, CharCollation collation) {
         int minBytes = sequence.length();
 

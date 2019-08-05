@@ -77,7 +77,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
-        return encodeOfLong((Long) value);
+        return new LongValue((Long) value);
     }
 
     @Override
@@ -121,10 +121,6 @@ final class LongCodec implements PrimitiveCodec<Long> {
         } else {
             return value;
         }
-    }
-
-    static ParameterValue encodeOfLong(long value) {
-        return new LongValue(value);
     }
 
     private static long decodeBinary(ByteBuf buf, short type, boolean isUnsigned) {

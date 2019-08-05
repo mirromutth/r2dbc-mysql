@@ -21,7 +21,9 @@ import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
+import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
 import io.netty.buffer.ByteBuf;
+import reactor.core.publisher.Mono;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -56,7 +58,7 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
 
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
-        return LongCodec.encodeOfLong(((BigInteger) value).longValue());
+        return new BigIntegerValue((BigInteger) value);
     }
 
     @Override
@@ -160,5 +162,41 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         }
 
         return value;
+    }
+
+    private static class BigIntegerValue extends AbstractParameterValue {
+
+        private final BigInteger value;
+
+        private BigIntegerValue(BigInteger value) {
+            this.value = value;
+        }
+
+        @Override
+        public Mono<Void> writeTo(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeAsciiString(value.toString()));
+        }
+
+        @Override
+        public short getType() {
+            return DataTypes.VARCHAR;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof BigIntegerValue)) {
+                return false;
+            }
+            BigIntegerValue that = (BigIntegerValue) o;
+            return value.equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return value.hashCode();
+        }
     }
 }
