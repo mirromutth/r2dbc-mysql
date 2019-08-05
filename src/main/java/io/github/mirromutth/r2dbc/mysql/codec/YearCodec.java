@@ -88,7 +88,7 @@ final class YearCodec extends AbstractClassedCodec<Year> {
 
         @Override
         public short getType() {
-            return DataTypes.YEAR;
+            return DataTypes.SMALLINT;
         }
 
         @Override
