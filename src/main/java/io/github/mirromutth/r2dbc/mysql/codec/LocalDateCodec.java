@@ -84,9 +84,9 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     @Nullable
     static LocalDate readDateText(ByteBuf buf) {
-        int year = CodecUtils.readIntInDigits(buf, true, true);
-        int month = CodecUtils.readIntInDigits(buf, false, true);
-        int day = CodecUtils.readIntInDigits(buf, false, true);
+        int year = CodecUtils.readIntInDigits(buf, true);
+        int month = CodecUtils.readIntInDigits(buf, true);
+        int day = CodecUtils.readIntInDigits(buf, true);
 
         if (month == 0 || day == 0) {
             return null;

@@ -409,22 +409,12 @@ public final class CodecUtils {
         }
     }
 
-    public static int readIntInDigits(ByteBuf buf, boolean allowNegative, boolean skipLast) {
+    public static int readIntInDigits(ByteBuf buf, boolean skipLast) {
         if (!buf.isReadable()) {
             return 0;
         }
 
-        boolean isNegative;
         int readerIndex = buf.readerIndex();
-
-        if (allowNegative && buf.getByte(readerIndex) == '-') {
-            isNegative = true;
-            // Skip '-' before read digits
-            ++readerIndex;
-        } else {
-            isNegative = false;
-        }
-
         int writerIndex = buf.writerIndex();
         int result = 0;
         byte digit;
@@ -441,12 +431,12 @@ public final class CodecUtils {
                     buf.readerIndex(i);
                 }
                 // Is not digit, means parse completed.
-                return isNegative ? -result : result;
+                return result;
             }
         }
 
         // Parse until end-of-buffer.
         buf.readerIndex(writerIndex);
-        return isNegative ? -result : result;
+        return result;
     }
 }

@@ -71,15 +71,26 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     static LocalTime readTimeText(ByteBuf buf) {
-        int hour = CodecUtils.readIntInDigits(buf, true, true);
-        int minute = CodecUtils.readIntInDigits(buf, false, true);
-        int second = CodecUtils.readIntInDigits(buf, false, true);
+        boolean isNegative = readNegative(buf);
+        int hour = CodecUtils.readIntInDigits(buf, true);
+        int minute = CodecUtils.readIntInDigits(buf, true);
+        int second = CodecUtils.readIntInDigits(buf, true);
 
-        if (hour < 0) {
-            long totalSeconds = -(TimeUnit.HOURS.toSeconds(-hour) + TimeUnit.MINUTES.toSeconds(minute) + second);
+        if (isNegative) {
+            // The `hour` is a positive integer.
+            long totalSeconds = -(TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second);
             return LocalTime.ofSecondOfDay(((totalSeconds % SECONDS_OF_DAY) + SECONDS_OF_DAY) % SECONDS_OF_DAY);
         } else {
             return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
+        }
+    }
+
+    static boolean readNegative(ByteBuf buf) {
+        if (buf.getByte(buf.readerIndex()) == '-') {
+            buf.skipBytes(1);
+            return true;
+        } else {
+            return false;
         }
     }
 
