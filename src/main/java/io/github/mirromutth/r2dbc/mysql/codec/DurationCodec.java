@@ -65,12 +65,21 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     }
 
     private static Duration decodeText(ByteBuf buf) {
-        int hour = CodecUtils.readIntInDigits(buf, true);
-        int minute = CodecUtils.readIntInDigits(buf, true);
-        int second = CodecUtils.readIntInDigits(buf, true);
+        int hour = CodecUtils.readIntInDigits(buf, true, true);
+        boolean isNegative;
+
+        if (hour < 0) {
+            hour = -hour;
+            isNegative = true;
+        } else {
+            isNegative = false;
+        }
+
+        int minute = CodecUtils.readIntInDigits(buf, false, true);
+        int second = CodecUtils.readIntInDigits(buf, false, true);
         long totalSeconds = TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second;
 
-        return Duration.ofSeconds(totalSeconds);
+        return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
     }
 
     private static Duration decodeBinary(ByteBuf buf) {

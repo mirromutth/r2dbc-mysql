@@ -65,7 +65,7 @@ public final class ServerVersion implements Comparable<ServerVersion> {
     public static ServerVersion parse(ByteBuf version) {
         requireNonNull(version, "version must not be null");
 
-        int major = CodecUtils.readIntInDigits(version, false);
+        int major = CodecUtils.readIntInDigits(version, false, false);
 
         if (!version.isReadable()) {
             // End-of-buffer.
@@ -76,7 +76,7 @@ public final class ServerVersion implements Comparable<ServerVersion> {
         }
 
         // Skip last point '.' after read major.
-        int minor = CodecUtils.readIntInDigits(version.skipBytes(1), false);
+        int minor = CodecUtils.readIntInDigits(version.skipBytes(1), false, false);
 
         if (!version.isReadable()) {
             return create0(major, minor, 0, "");
@@ -86,7 +86,7 @@ public final class ServerVersion implements Comparable<ServerVersion> {
         }
 
         // Skip last point '.' after read minor.
-        int patch = CodecUtils.readIntInDigits(version.skipBytes(1), false);
+        int patch = CodecUtils.readIntInDigits(version.skipBytes(1), false, false);
 
         if (!version.isReadable()) {
             // End-of-buffer, version just like X.Y.Z without any postfix.

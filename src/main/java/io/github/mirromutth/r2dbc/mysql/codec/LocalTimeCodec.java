@@ -34,6 +34,12 @@ import java.util.concurrent.TimeUnit;
  */
 final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
+    private static final int HOURS_OF_DAY = 24;
+
+    private static final int SECONDS_OF_DAY = HOURS_OF_DAY * 60 * 60;
+
+    private static final long NANO_OF_DAY = SECONDS_OF_DAY * 1000_000_000L;
+
     static final LocalTimeCodec INSTANCE = new LocalTimeCodec();
 
     private LocalTimeCodec() {
@@ -65,12 +71,16 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     static LocalTime readTimeText(ByteBuf buf) {
-        int hour = CodecUtils.readIntInDigits(buf, true);
-        int minute = CodecUtils.readIntInDigits(buf, true);
-        int second = CodecUtils.readIntInDigits(buf, true);
+        int hour = CodecUtils.readIntInDigits(buf, true, true);
+        int minute = CodecUtils.readIntInDigits(buf, false, true);
+        int second = CodecUtils.readIntInDigits(buf, false, true);
 
-        // Time should always valid, no need check before construct.
-        return LocalTime.of(hour, minute, second);
+        if (hour < 0) {
+            long totalSeconds = -(TimeUnit.HOURS.toSeconds(-hour) + TimeUnit.MINUTES.toSeconds(minute) + second);
+            return LocalTime.ofSecondOfDay(((totalSeconds % SECONDS_OF_DAY) + SECONDS_OF_DAY) % SECONDS_OF_DAY);
+        } else {
+            return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
+        }
     }
 
     private static LocalTime decodeBinary(ByteBuf buf) {
@@ -80,20 +90,37 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
             return LocalTime.MIDNIGHT;
         }
 
-        // Skip sign and day.
-        buf.skipBytes(Byte.BYTES + Integer.BYTES);
+        boolean isNegative = buf.readBoolean();
 
-        byte hour = buf.readByte();
-        byte minute = buf.readByte();
-        byte second = buf.readByte();
+        // Skip day part.
+        buf.skipBytes(Integer.BYTES);
+
+        short hour = buf.readUnsignedByte();
+        short minute = buf.readUnsignedByte();
+        short second = buf.readUnsignedByte();
 
         if (bytes < BinaryDateTimes.MICRO_TIME_SIZE) {
-            return LocalTime.of(hour, minute, second);
+            if (isNegative) {
+                // The `hour` is a positive integer.
+                long totalSeconds = -(TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second);
+                return LocalTime.ofSecondOfDay(((totalSeconds % SECONDS_OF_DAY) + SECONDS_OF_DAY) % SECONDS_OF_DAY);
+            } else {
+                return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
+            }
         }
 
         long micros = buf.readUnsignedIntLE();
 
-        return LocalTime.of(hour, minute, second, (int) TimeUnit.MICROSECONDS.toNanos(micros));
+        if (isNegative) {
+            long nanos = -(TimeUnit.HOURS.toNanos(hour) +
+                TimeUnit.MINUTES.toNanos(minute) +
+                TimeUnit.SECONDS.toNanos(second) +
+                TimeUnit.MICROSECONDS.toNanos(micros));
+
+            return LocalTime.ofNanoOfDay(((nanos % NANO_OF_DAY) + NANO_OF_DAY) % NANO_OF_DAY);
+        } else {
+            return LocalTime.of(hour % HOURS_OF_DAY, minute, second, (int) TimeUnit.MICROSECONDS.toNanos(micros));
+        }
     }
 
     private static final class LocalTimeValue extends AbstractParameterValue {
