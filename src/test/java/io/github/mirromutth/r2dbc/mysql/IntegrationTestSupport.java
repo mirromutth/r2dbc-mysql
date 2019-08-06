@@ -16,9 +16,14 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.Result;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.math.BigInteger;
 import java.time.Duration;
@@ -26,6 +31,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Year;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -67,6 +74,22 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
     static final LocalDateTime MIN_TIMESTAMP = LocalDateTime.of(1970, 1, 3, 0, 0, 0);
 
     static final LocalDateTime MAX_TIMESTAMP = LocalDateTime.of(2038, 1, 15, 23, 59, 59);
+
+    static final List<Tuple2<Duration, LocalTime>> DURATION_TIME_CASES;
+
+    static {
+        Duration negativeOne = Duration.ofSeconds(-1);
+        Duration negativeOneDayOneSecond = Duration.ofSeconds(-TimeUnit.DAYS.toSeconds(1) - 1);
+        Duration oneDayOneSecond = Duration.ofSeconds(TimeUnit.DAYS.toSeconds(1) + 1);
+        LocalTime lastSecond = LocalTime.of(23, 59, 59);
+        LocalTime firstSecond = LocalTime.of(0, 0, 1);
+
+        DURATION_TIME_CASES = Arrays.asList(
+            Tuples.of(negativeOne, lastSecond),
+            Tuples.of(negativeOneDayOneSecond, lastSecond),
+            Tuples.of(oneDayOneSecond, firstSecond)
+        );
+    }
 
     IntegrationTestSupport(MySqlConnectionConfiguration configuration) {
         super(configuration);
@@ -136,6 +159,24 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
     abstract void date();
 
     abstract void time();
+
+    @Test
+    void timeDuration() {
+        connectionFactory.create()
+            .flatMap(connection -> {
+                // Should use simple statement for table definition.
+                return Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value TIME)")
+                    .execute())
+                    .flatMap(CompatibilityTestSupport::extractRowsUpdated)
+                    .thenMany(Flux.fromIterable(DURATION_TIME_CASES).concatMap(pair -> testTime(connection, pair.getT1(), pair.getT2())))
+                    .concatWith(close(connection))
+                    .then();
+            })
+            .as(StepVerifier::create)
+            .verifyComplete();
+    }
+
+    abstract Mono<Void> testTime(Connection connection, Duration origin, LocalTime time);
 
     abstract void dateTime();
 
