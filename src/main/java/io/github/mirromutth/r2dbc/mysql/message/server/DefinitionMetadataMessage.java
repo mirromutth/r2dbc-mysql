@@ -20,7 +20,6 @@ import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
