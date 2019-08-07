@@ -16,7 +16,9 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.r2dbc.spi.Connection;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
@@ -25,7 +27,9 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,6 +62,25 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
         testType(Duration.class, "TIME", null, MIN_DURATION, MAX_DURATION);
     }
 
+    @Override
+    Mono<Void> testTime(Connection connection, Duration origin, LocalTime time) {
+        return Mono.from(connection.createStatement("INSERT INTO test VALUES(DEFAULT,?)")
+            .bind(0, origin)
+            .returnGeneratedValues("id")
+            .execute())
+            .flatMapMany(IntegrationTestSupport::extractId)
+            .concatMap(id -> connection.createStatement("SELECT value FROM test WHERE id=?")
+                .bind(0, id)
+                .execute())
+            .flatMap(r -> extractOptionalField(r, LocalTime.class))
+            .map(Optional::get)
+            .doOnNext(t -> assertEquals(t, time))
+            .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0")
+                .execute()))
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .then();
+    }
+
     @Test
     @Override
     void dateTime() {
@@ -72,24 +95,29 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
     }
 
     @SafeVarargs
+    @SuppressWarnings("varargs")
     @Override
     protected final <T> void testType(Class<T> type, String defined, T... values) {
+        // Should use simple statement for table definition.
         connectionFactory.create()
-            .flatMap(connection -> {
-                // Should use simple statement for table definition.
-                Mono<Void> task = Mono.from(connection.createStatement(String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)", defined))
-                    .execute())
-                    .flatMap(IntegrationTestSupport::extractRowsUpdated)
-                    .then();
-
-                for (T value : values) {
-                    task = task.then(testOne(connection, type, value));
-                }
-
-                return task.concatWith(close(connection)).then();
-            })
+            .flatMap(connection -> Mono.from(connection.createStatement(String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)", defined))
+                .execute())
+                .flatMap(CompatibilityTestSupport::extractRowsUpdated)
+                .thenMany(Flux.fromIterable(convertOptional(values)).concatMap(value -> testOne(connection, type, value.orElse(null))))
+                .concatWith(close(connection))
+                .then())
             .as(StepVerifier::create)
             .verifyComplete();
+    }
+
+    private static <T> List<Optional<T>> convertOptional(T[] values) {
+        List<Optional<T>> optionals = new ArrayList<>(values.length);
+
+        for (T value : values) {
+            optionals.add(Optional.ofNullable(value));
+        }
+
+        return optionals;
     }
 
     private static <T> Mono<Void> testOne(MySqlConnection connection, Class<T> type, @Nullable T value) {
@@ -126,7 +154,7 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
             .collectList()
             .doOnNext(data -> assertEquals(data, Collections.singletonList(Optional.ofNullable(value))))
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0").execute()))
-            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .flatMap(CompatibilityTestSupport::extractRowsUpdated)
             .doOnNext(u -> assertEquals(u, 1))
             .then();
     }

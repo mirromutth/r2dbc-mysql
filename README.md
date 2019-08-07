@@ -263,7 +263,7 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 | BIT | - | `BitSet`, `Boolean` (Size is 1), `byte[]` |
 | DATETIME/TIMESTAMP | - | `LocalDateTime` |
 | DATE | - | `LocalDate` |
-| TIME | - | `LocalTime` |
+| TIME | - | `Duration`, `LocalTime` |
 | YEAR | - | `Short`, `Integer`, `Long`, `BigInteger`, `Year` |
 | VARCHAR/NVARCHAR | - | `String` |
 | CHAR/NCHAR | - | `String` |

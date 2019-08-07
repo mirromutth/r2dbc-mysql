@@ -29,9 +29,9 @@ import reactor.util.annotation.NonNull;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.Objects;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
@@ -153,7 +153,8 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
             case DataTypes.DATE:
                 return LocalDate.class;
             case DataTypes.TIME:
-                return LocalTime.class;
+                // TIME in MySQL is most like Duration rather than LocalTime.
+                return Duration.class;
             case DataTypes.YEAR:
                 // MySQL return 2-bytes in binary result for type YEAR.
                 return Short.class;

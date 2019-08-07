@@ -21,6 +21,7 @@ import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit tests for {@link ServerVersion}.
@@ -34,6 +35,12 @@ class ServerVersionTest {
         ServerVersion v8_1 = parse("8.1.0");
         ServerVersion v56_78_910 = parse("56.78.910");
         ServerVersion v0 = parse("");
+
+        assertEquals(ServerVersion.create(0, 0, 0), parse("-1"));
+        assertEquals(ServerVersion.create(8, 0, 0), parse("8.-1"));
+        assertEquals(ServerVersion.create(0, 0, 0), parse("-5.6.7"));
+        assertEquals(ServerVersion.create(5, 0, 0), parse("5.-6.7"));
+        assertEquals(ServerVersion.create(5, 6, 0), parse("5.6.-7"));
 
         assertEquals(v5_7_12, ServerVersion.create(5, 7, 12));
         assertEquals(v8, ServerVersion.create(8, 0, 0));

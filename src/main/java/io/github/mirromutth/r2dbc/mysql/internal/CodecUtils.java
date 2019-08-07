@@ -410,9 +410,13 @@ public final class CodecUtils {
     }
 
     public static int readIntInDigits(ByteBuf buf, boolean skipLast) {
-        int result = 0;
+        if (!buf.isReadable()) {
+            return 0;
+        }
+
         int readerIndex = buf.readerIndex();
         int writerIndex = buf.writerIndex();
+        int result = 0;
         byte digit;
 
         for (int i = readerIndex; i < writerIndex; ++i) {

@@ -16,7 +16,9 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.r2dbc.spi.Connection;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
@@ -98,6 +100,25 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
         testType(Duration.class, "TIME", Functions.DURATION, null, MIN_DURATION, MAX_DURATION);
     }
 
+    @Override
+    Mono<Void> testTime(Connection connection, Duration origin, LocalTime time) {
+        String originValue = Functions.DURATION.apply(origin);
+
+        return Mono.from(connection.createStatement(String.format("INSERT INTO test VALUES(DEFAULT,'%s')", originValue))
+            .returnGeneratedValues("id")
+            .execute())
+            .flatMapMany(IntegrationTestSupport::extractId)
+            .concatMap(id -> connection.createStatement(String.format("SELECT value FROM test WHERE id=%d", id))
+                .execute())
+            .flatMap(r -> extractOptionalField(r, LocalTime.class))
+            .map(Optional::get)
+            .doOnNext(t -> assertEquals(t, time))
+            .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0")
+                .execute()))
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .then();
+    }
+
     @Test
     @Override
     void dateTime() {
@@ -140,7 +161,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             .flatMap(connection -> {
                 Mono<Void> task = Mono.from(connection.createStatement(String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)", defined))
                     .execute())
-                    .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                    .flatMap(CompatibilityTestSupport::extractRowsUpdated)
                     .then();
 
                 for (ValueString<?> value : values) {
@@ -179,7 +200,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             .collectList()
             .doOnNext(data -> assertEquals(data, Collections.singletonList(Optional.ofNullable(value.getValue()))))
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0").execute()))
-            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .flatMap(CompatibilityTestSupport::extractRowsUpdated)
             .doOnNext(u -> assertEquals(u, 1))
             .then();
     }
@@ -201,9 +222,9 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             seconds -= TimeUnit.MINUTES.toSeconds(minute);
 
             if (isNegative) {
-                return String.format("-%d:%d:%d", hour, minute, seconds);
+                return String.format("-%02d:%02d:%02d", hour, minute, seconds);
             } else {
-                return String.format("%d:%d:%d", hour, minute, seconds);
+                return String.format("%02d:%02d:%02d", hour, minute, seconds);
             }
         };
 
