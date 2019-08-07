@@ -47,7 +47,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         if (!buf.isReadable()) {
             return BitSet.valueOf(EMPTY_BYTES);
         }
-        return BitSet.valueOf(revert(ByteBufUtil.getBytes(buf)));
+        return BitSet.valueOf(reverse(ByteBufUtil.getBytes(buf)));
     }
 
     @Override
@@ -65,12 +65,15 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         return DataTypes.BIT == info.getType();
     }
 
-    private static byte[] revert(byte[] bytes) {
+    private static byte[] reverse(byte[] bytes) {
         int maxIndex = bytes.length - 1;
         int half = bytes.length >>> 1;
+        byte b;
 
         for (int i = 0; i < half; ++i) {
+            b = bytes[i];
             bytes[i] = bytes[maxIndex - i];
+            bytes[maxIndex - i] = b;
         }
 
         return bytes;
@@ -86,7 +89,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeByteArray(revert(set.toByteArray())));
+            return Mono.fromRunnable(() -> writer.writeByteArray(reverse(set.toByteArray())));
         }
 
         @Override
