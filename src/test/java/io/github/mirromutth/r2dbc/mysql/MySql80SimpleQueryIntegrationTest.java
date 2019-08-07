@@ -16,6 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import org.junit.jupiter.api.Test;
+
 /**
  * An implementation of {@link SimpleQueryIntegrationTestSupport} for data integration in MySQL 8.0 simple statement.
  */
@@ -23,5 +25,11 @@ final class MySql80SimpleQueryIntegrationTest extends SimpleQueryIntegrationTest
 
     MySql80SimpleQueryIntegrationTest() {
         super(MySql80Example.CONFIGURATION);
+    }
+
+    @Test
+    @Override
+    void json() {
+        testJson(null, "{\"data\": 1}", "[\"data\", 1]", "1");
     }
 }

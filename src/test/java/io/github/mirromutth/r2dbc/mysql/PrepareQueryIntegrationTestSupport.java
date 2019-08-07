@@ -18,21 +18,30 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.r2dbc.spi.Connection;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Base class considers data integration unit tests in prepare query for implementations of {@link IntegrationTestSupport}.
@@ -45,25 +54,35 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
 
     @Test
     @Override
-    void varchar() {
-        testType(String.class, "VARCHAR(50)", "", null, "data");
+    void set() {
+        Type stringSet = new TypeReference<Set<String>>() {
+
+        }.getType();
+        Type enumSet = new TypeReference<Set<EnumData>>() {
+
+        }.getType();
+
+        testType(String.class, "SET('ONE','TWO','THREE')", true, null, "ONE,TWO,THREE", "ONE", "", "ONE,THREE");
+        testType(String[].class, "SET('ONE','TWO','THREE')", true, null, new String[]{"ONE", "TWO", "THREE"}, new String[]{"ONE"}, new String[]{}, new String[]{"ONE", "THREE"});
+        testTypeRef(stringSet, "SET('ONE','TWO','THREE')", true, null, new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")), Collections.singleton("ONE"), Collections.emptySet(), new HashSet<>(Arrays.asList("ONE", "THREE")));
+        testTypeRef(enumSet, "SET('ONE','TWO','THREE')", true, null, EnumSet.allOf(EnumData.class), EnumSet.of(EnumData.ONE), EnumSet.noneOf(EnumData.class), EnumSet.of(EnumData.ONE, EnumData.THREE));
     }
 
     @Test
     @Override
     void date() {
-        testType(LocalDate.class, "DATE", null, MIN_DATE, MAX_DATE);
+        testType(LocalDate.class, "DATE", true, null, MIN_DATE, MAX_DATE);
     }
 
     @Test
     @Override
     void time() {
-        testType(LocalTime.class, "TIME", null, MIN_TIME, MAX_TIME);
-        testType(Duration.class, "TIME", null, MIN_DURATION, MAX_DURATION);
+        testType(LocalTime.class, "TIME", true, null, MIN_TIME, MAX_TIME);
+        testType(Duration.class, "TIME", true, null, MIN_DURATION, MAX_DURATION);
     }
 
     @Override
-    Mono<Void> testTime(Connection connection, Duration origin, LocalTime time) {
+    Mono<Void> testTimeDuration(Connection connection, Duration origin, LocalTime time) {
         return Mono.from(connection.createStatement("INSERT INTO test VALUES(DEFAULT,?)")
             .bind(0, origin)
             .returnGeneratedValues("id")
@@ -72,7 +91,7 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
             .concatMap(id -> connection.createStatement("SELECT value FROM test WHERE id=?")
                 .bind(0, id)
                 .execute())
-            .flatMap(r -> extractOptionalField(r, LocalTime.class))
+            .<Optional<LocalTime>>flatMap(r -> extractOptionalField(r, LocalTime.class))
             .map(Optional::get)
             .doOnNext(t -> assertEquals(t, time))
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0")
@@ -84,26 +103,38 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
     @Test
     @Override
     void dateTime() {
-        testType(LocalDateTime.class, "DATETIME", null, MIN_DATE_TIME, MAX_DATE_TIME);
+        testType(LocalDateTime.class, "DATETIME", true, null, MIN_DATE_TIME, MAX_DATE_TIME);
     }
 
     @Test
     @Override
     void timestamp() {
         // TIMESTAMP must not be null when database version less than 8.0
-        testType(LocalDateTime.class, "TIMESTAMP", MIN_TIMESTAMP, MAX_TIMESTAMP);
+        testType(LocalDateTime.class, "TIMESTAMP", true, MIN_TIMESTAMP, MAX_TIMESTAMP);
     }
 
     @SafeVarargs
     @SuppressWarnings("varargs")
     @Override
-    protected final <T> void testType(Class<T> type, String defined, T... values) {
+    protected final <T> void testType(Class<T> type, String defined, boolean ignored, T... values) {
+        // Should use simple statement for table definition.
+        testTypeRef(type, defined, true, values);
+    }
+
+    void testJson(String... values) {
+        // The value of JSON cannot be a condition.
+        testTypeRef(String.class, "JSON", false, values);
+    }
+
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    private final <T> void testTypeRef(Type type, String defined, boolean valueSelect, T... values) {
         // Should use simple statement for table definition.
         connectionFactory.create()
             .flatMap(connection -> Mono.from(connection.createStatement(String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)", defined))
                 .execute())
                 .flatMap(CompatibilityTestSupport::extractRowsUpdated)
-                .thenMany(Flux.fromIterable(convertOptional(values)).concatMap(value -> testOne(connection, type, value.orElse(null))))
+                .thenMany(Flux.fromIterable(convertOptional(values)).concatMap(value -> testOne(connection, type, valueSelect, value.orElse(null))))
                 .concatWith(close(connection))
                 .then())
             .as(StepVerifier::create)
@@ -120,17 +151,17 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
         return optionals;
     }
 
-    private static <T> Mono<Void> testOne(MySqlConnection connection, Class<T> type, @Nullable T value) {
+    private static <T> Mono<Void> testOne(MySqlConnection connection, Type type, boolean selectValue, @Nullable T value) {
         MySqlStatement insert = connection.createStatement("INSERT INTO test VALUES(DEFAULT,?)");
-        MySqlStatement valueSelect;
 
         if (value == null) {
-            insert.bindNull(0, type);
-            valueSelect = connection.createStatement("SELECT value FROM test WHERE value IS NULL");
+            if (type instanceof Class<?>) {
+                insert.bindNull(0, (Class<?>) type);
+            } else {
+                insert.bindNull(0, (Class<?>) ((ParameterizedType) type).getRawType());
+            }
         } else {
             insert.bind(0, value);
-            valueSelect = connection.createStatement("SELECT value FROM test WHERE value=?")
-                .bind(0, value);
         }
 
         return Mono.from(insert.returnGeneratedValues("id")
@@ -146,13 +177,57 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
             .flatMap(id -> Mono.from(connection.createStatement("SELECT value FROM test WHERE id=?")
                 .bind(0, id)
                 .execute()))
-            .flatMapMany(r -> extractOptionalField(r, type))
+            .<Optional<T>>flatMapMany(r -> extractOptionalField(r, type))
             .collectList()
-            .doOnNext(data -> assertEquals(data, Collections.singletonList(Optional.ofNullable(value))))
-            .then(Mono.from(valueSelect.execute()))
-            .flatMapMany(r -> extractOptionalField(r, type))
-            .collectList()
-            .doOnNext(data -> assertEquals(data, Collections.singletonList(Optional.ofNullable(value))))
+            .map(list -> {
+                assertEquals(list.size(), 1);
+                return list.get(0);
+            })
+            .doOnNext(data -> {
+                if (data.isPresent()) {
+                    T t = data.get();
+                    if (t.getClass().isArray()) {
+                        assertArrayEquals((Object[]) t, (Object[]) value);
+                    } else {
+                        assertEquals(t, value);
+                    }
+                } else {
+                    assertNull(value);
+                }
+            })
+            .as(it -> {
+                if (selectValue) {
+                    MySqlStatement valueSelect;
+
+                    if (value == null) {
+                        valueSelect = connection.createStatement("SELECT value FROM test WHERE value IS NULL");
+                    } else {
+                        valueSelect = connection.createStatement("SELECT value FROM test WHERE value=?")
+                            .bind(0, value);
+                    }
+
+                    return it.then(Mono.from(valueSelect.execute()))
+                        .<Optional<T>>flatMapMany(r -> extractOptionalField(r, type))
+                        .collectList()
+                        .map(list -> {
+                            assertEquals(list.size(), 1);
+                            return list.get(0);
+                        })
+                        .doOnNext(data -> {
+                            if (data.isPresent()) {
+                                T t = data.get();
+                                if (t.getClass().isArray()) {
+                                    assertArrayEquals((Object[]) t, (Object[]) value);
+                                } else {
+                                    assertEquals(t, value);
+                                }
+                            } else {
+                                assertNull(value);
+                            }
+                        });
+                }
+                return it;
+            })
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0").execute()))
             .flatMap(CompatibilityTestSupport::extractRowsUpdated)
             .doOnNext(u -> assertEquals(u, 1))

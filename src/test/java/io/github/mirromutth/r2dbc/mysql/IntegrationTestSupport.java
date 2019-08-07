@@ -25,6 +25,9 @@ import reactor.test.StepVerifier;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -96,65 +99,111 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
     }
 
     @SuppressWarnings({"varargs", "unchecked"})
-    abstract <T> void testType(Class<T> type, String defined, T... values);
+    abstract <T> void testType(Class<T> type, String defined, boolean quota, T... values);
 
     @Test
     void tinyintSigned() {
-        testType(Byte.class, "TINYINT", (byte) 1, (byte) -1, null, Byte.MIN_VALUE, Byte.MAX_VALUE);
+        testType(Byte.class, "TINYINT", false, (byte) 1, (byte) -1, null, Byte.MIN_VALUE, Byte.MAX_VALUE);
     }
 
     @Test
     void tinyintUnsigned() {
-        testType(Short.class, "TINYINT UNSIGNED", (short) 1, null, (short) 0, UINT8_MAX_VALUE);
+        testType(Short.class, "TINYINT UNSIGNED", false, (short) 1, null, (short) 0, UINT8_MAX_VALUE);
     }
 
     @Test
     void smallintSigned() {
-        testType(Short.class, "SMALLINT", (short) 1, (short) -1, null, Short.MIN_VALUE, Short.MAX_VALUE);
+        testType(Short.class, "SMALLINT", false, (short) 1, (short) -1, null, Short.MIN_VALUE, Short.MAX_VALUE);
     }
 
     @Test
     void smallintUnsigned() {
-        testType(Integer.class, "SMALLINT UNSIGNED", 1, null, 0, UINT16_MAX_VALUE);
+        testType(Integer.class, "SMALLINT UNSIGNED", false, 1, null, 0, UINT16_MAX_VALUE);
     }
 
     @Test
     void mediumintSigned() {
-        testType(Integer.class, "MEDIUMINT", 1, -1, null, INT24_MIN_VALUE, INT24_MAX_VALUE);
+        testType(Integer.class, "MEDIUMINT", false, 1, -1, null, INT24_MIN_VALUE, INT24_MAX_VALUE);
     }
 
     @Test
     void mediumintUnsigned() {
-        testType(Integer.class, "MEDIUMINT UNSIGNED", 1, null, 0, UINT24_MAX_VALUE);
+        testType(Integer.class, "MEDIUMINT UNSIGNED", false, 1, null, 0, UINT24_MAX_VALUE);
     }
 
     @Test
     void intSigned() {
-        testType(Integer.class, "INT", 1, -1, null, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        testType(Integer.class, "INT", false, 1, -1, null, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
     @Test
     void intUnsigned() {
-        testType(Long.class, "INT UNSIGNED", 1L, null, 0L, UINT32_MAX_VALUE);
+        testType(Long.class, "INT UNSIGNED", false, 1L, null, 0L, UINT32_MAX_VALUE);
     }
 
     @Test
     void bigintSigned() {
-        testType(Long.class, "BIGINT", 1L, -1L, null, Long.MIN_VALUE, Long.MAX_VALUE);
+        testType(Long.class, "BIGINT", false, 1L, -1L, null, Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     @Test
     void bigintUnsigned() {
-        testType(BigInteger.class, "BIGINT UNSIGNED", BigInteger.ONE, null, BigInteger.ZERO, UINT64_MAX_VALUE);
+        testType(BigInteger.class, "BIGINT UNSIGNED", false, BigInteger.ONE, null, BigInteger.ZERO, UINT64_MAX_VALUE);
+    }
+
+    @Test
+    void floatSigned() {
+        testType(Float.class, "FLOAT", true, null, 1.0f, -1.0f);
+    }
+
+    @Test
+    void floatUnsigned() {
+        testType(Float.class, "FLOAT UNSIGNED", true, null, 1.0f);
+    }
+
+    @Test
+    void doubleSigned() {
+        testType(Double.class, "DOUBLE", true, null, 1.0, -1.0, Double.MIN_VALUE, Double.MIN_NORMAL, Double.MAX_VALUE);
+    }
+
+    @Test
+    void doubleUnsigned() {
+        testType(Double.class, "DOUBLE UNSIGNED", true, null, 1.0, Double.MIN_VALUE, Double.MIN_NORMAL, Double.MAX_VALUE);
+    }
+
+    @Test
+    void decimalSigned() {
+        testType(BigDecimal.class, "DECIMAL(10,2)", true, null, new BigDecimal("1.00"), new BigDecimal("-1.00"), new BigDecimal("1.99"));
+    }
+
+    @Test
+    void decimalUnsigned() {
+        testType(BigDecimal.class, "DECIMAL(10,2) UNSIGNED", true, null, new BigDecimal("1.00"), new BigDecimal("1.99"));
     }
 
     @Test
     void year() {
-        testType(Year.class, "YEAR", null, Year.of(1901), Year.of(2155));
-        testType(Short.class, "YEAR", null, (short) 1901, (short) 2155);
+        testType(Year.class, "YEAR", false, null, Year.of(1901), Year.of(2155));
+        testType(Short.class, "YEAR", false, null, (short) 1901, (short) 2155);
     }
 
-    abstract void varchar();
+    @Test
+    void varchar() {
+        testType(String.class, "VARCHAR(50)", true, "", null, "data");
+        testType(String.class, "CHAR(50)", true, "", null, "data");
+    }
+
+    @Test
+    void enumerable() {
+        testType(String.class, "ENUM('ONE','TWO','THREE')", true, null, "ONE", "TWO", "THREE");
+        testType(EnumData.class, "ENUM('ONE','TWO','THREE')", true, null, EnumData.ONE, EnumData.TWO, EnumData.THREE);
+    }
+
+    abstract void set();
+
+    void json() {
+        // MySQL 5.5 and 5.6 unsupported JSON.
+    }
 
     abstract void date();
 
@@ -168,7 +217,7 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
                 return Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value TIME)")
                     .execute())
                     .flatMap(CompatibilityTestSupport::extractRowsUpdated)
-                    .thenMany(Flux.fromIterable(DURATION_TIME_CASES).concatMap(pair -> testTime(connection, pair.getT1(), pair.getT2())))
+                    .thenMany(Flux.fromIterable(DURATION_TIME_CASES).concatMap(pair -> testTimeDuration(connection, pair.getT1(), pair.getT2())))
                     .concatWith(close(connection))
                     .then();
             })
@@ -176,7 +225,7 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
             .verifyComplete();
     }
 
-    abstract Mono<Void> testTime(Connection connection, Duration origin, LocalTime time);
+    abstract Mono<Void> testTimeDuration(Connection connection, Duration origin, LocalTime time);
 
     abstract void dateTime();
 
@@ -186,7 +235,18 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
         return Flux.from(result.map((row, metadata) -> row.get(0, Integer.class)));
     }
 
-    static <T> Flux<Optional<T>> extractOptionalField(Result result, Class<T> type) {
-        return Flux.from(result.map((row, metadata) -> Optional.ofNullable(row.get(0, type))));
+    @SuppressWarnings("unchecked")
+    static <T> Flux<Optional<T>> extractOptionalField(Result result, Type type) {
+        if (type instanceof Class<?>) {
+            return Flux.from(result.map((row, metadata) -> Optional.ofNullable(row.get(0, (Class<T>) type))));
+        }
+        return Flux.from(result.map((row, metadata) -> Optional.ofNullable(((MySqlRow) row).get(0, (ParameterizedType) type))));
+    }
+
+    enum EnumData {
+
+        ONE,
+        TWO,
+        THREE
     }
 }

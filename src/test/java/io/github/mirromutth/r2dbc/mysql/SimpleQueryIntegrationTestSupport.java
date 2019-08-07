@@ -18,11 +18,12 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.r2dbc.spi.Connection;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Flux;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
 
+import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,12 +31,19 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Base class considers data integration unit tests in simple query for implementations of {@link IntegrationTestSupport}.
@@ -83,25 +91,28 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
 
     @Test
     @Override
-    void varchar() {
-        testType(String.class, "VARCHAR(50)", Functions.STRING, "", null, "data");
+    void set() {
+        testType(String.class, "SET('ONE','TWO','THREE')", true, null, "ONE,TWO,THREE", "ONE", "", "ONE,THREE");
+        testTypeRef(String[].class, "SET('ONE','TWO','THREE')", Functions.STRING_ARRAY, null, new String[]{"ONE", "TWO", "THREE"}, new String[]{"ONE"}, new String[]{}, new String[]{"ONE", "THREE"});
+        testTypeRef(new TypeReference<Set<String>>() {}.getType(), "SET('ONE','TWO','THREE')", Functions.SET, null, new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")), Collections.singleton("ONE"), Collections.emptySet(), new HashSet<>(Arrays.asList("ONE", "THREE")));
+        testTypeRef(new TypeReference<Set<EnumData>>() {}.getType(), "SET('ONE','TWO','THREE')", Functions.SET, null, EnumSet.allOf(EnumData.class), EnumSet.of(EnumData.ONE), EnumSet.noneOf(EnumData.class), EnumSet.of(EnumData.ONE, EnumData.THREE));
     }
 
     @Test
     @Override
     void date() {
-        testType(LocalDate.class, "DATE", Functions.DATE, null, MIN_DATE, MAX_DATE);
+        testTypeRef(LocalDate.class, "DATE", Functions.DATE, null, MIN_DATE, MAX_DATE);
     }
 
     @Test
     @Override
     void time() {
-        testType(LocalTime.class, "TIME", Functions.TIME, null, MIN_TIME, MAX_TIME);
-        testType(Duration.class, "TIME", Functions.DURATION, null, MIN_DURATION, MAX_DURATION);
+        testTypeRef(LocalTime.class, "TIME", Functions.TIME, null, MIN_TIME, MAX_TIME);
+        testTypeRef(Duration.class, "TIME", Functions.DURATION, null, MIN_DURATION, MAX_DURATION);
     }
 
     @Override
-    Mono<Void> testTime(Connection connection, Duration origin, LocalTime time) {
+    Mono<Void> testTimeDuration(Connection connection, Duration origin, LocalTime time) {
         String originValue = Functions.DURATION.apply(origin);
 
         return Mono.from(connection.createStatement(String.format("INSERT INTO test VALUES(DEFAULT,'%s')", originValue))
@@ -110,7 +121,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             .flatMapMany(IntegrationTestSupport::extractId)
             .concatMap(id -> connection.createStatement(String.format("SELECT value FROM test WHERE id=%d", id))
                 .execute())
-            .flatMap(r -> extractOptionalField(r, LocalTime.class))
+            .<Optional<LocalTime>>flatMap(r -> extractOptionalField(r, LocalTime.class))
             .map(Optional::get)
             .doOnNext(t -> assertEquals(t, time))
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0")
@@ -122,41 +133,52 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
     @Test
     @Override
     void dateTime() {
-        testType(LocalDateTime.class, "DATETIME", Functions.DATE_TIME, null, MIN_DATE_TIME, MAX_DATE_TIME);
+        testTypeRef(LocalDateTime.class, "DATETIME", Functions.DATE_TIME, null, MIN_DATE_TIME, MAX_DATE_TIME);
     }
 
     @Test
     @Override
     void timestamp() {
         // TIMESTAMP must not be null when database version less than 8.0
-        testType(LocalDateTime.class, "TIMESTAMP", Functions.DATE_TIME, MIN_TIMESTAMP, MAX_TIMESTAMP);
+        testTypeRef(LocalDateTime.class, "TIMESTAMP", Functions.DATE_TIME, MIN_TIMESTAMP, MAX_TIMESTAMP);
     }
 
     @SafeVarargs
     @Override
-    protected final <T> void testType(Class<T> type, String defined, T... values) {
+    protected final <T> void testType(Class<T> type, String defined, boolean quota, T... values) {
         ValueString<?>[] v = new ValueString<?>[values.length];
 
         for (int i = 0; i < values.length; ++i) {
             v[i] = new ValueString<>(values[i]);
         }
 
-        testType(type, defined, false, v);
+        testType(type, defined, true, quota, v);
     }
 
     @SafeVarargs
-    private final <T> void testType(Class<T> type, String defined, Function<T, String> converter, T... values) {
+    private final <T> void testTypeRef(Type type, String defined, Function<T, String> converter, T... values) {
         ValueString<?>[] v = new ValueString<?>[values.length];
 
         for (int i = 0; i < values.length; ++i) {
             v[i] = new ValueString<>(values[i], converter);
         }
 
-        testType(type, defined, true, v);
+        testType(type, defined, true, true, v);
+    }
+
+    void testJson(String... values) {
+        ValueString<?>[] v = new ValueString<?>[values.length];
+
+        for (int i = 0; i < values.length; ++i) {
+            v[i] = new ValueString<>(values[i]);
+        }
+
+        // The value of JSON cannot be a condition
+        testType(String.class, "JSON", false, true, v);
     }
 
     @SuppressWarnings("varargs")
-    private <T> void testType(Class<T> type, String defined, boolean quotation, ValueString<?>... values) {
+    private void testType(Type type, String defined, boolean selectValue, boolean quota, ValueString<?>[] values) {
         connectionFactory.create()
             .flatMap(connection -> {
                 Mono<Void> task = Mono.from(connection.createStatement(String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)", defined))
@@ -165,7 +187,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
                     .then();
 
                 for (ValueString<?> value : values) {
-                    task = task.then(testOne(connection, type, value, quotation));
+                    task = task.then(testOne(connection, type, value, selectValue, quota));
                 }
 
                 return task.concatWith(close(connection)).then();
@@ -174,9 +196,8 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             .verifyComplete();
     }
 
-    private static <T> Mono<Void> testOne(MySqlConnection connection, Class<T> type, ValueString<?> value, boolean quotation) {
-        String valueString = value.isNull() ? "NULL" : (quotation ? String.format("'%s'", value) : value.toString());
-        String valueSelect = value.isNull() ? "SELECT value FROM test WHERE value IS NULL" : String.format("SELECT value FROM test WHERE value=%s", valueString);
+    private static <T> Mono<Void> testOne(MySqlConnection connection, Type type, ValueString<?> value, boolean selectValue, boolean quota) {
+        String valueString = value.isNull() ? "NULL" : (quota ? String.format("'%s'", value) : value.toString());
 
         return Mono.from(connection.createStatement(String.format("INSERT INTO test VALUES(DEFAULT,%s)", valueString))
             .returnGeneratedValues("id")
@@ -191,14 +212,51 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
                 }))
             .flatMap(id -> Mono.from(connection.createStatement(String.format("SELECT value FROM test WHERE id=%d", id))
                 .execute()))
-            .flatMapMany(r -> extractOptionalField(r, type))
+            .<Optional<T>>flatMapMany(r -> extractOptionalField(r, type))
             .collectList()
-            .doOnNext(data -> assertEquals(data, Collections.singletonList(Optional.ofNullable(value.getValue()))))
-            .then(Mono.from(connection.createStatement(valueSelect)
-                .execute()))
-            .flatMapMany(r -> extractOptionalField(r, type))
-            .collectList()
-            .doOnNext(data -> assertEquals(data, Collections.singletonList(Optional.ofNullable(value.getValue()))))
+            .map(list -> {
+                assertEquals(list.size(), 1);
+                return list.get(0);
+            })
+            .doOnNext(data -> {
+                if (data.isPresent()) {
+                    T t = data.get();
+                    if (t.getClass().isArray()) {
+                        assertArrayEquals((Object[]) data.get(), (Object[]) value.value);
+                    } else {
+                        assertEquals(data.get(), value.value);
+                    }
+                } else {
+                    assertNull(value.value);
+                }
+            })
+            .as(it -> {
+                if (selectValue) {
+                    String valueSelect = value.isNull() ? "SELECT value FROM test WHERE value IS NULL" : String.format("SELECT value FROM test WHERE value=%s", valueString);
+
+                    return it.then(Mono.from(connection.createStatement(valueSelect)
+                        .execute()))
+                        .<Optional<T>>flatMapMany(r -> extractOptionalField(r, type))
+                        .collectList()
+                        .map(list -> {
+                            assertEquals(list.size(), 1);
+                            return list.get(0);
+                        })
+                        .doOnNext(data -> {
+                            if (data.isPresent()) {
+                                T t = data.get();
+                                if (t.getClass().isArray()) {
+                                    assertArrayEquals((Object[]) t, (Object[]) value.value);
+                                } else {
+                                    assertEquals(t, value.value);
+                                }
+                            } else {
+                                assertNull(value.value);
+                            }
+                        });
+                }
+                return it;
+            })
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0").execute()))
             .flatMap(CompatibilityTestSupport::extractRowsUpdated)
             .doOnNext(u -> assertEquals(u, 1))
@@ -207,7 +265,9 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
 
     private static final class Functions {
 
-        private static final Function<String, String> STRING = Function.identity();
+        private static final Function<String[], String> STRING_ARRAY = v -> String.join(",", v);
+
+        private static final Function<Set<?>, String> SET = s -> s.stream().map(Object::toString).collect(Collectors.joining(","));
 
         private static final Function<LocalDate, String> DATE = LocalDate::toString;
 
@@ -249,11 +309,6 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
         private ValueString(@Nullable T value, String serialized) {
             this.value = value;
             this.serialized = serialized;
-        }
-
-        @Nullable
-        T getValue() {
-            return value;
         }
 
         public boolean isNull() {

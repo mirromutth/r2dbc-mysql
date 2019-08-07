@@ -16,6 +16,8 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import org.junit.jupiter.api.Test;
+
 /**
  * An implementation of {@link PrepareQueryIntegrationTestSupport} for data integration in MySQL 5.7 prepared statement.
  */
@@ -23,5 +25,11 @@ final class MySql57PrepareQueryIntegrationTest extends PrepareQueryIntegrationTe
 
     MySql57PrepareQueryIntegrationTest() {
         super(MySql57Example.CONFIGURATION);
+    }
+
+    @Test
+    @Override
+    void json() {
+        testJson(null, "{\"data\": 1}", "[\"data\", 1]", "1");
     }
 }
