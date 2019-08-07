@@ -54,13 +54,13 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     private final Nullability nullability;
 
-    private final int size;
+    private final long size;
 
     private final int decimals;
 
     private final int collationId;
 
-    private MySqlColumnMetadata(int index, short type, String name, short definitions, boolean nonNull, int size, int decimals, int collationId) {
+    private MySqlColumnMetadata(int index, short type, String name, short definitions, boolean nonNull, long size, int decimals, int collationId) {
         require(index >= 0, "index must not be a negative integer");
         require(size >= 0, "size must not be a negative integer");
         require(decimals >= 0, "decimals must not be a negative integer");
@@ -200,11 +200,11 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
     @NonNull
     @Override
     public Integer getPrecision() {
-        return size;
+        return (int) size;
     }
 
     @Override
-    public int getSize() {
+    public long getSize() {
         return size;
     }
 

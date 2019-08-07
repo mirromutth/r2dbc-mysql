@@ -29,7 +29,7 @@ public interface FieldInformation {
 
     int getCollationId();
 
-    int getSize();
+    long getSize();
 
     @Nullable
     Class<?> getJavaType();

@@ -16,9 +16,11 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
+import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -46,7 +48,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     private final int collationId;
 
-    private final int size;
+    private final long size;
 
     private final short type;
 
@@ -56,7 +58,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     private DefinitionMetadataMessage(
         String database, String tableName, String originTableName, String name, String originName,
-        int collationId, int size, short type, short definitions, short decimals
+        int collationId, long size, short type, short definitions, short decimals
     ) {
         require(size >= 0, "size must not be a negative integer");
         require(collationId > 0, "collationId must be a positive integer");
@@ -85,7 +87,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         return collationId;
     }
 
-    public int getSize() {
+    public long getSize() {
         return size;
     }
 
@@ -165,9 +167,13 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         CodecUtils.readVarInt(buf); // skip constant 0x0c encoded by var integer
 
         int collationId = buf.readUnsignedShortLE();
-        int size = buf.readIntLE();
+        long size = buf.readUnsignedIntLE();
         short type = buf.readUnsignedByte();
         short definitions = buf.readShortLE();
+
+        if (DataTypes.JSON == type && collationId == CharCollation.BINARY_ID) {
+            collationId = CharCollation.clientCharCollation().getId();
+        }
 
         if ((definitions & ColumnDefinitions.SET) != 0) {
             // Maybe need to check if it is a string-like type?
