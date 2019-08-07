@@ -204,7 +204,7 @@ connection.createStatement("INSERT INTO `person` (`birth`, `nickname`, `show_nam
     .bind(1, "My Nickname")
     .bind(2, "Naming show")
     .returnGeneratedValues("generated_id")
-    .execute(); // return a Publisher include two Result.
+    .execute(); // return a Publisher include two Results.
 ```
 
 > Can only contains one statement (`SELECT`, `INSERT`, `UPDATE`, etc.).
@@ -218,7 +218,7 @@ connection.createStatement("INSERT INTO `person` (`birth`, `nickname`, `show_nam
 connection.createBatch()
     .add("INSERT INTO `person` (`first_name`, `last_name`) VALUES ('who', 'how')")
     .add("UPDATE `earth` SET `count` = `count` + 1 WHERE `id` = 'human'")
-    .execute(); // return a Publisher include two Result
+    .execute(); // return a Publisher include two Results.
 ```
 
 > The parameter of `add(String)` can only contains one statement, `;` will be removed if has only whitespace follow the `;`.
@@ -238,7 +238,7 @@ connection.beginTransaction()
         .bind(2, "Naming show")
         .returnGeneratedValues("generated_id")
         .execute()))
-    .concatMap(Result::getRowsUpdated) // Should consume one-by-one for multi-results
+    .flatMap(Result::getRowsUpdated)
     .then(connection.commitTransaction());
 ```
 
