@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -62,23 +63,24 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
 
         }.getType();
 
-        testType(String.class, "SET('ONE','TWO','THREE')", true, null, "ONE,TWO,THREE", "ONE", "", "ONE,THREE");
-        testType(String[].class, "SET('ONE','TWO','THREE')", true, null, new String[]{"ONE", "TWO", "THREE"}, new String[]{"ONE"}, new String[]{}, new String[]{"ONE", "THREE"});
-        testTypeRef(stringSet, "SET('ONE','TWO','THREE')", true, null, new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")), Collections.singleton("ONE"), Collections.emptySet(), new HashSet<>(Arrays.asList("ONE", "THREE")));
+        testTypeRef(String.class, "SET('ONE','TWO','THREE')", true, null, "ONE,TWO,THREE", "ONE", "", "ONE,THREE");
+        testTypeRef(String[].class, "SET('ONE','TWO','THREE')", true, null, new String[]{"ONE", "TWO", "THREE"}, new String[]{"ONE"}, new String[]{}, new String[]{"ONE", "THREE"});
+        testTypeRef(stringSet, "SET('ONE','TWO','THREE')", true, null, new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")), Collections.singleton("ONE"), Collections.emptySet(),
+            new HashSet<>(Arrays.asList("ONE", "THREE")));
         testTypeRef(enumSet, "SET('ONE','TWO','THREE')", true, null, EnumSet.allOf(EnumData.class), EnumSet.of(EnumData.ONE), EnumSet.noneOf(EnumData.class), EnumSet.of(EnumData.ONE, EnumData.THREE));
     }
 
     @Test
     @Override
     void date() {
-        testType(LocalDate.class, "DATE", true, null, MIN_DATE, MAX_DATE);
+        testTypeRef(LocalDate.class, "DATE", true, null, MIN_DATE, MAX_DATE);
     }
 
     @Test
     @Override
     void time() {
-        testType(LocalTime.class, "TIME", true, null, MIN_TIME, MAX_TIME);
-        testType(Duration.class, "TIME", true, null, MIN_DURATION, MAX_DURATION);
+        testTypeRef(LocalTime.class, "TIME", true, null, MIN_TIME, MAX_TIME);
+        testTypeRef(Duration.class, "TIME", true, null, MIN_DURATION, MAX_DURATION);
     }
 
     @Override
@@ -103,20 +105,28 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
     @Test
     @Override
     void dateTime() {
-        testType(LocalDateTime.class, "DATETIME", true, null, MIN_DATE_TIME, MAX_DATE_TIME);
+        testTypeRef(LocalDateTime.class, "DATETIME", true, null, MIN_DATE_TIME, MAX_DATE_TIME);
     }
 
     @Test
     @Override
     void timestamp() {
         // TIMESTAMP must not be null when database version less than 8.0
-        testType(LocalDateTime.class, "TIMESTAMP", true, MIN_TIMESTAMP, MAX_TIMESTAMP);
+        testTypeRef(LocalDateTime.class, "TIMESTAMP", true, MIN_TIMESTAMP, MAX_TIMESTAMP);
+    }
+
+    @Test
+    @Override
+    void bit() {
+        testTypeRef(Boolean.class, "BIT(1)", true, null, false, true);
+        testTypeRef(byte[].class, "BIT(16)", false, null, new byte[]{(byte) 0xCD, (byte) 0xEF});
+        testTypeRef(BitSet.class, "BIT(16)", false, null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
     }
 
     @SafeVarargs
     @SuppressWarnings("varargs")
     @Override
-    protected final <T> void testType(Class<T> type, String defined, boolean ignored, T... values) {
+    final <T> void testType(Class<T> type, String defined, boolean ignored, T... values) {
         // Should use simple statement for table definition.
         testTypeRef(type, defined, true, values);
     }
@@ -186,8 +196,13 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
             .doOnNext(data -> {
                 if (data.isPresent()) {
                     T t = data.get();
-                    if (t.getClass().isArray()) {
-                        assertArrayEquals((Object[]) t, (Object[]) value);
+                    Class<?> clazz = t.getClass();
+                    if (clazz.isArray()) {
+                        if (clazz == byte[].class) {
+                            assertArrayEquals((byte[]) t, (byte[]) value);
+                        } else {
+                            assertArrayEquals((Object[]) t, (Object[]) value);
+                        }
                     } else {
                         assertEquals(t, value);
                     }
@@ -216,8 +231,13 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
                         .doOnNext(data -> {
                             if (data.isPresent()) {
                                 T t = data.get();
-                                if (t.getClass().isArray()) {
-                                    assertArrayEquals((Object[]) t, (Object[]) value);
+                                Class<?> clazz = t.getClass();
+                                if (clazz.isArray()) {
+                                    if (clazz == byte[].class) {
+                                        assertArrayEquals((byte[]) t, (byte[]) value);
+                                    } else {
+                                        assertArrayEquals((Object[]) t, (Object[]) value);
+                                    }
                                 } else {
                                     assertEquals(t, value);
                                 }

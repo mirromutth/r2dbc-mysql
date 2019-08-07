@@ -19,6 +19,7 @@ package io.github.mirromutth.r2dbc.mysql;
 import io.r2dbc.spi.Connection;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
+import org.testcontainers.shaded.org.apache.commons.lang.ArrayUtils;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
@@ -32,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -92,10 +95,18 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
     @Test
     @Override
     void set() {
-        testType(String.class, "SET('ONE','TWO','THREE')", true, null, "ONE,TWO,THREE", "ONE", "", "ONE,THREE");
-        testTypeRef(String[].class, "SET('ONE','TWO','THREE')", Functions.STRING_ARRAY, null, new String[]{"ONE", "TWO", "THREE"}, new String[]{"ONE"}, new String[]{}, new String[]{"ONE", "THREE"});
-        testTypeRef(new TypeReference<Set<String>>() {}.getType(), "SET('ONE','TWO','THREE')", Functions.SET, null, new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")), Collections.singleton("ONE"), Collections.emptySet(), new HashSet<>(Arrays.asList("ONE", "THREE")));
-        testTypeRef(new TypeReference<Set<EnumData>>() {}.getType(), "SET('ONE','TWO','THREE')", Functions.SET, null, EnumSet.allOf(EnumData.class), EnumSet.of(EnumData.ONE), EnumSet.noneOf(EnumData.class), EnumSet.of(EnumData.ONE, EnumData.THREE));
+        Type stringSet = new TypeReference<Set<String>>() {
+
+        }.getType();
+        Type enumSet = new TypeReference<Set<EnumData>>() {
+
+        }.getType();
+        String defined = "SET('ONE','TWO','THREE')";
+
+        testType(String.class, defined, true, null, "ONE,TWO,THREE", "ONE", "", "ONE,THREE");
+        testTypeRef(String[].class, defined, Functions.STRING_ARRAY, null, new String[]{"ONE", "TWO", "THREE"}, new String[]{"ONE"}, new String[]{}, new String[]{"ONE", "THREE"});
+        testTypeRef(stringSet, defined, Functions.SET, null, new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")), Collections.singleton("ONE"), Collections.emptySet(), new HashSet<>(Arrays.asList("ONE", "THREE")));
+        testTypeRef(enumSet, defined, Functions.SET, null, EnumSet.allOf(EnumData.class), EnumSet.of(EnumData.ONE), EnumSet.noneOf(EnumData.class), EnumSet.of(EnumData.ONE, EnumData.THREE));
     }
 
     @Test
@@ -143,9 +154,17 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
         testTypeRef(LocalDateTime.class, "TIMESTAMP", Functions.DATE_TIME, MIN_TIMESTAMP, MAX_TIMESTAMP);
     }
 
+    @Test
+    @Override
+    void bit() {
+        testTypeQuota(Boolean.class, "BIT(1)", Functions.BOOLEAN, false, null, false, true);
+        testTypeQuota(byte[].class, "BIT(16)", Functions.BYTE_ARRAY, false, null, new byte[]{(byte) 0xCD, (byte) 0xEF});
+        testTypeQuota(BitSet.class, "BIT(16)", Functions.BIT_SET, false, null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
+    }
+
     @SafeVarargs
     @Override
-    protected final <T> void testType(Class<T> type, String defined, boolean quota, T... values) {
+    final <T> void testType(Class<T> type, String defined, boolean quota, T... values) {
         ValueString<?>[] v = new ValueString<?>[values.length];
 
         for (int i = 0; i < values.length; ++i) {
@@ -156,14 +175,20 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
     }
 
     @SafeVarargs
+    @SuppressWarnings("varargs")
     private final <T> void testTypeRef(Type type, String defined, Function<T, String> converter, T... values) {
+        testTypeQuota(type, defined, converter, true, values);
+    }
+
+    @SafeVarargs
+    private final <T> void testTypeQuota(Type type, String defined, Function<T, String> converter, boolean quota, T... values) {
         ValueString<?>[] v = new ValueString<?>[values.length];
 
         for (int i = 0; i < values.length; ++i) {
             v[i] = new ValueString<>(values[i], converter);
         }
 
-        testType(type, defined, true, true, v);
+        testType(type, defined, true, quota, v);
     }
 
     void testJson(String... values) {
@@ -221,10 +246,15 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             .doOnNext(data -> {
                 if (data.isPresent()) {
                     T t = data.get();
-                    if (t.getClass().isArray()) {
-                        assertArrayEquals((Object[]) data.get(), (Object[]) value.value);
+                    Class<?> clazz = t.getClass();
+                    if (clazz.isArray()) {
+                        if (clazz == byte[].class) {
+                            assertArrayEquals((byte[]) t, (byte[]) value.value);
+                        } else {
+                            assertArrayEquals((Object[]) t, (Object[]) value.value);
+                        }
                     } else {
-                        assertEquals(data.get(), value.value);
+                        assertEquals(t, value.value);
                     }
                 } else {
                     assertNull(value.value);
@@ -245,8 +275,13 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
                         .doOnNext(data -> {
                             if (data.isPresent()) {
                                 T t = data.get();
-                                if (t.getClass().isArray()) {
-                                    assertArrayEquals((Object[]) t, (Object[]) value.value);
+                                Class<?> clazz = t.getClass();
+                                if (clazz.isArray()) {
+                                    if (clazz == byte[].class) {
+                                        assertArrayEquals((byte[]) t, (byte[]) value.value);
+                                    } else {
+                                        assertArrayEquals((Object[]) t, (Object[]) value.value);
+                                    }
                                 } else {
                                     assertEquals(t, value.value);
                                 }
@@ -272,6 +307,19 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
         private static final Function<LocalDate, String> DATE = LocalDate::toString;
 
         private static final Function<LocalTime, String> TIME = TIME_FORMATTER::format;
+
+        private static final Function<Boolean, String> BOOLEAN = b -> b ? "b'1'" : "b'0'";
+
+        private static final Function<byte[], String> BYTE_ARRAY = bytes -> IntStream.range(0, bytes.length).mapToObj(idx -> {
+            byte b = bytes[idx];
+            return String.format("%d%d%d%d%d%d%d%d", (b >>> 7) & 1, (b >>> 6) & 1, (b >>> 5) & 1, (b >>> 4) & 1, (b >>> 3) & 1, (b >>> 2) & 1, (b >>> 1) & 1, b & 1);
+        }).collect(Collectors.joining("", "b'", "'"));
+
+        private static final Function<BitSet, String> BIT_SET = b -> {
+            byte[] bytes = b.toByteArray();
+            ArrayUtils.reverse(bytes);
+            return BYTE_ARRAY.apply(bytes);
+        };
 
         private static final Function<Duration, String> DURATION = duration -> {
             boolean isNegative = duration.isNegative();

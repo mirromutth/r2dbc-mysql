@@ -199,6 +199,8 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
         testType(EnumData.class, "ENUM('ONE','TWO','THREE')", true, null, EnumData.ONE, EnumData.TWO, EnumData.THREE);
     }
 
+    abstract void bit();
+
     abstract void set();
 
     void json() {
