@@ -51,7 +51,7 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
-        return new ByteValue((byte) value);
+        return new ByteValue((Byte) value);
     }
 
     @Override
@@ -59,11 +59,11 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
         return DataTypes.TINYINT == info.getType() && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
     }
 
-    private static final class ByteValue extends AbstractParameterValue {
+    static final class ByteValue extends AbstractParameterValue {
 
         private final byte value;
 
-        private ByteValue(byte value) {
+        ByteValue(byte value) {
             this.value = value;
         }
 

@@ -55,7 +55,17 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
-        return encodeOfInt((Integer) value);
+        int v = (Integer) value;
+
+        if ((byte) v == v) {
+            return new ByteCodec.ByteValue((byte) v);
+        }
+
+        if ((short) v == v) {
+            return new ShortCodec.ShortValue((short) v);
+        }
+
+        return new IntValue(v);
     }
 
     @Override
@@ -92,10 +102,6 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         return isNegative ? -value : value;
     }
 
-    static ParameterValue encodeOfInt(int value) {
-        return new IntValue(value);
-    }
-
     private static boolean isLowerInt(short type) {
         return DataTypes.TINYINT == type ||
             DataTypes.YEAR == type ||
@@ -125,11 +131,11 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         }
     }
 
-    private static final class IntValue extends AbstractParameterValue {
+    static final class IntValue extends AbstractParameterValue {
 
         private final int value;
 
-        private IntValue(int value) {
+        IntValue(int value) {
             this.value = value;
         }
 

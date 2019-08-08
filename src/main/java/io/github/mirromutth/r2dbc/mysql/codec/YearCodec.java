@@ -20,8 +20,6 @@ import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
-import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
-import reactor.core.publisher.Mono;
 
 import java.time.Year;
 
@@ -54,60 +52,22 @@ final class YearCodec extends AbstractClassedCodec<Year> {
 
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
-        return encodeOfYear((Year) value);
+        int year = ((Year) value).getValue();
+
+        if ((byte) year == year) {
+            return new ByteCodec.ByteValue((byte) year);
+        }
+
+        if ((short) year == year) {
+            return new ShortCodec.ShortValue((short) year);
+        }
+
+        // Unsupported, but should be considered here.
+        return new IntegerCodec.IntValue(year);
     }
 
     @Override
     public boolean doCanDecode(FieldInformation info) {
         return DataTypes.YEAR == info.getType();
-    }
-
-    private static ParameterValue encodeOfYear(Year year) {
-        int value = year.getValue();
-
-        if ((short) value != value) {
-            // Unsupported, but should be considered here.
-            return IntegerCodec.encodeOfInt(value);
-        }
-
-        return new YearValue((short) value);
-    }
-
-    private static final class YearValue extends AbstractParameterValue {
-
-        private final short year;
-
-        private YearValue(short year) {
-            this.year = year;
-        }
-
-        @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeShort(year));
-        }
-
-        @Override
-        public short getType() {
-            return DataTypes.SMALLINT;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof YearValue)) {
-                return false;
-            }
-
-            YearValue yearValue = (YearValue) o;
-
-            return year == yearValue.year;
-        }
-
-        @Override
-        public int hashCode() {
-            return year;
-        }
     }
 }

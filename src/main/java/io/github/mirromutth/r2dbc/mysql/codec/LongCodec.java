@@ -77,7 +77,21 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
-        return new LongValue((Long) value);
+        long v = (Long) value;
+
+        if ((byte) v == v) {
+            return new ByteCodec.ByteValue((byte) v);
+        }
+
+        if ((short) v == v) {
+            return new ShortCodec.ShortValue((short) v);
+        }
+
+        if ((int) v == v) {
+            return new IntegerCodec.IntValue((int) v);
+        }
+
+        return new LongValue(v);
     }
 
     @Override

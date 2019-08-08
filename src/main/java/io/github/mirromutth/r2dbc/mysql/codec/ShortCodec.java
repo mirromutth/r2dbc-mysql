@@ -65,7 +65,13 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
 
     @Override
     public ParameterValue encode(Object value, MySqlSession session) {
-        return new ShortValue((Short) value);
+        short v = (Short) value;
+
+        if ((byte) v == v) {
+            return new ByteCodec.ByteValue((byte) v);
+        }
+
+        return new ShortValue(v);
     }
 
     @Override
@@ -80,11 +86,11 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
         return DataTypes.SMALLINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
     }
 
-    private static final class ShortValue extends AbstractParameterValue {
+    static final class ShortValue extends AbstractParameterValue {
 
         private final short value;
 
-        private ShortValue(short value) {
+        ShortValue(short value) {
             this.value = value;
         }
 
