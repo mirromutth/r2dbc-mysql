@@ -112,29 +112,27 @@ final class LongCodec implements PrimitiveCodec<Long> {
      * @return an integer from {@code buf}.
      */
     static long parse(ByteBuf buf) {
-        long value = 0;
-        int first = buf.readByte();
-        final boolean isNegative;
+        byte first = buf.readByte();
+        boolean isNegative;
+        long value;
 
         if (first == '-') {
             isNegative = true;
+            value = 0L;
         } else if (first >= '0' && first <= '9') {
             isNegative = false;
-            value = first - '0';
+            value = (long) first - '0';
         } else {
-            // must be '+'
+            // Must be '+'.
             isNegative = false;
+            value = 0L;
         }
 
         while (buf.isReadable()) {
             value = value * 10L + (buf.readByte() - '0');
         }
 
-        if (isNegative) {
-            return -value;
-        } else {
-            return value;
-        }
+        return isNegative ? -value : value;
     }
 
     private static long decodeBinary(ByteBuf buf, short type, boolean isUnsigned) {

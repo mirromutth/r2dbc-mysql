@@ -81,18 +81,20 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
      * @return an integer from {@code buf}.
      */
     static int parse(ByteBuf buf) {
-        int value = 0;
-        int first = buf.readByte();
-        final boolean isNegative;
+        byte first = buf.readByte();
+        boolean isNegative;
+        int value;
 
         if (first == '-') {
             isNegative = true;
+            value = 0;
         } else if (first >= '0' && first <= '9') {
             isNegative = false;
             value = first - '0';
         } else {
-            // must be '+'
+            // Must be '+'.
             isNegative = false;
+            value = 0;
         }
 
         while (buf.isReadable()) {
