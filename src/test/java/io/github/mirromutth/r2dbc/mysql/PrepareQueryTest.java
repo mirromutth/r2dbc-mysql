@@ -29,9 +29,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Unit tests for {@link Query} with the parsing logic in {@link Queries}.
+ * Unit tests for {@link PrepareQuery}.
  */
-class QueryParseTest {
+class PrepareQueryTest {
 
     @Test
     void parse() {
@@ -95,19 +95,20 @@ class QueryParseTest {
     }
 
     private static void assertPrepareQuery(String sql, String parsedSql, Map<String, int[]> nameKeyedIndexes, int parameters) {
-        Query query = Queries.parse(sql);
-        assertTrue(query instanceof PrepareQuery);
-        PrepareQuery prepare = (PrepareQuery) query;
-        assertEquals(prepare.getSql(), parsedSql);
-        assertEquals(prepare.getParameters(), parameters);
-        assertEquals(prepare.getParameterNames(), nameKeyedIndexes.keySet());
+        int index = PrepareQuery.indexOfParameter(sql);
+        assertTrue(index >= 0);
+        PrepareQuery query = PrepareQuery.parse(sql, index);
+        assertEquals(query.getSql(), parsedSql);
+        assertEquals(query.getParameters(), parameters);
+        assertEquals(query.getParameterNames(), nameKeyedIndexes.keySet());
         for (Map.Entry<String, int[]> entry : nameKeyedIndexes.entrySet()) {
-            assertArrayEquals(prepare.getIndexes(entry.getKey()), entry.getValue());
+            assertArrayEquals(query.getIndexes(entry.getKey()), entry.getValue());
         }
     }
 
     private static void assertSimpleQuery(String sql) {
-        assertTrue(Queries.parse(sql) instanceof SimpleQuery);
+        int index = PrepareQuery.indexOfParameter(sql);
+        assertTrue(index < 0);
     }
 
     private static Tuple2<String, int[]> link(String name, int... indexes) {

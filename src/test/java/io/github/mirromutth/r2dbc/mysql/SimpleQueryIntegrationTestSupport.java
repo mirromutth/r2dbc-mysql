@@ -359,7 +359,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             this.serialized = serialized;
         }
 
-        public boolean isNull() {
+        private boolean isNull() {
             return value == null;
         }
 

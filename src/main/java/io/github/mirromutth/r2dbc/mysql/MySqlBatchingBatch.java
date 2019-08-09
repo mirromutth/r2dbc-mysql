@@ -35,7 +35,7 @@ final class MySqlBatchingBatch extends MySqlBatch {
 
     private final MySqlSession session;
 
-    private final BatchQuery query = new BatchQuery();
+    private StringBuilder builder;
 
     MySqlBatchingBatch(Client client, Codecs codecs, MySqlSession session) {
         this.client = requireNonNull(client, "client must not be null");
@@ -45,13 +45,23 @@ final class MySqlBatchingBatch extends MySqlBatch {
 
     @Override
     public MySqlBatch add(String sql) {
-        query.add(sql);
+        requireNonNull(sql, "sql must not be null");
+
+        int index = lastNonWhitespace(sql);
+
+        if (index >= 0 && sql.charAt(index) == ';') {
+            // Skip last ';' and whitespaces that following last ';'.
+            requireBuilder().append(sql, 0, index);
+        } else {
+            requireBuilder().append(sql);
+        }
+
         return this;
     }
 
     @Override
     public Flux<MySqlResult> execute() {
-        return SimpleQueryFlow.execute(client, query.getSql())
+        return SimpleQueryFlow.execute(client, getSql())
             .windowUntil(SimpleQueryFlow.RESULT_DONE)
             .map(messages -> new MySqlResult(codecs, session, null, messages));
     }
@@ -59,5 +69,34 @@ final class MySqlBatchingBatch extends MySqlBatch {
     @Override
     public String toString() {
         return "MySqlBatchingBatch{sql=REDACTED}";
+    }
+
+    /**
+     * Accessible for unit test.
+     *
+     * @return current batching SQL statement
+     */
+    String getSql() {
+        return builder.toString();
+    }
+
+    private StringBuilder requireBuilder() {
+        if (builder == null) {
+            return (builder = new StringBuilder());
+        }
+
+        return builder.append(';');
+    }
+
+    private static int lastNonWhitespace(String sql) {
+        int size = sql.length();
+
+        for (int i = size - 1; i >= 0; --i) {
+            if (!Character.isWhitespace(sql.charAt(i))) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 }

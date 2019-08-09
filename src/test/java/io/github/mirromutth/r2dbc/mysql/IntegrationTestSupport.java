@@ -58,6 +58,8 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
 
     private static final BigInteger UINT64_MAX_VALUE = new BigInteger("18446744073709551615");
 
+    private static final List<Tuple2<Duration, LocalTime>> DURATION_TIME_CASES;
+
     static final Duration MIN_DURATION = Duration.ofSeconds(-TimeUnit.HOURS.toSeconds(838) - TimeUnit.MINUTES.toSeconds(59) - 59);
 
     static final Duration MAX_DURATION = Duration.ofSeconds(TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 59);
@@ -77,8 +79,6 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
     static final LocalDateTime MIN_TIMESTAMP = LocalDateTime.of(1970, 1, 3, 0, 0, 0);
 
     static final LocalDateTime MAX_TIMESTAMP = LocalDateTime.of(2038, 1, 15, 23, 59, 59);
-
-    static final List<Tuple2<Duration, LocalTime>> DURATION_TIME_CASES;
 
     static {
         Duration negativeOne = Duration.ofSeconds(-1);

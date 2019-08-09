@@ -21,7 +21,7 @@ import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 /**
  * Base class considers primitive class for {@link Codec} implementations.
  */
-public interface PrimitiveCodec<T> extends Codec<T, NormalFieldValue, Class<? super T>> {
+interface PrimitiveCodec<T> extends Codec<T, NormalFieldValue, Class<? super T>> {
 
     boolean canPrimitiveDecode(FieldInformation info);
 
