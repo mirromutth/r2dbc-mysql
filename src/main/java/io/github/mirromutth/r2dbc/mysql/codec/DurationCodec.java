@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
@@ -41,7 +41,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     }
 
     @Override
-    public Duration decode(NormalFieldValue value, FieldInformation info, Class<? super Duration> target, boolean binary, MySqlSession session) {
+    public Duration decode(NormalFieldValue value, FieldInformation info, Class<? super Duration> target, boolean binary, ConnectionContext context) {
         if (binary) {
             return decodeBinary(value.getBufferSlice());
         } else {
@@ -55,7 +55,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         return new DurationValue((Duration) value);
     }
 

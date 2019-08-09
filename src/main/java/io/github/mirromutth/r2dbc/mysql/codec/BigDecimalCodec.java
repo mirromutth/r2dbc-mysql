@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
@@ -39,7 +39,7 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    public BigDecimal decode(NormalFieldValue value, FieldInformation info, Class<? super BigDecimal> target, boolean binary, MySqlSession session) {
+    public BigDecimal decode(NormalFieldValue value, FieldInformation info, Class<? super BigDecimal> target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
 
         if (binary) {
@@ -74,7 +74,7 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         return new BigDecimalValue((BigDecimal) value);
     }
 

@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
@@ -42,7 +42,7 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
     }
 
     @Override
-    public String[] decode(NormalFieldValue value, FieldInformation info, Class<? super String[]> target, boolean binary, MySqlSession session) {
+    public String[] decode(NormalFieldValue value, FieldInformation info, Class<? super String[]> target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
@@ -50,7 +50,7 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
         }
 
         int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
-        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
+        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
 
         if (firstComma < 0) {
             return new String[] { buf.toString(charset) };
@@ -65,8 +65,8 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
-        return new StringArrayValue((CharSequence[]) value, session);
+    public ParameterValue encode(Object value, ConnectionContext context) {
+        return new StringArrayValue((CharSequence[]) value, context);
     }
 
     @Override
@@ -78,16 +78,16 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
 
         private final CharSequence[] value;
 
-        private final MySqlSession session;
+        private final ConnectionContext context;
 
-        private StringArrayValue(CharSequence[] value, MySqlSession session) {
+        private StringArrayValue(CharSequence[] value, ConnectionContext context) {
             this.value = value;
-            this.session = session;
+            this.context = context;
         }
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeSet(Arrays.asList(value), session.getCollation()));
+            return Mono.fromRunnable(() -> writer.writeSet(Arrays.asList(value), context.getCollation()));
         }
 
         @Override

@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
@@ -43,7 +43,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public LocalDate decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDate> target, boolean binary, MySqlSession session) {
+    public LocalDate decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDate> target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
         int index = buf.readerIndex();
         int bytes = buf.readableBytes();
@@ -52,7 +52,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
             LocalDate date = readDateBinary(buf, bytes);
 
             if (date == null) {
-                return ZeroDateHandler.handle(session.getZeroDateOption(), true, buf, index, bytes, ROUND);
+                return ZeroDateHandler.handle(context.getZeroDateOption(), true, buf, index, bytes, ROUND);
             } else {
                 return date;
             }
@@ -60,7 +60,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
             LocalDate date = readDateText(buf);
 
             if (date == null) {
-                return ZeroDateHandler.handle(session.getZeroDateOption(), false, buf, index, bytes, ROUND);
+                return ZeroDateHandler.handle(context.getZeroDateOption(), false, buf, index, bytes, ROUND);
             }
 
             return date;
@@ -73,7 +73,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         return new LocalDateValue((LocalDate) value);
     }
 

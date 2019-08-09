@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 
@@ -37,7 +37,7 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     }
 
     @Override
-    public Year decode(NormalFieldValue value, FieldInformation info, Class<? super Year> target, boolean binary, MySqlSession session) {
+    public Year decode(NormalFieldValue value, FieldInformation info, Class<? super Year> target, boolean binary, ConnectionContext context) {
         if (binary) {
             return Year.of(value.getBufferSlice().readShortLE());
         } else {
@@ -51,7 +51,7 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         int year = ((Year) value).getValue();
 
         if ((byte) year == year) {

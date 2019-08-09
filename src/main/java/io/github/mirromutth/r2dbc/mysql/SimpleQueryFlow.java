@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 /**
- * Simple (direct) query message flow for {@link MySqlBatch} and {@link SimpleQueryMySqlStatement}.
+ * Simple (direct) query message flow for {@link MySqlBatch} and {@link SimpleMySqlStatement}.
  */
 final class SimpleQueryFlow {
 

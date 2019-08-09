@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
@@ -33,22 +33,22 @@ abstract class LargeClientMessage implements ClientMessage {
      * Returning any length fragments of encoded message that do not care about envelopes.
      *
      * @param allocator the {@link ByteBufAllocator} to use to get a {@link ByteBuf} data buffer to write into.
-     * @param session   current MySQL session.
-     * @return encoded fragments of any length.
+     * @param context   current MySQL connection context
+     * @return encoded fragments of any length
      */
-    abstract protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, MySqlSession session);
+    abstract protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context);
 
     /**
      * @param allocator the {@link ByteBufAllocator} to use to get a {@link ByteBuf} data buffer to write into.
-     * @param session   current MySQL session
-     * @return lazy loading {@link ByteBuf}s sliced by {@code Envelopes.MAX_ENVELOPE_SIZE}.
+     * @param context   current MySQL connection context
+     * @return lazy loading {@link ByteBuf}s sliced by {@code Envelopes.MAX_ENVELOPE_SIZE}
      */
     @Override
-    public Flux<ByteBuf> encode(ByteBufAllocator allocator, MySqlSession session) {
+    public Flux<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
         requireNonNull(allocator, "allocator must not be null");
-        requireNonNull(session, "session must not be null");
+        requireNonNull(context, "context must not be null");
 
-        return Flux.create(sink -> fragments(allocator, session)
+        return Flux.create(sink -> fragments(allocator, context)
             .subscribe(new LargeMessageSlicer(allocator, sink)));
     }
 }

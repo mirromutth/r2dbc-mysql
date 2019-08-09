@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -37,9 +37,9 @@ abstract class FixedSizeClientMessage implements ClientMessage {
     abstract protected void writeTo(ByteBuf buf);
 
     @Override
-    public Mono<ByteBuf> encode(ByteBufAllocator allocator, MySqlSession session) {
+    public Mono<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
         requireNonNull(allocator, "allocator must not be null");
-        requireNonNull(session, "session must not be null");
+        requireNonNull(context, "context must not be null");
 
         return Mono.fromSupplier(() -> {
             int s = size();

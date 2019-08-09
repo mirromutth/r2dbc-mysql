@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.message.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -114,11 +114,11 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
     }
 
     @Override
-    protected void writeTo(ByteBuf buf, MySqlSession session) {
+    protected void writeTo(ByteBuf buf, ConnectionContext context) {
         head.writeTo(buf);
 
         int capabilities = head.getCapabilities();
-        Charset charset = session.getCollation().getCharset();
+        Charset charset = context.getCollation().getCharset();
 
         CodecUtils.writeCString(buf, username, charset);
 

@@ -24,13 +24,13 @@ import io.github.mirromutth.r2dbc.mysql.constant.ZeroDateOption;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * The MySQL session considers the behavior of server or client.
+ * The MySQL connection context considers the behavior of server or client.
  * <p>
  * WARNING: It is internal data structure, do NOT use it outer than {@literal r2dbc-mysql},
  * try configure {@code ConnectionFactoryOptions} or {@code MySqlConnectionConfiguration}
- * to control session and client behavior.
+ * to control connection context and client behavior.
  */
-public final class MySqlSession {
+public final class ConnectionContext {
 
     private volatile int connectionId = -1;
 
@@ -53,7 +53,7 @@ public final class MySqlSession {
 
     private volatile int capabilities = 0;
 
-    public MySqlSession(String database, ZeroDateOption zeroDateOption) {
+    public ConnectionContext(String database, ZeroDateOption zeroDateOption) {
         this.database = requireNonNull(database, "database must not be null");
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
     }

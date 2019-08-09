@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
@@ -50,7 +50,7 @@ public final class MySqlResult implements Result {
 
     private final Codecs codecs;
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     @Nullable
     private final String generatedKeyName;
@@ -64,9 +64,9 @@ public final class MySqlResult implements Result {
     /**
      * @param messages must include complete signal.
      */
-    MySqlResult(Codecs codecs, MySqlSession session, @Nullable String generatedKeyName, Flux<ServerMessage> messages) {
+    MySqlResult(Codecs codecs, ConnectionContext context, @Nullable String generatedKeyName, Flux<ServerMessage> messages) {
         this.codecs = requireNonNull(codecs, "codecs must not be null");
-        this.session = requireNonNull(session, "session must not be null");
+        this.context = requireNonNull(context, "context must not be null");
         this.generatedKeyName = generatedKeyName;
         this.messages = new AtomicReference<>(requireNonNull(messages, "messages must not be null"));
     }
@@ -149,7 +149,7 @@ public final class MySqlResult implements Result {
             return;
         }
 
-        MySqlRow row = new MySqlRow(message.getFields(), rowMetadata, this.codecs, message.isBinary(), this.session);
+        MySqlRow row = new MySqlRow(message.getFields(), rowMetadata, this.codecs, message.isBinary(), this.context);
         T t;
 
         try {

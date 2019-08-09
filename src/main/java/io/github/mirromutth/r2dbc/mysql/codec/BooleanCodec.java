@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
@@ -35,7 +35,7 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public Boolean decode(NormalFieldValue value, FieldInformation info, Class<? super Boolean> target, boolean binary, MySqlSession session) {
+    public Boolean decode(NormalFieldValue value, FieldInformation info, Class<? super Boolean> target, boolean binary, ConnectionContext context) {
         return value.getBufferSlice().readBoolean();
     }
 
@@ -45,7 +45,7 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         return (Boolean) value ? BooleanValue.TRUE : BooleanValue.FALSE;
     }
 

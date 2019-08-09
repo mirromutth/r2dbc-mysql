@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.MySqlSslConfiguration;
 import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import io.github.mirromutth.r2dbc.mysql.constant.TlsVersions;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -60,7 +60,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
      */
     private static final ServerVersion TLS1_2_ENTERPRISE_VER = ServerVersion.create(5, 6, 0);
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     private final boolean verifyIdentity;
 
@@ -68,8 +68,8 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
 
     private volatile MySqlSslConfiguration ssl;
 
-    SslBridgeHandler(MySqlSession session, MySqlSslConfiguration ssl) {
-        this.session = requireNonNull(session, "session must not be null");
+    SslBridgeHandler(ConnectionContext context, MySqlSslConfiguration ssl) {
+        this.context = requireNonNull(context, "context must not be null");
         this.ssl = requireNonNull(ssl, "ssl must not be null");
         this.verifyIdentity = ssl.getSslMode().verifyIdentity();
     }
@@ -127,7 +127,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                     return;
                 }
 
-                SslProvider sslProvider = buildProvider(ssl, session.getServerVersion());
+                SslProvider sslProvider = buildProvider(ssl, context.getServerVersion());
                 SslHandler sslHandler = sslProvider.getSslContext().newHandler(ctx.alloc());
 
                 this.sslEngine = sslHandler.engine();

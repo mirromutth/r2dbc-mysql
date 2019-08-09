@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
@@ -41,7 +41,7 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    public byte[] decode(NormalFieldValue value, FieldInformation info, Class<? super byte[]> target, boolean binary, MySqlSession session) {
+    public byte[] decode(NormalFieldValue value, FieldInformation info, Class<? super byte[]> target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
@@ -56,7 +56,7 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         return new ByteArrayValue((byte[]) value);
     }
 

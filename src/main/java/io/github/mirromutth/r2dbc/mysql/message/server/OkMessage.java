@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
@@ -26,7 +26,7 @@ import java.nio.charset.Charset;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * OK message.
+ * OK message, it maybe a complete signal of command, or a succeed signal for the Connection Phase of connection lifecycle.
  * <p>
  * Note: OK message are also used to indicate EOF and EOF message are deprecated as of MySQL 5.7.5.
  */
@@ -128,7 +128,7 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
         return bytes >= MIN_SIZE;
     }
 
-    static OkMessage decode(ByteBuf buf, MySqlSession session) {
+    static OkMessage decode(ByteBuf buf, ConnectionContext context) {
         buf.skipBytes(1); // OK message header, 0x00 or 0xFE
 
         long affectedRows = CodecUtils.readVarInt(buf);
@@ -137,7 +137,7 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
         int warnings = buf.readUnsignedShortLE();
 
         if (buf.isReadable()) {
-            Charset charset = session.getCollation().getCharset();
+            Charset charset = context.getCollation().getCharset();
             int sizeAfterVarInt = CodecUtils.checkNextVarInt(buf);
 
             if (sizeAfterVarInt < 0) {
@@ -152,7 +152,7 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
                 } else {
                     information = buf.toString(buf.readerIndex(), (int) size, charset);
                 }
-                // ignore session state information, it is not human readable and useless for client
+                // Ignore state information of session track, it is not human readable and useless for R2DBC client.
                 return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);
             }
         } else { // maybe have no human-readable message

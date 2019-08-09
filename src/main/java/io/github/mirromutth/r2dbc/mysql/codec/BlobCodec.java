@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.codec.lob.ScalarBlob;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.LargeFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
@@ -46,7 +46,7 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
     }
 
     @Override
-    public Blob decode(FieldValue value, FieldInformation info, Class<? super Blob> target, boolean binary, MySqlSession session) {
+    public Blob decode(FieldValue value, FieldInformation info, Class<? super Blob> target, boolean binary, ConnectionContext context) {
         if (value instanceof NormalFieldValue) {
             return ScalarBlob.retain(((NormalFieldValue) value).getBufferSlice());
         }
@@ -78,7 +78,7 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         return new BlobValue((Blob) value);
     }
 

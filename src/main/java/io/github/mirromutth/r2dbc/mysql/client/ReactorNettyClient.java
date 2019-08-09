@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.MySqlSslConfiguration;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
@@ -51,24 +51,24 @@ final class ReactorNettyClient implements Client {
 
     private final EmitterProcessor<ServerMessage> responseProcessor = EmitterProcessor.create(false);
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     private final AtomicBoolean closing = new AtomicBoolean();
 
-    ReactorNettyClient(Connection connection, MySqlSslConfiguration ssl, MySqlSession session) {
+    ReactorNettyClient(Connection connection, MySqlSslConfiguration ssl, ConnectionContext context) {
         requireNonNull(connection, "connection must not be null");
-        requireNonNull(session, "session must not be null");
+        requireNonNull(context, "context must not be null");
         requireNonNull(ssl, "ssl must not be null");
 
         this.connection = connection;
-        this.session = session;
+        this.context = context;
 
         // Note: encoder/decoder should before reactor bridge.
         connection.addHandlerLast(EnvelopeSlicer.NAME, new EnvelopeSlicer())
-            .addHandlerLast(MessageDuplexCodec.NAME, new MessageDuplexCodec(session, this.closing));
+            .addHandlerLast(MessageDuplexCodec.NAME, new MessageDuplexCodec(context, this.closing));
 
         if (ssl.getSslMode().startSsl()) {
-            connection.addHandlerFirst(SslBridgeHandler.NAME, new SslBridgeHandler(session, ssl));
+            connection.addHandlerFirst(SslBridgeHandler.NAME, new SslBridgeHandler(context, ssl));
         }
 
         if (InternalLoggerFactory.getInstance(ReactorNettyClient.class).isTraceEnabled()) {
@@ -176,7 +176,7 @@ final class ReactorNettyClient implements Client {
 
     @Override
     public String toString() {
-        return String.format("ReactorNettyClient(%s){connectionId=%d}", this.closing.get() ? "closing or closed" : "activating", session.getConnectionId());
+        return String.format("ReactorNettyClient(%s){connectionId=%d}", this.closing.get() ? "closing or closed" : "activating", context.getConnectionId());
     }
 
     private Future<Void> send(ClientMessage message) {

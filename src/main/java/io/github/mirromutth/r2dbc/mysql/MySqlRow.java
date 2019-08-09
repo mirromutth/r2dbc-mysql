@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCountUtil;
@@ -45,14 +45,14 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
      */
     private final boolean binary;
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
-    MySqlRow(FieldValue[] fields, MySqlRowMetadata rowMetadata, Codecs codecs, boolean binary, MySqlSession session) {
+    MySqlRow(FieldValue[] fields, MySqlRowMetadata rowMetadata, Codecs codecs, boolean binary, ConnectionContext context) {
         this.fields = requireNonNull(fields, "fields must not be null");
         this.rowMetadata = requireNonNull(rowMetadata, "rowMetadata must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.binary = binary;
-        this.session = requireNonNull(session, "session must not be null");
+        this.context = requireNonNull(context, "context must not be null");
     }
 
     @Override
@@ -96,6 +96,6 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
         MySqlColumnMetadata info = rowMetadata.getColumnMetadata(identifier);
         FieldValue field = fields[info.getIndex()];
 
-        return codecs.decode(field, info, type, binary, session);
+        return codecs.decode(field, info, type, binary, context);
     }
 }

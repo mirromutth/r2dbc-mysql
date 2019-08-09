@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 import io.github.mirromutth.r2dbc.mysql.constant.DataValues;
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.constant.Headers;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
@@ -43,15 +43,16 @@ public final class ServerMessageDecoder {
     private final List<ByteBuf> parts = new ArrayList<>();
 
     @Nullable
-    public ServerMessage decode(ByteBuf envelope, MySqlSession session, DecodeContext decodeContext, @Nullable SequenceIdProvider.Linkable idProvider) {
+    public ServerMessage decode(ByteBuf envelope, ConnectionContext context, DecodeContext decodeContext, @Nullable SequenceIdProvider.Linkable idProvider) {
         requireNonNull(envelope, "envelope must not be null");
-        requireNonNull(session, "session must not be null");
+        requireNonNull(context, "context must not be null");
+        requireNonNull(decodeContext, "decodeContext must not be null");
 
         if (readNotFinish(envelope, idProvider)) {
             return null;
         }
 
-        return decodeMessage(parts, session, decodeContext);
+        return decodeMessage(parts, context, decodeContext);
     }
 
     public void dispose() {
@@ -65,33 +66,33 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static ServerMessage decodeMessage(List<ByteBuf> buffers, MySqlSession session, DecodeContext context) {
-        if (context instanceof ResultDecodeContext) {
+    private static ServerMessage decodeMessage(List<ByteBuf> buffers, ConnectionContext context, DecodeContext decodeContext) {
+        if (decodeContext instanceof ResultDecodeContext) {
             // Maybe very large.
-            return decodeResult(buffers, session, (ResultDecodeContext) context);
+            return decodeResult(buffers, context, (ResultDecodeContext) decodeContext);
         }
 
         ByteBuf joined = JOINER.join(buffers);
 
         try {
-            if (context instanceof PreparedMetadataDecodeContext) {
-                return decodePreparedMetadata(joined, session, (PreparedMetadataDecodeContext) context);
-            } else if (context instanceof WaitPrepareDecodeContext) {
-                return decodeOnWaitPrepare(joined, session);
-            } else if (context instanceof CommandDecodeContext) {
-                return decodeCommandMessage(joined, session);
-            } else if (context instanceof ConnectionDecodeContext) {
-                return decodeConnectionMessage(joined, session);
+            if (decodeContext instanceof PreparedMetadataDecodeContext) {
+                return decodePreparedMetadata(joined, context, (PreparedMetadataDecodeContext) decodeContext);
+            } else if (decodeContext instanceof WaitPrepareDecodeContext) {
+                return decodeOnWaitPrepare(joined, context);
+            } else if (decodeContext instanceof CommandDecodeContext) {
+                return decodeCommandMessage(joined, context);
+            } else if (decodeContext instanceof ConnectionDecodeContext) {
+                return decodeConnectionMessage(joined, context);
             }
         } finally {
             joined.release();
         }
 
-        throw new IllegalStateException("unknown decode context type: " + context.getClass());
+        throw new IllegalStateException("unknown decode context type: " + decodeContext.getClass());
     }
 
     @Nullable
-    private static ServerMessage decodePreparedMetadata(ByteBuf buf, MySqlSession session, PreparedMetadataDecodeContext context) {
+    private static ServerMessage decodePreparedMetadata(ByteBuf buf, ConnectionContext context, PreparedMetadataDecodeContext decodeContext) {
         short header = buf.getUnsignedByte(buf.readerIndex());
 
         if (header == Headers.ERROR) {
@@ -101,15 +102,15 @@ public final class ServerMessageDecoder {
             return ErrorMessage.decode(buf);
         }
 
-        if (context.isInMetadata()) {
-            return decodeInMetadata(buf, header, session, context);
+        if (decodeContext.isInMetadata()) {
+            return decodeInMetadata(buf, header, context, decodeContext);
         }
 
         throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on prepared metadata phase", header, buf.readableBytes()));
     }
 
     @Nullable
-    private static ServerMessage decodeResult(List<ByteBuf> buffers, MySqlSession session, ResultDecodeContext context) {
+    private static ServerMessage decodeResult(List<ByteBuf> buffers, ConnectionContext context, ResultDecodeContext decodeContext) {
         ByteBuf firstBuf = buffers.get(0);
         short header = firstBuf.getUnsignedByte(firstBuf.readerIndex());
 
@@ -125,28 +126,28 @@ public final class ServerMessageDecoder {
             }
         }
 
-        if (context.isInMetadata()) {
+        if (decodeContext.isInMetadata()) {
             ByteBuf joined = JOINER.join(buffers);
             try {
-                return decodeInMetadata(joined, header, session, context);
+                return decodeInMetadata(joined, header, context, decodeContext);
             } finally {
                 joined.release();
             }
             // Should not has other messages when metadata reading.
         }
 
-        if (context.isBinary()) {
+        if (decodeContext.isBinary()) {
             if (Headers.OK == header) {
                 // If header is 0, SHOULD NOT be OK message.
                 // Binary row message always starts with 0x00 (i.e. binary row header).
                 // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
                 try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
-                    return BinaryRowMessage.decode(reader, context);
+                    return BinaryRowMessage.decode(reader, decodeContext);
                 }
             }
         } else if (isTextRow(buffers, firstBuf, header)) {
             try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
-                return TextRowMessage.decode(reader, context.getTotalColumns());
+                return TextRowMessage.decode(reader, decodeContext.getTotalColumns());
             }
         }
 
@@ -156,7 +157,7 @@ public final class ServerMessageDecoder {
                     ByteBuf joined = JOINER.join(buffers);
 
                     try {
-                        return OkMessage.decode(joined, session);
+                        return OkMessage.decode(joined, context);
                     } finally {
                         joined.release();
                     }
@@ -170,7 +171,7 @@ public final class ServerMessageDecoder {
                     ByteBuf joined = JOINER.join(buffers);
 
                     try {
-                        return OkMessage.decode(joined, session);
+                        return OkMessage.decode(joined, context);
                     } finally {
                         joined.release();
                     }
@@ -195,17 +196,17 @@ public final class ServerMessageDecoder {
             buffers.clear();
         }
 
-        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on %s result phase", header, totalBytes, context.isBinary() ? "binary" : "text"));
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on %s result phase", header, totalBytes, decodeContext.isBinary() ? "binary" : "text"));
     }
 
-    private static ServerMessage decodeCommandMessage(ByteBuf buf, MySqlSession session) {
+    private static ServerMessage decodeCommandMessage(ByteBuf buf, ConnectionContext context) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
             case Headers.ERROR:
                 return ErrorMessage.decode(buf);
             case Headers.OK:
                 if (OkMessage.isValidSize(buf.readableBytes())) {
-                    return OkMessage.decode(buf, session);
+                    return OkMessage.decode(buf, context);
                 }
 
                 break;
@@ -218,7 +219,7 @@ public final class ServerMessageDecoder {
                     // so if readable bytes upper than 7, it means if it is column count,
                     // column count is already upper than (1 << 24) - 1 = 16777215, it is impossible.
                     // So it must be OK message, not be column count.
-                    return OkMessage.decode(buf, session);
+                    return OkMessage.decode(buf, context);
                 } else if (EofMessage.isValidSize(byteSize)) {
                     return EofMessage.decode(buf);
                 }
@@ -233,7 +234,7 @@ public final class ServerMessageDecoder {
         throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on command phase", header, buf.readableBytes()));
     }
 
-    private static ServerMessage decodeOnWaitPrepare(ByteBuf buf, MySqlSession session) {
+    private static ServerMessage decodeOnWaitPrepare(ByteBuf buf, ConnectionContext context) {
         short header = buf.getUnsignedByte(buf.readerIndex());
 
         switch (header) {
@@ -244,7 +245,7 @@ public final class ServerMessageDecoder {
                 if (PreparedOkMessage.isLooksLike(buf)) {
                     return PreparedOkMessage.decode(buf);
                 } else if (OkMessage.isValidSize(buf.readableBytes())) {
-                    return OkMessage.decode(buf, session);
+                    return OkMessage.decode(buf, context);
                 }
 
                 break;
@@ -252,7 +253,7 @@ public final class ServerMessageDecoder {
                 int byteSize = buf.readableBytes();
 
                 if (OkMessage.isValidSize(byteSize)) {
-                    return OkMessage.decode(buf, session);
+                    return OkMessage.decode(buf, context);
                 } else if (EofMessage.isValidSize(byteSize)) {
                     return EofMessage.decode(buf);
                 }
@@ -261,12 +262,12 @@ public final class ServerMessageDecoder {
         throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on waiting prepare metadata phase", header, buf.readableBytes()));
     }
 
-    private static ServerMessage decodeConnectionMessage(ByteBuf buf, MySqlSession session) {
+    private static ServerMessage decodeConnectionMessage(ByteBuf buf, ConnectionContext context) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
             case Headers.OK:
                 if (OkMessage.isValidSize(buf.readableBytes())) {
-                    return OkMessage.decode(buf, requireNonNull(session, "session must not be null"));
+                    return OkMessage.decode(buf, context);
                 }
 
                 break;
@@ -359,17 +360,17 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static SyntheticMetadataMessage decodeInMetadata(ByteBuf buf, short header, MySqlSession session, MetadataDecodeContext context) {
+    private static SyntheticMetadataMessage decodeInMetadata(ByteBuf buf, short header, ConnectionContext context, MetadataDecodeContext decodeContext) {
         ServerMessage message;
 
         if (Headers.EOF == header && EofMessage.isValidSize(buf.readableBytes())) {
             message = EofMessage.decode(buf);
         } else if (DefinitionMetadataMessage.isLooksLike(buf)) {
-            message = DefinitionMetadataMessage.decode(buf, session.getCollation().getCharset());
+            message = DefinitionMetadataMessage.decode(buf, context.getCollation().getCharset());
         } else {
             throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d when reading metadata", header, buf.readableBytes()));
         }
 
-        return context.putPart(message);
+        return decodeContext.putPart(message);
     }
 }

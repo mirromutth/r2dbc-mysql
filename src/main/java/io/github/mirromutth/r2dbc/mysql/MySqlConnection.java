@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
@@ -64,17 +64,17 @@ public final class MySqlConnection implements Connection {
 
     private final boolean batchSupported;
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     /**
      * @param client must be logged-in
-     * @param session capabilities must be initialized
+     * @param context capabilities must be initialized
      */
-    MySqlConnection(Client client, MySqlSession session) {
+    MySqlConnection(Client client, ConnectionContext context) {
         this.client = requireNonNull(client, "client must not be null");
-        this.session = requireNonNull(session, "session must not be null");
+        this.context = requireNonNull(context, "context must not be null");
         this.codecs = Codecs.getInstance();
-        this.batchSupported = (session.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
+        this.batchSupported = (context.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
 
         if (this.batchSupported) {
             logger.debug("Batch is supported by server");
@@ -135,9 +135,9 @@ public final class MySqlConnection implements Connection {
     @Override
     public MySqlBatch createBatch() {
         if (batchSupported) {
-            return new MySqlBatchingBatch(client, codecs, session);
+            return new MySqlBatchingBatch(client, codecs, context);
         } else {
-            return new MySqlSyntheticBatch(client, codecs, session);
+            return new MySqlSyntheticBatch(client, codecs, context);
         }
     }
 
@@ -162,11 +162,11 @@ public final class MySqlConnection implements Connection {
         if (index < 0) {
             // No parameter mark, it must be simple query.
             logger.debug("Create a statement provided by simple query");
-            return new SimpleQueryMySqlStatement(client, codecs, session, sql);
+            return new SimpleMySqlStatement(client, codecs, context, sql);
         } else {
             // Find parameter mark, it should be prepare query.
             logger.debug("Create a statement provided by prepare query");
-            return new ParametrizedMySqlStatement(client, codecs, session, PrepareQuery.parse(sql, index));
+            return new ParametrizedMySqlStatement(client, codecs, context, PrepareQuery.parse(sql, index));
         }
     }
 
@@ -197,7 +197,7 @@ public final class MySqlConnection implements Connection {
     }
 
     boolean isAutoCommit() {
-        return (session.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0;
+        return (context.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0;
     }
 
     private Mono<Void> executeVoid(String sql) {

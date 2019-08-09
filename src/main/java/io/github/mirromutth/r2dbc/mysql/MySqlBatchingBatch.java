@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import reactor.core.publisher.Flux;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
@@ -33,14 +33,14 @@ final class MySqlBatchingBatch extends MySqlBatch {
 
     private final Codecs codecs;
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     private StringBuilder builder;
 
-    MySqlBatchingBatch(Client client, Codecs codecs, MySqlSession session) {
+    MySqlBatchingBatch(Client client, Codecs codecs, ConnectionContext context) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
-        this.session = requireNonNull(session, "session must not be null");
+        this.context = requireNonNull(context, "context must not be null");
     }
 
     @Override
@@ -63,7 +63,7 @@ final class MySqlBatchingBatch extends MySqlBatch {
     public Flux<MySqlResult> execute() {
         return SimpleQueryFlow.execute(client, getSql())
             .windowUntil(SimpleQueryFlow.RESULT_DONE)
-            .map(messages -> new MySqlResult(codecs, session, null, messages));
+            .map(messages -> new MySqlResult(codecs, context, null, messages));
     }
 
     @Override

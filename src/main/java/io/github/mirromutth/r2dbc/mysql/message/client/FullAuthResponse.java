@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.util.Arrays;
@@ -59,7 +59,7 @@ public final class FullAuthResponse extends EnvelopeClientMessage implements Exc
     }
 
     @Override
-    protected void writeTo(ByteBuf buf, MySqlSession session) {
+    protected void writeTo(ByteBuf buf, ConnectionContext context) {
         buf.writeBytes(authentication);
     }
 }

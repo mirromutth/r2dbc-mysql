@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -49,7 +49,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
 
     @SuppressWarnings("unchecked")
     @Override
-    public Set<?> decode(NormalFieldValue value, FieldInformation info, ParameterizedType target, boolean binary, MySqlSession session) {
+    public Set<?> decode(NormalFieldValue value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
@@ -57,7 +57,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         }
 
         Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
-        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
+        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
         int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
 
         if (firstComma < 0) {
@@ -119,8 +119,8 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
-        return new SetValue((Set<?>) value, session);
+    public ParameterValue encode(Object value, ConnectionContext context) {
+        return new SetValue((Set<?>) value, context);
     }
 
     private static Set<?> buildSet(Class<?> subClass) {
@@ -231,11 +231,11 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
 
         private final Set<?> set;
 
-        private final MySqlSession session;
+        private final ConnectionContext context;
 
-        private SetValue(Set<?> set, MySqlSession session) {
+        private SetValue(Set<?> set, ConnectionContext context) {
             this.set = set;
-            this.session = session;
+            this.context = context;
         }
 
         @Override
@@ -243,7 +243,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
             return Flux.fromIterable(set)
                 .map(ELEMENT_CONVERT)
                 .collectList()
-                .doOnNext(strings -> writer.writeSet(strings, session.getCollation()))
+                .doOnNext(strings -> writer.writeSet(strings, context.getCollation()))
                 .then();
         }
 

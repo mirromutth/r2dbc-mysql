@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -39,7 +39,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public Long decode(NormalFieldValue value, FieldInformation info, Class<? super Long> target, boolean binary, MySqlSession session) {
+    public Long decode(NormalFieldValue value, FieldInformation info, Class<? super Long> target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
 
         if (binary) {
@@ -76,7 +76,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         long v = (Long) value;
 
         if ((byte) v == v) {

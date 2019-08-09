@@ -18,28 +18,28 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import reactor.core.publisher.Flux;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link MySqlStatement} representing the simple query that has no parameter.
+ * An implementation of {@link MySqlStatement} representing the simple statement that has no parameter.
  */
-final class SimpleQueryMySqlStatement extends MySqlStatementSupport {
+final class SimpleMySqlStatement extends MySqlStatementSupport {
 
     private final Client client;
 
     private final Codecs codecs;
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     private final String sql;
 
-    SimpleQueryMySqlStatement(Client client, Codecs codecs, MySqlSession session, String sql) {
+    SimpleMySqlStatement(Client client, Codecs codecs, ConnectionContext context, String sql) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
-        this.session = requireNonNull(session, "session must not be null");
+        this.context = requireNonNull(context, "context must not be null");
         this.sql = requireNonNull(sql, "sql must not be null");
     }
 
@@ -50,33 +50,33 @@ final class SimpleQueryMySqlStatement extends MySqlStatementSupport {
 
     @Override
     public MySqlStatement bind(Object identifier, Object value) {
-        throw new UnsupportedOperationException("Binding parameters is not supported for simple query statement");
+        throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
     public MySqlStatement bind(int index, Object value) {
-        throw new UnsupportedOperationException("Binding parameters is not supported for simple query statement");
+        throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
     public MySqlStatement bindNull(Object identifier, Class<?> type) {
-        throw new UnsupportedOperationException("Binding parameters is not supported for simple query statement");
+        throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
     public MySqlStatement bindNull(int index, Class<?> type) {
-        throw new UnsupportedOperationException("Binding parameters is not supported for simple query statement");
+        throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
     public Flux<MySqlResult> execute() {
         return SimpleQueryFlow.execute(client, sql)
             .windowUntil(SimpleQueryFlow.RESULT_DONE)
-            .map(messages -> new MySqlResult(codecs, session, generatedKeyName, messages));
+            .map(messages -> new MySqlResult(codecs, context, generatedKeyName, messages));
     }
 
     @Override
     public String toString() {
-        return "SimpleQueryMySqlStatement{sql=REDACTED}";
+        return "SimpleMySqlStatement{sql=REDACTED}";
     }
 }

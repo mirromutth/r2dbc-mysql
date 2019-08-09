@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.MySqlSslConfiguration;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
@@ -55,9 +55,11 @@ public interface Client {
 
     void loginSuccess();
 
-    static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port, MySqlSslConfiguration ssl, MySqlSession session, @Nullable Duration connectTimeout) {
+    static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port, MySqlSslConfiguration ssl, ConnectionContext context, @Nullable Duration connectTimeout) {
         requireNonNull(connectionProvider, "connectionProvider must not be null");
         requireNonNull(host, "host must not be null");
+        requireNonNull(ssl, "ssl must not be null");
+        requireNonNull(context, "context must not be null");
 
         TcpClient client = TcpClient.create(connectionProvider);
 
@@ -68,6 +70,6 @@ public interface Client {
         return client.host(host)
             .port(port)
             .connect()
-            .map(conn -> new ReactorNettyClient(conn, ssl, session));
+            .map(conn -> new ReactorNettyClient(conn, ssl, context));
     }
 }

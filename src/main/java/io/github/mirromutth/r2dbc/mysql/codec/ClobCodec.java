@@ -19,7 +19,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 import io.github.mirromutth.r2dbc.mysql.codec.lob.ScalarClob;
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.LargeFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
@@ -47,12 +47,12 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
     }
 
     @Override
-    public Clob decode(FieldValue value, FieldInformation info, Class<? super Clob> target, boolean binary, MySqlSession session) {
+    public Clob decode(FieldValue value, FieldInformation info, Class<? super Clob> target, boolean binary, ConnectionContext context) {
         if (value instanceof NormalFieldValue) {
-            return ScalarClob.retain(((NormalFieldValue) value).getBufferSlice(), info.getCollationId(), session.getServerVersion());
+            return ScalarClob.retain(((NormalFieldValue) value).getBufferSlice(), info.getCollationId(), context.getServerVersion());
         }
 
-        return ScalarClob.retain(((LargeFieldValue) value).getBufferSlices(), info.getCollationId(), session.getServerVersion());
+        return ScalarClob.retain(((LargeFieldValue) value).getBufferSlices(), info.getCollationId(), context.getServerVersion());
     }
 
     @Override
@@ -79,19 +79,19 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
-        return new ClobValue((Clob) value, session);
+    public ParameterValue encode(Object value, ConnectionContext context) {
+        return new ClobValue((Clob) value, context);
     }
 
     private static class ClobValue extends AbstractLobValue {
 
         private final AtomicReference<Clob> clob;
 
-        private final MySqlSession session;
+        private final ConnectionContext context;
 
-        private ClobValue(Clob clob, MySqlSession session) {
+        private ClobValue(Clob clob, ConnectionContext context) {
             this.clob = new AtomicReference<>(clob);
-            this.session = session;
+            this.context = context;
         }
 
         @Override
@@ -105,7 +105,7 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
 
                 return Flux.from(clob.stream())
                     .collectList()
-                    .doOnNext(sequences -> writer.writeCharSequences(sequences, session.getCollation()))
+                    .doOnNext(sequences -> writer.writeCharSequences(sequences, context.getCollation()))
                     .then();
             });
         }

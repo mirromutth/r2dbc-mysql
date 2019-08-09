@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import reactor.util.annotation.Nullable;
@@ -29,11 +29,11 @@ import java.lang.reflect.Type;
 public interface Codecs {
 
     @Nullable
-    <T> T decode(FieldValue value, FieldInformation info, Type type, boolean binary, MySqlSession session);
+    <T> T decode(FieldValue value, FieldInformation info, Type type, boolean binary, ConnectionContext context);
 
     <T> T decodeLastInsertId(long value, Class<T> type);
 
-    ParameterValue encode(Object value, MySqlSession session);
+    ParameterValue encode(Object value, ConnectionContext context);
 
     ParameterValue encodeNull();
 

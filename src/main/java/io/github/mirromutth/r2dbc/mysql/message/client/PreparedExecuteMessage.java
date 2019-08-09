@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.CursorTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -58,7 +58,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
     }
 
     @Override
-    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, MySqlSession session) {
+    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
         int size = parameters.length;
         ByteBuf buf;
 

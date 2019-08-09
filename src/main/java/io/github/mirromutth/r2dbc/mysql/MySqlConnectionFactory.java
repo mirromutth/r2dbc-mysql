@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
 import reactor.core.publisher.Mono;
@@ -53,7 +53,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
         requireNonNull(configuration, "configuration must not be null");
 
         return new MySqlConnectionFactory(Mono.defer(() -> {
-            MySqlSession session = new MySqlSession(configuration.getDatabase(), configuration.getZeroDateOption());
+            ConnectionContext context = new ConnectionContext(configuration.getDatabase(), configuration.getZeroDateOption());
             String host = configuration.getHost();
             int port = configuration.getPort();
             Duration connectTimeout = configuration.getConnectTimeout();
@@ -62,9 +62,9 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             String username = configuration.getUsername();
             CharSequence password = configuration.getPassword();
 
-            return Client.connect(ConnectionProvider.newConnection(), host, port, ssl, session, connectTimeout)
-                .flatMap(client -> LoginFlow.login(client, sslMode, session, username, password))
-                .map(client -> new MySqlConnection(client, session));
+            return Client.connect(ConnectionProvider.newConnection(), host, port, ssl, context, connectTimeout)
+                .flatMap(client -> LoginFlow.login(client, sslMode, context, username, password))
+                .map(client -> new MySqlConnection(client, context));
         }));
     }
 }

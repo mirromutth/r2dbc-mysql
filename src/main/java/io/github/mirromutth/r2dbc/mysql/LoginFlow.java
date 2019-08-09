@@ -22,7 +22,7 @@ import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.SqlStates;
 import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.client.FullAuthResponse;
 import io.github.mirromutth.r2dbc.mysql.message.client.HandshakeResponse;
 import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
@@ -61,7 +61,7 @@ final class LoginFlow {
 
     private final Client client;
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     private final SslMode sslMode;
 
@@ -75,10 +75,10 @@ final class LoginFlow {
 
     private volatile byte[] salt;
 
-    private LoginFlow(Client client, SslMode sslMode, MySqlSession session, String username, @Nullable CharSequence password) {
+    private LoginFlow(Client client, SslMode sslMode, ConnectionContext context, String username, @Nullable CharSequence password) {
         this.client = requireNonNull(client, "client must not be null");
         this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
-        this.session = requireNonNull(session, "session must not be null");
+        this.context = requireNonNull(context, "context must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
     }
@@ -96,16 +96,16 @@ final class LoginFlow {
         }
 
         // No need initialize server statuses because it has initialized by read filter.
-        this.session.setConnectionId(header.getConnectionId());
-        this.session.setServerVersion(serverVersion);
-        this.session.setCapabilities(calculateClientCapabilities(message.getServerCapabilities()));
+        this.context.setConnectionId(header.getConnectionId());
+        this.context.setServerVersion(serverVersion);
+        this.context.setCapabilities(calculateClientCapabilities(message.getServerCapabilities()));
 
         this.authProvider = MySqlAuthProvider.build(message.getAuthType());
         this.salt = message.getSalt();
     }
 
     private boolean useSsl() {
-        return (this.session.getCapabilities() & Capabilities.SSL) != 0;
+        return (this.context.getCapabilities() & Capabilities.SSL) != 0;
     }
 
     private void changeAuth(AuthChangeMessage message) {
@@ -114,7 +114,7 @@ final class LoginFlow {
     }
 
     private SslRequest createSslRequest() {
-        return SslRequest.from(session.getCapabilities(), session.getCollation().getId());
+        return SslRequest.from(context.getCapabilities(), context.getCollation().getId());
     }
 
     private MySqlAuthProvider getAndNextProvider() {
@@ -136,7 +136,7 @@ final class LoginFlow {
                 throw new IllegalStateException("username must not be null when login");
             }
 
-            byte[] authorization = authProvider.authentication(password, salt, session.getCollation());
+            byte[] authorization = authProvider.authentication(password, salt, context.getCollation());
             String authType = authProvider.getType();
 
             if (AuthTypes.NO_AUTH_PROVIDER.equals(authType)) {
@@ -146,12 +146,12 @@ final class LoginFlow {
             }
 
             return HandshakeResponse.from(
-                session.getCapabilities(),
-                session.getCollation().getId(),
+                context.getCapabilities(),
+                context.getCollation().getId(),
                 username,
                 authorization,
                 authType,
-                session.getDatabase(),
+                context.getDatabase(),
                 attributes
             );
         });
@@ -165,7 +165,7 @@ final class LoginFlow {
                 throw new R2dbcPermissionDeniedException(String.format("Authentication type '%s' must require SSL in full authentication phase", authProvider.getType()), SqlStates.CLI_SPECIFIC_CONDITION);
             }
 
-            return new FullAuthResponse(authProvider.authentication(password, salt, session.getCollation()));
+            return new FullAuthResponse(authProvider.authentication(password, salt, context.getCollation()));
         });
     }
 
@@ -176,7 +176,7 @@ final class LoginFlow {
         if ((clientCapabilities & Capabilities.SSL) == 0) {
             // Server unsupported SSL.
             if (sslMode.requireSsl()) {
-                throw new R2dbcPermissionDeniedException(String.format("Server version %s unsupported SSL but SSL required by mode %s", session.getServerVersion(), sslMode), SqlStates.CLI_SPECIFIC_CONDITION);
+                throw new R2dbcPermissionDeniedException(String.format("Server version %s unsupported SSL but SSL required by mode %s", context.getServerVersion(), sslMode), SqlStates.CLI_SPECIFIC_CONDITION);
             }
 
             if (sslMode.startSsl()) {
@@ -196,7 +196,7 @@ final class LoginFlow {
             }
         }
 
-        if (session.getDatabase().isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
+        if (context.getDatabase().isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
             clientCapabilities &= ~Capabilities.CONNECT_WITH_DB;
         }
 
@@ -217,8 +217,8 @@ final class LoginFlow {
         this.authProvider = null;
     }
 
-    static Mono<Client> login(Client client, SslMode sslMode, MySqlSession session, String username, @Nullable CharSequence password) {
-        LoginFlow flow = new LoginFlow(client, sslMode, session, username, password);
+    static Mono<Client> login(Client client, SslMode sslMode, ConnectionContext context, String username, @Nullable CharSequence password) {
+        LoginFlow flow = new LoginFlow(client, sslMode, context, username, password);
         EmitterProcessor<State> stateMachine = EmitterProcessor.create(true);
 
         return stateMachine.startWith(State.INIT)
@@ -301,7 +301,7 @@ final class LoginFlow {
                         } else if (message instanceof AuthMoreDataMessage) {
                             if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != 3) {
                                 if (logger.isInfoEnabled()) {
-                                    logger.info("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.session.getConnectionId());
+                                    logger.info("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
                                 }
                                 sink.next(FULL_AUTH);
                                 sink.complete();

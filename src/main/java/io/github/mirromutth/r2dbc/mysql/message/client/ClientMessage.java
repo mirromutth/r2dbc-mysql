@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
@@ -30,7 +30,7 @@ public interface ClientMessage {
      * Encode a message into a {@link ByteBuf} data buffer without envelope header.
      *
      * @param allocator the {@link ByteBufAllocator} to use to get a {@link ByteBuf} data buffer to write into.
-     * @param session   current MySQL session
+     * @param context   current MySQL connection context
      */
-    Publisher<ByteBuf> encode(ByteBufAllocator allocator, MySqlSession session);
+    Publisher<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context);
 }

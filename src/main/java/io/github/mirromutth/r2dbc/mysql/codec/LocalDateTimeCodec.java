@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.BinaryDateTimes;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
@@ -45,7 +45,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
     }
 
     @Override
-    public LocalDateTime decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDateTime> target, boolean binary, MySqlSession session) {
+    public LocalDateTime decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDateTime> target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
         int index = buf.readerIndex();
         int bytes = buf.readableBytes();
@@ -54,7 +54,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
             LocalDateTime dateTime = decodeBinary(buf, bytes);
 
             if (dateTime == null) {
-                return ZeroDateHandler.handle(session.getZeroDateOption(), true, buf, index, bytes, ROUND);
+                return ZeroDateHandler.handle(context.getZeroDateOption(), true, buf, index, bytes, ROUND);
             } else {
                 return dateTime;
             }
@@ -62,7 +62,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
             LocalDateTime dateTime = decodeText(buf);
 
             if (dateTime == null) {
-                return ZeroDateHandler.handle(session.getZeroDateOption(), false, buf, index, bytes, ROUND);
+                return ZeroDateHandler.handle(context.getZeroDateOption(), false, buf, index, bytes, ROUND);
             }
 
             return dateTime;
@@ -75,7 +75,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         return new LocalDateTimeValue((LocalDateTime) value);
     }
 

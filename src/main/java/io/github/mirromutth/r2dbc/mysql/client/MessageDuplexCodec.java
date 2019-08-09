@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.PreparedExecuteMessage;
@@ -63,7 +63,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     @Nullable
     private volatile SequenceIdProvider.Linkable linkableIdProvider;
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     private final AtomicBoolean closing;
 
@@ -75,8 +75,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     private final Runnable WAIT_PREPARE = () -> this.setDecodeContext(DecodeContext.waitPrepare());
 
-    MessageDuplexCodec(MySqlSession session, AtomicBoolean closing) {
-        this.session = requireNonNull(session, "session must not be null");
+    MessageDuplexCodec(ConnectionContext context, AtomicBoolean closing) {
+        this.context = requireNonNull(context, "context must not be null");
         this.closing = requireNonNull(closing, "closing must not be null");
     }
 
@@ -96,7 +96,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ByteBuf) {
             DecodeContext context = this.decodeContext;
-            ServerMessage message = decoder.decode((ByteBuf) msg, session, context, this.linkableIdProvider);
+            ServerMessage message = decoder.decode((ByteBuf) msg, this.context, context, this.linkableIdProvider);
 
             if (message != null) {
                 if (decodeFilter(message)) {
@@ -117,7 +117,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         if (msg instanceof ClientMessage) {
             ClientMessage message = (ClientMessage) msg;
-            message.encode(ctx.alloc(), this.session)
+            message.encode(ctx.alloc(), this.context)
                 .subscribe(WriteSubscriber.create(ctx, promise, this.linkableIdProvider, onDone(ctx, message)));
         } else {
             if (logger.isWarnEnabled()) {
@@ -174,11 +174,11 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         }
 
         if (msg instanceof ServerStatusMessage) {
-            this.session.setServerStatuses(((ServerStatusMessage) msg).getServerStatuses());
+            this.context.setServerStatuses(((ServerStatusMessage) msg).getServerStatuses());
         }
 
         if (msg instanceof ColumnCountMessage) {
-            boolean deprecateEof = (this.session.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
+            boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
             setDecodeContext(DecodeContext.result(this.binaryResult, deprecateEof, ((ColumnCountMessage) msg).getTotalColumns()));
             return false;
         }
@@ -197,7 +197,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
             // columns + parameters > 0
             if (columns > -parameters) {
-                boolean deprecateEof = (this.session.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
+                boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
                 setDecodeContext(DecodeContext.preparedMetadata(deprecateEof, columns, parameters));
             } else {
                 setDecodeContext(DecodeContext.command());

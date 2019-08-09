@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.collation.CharCollation;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -39,8 +39,8 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
     }
 
     @Override
-    public Enum<?> decode(NormalFieldValue value, FieldInformation info, Class<?> target, boolean binary, MySqlSession session) {
-        Charset charset = CharCollation.fromId(info.getCollationId(), session.getServerVersion()).getCharset();
+    public Enum<?> decode(NormalFieldValue value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
         @SuppressWarnings("unchecked")
         Enum<?> e = Enum.valueOf((Class<Enum>) target, value.getBufferSlice().toString(charset));
         return e;
@@ -61,24 +61,24 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
-        return new EnumValue((Enum<?>) value, session);
+    public ParameterValue encode(Object value, ConnectionContext context) {
+        return new EnumValue((Enum<?>) value, context);
     }
 
     private static final class EnumValue extends AbstractParameterValue {
 
         private final Enum<?> value;
 
-        private final MySqlSession session;
+        private final ConnectionContext context;
 
-        private EnumValue(Enum<?> value, MySqlSession session) {
+        private EnumValue(Enum<?> value, ConnectionContext context) {
             this.value = value;
-            this.session = session;
+            this.context = context;
         }
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeCharSequence(value.name(), session.getCollation()));
+            return Mono.fromRunnable(() -> writer.writeCharSequence(value.name(), context.getCollation()));
         }
 
         @Override

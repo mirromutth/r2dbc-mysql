@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.codec;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
@@ -89,10 +89,10 @@ final class DefaultCodecs implements Codecs {
      * it come from {@code MySqlRow} which will release this buffer.
      */
     @Override
-    public <T> T decode(FieldValue value, FieldInformation info, Type type, boolean binary, MySqlSession session) {
+    public <T> T decode(FieldValue value, FieldInformation info, Type type, boolean binary, ConnectionContext context) {
         requireNonNull(value, "value must not be null");
         requireNonNull(info, "info must not be null");
-        requireNonNull(session, "session must not be null");
+        requireNonNull(context, "context must not be null");
         requireNonNull(type, "type must not be null");
 
         Type target = chooseTarget(info, type);
@@ -109,7 +109,7 @@ final class DefaultCodecs implements Codecs {
             PrimitiveCodec<T> codec = (PrimitiveCodec<T>) this.primitiveCodecs.get(targetClass);
 
             if (codec != null && value instanceof NormalFieldValue && codec.canPrimitiveDecode(info)) {
-                return codec.decode((NormalFieldValue) value, info, targetClass, binary, session);
+                return codec.decode((NormalFieldValue) value, info, targetClass, binary, context);
             } else {
                 // Primitive mismatch, no `Codec` support this primitive class.
                 throw new IllegalArgumentException(String.format("Cannot decode value of type %s for type %d", targetClass, info.getType()));
@@ -124,7 +124,7 @@ final class DefaultCodecs implements Codecs {
             if (codec.canDecode(value, info, target)) {
                 @SuppressWarnings("unchecked")
                 Codec<T, ? super FieldValue, ? super Type> c = (Codec<T, ? super FieldValue, ? super Type>) codec;
-                return c.decode(value, info, target, binary, session);
+                return c.decode(value, info, target, binary, context);
             }
         }
 
@@ -168,13 +168,13 @@ final class DefaultCodecs implements Codecs {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         requireNonNull(value, "value must not be null");
-        requireNonNull(session, "session must not be null");
+        requireNonNull(context, "context must not be null");
 
         for (Codec<?, ?, ?> codec : codecs) {
             if (codec.canEncode(value)) {
-                return codec.encode(value, session);
+                return codec.encode(value, context);
             }
         }
 

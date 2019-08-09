@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -49,7 +49,7 @@ public final class PreparedLargeDataMessage extends LargeClientMessage implement
     }
 
     @Override
-    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, MySqlSession session) {
+    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
         return Flux.from(data).collectList().flatMapMany(values -> {
             int i = 0;
             int size = values.size();

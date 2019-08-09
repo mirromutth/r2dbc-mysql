@@ -17,7 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -31,18 +31,18 @@ abstract class EnvelopeClientMessage implements ClientMessage {
 
     private static final int INITIAL_CAPACITY = 256;
 
-    abstract protected void writeTo(ByteBuf buf, MySqlSession session);
+    abstract protected void writeTo(ByteBuf buf, ConnectionContext context);
 
     @Override
-    public Mono<ByteBuf> encode(ByteBufAllocator allocator, MySqlSession session) {
+    public Mono<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
         requireNonNull(allocator, "allocator must not be null");
-        requireNonNull(session, "session must not be null");
+        requireNonNull(context, "context must not be null");
 
         return Mono.fromSupplier(() -> {
             ByteBuf buf = allocator.buffer(INITIAL_CAPACITY, Envelopes.MAX_ENVELOPE_SIZE);
 
             try {
-                writeTo(buf, session);
+                writeTo(buf, context);
                 return buf;
             } catch (Throwable e) {
                 buf.release();

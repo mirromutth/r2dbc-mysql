@@ -16,7 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
@@ -45,8 +45,8 @@ abstract class AbstractQueryMessage extends LargeClientMessage implements Exchan
     }
 
     @Override
-    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, MySqlSession session) {
-        Charset charset = session.getCollation().getCharset();
+    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
+        Charset charset = context.getCollation().getCharset();
         ByteBuf buf = allocator.buffer(Byte.BYTES + sql.length(), Integer.MAX_VALUE);
 
         try {

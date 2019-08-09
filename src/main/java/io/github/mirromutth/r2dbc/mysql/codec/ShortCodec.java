@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql.codec;
 
 import io.github.mirromutth.r2dbc.mysql.constant.ColumnDefinitions;
 import io.github.mirromutth.r2dbc.mysql.constant.DataTypes;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
@@ -37,7 +37,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public Short decode(NormalFieldValue value, FieldInformation info, Class<? super Short> target, boolean binary, MySqlSession session) {
+    public Short decode(NormalFieldValue value, FieldInformation info, Class<? super Short> target, boolean binary, ConnectionContext context) {
         if (binary) {
             ByteBuf buf = value.getBufferSlice();
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
@@ -64,7 +64,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public ParameterValue encode(Object value, MySqlSession session) {
+    public ParameterValue encode(Object value, ConnectionContext context) {
         short v = (Short) value;
 
         if ((byte) v == v) {

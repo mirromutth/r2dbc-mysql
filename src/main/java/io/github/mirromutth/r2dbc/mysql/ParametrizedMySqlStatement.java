@@ -18,7 +18,7 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
-import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
+import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import reactor.core.publisher.Flux;
 
@@ -44,7 +44,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     private final Codecs codecs;
 
-    private final MySqlSession session;
+    private final ConnectionContext context;
 
     private final PrepareQuery query;
 
@@ -52,10 +52,10 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     private final AtomicBoolean executed = new AtomicBoolean();
 
-    ParametrizedMySqlStatement(Client client, Codecs codecs, MySqlSession session, PrepareQuery query) {
+    ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, PrepareQuery query) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
-        this.session = requireNonNull(session, "session must not be null");
+        this.context = requireNonNull(context, "context must not be null");
         this.query = requireNonNull(query, "sql must not be null");
         this.bindings = new Bindings(this.query.getParameters());
     }
@@ -74,7 +74,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
         require(identifier instanceof String, "identifier must be a String");
         requireNonNull(value, "value must not be null");
 
-        addBinding(query.getIndexes((String) identifier), codecs.encode(value, session));
+        addBinding(query.getIndexes((String) identifier), codecs.encode(value, context));
         return this;
     }
 
@@ -82,7 +82,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     public MySqlStatementSupport bind(int index, Object value) {
         requireNonNull(value, "value must not be null");
 
-        addBinding(index, codecs.encode(value, session));
+        addBinding(index, codecs.encode(value, context));
         return this;
     }
 
@@ -120,7 +120,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
             return PrepareQueryFlow.prepare(client, query.getSql())
                 .flatMapMany(metadata -> PrepareQueryFlow.execute(client, metadata, bindings.iterator())
-                    .map(messages -> new MySqlResult(codecs, session, generatedKeyName, messages)))
+                    .map(messages -> new MySqlResult(codecs, context, generatedKeyName, messages)))
                 .doOnCancel(bindings::clear)
                 .doOnError(e -> bindings.clear());
         });
