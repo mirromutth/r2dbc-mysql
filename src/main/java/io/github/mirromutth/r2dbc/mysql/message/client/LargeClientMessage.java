@@ -16,7 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
-import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.github.mirromutth.r2dbc.mysql.internal.MySqlSession;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -50,6 +49,6 @@ abstract class LargeClientMessage implements ClientMessage {
         requireNonNull(session, "session must not be null");
 
         return Flux.create(sink -> fragments(allocator, session)
-            .subscribe(new LargeMessageSlicer(allocator, Envelopes.MAX_ENVELOPE_SIZE, sink)));
+            .subscribe(new LargeMessageSlicer(allocator, sink)));
     }
 }

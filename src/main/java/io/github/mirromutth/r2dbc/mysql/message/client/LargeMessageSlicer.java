@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.client;
 
+import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
@@ -31,17 +32,14 @@ final class LargeMessageSlicer implements CoreSubscriber<ByteBuf> {
 
     private final ByteBufAllocator allocator;
 
-    private final int sliceBytes;
-
     private final FluxSink<ByteBuf> sink;
 
     private int nowBytes = 0;
 
     private List<ByteBuf> now = null;
 
-    LargeMessageSlicer(ByteBufAllocator allocator, int sliceBytes, FluxSink<ByteBuf> sink) {
+    LargeMessageSlicer(ByteBufAllocator allocator, FluxSink<ByteBuf> sink) {
         this.allocator = allocator;
-        this.sliceBytes = sliceBytes;
         this.sink = sink;
     }
 
@@ -61,7 +59,7 @@ final class LargeMessageSlicer implements CoreSubscriber<ByteBuf> {
         if (now == null) {
             onNullNext(buf);
         } else {
-            int needBytes = sliceBytes - nowBytes;
+            int needBytes = Envelopes.MAX_ENVELOPE_SIZE - nowBytes;
 
             if (buf.readableBytes() < needBytes) {
                 // Must less than sliceBytes
@@ -141,8 +139,8 @@ final class LargeMessageSlicer implements CoreSubscriber<ByteBuf> {
     }
 
     private void onNullNext(ByteBuf buf) {
-        while (buf.readableBytes() >= sliceBytes) {
-            sink.next(buf.readRetainedSlice(sliceBytes));
+        while (buf.readableBytes() >= Envelopes.MAX_ENVELOPE_SIZE) {
+            sink.next(buf.readRetainedSlice(Envelopes.MAX_ENVELOPE_SIZE));
         }
 
         if (buf.isReadable()) {
