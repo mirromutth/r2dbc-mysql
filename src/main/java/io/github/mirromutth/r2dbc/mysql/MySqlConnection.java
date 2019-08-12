@@ -85,21 +85,10 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> beginTransaction() {
-        return Mono.defer(() -> {
-            if (isAutoCommit()) {
-                logger.debug("Auto-commit is enabled, disabling before transaction");
-
-                if (batchSupported) {
-                    return executeVoid("SET autocommit=0; START TRANSACTION");
-                } else {
-                    return executeVoid("SET autocommit=0")
-                        .then(executeVoid("START TRANSACTION"));
-                }
-            } else {
-                logger.debug("Auto-commit is already disabled before transaction");
-                return executeVoid("START TRANSACTION");
-            }
-        });
+        // Autocommit will be disable after START TRANSACTION.
+        // The autocommit mode then reverts to its previous state
+        // when end the transaction with COMMIT or ROLLBACK.
+        return executeVoid("START TRANSACTION");
     }
 
     /**
