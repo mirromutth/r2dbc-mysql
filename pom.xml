@@ -21,7 +21,7 @@
 
     <groupId>io.github.mirromutth</groupId>
     <artifactId>r2dbc-mysql</artifactId>
-    <version>0.1.0.BUILD-SNAPSHOT</version>
+    <version>0.3.0.BUILD-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Reactive Relational Database Connectivity - MySQL</name>
