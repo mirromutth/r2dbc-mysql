@@ -28,7 +28,7 @@ import java.util.Set;
 /**
  * A structure of a prepare statement.
  */
-final class PrepareQuery {
+final class Query {
 
     private final String sql;
 
@@ -36,7 +36,7 @@ final class PrepareQuery {
 
     private final int parameters;
 
-    private PrepareQuery(String sql, Map<String, int[]> nameKeyedIndex, int parameters) {
+    private Query(String sql, Map<String, int[]> nameKeyedIndex, int parameters) {
         this.sql = sql;
         this.nameKeyedIndex = nameKeyedIndex;
         this.parameters = parameters;
@@ -64,16 +64,20 @@ final class PrepareQuery {
         return parameters;
     }
 
+    boolean isPrepared() {
+        return parameters > 0;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof PrepareQuery)) {
+        if (!(o instanceof Query)) {
             return false;
         }
 
-        PrepareQuery that = (PrepareQuery) o;
+        Query that = (Query) o;
 
         if (parameters != that.parameters) {
             return false;
@@ -81,21 +85,26 @@ final class PrepareQuery {
         if (!sql.equals(that.sql)) {
             return false;
         }
+        // TODO: correct array equals
         return nameKeyedIndex.equals(that.nameKeyedIndex);
     }
 
     @Override
     public int hashCode() {
         int result = sql.hashCode();
-        result = 31 * result + nameKeyedIndex.hashCode();
+        result = 31 * result + nameKeyedIndex.hashCode(); // TODO: correct array hashing
         result = 31 * result + parameters;
         return result;
     }
 
     @Override
     public String toString() {
+        if (!isPrepared()) {
+            return "Query{sql=REDACTED}";
+        }
+
         StringBuilder builder = new StringBuilder(64 + (nameKeyedIndex.size() << 2))
-            .append("PrepareQuery{sql=REDACTED, parameters=")
+            .append("Query{sql=REDACTED, parameters=")
             .append(parameters)
             .append(", nameKeyedIndex=");
 
@@ -127,14 +136,6 @@ final class PrepareQuery {
     }
 
     /**
-     * @param sql a standard MySQL statement.
-     * @return the index of first parameter mark in {@code sql}, or {@literal -1} if it is not a prepare query.
-     */
-    static int indexOfParameter(String sql) {
-        return findParamMark(sql, 0);
-    }
-
-    /**
      * Parse parameter names of a parametrized SQL, and remove parameter names for parsed SQL which will be
      * send to MySQL server directly. The relationship between parameter names and parameter indexes will
      * be recorded by {@code nameKeyedParams}.
@@ -147,11 +148,16 @@ final class PrepareQuery {
      * parse to {@code SELECT * FROM `test` WHERE `username` = ? OR `nickname` = ? AND `group` = ?}, and
      * mapped {@literal name} to {@literal 0} and {@literal 1}, {@code paramCount} will be {@literal 3}.
      *
-     * @param sql    the statement want to parse, must contains least one parameter mark.
-     * @param offset first '?' offset
-     * @return parsed {@link PrepareQuery}
+     * @param sql    the statement want to parse.
+     * @return parsed {@link Query}
      */
-    static PrepareQuery parse(String sql, int offset) {
+    static Query parse(String sql) {
+        int offset = findParamMark(sql, 0);
+
+        if (offset < 0) {
+            return new Query(sql, Collections.emptyMap(), 0);
+        }
+
         Map<String, List<Integer>> nameKeyedParams = new HashMap<>();
         SqlBuilder sqlBuilder = new SqlBuilder(sql);
         String anyName = null;
@@ -202,11 +208,11 @@ final class PrepareQuery {
         int mapSize = nameKeyedParams.size();
 
         if (anyName == null || mapSize == 0) {
-            return new PrepareQuery(parsedSql, Collections.emptyMap(), paramCount);
+            return new Query(parsedSql, Collections.emptyMap(), paramCount);
         }
 
         if (mapSize == 1) {
-            return new PrepareQuery(parsedSql, Collections.singletonMap(anyName, convert(nameKeyedParams.get(anyName))), paramCount);
+            return new Query(parsedSql, Collections.singletonMap(anyName, convert(nameKeyedParams.get(anyName))), paramCount);
         }
 
         // ceil(size / 0.75) = ceil((size * 4) / 3) = floor((size * 4 + 3 - 1) / 3)
@@ -220,7 +226,7 @@ final class PrepareQuery {
             }
         }
 
-        return new PrepareQuery(parsedSql, indexesMap, paramCount);
+        return new Query(parsedSql, indexesMap, paramCount);
     }
 
     /**

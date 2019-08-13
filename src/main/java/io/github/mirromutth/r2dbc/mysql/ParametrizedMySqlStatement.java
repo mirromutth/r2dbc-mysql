@@ -21,6 +21,8 @@ import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -36,7 +38,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  * Parametrized {@link MySqlStatement} with parameter markers executed against a Microsoft SQL Server database.
  * <p>
  * MySQL uses indexed parameters which are marked by {@literal ?} without naming. This implementation uses
- * {@link PrepareQuery} to implement named parameters, and different indexes can have the same name.
+ * {@link Query} to implement named parameters, and different indexes can have the same name.
  */
 final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
@@ -46,18 +48,22 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     private final ConnectionContext context;
 
-    private final PrepareQuery query;
+    private final Query query;
 
     private final Bindings bindings;
 
+    @Nullable
+    private final StatementCache cache;
+
     private final AtomicBoolean executed = new AtomicBoolean();
 
-    ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, PrepareQuery query) {
+    ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, Query query, @Nullable StatementCache cache) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.context = requireNonNull(context, "context must not be null");
         this.query = requireNonNull(query, "sql must not be null");
         this.bindings = new Bindings(this.query.getParameters());
+        this.cache = cache;
     }
 
     @Override
@@ -118,12 +124,31 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
                 throw new IllegalStateException("Statement was already executed");
             }
 
-            return PrepareQueryFlow.prepare(client, query.getSql())
-                .flatMapMany(metadata -> PrepareQueryFlow.execute(client, metadata, bindings.iterator())
-                    .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages)))
-                .doOnCancel(bindings::clear)
-                .doOnError(e -> bindings.clear());
+            String sql = query.getSql();
+
+            if (cache == null) {
+                // Must be close when has no cache.
+                return QueryFlow.prepare(client, sql)
+                    .doOnCancel(bindings::clear)
+                    .flatMapMany(id -> toResults(sql, id)
+                        .onErrorResume(e -> {
+                            bindings.clear();
+                            return QueryFlow.close(client, id).then(Mono.error(e));
+                        })
+                        .concatWith(QueryFlow.close(client, id).then(Mono.empty())));
+            } else {
+                // Must be NOT close when using cache.
+                return cache.getOrPrepare(sql)
+                    .doOnCancel(bindings::clear)
+                    .flatMapMany(id -> toResults(sql, id).doOnError(e -> bindings.clear()));
+            }
         });
+    }
+
+    private Flux<MySqlResult> toResults(String sql, int statementId) {
+        return QueryFlow.execute(client, sql, statementId, bindings.bindings)
+            .windowUntil(QueryFlow.RESULT_DONE)
+            .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
     }
 
     private void addBinding(int index, ParameterValue value) {

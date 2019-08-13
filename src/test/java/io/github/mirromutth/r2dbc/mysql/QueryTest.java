@@ -26,12 +26,13 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Unit tests for {@link PrepareQuery}.
+ * Unit tests for {@link Query}.
  */
-class PrepareQueryTest {
+class QueryTest {
 
     @Test
     void parse() {
@@ -95,9 +96,8 @@ class PrepareQueryTest {
     }
 
     private static void assertPrepareQuery(String sql, String parsedSql, Map<String, int[]> nameKeyedIndexes, int parameters) {
-        int index = PrepareQuery.indexOfParameter(sql);
-        assertTrue(index >= 0);
-        PrepareQuery query = PrepareQuery.parse(sql, index);
+        Query query = Query.parse(sql);
+        assertTrue(query.isPrepared());
         assertEquals(query.getSql(), parsedSql);
         assertEquals(query.getParameters(), parameters);
         assertEquals(query.getParameterNames(), nameKeyedIndexes.keySet());
@@ -107,8 +107,8 @@ class PrepareQueryTest {
     }
 
     private static void assertSimpleQuery(String sql) {
-        int index = PrepareQuery.indexOfParameter(sql);
-        assertTrue(index < 0);
+        Query query = Query.parse(sql);
+        assertFalse(query.isPrepared());
     }
 
     private static Tuple2<String, int[]> link(String name, int... indexes) {

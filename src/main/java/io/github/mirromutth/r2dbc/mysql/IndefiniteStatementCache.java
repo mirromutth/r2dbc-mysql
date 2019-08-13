@@ -17,36 +17,24 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.client.Client;
-import io.github.mirromutth.r2dbc.mysql.message.client.PreparedCloseMessage;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
+import java.util.function.Function;
+
 /**
- * Metadata for prepared statement considers close logic and {@code sql} holding.
+ * A implementation of {@link StatementCache} for cache that stores prepared statement handles eternally.
  */
-final class StatementMetadata {
+final class IndefiniteStatementCache extends HashMap<String, Mono<Integer>> implements StatementCache {
 
-    private final Client client;
+    private final Function<String, Mono<Integer>> mapping;
 
-    private final String sql;
-
-    private final int statementId;
-
-    StatementMetadata(Client client, String sql, int statementId) {
-        this.client = client;
-        this.sql = sql;
-        this.statementId = statementId;
+    IndefiniteStatementCache(Client client) {
+        this.mapping = sql -> QueryFlow.prepare(client, sql).cache();
     }
 
-    String getSql() {
-        return sql;
-    }
-
-    int getStatementId() {
-        return statementId;
-    }
-
-    Mono<Void> close() {
-        // Note: close statement is idempotent.
-        return client.sendOnly(new PreparedCloseMessage(statementId));
+    @Override
+    public Mono<Integer> getOrPrepare(String sql) {
+        return computeIfAbsent(sql, mapping);
     }
 }

@@ -58,7 +58,7 @@ public final class MySqlConnection implements Connection {
      * current session isolation level will be {@literal @@transaction_isolation},
      * otherwise it is {@literal @@tx_isolation}.
      *
-     * @see #create(Client, ConnectionContext) judge server version before get the isolation level.
+     * @see #create judge server version before get the isolation level.
      */
     private static final ServerVersion TRAN_LEVEL_8x = ServerVersion.create(8, 0, 3);
 
@@ -99,6 +99,12 @@ public final class MySqlConnection implements Connection {
 
     private final IsolationLevel sessionLevel;
 
+    @Nullable
+    private final QueryCache queryCache;
+
+    @Nullable
+    private final StatementCache statementCache;
+
     /**
      * Current isolation level inferred by past statements.
      * <p>
@@ -111,12 +117,21 @@ public final class MySqlConnection implements Connection {
      */
     private volatile IsolationLevel currentLevel;
 
-    private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, IsolationLevel sessionLevel) {
+    private MySqlConnection(
+        Client client,
+        ConnectionContext context,
+        Codecs codecs,
+        IsolationLevel sessionLevel,
+        @Nullable QueryCache queryCache,
+        @Nullable StatementCache statementCache
+    ) {
         this.client = client;
         this.context = context;
         this.sessionLevel = sessionLevel;
         this.currentLevel = sessionLevel;
         this.codecs = codecs;
+        this.queryCache = queryCache;
+        this.statementCache = statementCache;
         this.batchSupported = (context.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
 
         if (this.batchSupported) {
@@ -217,25 +232,26 @@ public final class MySqlConnection implements Connection {
         });
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * @param sql the SQL of the statement, should include only one-statement, otherwise stream terminate disordered.
-     */
     @Override
     public MySqlStatement createStatement(String sql) {
         requireNonNull(sql, "sql must not be null");
 
-        int index = PrepareQuery.indexOfParameter(sql);
+        Query query;
 
-        if (index < 0) {
+        if (queryCache == null) {
+            query = Query.parse(sql);
+        } else {
+            query = queryCache.getOrParse(sql);
+        }
+
+        if (query.isPrepared()) {
+            // Find parameter mark, it should be prepare query.
+            logger.debug("Create a statement provided by prepare query");
+            return new ParametrizedMySqlStatement(client, codecs, context, query, statementCache);
+        } else {
             // No parameter mark, it must be simple query.
             logger.debug("Create a statement provided by simple query");
             return new SimpleMySqlStatement(client, codecs, context, sql);
-        } else {
-            // Find parameter mark, it should be prepare query.
-            logger.debug("Create a statement provided by prepare query");
-            return new ParametrizedMySqlStatement(client, codecs, context, PrepareQuery.parse(sql, index));
         }
     }
 
@@ -336,7 +352,7 @@ public final class MySqlConnection implements Connection {
     }
 
     private Mono<Void> executeVoid(String sql) {
-        return SimpleQueryFlow.execute(client, sql).doOnNext(SAFE_RELEASE).then();
+        return QueryFlow.execute(client, sql).doOnNext(SAFE_RELEASE).then();
     }
 
     private Mono<Void> recoverIsolationLevel(Mono<Void> commitOrRollback) {
@@ -356,8 +372,10 @@ public final class MySqlConnection implements Connection {
     /**
      * @param client  must be logged-in
      * @param context capabilities must be initialized
+     * @param queryCache the cache of query
+     * @param statementCache the cache of prepared statement identities.
      */
-    static Mono<MySqlConnection> create(Client client, ConnectionContext context) {
+    static Mono<MySqlConnection> create(Client client, ConnectionContext context, @Nullable QueryCache queryCache, @Nullable StatementCache statementCache) {
         requireNonNull(client, "client must not be null");
         requireNonNull(context, "context must not be null");
 
@@ -375,7 +393,7 @@ public final class MySqlConnection implements Connection {
             .execute()
             .flatMap(ISOLATION_LEVEL_HANDLER)
             .last()
-            .map(level -> new MySqlConnection(client, context, codecs, level));
+            .map(level -> new MySqlConnection(client, context, codecs, level, queryCache, statementCache));
     }
 
     private static IsolationLevel convertIsolationLevel(@Nullable String name) {

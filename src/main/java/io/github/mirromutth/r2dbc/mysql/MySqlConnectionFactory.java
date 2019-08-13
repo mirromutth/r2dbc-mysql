@@ -62,9 +62,10 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             String username = configuration.getUsername();
             CharSequence password = configuration.getPassword();
 
+            // TODO: add caches from configuration in here.
             return Client.connect(ConnectionProvider.newConnection(), host, port, ssl, context, connectTimeout)
                 .flatMap(client -> LoginFlow.login(client, sslMode, context, username, password))
-                .flatMap(client -> MySqlConnection.create(client, context));
+                .flatMap(client -> MySqlConnection.create(client, context, null, null));
         }));
     }
 }
