@@ -51,6 +51,8 @@ public interface Client {
 
     Mono<Void> forceClose();
 
+    boolean isConnected();
+
     void sslUnsupported();
 
     void loginSuccess();

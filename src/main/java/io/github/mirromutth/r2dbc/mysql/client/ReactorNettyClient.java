@@ -23,6 +23,7 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
+import io.netty.channel.Channel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -162,6 +163,11 @@ final class ReactorNettyClient implements Client {
     @Override
     public Mono<Void> forceClose() {
         return FutureMono.deferFuture(() -> connection.channel().close());
+    }
+
+    @Override
+    public boolean isConnected() {
+        return !closing.get() && connection.channel().isOpen();
     }
 
     @Override

@@ -79,11 +79,6 @@ abstract class ConnectionTestSupport extends CompatibilityTestSupport {
     }
 
     @Test
-    void ping() {
-        complete(MySqlConnection::ping);
-    }
-
-    @Test
     void batchCrud() {
         String isEven = "id % 2 = 0";
         String isOdd = "id % 2 = 1";

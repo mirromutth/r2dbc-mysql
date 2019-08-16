@@ -22,12 +22,13 @@ import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
 import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.ValidationDepth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -48,10 +49,16 @@ public final class MySqlConnection implements Connection {
 
     private static final Consumer<ServerMessage> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
 
-    private static final BiConsumer<ServerMessage, SynchronousSink<Void>> COMPLETE_OR_ERROR = (message, sink) -> {
+    private static final BiConsumer<ServerMessage, SynchronousSink<Boolean>> PING_HANDLER = (message, sink) -> {
         if (message instanceof ErrorMessage) {
-            sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
-        } else if (message instanceof CommandDoneMessage) {
+            ErrorMessage msg = (ErrorMessage) message;
+
+            logger.debug("Remote validate failed: [{}] [{}] {}", msg.getErrorCode(), msg.getSqlState(), msg.getErrorMessage());
+
+            sink.next(false);
+            sink.complete();
+        } else if (message instanceof CommandDoneMessage && ((CommandDoneMessage) message).isDone()) {
+            sink.next(true);
             sink.complete();
         } else {
             ReferenceCountUtil.safeRelease(message);
@@ -89,19 +96,6 @@ public final class MySqlConnection implements Connection {
         // The autocommit mode then reverts to its previous state
         // when end the transaction with COMMIT or ROLLBACK.
         return executeVoid("START TRANSACTION");
-    }
-
-    /**
-     * Validates the connection by the native command "ping".
-     * <p>
-     * WARNING: It is unstable API.
-     */
-    public Mono<Void> ping() {
-        logger.debug("Remote connection validation");
-        // Considers create a `CommandFlow` when want support more commands.
-        return client.exchange(PingMessage.getInstance())
-            .handle(COMPLETE_OR_ERROR)
-            .then();
     }
 
     @Override
@@ -183,6 +177,31 @@ public final class MySqlConnection implements Connection {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
 
         return executeVoid(String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()));
+    }
+
+    @Override
+    public Mono<Boolean> validate(ValidationDepth depth) {
+        requireNonNull(depth, "depth must not be null");
+
+        if (depth == ValidationDepth.LOCAL) {
+            return Mono.fromSupplier(client::isConnected);
+        }
+
+        return Mono.defer(() -> {
+            if (!client.isConnected()) {
+                return Mono.just(false);
+            }
+
+            return client.exchange(PingMessage.getInstance())
+                .handle(PING_HANDLER)
+                .last()
+                .onErrorResume(e -> {
+                    // `last` maybe emit a NoSuchElementException, exchange maybe emit exception by Netty.
+                    // But should NEVER emit any exception in this method, so logging exception and emit false.
+                    logger.debug("Remote validate failed", e);
+                    return Mono.just(false);
+                });
+        });
     }
 
     boolean isAutoCommit() {
