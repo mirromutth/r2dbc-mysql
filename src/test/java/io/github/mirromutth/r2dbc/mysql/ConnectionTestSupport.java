@@ -47,6 +47,19 @@ abstract class ConnectionTestSupport extends CompatibilityTestSupport {
     }
 
     @Test
+    void isInTransaction() {
+        complete(connection -> Mono.<Void>fromRunnable(() -> assertFalse(connection.isInTransaction()))
+            .then(connection.beginTransaction())
+            .doOnSuccess(ignored -> assertTrue(connection.isInTransaction()))
+            .then(connection.commitTransaction())
+            .doOnSuccess(ignored -> assertFalse(connection.isInTransaction()))
+            .then(connection.beginTransaction())
+            .doOnSuccess(ignored -> assertTrue(connection.isInTransaction()))
+            .then(connection.rollbackTransaction())
+            .doOnSuccess(ignored -> assertFalse(connection.isInTransaction())));
+    }
+
+    @Test
     void isAutoCommit() {
         complete(connection -> Mono.<Void>fromRunnable(() -> assertTrue(connection.isAutoCommit()))
             .then(connection.beginTransaction())
