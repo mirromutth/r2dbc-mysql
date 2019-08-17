@@ -140,7 +140,8 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
                 // Must be NOT close when using cache.
                 return cache.getOrPrepare(sql)
                     .doOnCancel(bindings::clear)
-                    .flatMapMany(id -> toResults(sql, id).doOnError(e -> bindings.clear()));
+                    .flatMapMany(id -> toResults(sql, id)
+                        .doOnError(e -> bindings.clear()));
             }
         });
     }

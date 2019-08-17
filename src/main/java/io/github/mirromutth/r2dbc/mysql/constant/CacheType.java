@@ -21,9 +21,10 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  */
 public enum CacheType {
 
-    INDEFINITE;
+    INDEFINITE,
+    W_TINY_LFU;
 
     public final boolean isSizeRequired() {
-        return false;
+        return INDEFINITE != this;
     }
 }

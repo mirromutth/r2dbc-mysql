@@ -34,10 +34,13 @@ interface StatementCache {
     static StatementCache create(Client client, CacheConfiguration configuration) {
         CacheType type = configuration.getType();
 
-        if (type == CacheType.INDEFINITE) {
-            return new IndefiniteStatementCache(client);
-        } else {
-            throw new IllegalStateException("Unsupported cache type " + type);
+        switch (type) {
+            case INDEFINITE:
+                return new IndefiniteStatementCache(client);
+            case W_TINY_LFU:
+                return new WindowTinyLfuStatementCache(client, configuration.getSize());
+            default:
+                throw new IllegalStateException("Unsupported cache type " + type);
         }
     }
 }
