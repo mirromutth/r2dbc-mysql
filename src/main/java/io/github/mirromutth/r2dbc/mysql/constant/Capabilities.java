@@ -22,27 +22,46 @@ package io.github.mirromutth.r2dbc.mysql.constant;
 public final class Capabilities {
 
 //    public static final int LONG_PASSWORD = 1; // More secure passwords.
-//    public static final int FOUND_ROWS = 1 << 1;
-//    public static final int LONG_FLAG = 1 << 2;
+//    public static final int FOUND_ROWS = 2;
+//    public static final int LONG_FLAG = 4;
 
-    public static final int CONNECT_WITH_DB = 1 << 3;
+    public static final int CONNECT_WITH_DB = 8;
+
+    /**
+     * Don't allows statement like {@code database.table.column}.
+     */
+    public static final int NO_SCHEMA = 16;
 
     /**
      * The deflate compression.
      */
     public static final int COMPRESS = 32;
 
-//    public static final int LOCAL_FILES = 128;
+    /**
+     * Is this client ODBC?
+     */
+    public static final int ODBC = 64;
+
+    public static final int LOCAL_FILES = 128;
+
+    /**
+     * Ignore spaces before '('.
+     */
+    public static final int IGNORE_SPACE = 256;
 
     /**
      * WARNING: should ALWAYS enable this option before newer protocol comes out.
      */
     public static final int PROTOCOL_41 = 512;
 
-//    public static final int INTERACTIVE = 1024;
+    /**
+     * Does this client is interactive? (answer is no)
+     */
+    public static final int INTERACTIVE_CLIENT = 1024;
 
     public static final int SSL = 2048;
 
+//    public static final int IGNORE_SIGPIPE = 4096;
 //    public static final int TRANSACTIONS = 8192;
 //    public static final int RESERVED = 16384;
 
@@ -65,7 +84,10 @@ public final class Capabilities {
      */
     public static final int PLUGIN_AUTH_VAR_INT_SIZED_DATA = 1 << 21;
 
-//    public static final int CAN_HANDLE_EXPIRED_PASSWORD = 1 << 22;
+    /**
+     * Client can handle expired passwords.
+     */
+    public static final int HANDLE_EXPIRED_PASSWORD = 1 << 22;
 
     public static final int SESSION_TRACK = 1 << 23;
 
@@ -81,7 +103,7 @@ public final class Capabilities {
 
     public static final int SSL_VERIFY_SERVER_CERT = 1 << 30;
 
-//    public static final int REMEMBER_OPTIONS = 1 << 31;
+    public static final int REMEMBER_OPTIONS = 1 << 31;
 
     private Capabilities() {
     }

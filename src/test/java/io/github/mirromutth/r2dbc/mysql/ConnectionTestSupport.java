@@ -41,6 +41,12 @@ abstract class ConnectionTestSupport extends CompatibilityTestSupport {
     }
 
     @Test
+    void selectFromOtherDatabase() {
+        complete(connection -> Flux.from(connection.createStatement("SELECT * FROM `information_schema`.`innodb_trx`").execute())
+            .flatMap(result -> result.map((row, metadata) -> row.get(0))));
+    }
+
+    @Test
     void beginTransaction() {
         complete(connection -> Mono.<Void>fromRunnable(() -> assertTrue(connection.isAutoCommit()))
             .then(connection.beginTransaction())
