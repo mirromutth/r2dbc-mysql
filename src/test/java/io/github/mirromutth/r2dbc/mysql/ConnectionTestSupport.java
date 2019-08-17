@@ -47,11 +47,15 @@ abstract class ConnectionTestSupport extends CompatibilityTestSupport {
     }
 
     @Test
-    void beginTransaction() {
+    void isAutoCommit() {
         complete(connection -> Mono.<Void>fromRunnable(() -> assertTrue(connection.isAutoCommit()))
             .then(connection.beginTransaction())
             .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
             .then(connection.commitTransaction())
+            .doOnSuccess(ignored -> assertTrue(connection.isAutoCommit()))
+            .then(connection.beginTransaction())
+            .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
+            .then(connection.rollbackTransaction())
             .doOnSuccess(ignored -> assertTrue(connection.isAutoCommit())));
     }
 
@@ -126,7 +130,7 @@ abstract class ConnectionTestSupport extends CompatibilityTestSupport {
                 .reduce(Math::addExact)
                 .doOnNext(all -> assertEquals(all.intValue(), 5))
                 .then(Mono.from(selectStmt.execute()))
-                .flatMapMany(result -> result.map((row, metadata) -> row.get("data", String.class)))
+                .flatMapMany(result -> result.map((row, metadata) -> row.get("value", String.class)))
                 .collectList()
                 .doOnNext(data -> assertEquals(data.size(), 5))
                 .doOnNext(data -> assertEquals(data, Arrays.asList(firstData, secondData, thirdData, fourthData, fifthData)))
@@ -136,7 +140,7 @@ abstract class ConnectionTestSupport extends CompatibilityTestSupport {
                 .doOnNext(updated -> assertEquals(updated.size(), 2))
                 .doOnNext(updated -> assertEquals(updated, Arrays.asList(2, 3)))
                 .thenMany(selectBatch.execute())
-                .concatMap(result -> result.map((row, metadata) -> row.get("data", String.class)))
+                .concatMap(result -> result.map((row, metadata) -> row.get("value", String.class)))
                 .collectList()
                 .doOnNext(data -> assertEquals(data.size(), 5))
                 .doOnNext(data -> assertEquals(data, Arrays.asList(sixthData, sixthData, seventhData, seventhData, seventhData)))
@@ -156,7 +160,7 @@ abstract class ConnectionTestSupport extends CompatibilityTestSupport {
     private Mono<Void> run(Function<? super MySqlConnection, Publisher<?>> runner) {
         return connectionFactory.create()
             .flatMap(connection -> Flux.from(runner.apply(connection))
-                .onErrorResume(e -> close(connection))
+                .onErrorResume(e -> close(connection).then(Mono.error(e)))
                 .concatWith(close(connection))
                 .then());
     }
