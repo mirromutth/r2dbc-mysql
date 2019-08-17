@@ -21,7 +21,7 @@ package io.github.mirromutth.r2dbc.mysql.constant;
  */
 public final class ServerStatuses {
 
-//    public static final int IN_TRANSACTION = 1;
+    public static final int IN_TRANSACTION = 1;
 
     public static final int AUTO_COMMIT = 2;
 

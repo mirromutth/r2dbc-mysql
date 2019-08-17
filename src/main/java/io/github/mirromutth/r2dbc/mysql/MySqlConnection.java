@@ -92,10 +92,19 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> beginTransaction() {
-        // Autocommit will be disable after START TRANSACTION.
-        // The autocommit mode then reverts to its previous state
-        // when end the transaction with COMMIT or ROLLBACK.
-        return executeVoid("START TRANSACTION");
+        return Mono.defer(() -> {
+            if (isInTransaction()) {
+                return Mono.empty();
+            }
+
+            if (!isAutoCommit()) {
+                return executeVoid("START TRANSACTION");
+            } else if (batchSupported) {
+                return executeVoid("SET autocommit=0;START TRANSACTION");
+            } else {
+                return executeVoid("SET autocommit=0").then(executeVoid("START TRANSACTION"));
+            }
+        });
     }
 
     @Override
@@ -112,7 +121,19 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> commitTransaction() {
-        return executeVoid("COMMIT");
+        return Mono.defer(() -> {
+            if (!isInTransaction()) {
+                return Mono.empty();
+            }
+
+            if (isAutoCommit()) {
+                return executeVoid("COMMIT");
+            } else if (batchSupported) {
+                return executeVoid("COMMIT;SET autocommit=1");
+            } else {
+                return executeVoid("COMMIT").then(executeVoid("SET autocommit=1"));
+            }
+        });
     }
 
     @Override
@@ -162,7 +183,19 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> rollbackTransaction() {
-        return executeVoid("ROLLBACK");
+        return Mono.defer(() -> {
+            if (!isInTransaction()) {
+                return Mono.empty();
+            }
+
+            if (isAutoCommit()) {
+                return executeVoid("ROLLBACK");
+            } else if (batchSupported) {
+                return executeVoid("ROLLBACK;SET autocommit=1");
+            } else {
+                return executeVoid("ROLLBACK").then(executeVoid("SET autocommit=1"));
+            }
+        });
     }
 
     @Override
@@ -206,6 +239,10 @@ public final class MySqlConnection implements Connection {
 
     boolean isAutoCommit() {
         return (context.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0;
+    }
+
+    boolean isInTransaction() {
+        return (context.getServerStatuses() & ServerStatuses.IN_TRANSACTION) != 0;
     }
 
     private Mono<Void> executeVoid(String sql) {
