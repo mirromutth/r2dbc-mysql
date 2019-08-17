@@ -170,8 +170,18 @@ final class LoginFlow {
     }
 
     private int calculateClientCapabilities(int serverCapabilities) {
-        // Server should always return metadata, and no compress, and without session track.
-        int clientCapabilities = serverCapabilities & ~(Capabilities.OPTIONAL_RESULT_SET_METADATA | Capabilities.COMPRESS | Capabilities.SESSION_TRACK);
+        // Remove those flags.
+        int clientCapabilities = serverCapabilities & ~(Capabilities.NO_SCHEMA |
+            Capabilities.COMPRESS |
+            Capabilities.ODBC |
+            Capabilities.LOCAL_FILES |
+            Capabilities.IGNORE_SPACE |
+            Capabilities.INTERACTIVE_CLIENT |
+            Capabilities.HANDLE_EXPIRED_PASSWORD |
+            Capabilities.SESSION_TRACK |
+            Capabilities.OPTIONAL_RESULT_SET_METADATA |
+            Capabilities.REMEMBER_OPTIONS
+        );
 
         if ((clientCapabilities & Capabilities.SSL) == 0) {
             // Server unsupported SSL.
