@@ -61,7 +61,11 @@ final class FrequencySketch {
 
     private static final long ONE_MASK = 0x1111111111111111L;
 
-    private final int sampleSize;
+    private static final int MAX_CAPACITY = 1 << 30;
+
+    private static final int SAMPLE_MULTIPLIER = 10;
+
+    private final int sampling;
 
     private final int tableMask;
 
@@ -79,17 +83,16 @@ final class FrequencySketch {
     FrequencySketch(int capacity) {
         require(capacity >= 0, "capacity must not be a negative integer");
 
-        int maximum = Math.min(capacity, Integer.MAX_VALUE >>> 1);
-        int tableSize = (maximum == 0) ? 1 : ceilingNextPowerOfTwo(maximum);
-        int sampleSize = (capacity == 0) ? 10 : (10 * maximum);
+        int size = Math.min(capacity, MAX_CAPACITY);
+        int sampling = (size == 0) ? SAMPLE_MULTIPLIER : (SAMPLE_MULTIPLIER * size);
 
-        this.table = new long[tableSize];
-        this.tableMask = Math.max(0, tableSize - 1);
+        this.table = new long[(size == 0) ? 1 : nextPowerOfTwo(size)];
+        this.tableMask = Math.max(0, table.length - 1);
 
-        if (sampleSize <= 0) {
-            this.sampleSize = Integer.MAX_VALUE;
+        if (sampling <= 0) {
+            this.sampling = Integer.MAX_VALUE;
         } else {
-            this.sampleSize = sampleSize;
+            this.sampling = sampling;
         }
     }
 
@@ -99,13 +102,13 @@ final class FrequencySketch {
      * @param hashCode the hashCode of element to count occurrences of
      * @return the estimated number of occurrences of the element; possibly zero but never negative
      */
-    public int frequency(int hashCode) {
+    int frequency(int hashCode) {
         int hash = spread(hashCode);
         int start = (hash & 3) << 2;
         int frequency = Integer.MAX_VALUE;
         for (int i = 0; i < 4; i++) {
             int index = indexOf(hash, i);
-            int count = (int) ((table[index] >>> ((start + i) << 2)) & 0xfL);
+            int count = (int) ((table[index] >>> ((start + i) << 2)) & 0xFL);
             frequency = Math.min(frequency, count);
         }
         return frequency;
@@ -133,7 +136,7 @@ final class FrequencySketch {
         added |= incrementAt(index2, start + 2);
         added |= incrementAt(index3, start + 3);
 
-        if (added && (++size == sampleSize)) {
+        if (added && (++size == sampling)) {
             reset();
         }
     }
@@ -176,8 +179,7 @@ final class FrequencySketch {
      */
     private int indexOf(int item, int i) {
         long hash = SEED[i] * item;
-        hash += hash >>> 32;
-        return ((int) hash) & tableMask;
+        return ((int) (hash + (hash >>> 32))) & tableMask;
     }
 
     /**
@@ -190,8 +192,27 @@ final class FrequencySketch {
         return (x >>> 16) ^ x;
     }
 
-    private static int ceilingNextPowerOfTwo(int x) {
-        // Hacker's Delight, Chapter 3, Harry S. Warren Jr.
-        return 1 << (Integer.SIZE - Integer.numberOfLeadingZeros(x - 1));
+    /**
+     * Get the least power of 2 greater than or equal to {@code x},
+     * loop free, branch free and extra call stack free.
+     * <p>
+     * Hacker's Delight, Chapter 3. Power-of-2 Boundaries,
+     * Figure 3–3. Least power of 2 greater than or equal to x.
+     * The algorithm is branch free, but it is only correct when x is unsigned int.
+     * <p>
+     * Of course Java has unsupported native unsigned int,
+     * but we can check the {@code x} before calling this function.
+     *
+     * @param x must be a positive integer and it must less than 1073741824 (i.e. 1 << 30, the {@link #MAX_CAPACITY})
+     * @return the least power of 2 greater than or equal to {@code x}.
+     */
+    static int nextPowerOfTwo(int x) {
+        x = x - 1;
+        x |= (x >>> 1);
+        x |= (x >>> 2);
+        x |= (x >>> 4);
+        x |= (x >>> 8);
+        x |= (x >>> 16);
+        return x + 1;
     }
 }
