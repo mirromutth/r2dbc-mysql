@@ -22,7 +22,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireValidName;
 
 /**
- * Base class considers {@link #returnGeneratedValues(String...)} for {@link MySqlStatement} implementations.
+ * Base class considers generic logic for {@link MySqlStatement} implementations.
  */
 abstract class MySqlStatementSupport implements MySqlStatement {
 
@@ -46,6 +46,11 @@ abstract class MySqlStatementSupport implements MySqlStatement {
                 throw new IllegalArgumentException("MySQL only supports single generated value");
         }
 
+        return this;
+    }
+
+    @Override
+    public final MySqlStatement fetchSize(int rows) {
         return this;
     }
 }

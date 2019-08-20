@@ -121,4 +121,13 @@ public interface MySqlStatement extends Statement {
      */
     @Override
     Publisher<MySqlResult> execute();
+
+    /**
+     * MySQL unsupported fetch size in current mainstream versions,
+     * so it will do nothing and just return {@code this} for now.
+     * <p>
+     * {@inheritDoc}
+     */
+    @Override
+    MySqlStatement fetchSize(int rows);
 }
