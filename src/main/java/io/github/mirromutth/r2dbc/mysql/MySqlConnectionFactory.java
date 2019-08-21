@@ -64,7 +64,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
 
             return Client.connect(ConnectionProvider.newConnection(), host, port, ssl, context, connectTimeout)
                 .flatMap(client -> LoginFlow.login(client, sslMode, context, username, password))
-                .map(client -> new MySqlConnection(client, context));
+                .flatMap(client -> MySqlConnection.create(client, context));
         }));
     }
 }

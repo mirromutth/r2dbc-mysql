@@ -120,6 +120,10 @@ public final class ServerVersion implements Comparable<ServerVersion> {
         return compareTo(version) >= 0;
     }
 
+    public boolean isLessThan(ServerVersion version) {
+        return compareTo(version) < 0;
+    }
+
     @Override
     public int compareTo(ServerVersion version) {
         // Standard `Comparable` must throw `NullPointerException` in `compareTo`,
