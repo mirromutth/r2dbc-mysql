@@ -52,11 +52,10 @@ public final class MySqlConnection implements Connection {
     private static final Logger logger = LoggerFactory.getLogger(MySqlConnection.class);
 
     /**
-     * See https://bugs.mysql.com/bug.php?id=53341
-     * <p>
      * If MySQL server version greater than or equal to {@literal 8.0.3}, or greater than
      * or equal to{@literal 5.7.20} and less than {@literal 8.0.0}, the column name of
-     * current session isolation level will be {@literal transaction_isolation}.
+     * current session isolation level will be {@literal @@transaction_isolation},
+     * otherwise it is {@literal @@tx_isolation}.
      *
      * @see #create(Client, ConnectionContext) judge server version before get the isolation level.
      */
@@ -265,6 +264,14 @@ public final class MySqlConnection implements Connection {
         return executeVoid(String.format("ROLLBACK TO SAVEPOINT `%s`", name));
     }
 
+    /**
+     * MySQL does not have any way to query the isolation level of the current transaction,
+     * only inferred from past statements, so driver can not make sure the result is right.
+     * <p>
+     * See https://bugs.mysql.com/bug.php?id=53341
+     * <p>
+     * {@inheritDoc}
+     */
     @Override
     public IsolationLevel getTransactionIsolationLevel() {
         return currentLevel;
