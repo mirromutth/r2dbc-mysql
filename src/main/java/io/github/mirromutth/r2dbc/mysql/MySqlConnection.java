@@ -53,7 +53,7 @@ public final class MySqlConnection implements Connection {
 
     /**
      * If MySQL server version greater than or equal to {@literal 8.0.3}, or greater than
-     * or equal to{@literal 5.7.20} and less than {@literal 8.0.0}, the column name of
+     * or equal to {@literal 5.7.20} and less than {@literal 8.0.0}, the column name of
      * current session isolation level will be {@literal @@transaction_isolation},
      * otherwise it is {@literal @@tx_isolation}.
      *
@@ -99,6 +99,16 @@ public final class MySqlConnection implements Connection {
 
     private final IsolationLevel sessionLevel;
 
+    /**
+     * Current isolation level inferred by past statements.
+     * <p>
+     * Inference rules:
+     * <ol>
+     * <li>In the beginning, it is also {@link #sessionLevel}.</li>
+     * <li>After the user calls {@link #setTransactionIsolationLevel(IsolationLevel)}, it will change to the user-specified value.</li>
+     * <li>After the end of a transaction (commit or rollback), it will recover to {@link #sessionLevel}.</li>
+     * </ol>
+     */
     private volatile IsolationLevel currentLevel;
 
     private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, IsolationLevel sessionLevel) {
