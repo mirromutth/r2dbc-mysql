@@ -120,8 +120,13 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
 
     @Override
     public String toString() {
-        return String.format("OkMessage{affectedRows=%d, lastInsertId=%d, serverStatuses=%x, warnings=%d, information='%s'}",
-            affectedRows, lastInsertId, serverStatuses, warnings, information);
+        if (warnings != 0) {
+            return String.format("OkMessage{affectedRows=%d, lastInsertId=%d, serverStatuses=%x, warnings=%d, information='%s'}",
+                affectedRows, lastInsertId, serverStatuses, warnings, information);
+        } else {
+            return String.format("OkMessage{affectedRows=%d, lastInsertId=%d, serverStatuses=%x, information='%s'}",
+                affectedRows, lastInsertId, serverStatuses, information);
+        }
     }
 
     static boolean isValidSize(int bytes) {
