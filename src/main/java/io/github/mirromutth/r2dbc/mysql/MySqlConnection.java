@@ -28,14 +28,18 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
+import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.ValidationDepth;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
+import reactor.util.annotation.Nullable;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireValidName;
@@ -46,6 +50,26 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireValid
 public final class MySqlConnection implements Connection {
 
     private static final Logger logger = LoggerFactory.getLogger(MySqlConnection.class);
+
+    /**
+     * If MySQL server version greater than or equal to {@literal 8.0.3}, or greater than
+     * or equal to {@literal 5.7.20} and less than {@literal 8.0.0}, the column name of
+     * current session isolation level will be {@literal @@transaction_isolation},
+     * otherwise it is {@literal @@tx_isolation}.
+     *
+     * @see #create(Client, ConnectionContext) judge server version before get the isolation level.
+     */
+    private static final ServerVersion TRAN_LEVEL_8x = ServerVersion.create(8, 0, 3);
+
+    private static final ServerVersion TRAN_LEVEL_5x = ServerVersion.create(5, 7, 20);
+
+    private static final ServerVersion TX_LEVEL_8x = ServerVersion.create(8, 0, 0);
+
+    /**
+     * Convert result to isolation level which considered {@code null}.
+     */
+    private static final Function<MySqlResult, Publisher<IsolationLevel>> ISOLATION_LEVEL_HANDLER =
+        r -> r.map((row, meta) -> convertIsolationLevel(row.get(0, String.class)));
 
     private static final Consumer<ServerMessage> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
 
@@ -73,14 +97,26 @@ public final class MySqlConnection implements Connection {
 
     private final ConnectionContext context;
 
+    private final IsolationLevel sessionLevel;
+
     /**
-     * @param client must be logged-in
-     * @param context capabilities must be initialized
+     * Current isolation level inferred by past statements.
+     * <p>
+     * Inference rules:
+     * <ol>
+     * <li>In the beginning, it is also {@link #sessionLevel}.</li>
+     * <li>After the user calls {@link #setTransactionIsolationLevel(IsolationLevel)}, it will change to the user-specified value.</li>
+     * <li>After the end of a transaction (commit or rollback), it will recover to {@link #sessionLevel}.</li>
+     * </ol>
      */
-    MySqlConnection(Client client, ConnectionContext context) {
-        this.client = requireNonNull(client, "client must not be null");
-        this.context = requireNonNull(context, "context must not be null");
-        this.codecs = Codecs.getInstance();
+    private volatile IsolationLevel currentLevel;
+
+    private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, IsolationLevel sessionLevel) {
+        this.client = client;
+        this.context = context;
+        this.sessionLevel = sessionLevel;
+        this.currentLevel = sessionLevel;
+        this.codecs = codecs;
         this.batchSupported = (context.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
 
         if (this.batchSupported) {
@@ -126,13 +162,17 @@ public final class MySqlConnection implements Connection {
                 return Mono.empty();
             }
 
+            Mono<Void> commit;
+
             if (isAutoCommit()) {
-                return executeVoid("COMMIT");
+                commit = executeVoid("COMMIT");
             } else if (batchSupported) {
-                return executeVoid("COMMIT;SET autocommit=1");
+                commit = executeVoid("COMMIT;SET autocommit=1");
             } else {
-                return executeVoid("COMMIT").then(executeVoid("SET autocommit=1"));
+                commit = executeVoid("COMMIT").then(executeVoid("SET autocommit=1"));
             }
+
+            return recoverIsolationLevel(commit);
         });
     }
 
@@ -149,7 +189,32 @@ public final class MySqlConnection implements Connection {
     public Mono<Void> createSavepoint(String name) {
         requireValidName(name, "Savepoint name must not be empty and not contain backticks");
 
-        return executeVoid(String.format("SAVEPOINT `%s`", name));
+        String sql = String.format("SAVEPOINT `%s`", name);
+
+        return Mono.defer(() -> {
+            if (isInTransaction()) {
+                return executeVoid(sql);
+            }
+
+            // See Example.savePointStartsTransaction, if connection does not in transaction, then starts transaction.
+            if (batchSupported) {
+                if (isAutoCommit()) {
+                    return executeVoid("SET autocommit=0;START TRANSACTION;" + sql);
+                } else {
+                    return executeVoid("START TRANSACTION;" + sql);
+                }
+            } else {
+                Mono<Void> start;
+
+                if (isAutoCommit()) {
+                    start = executeVoid("SET autocommit=0").then(executeVoid("START TRANSACTION"));
+                } else {
+                    start = executeVoid("START TRANSACTION");
+                }
+
+                return start.then(executeVoid(sql));
+            }
+        });
     }
 
     /**
@@ -188,13 +253,17 @@ public final class MySqlConnection implements Connection {
                 return Mono.empty();
             }
 
+            Mono<Void> rollback;
+
             if (isAutoCommit()) {
-                return executeVoid("ROLLBACK");
+                rollback = executeVoid("ROLLBACK");
             } else if (batchSupported) {
-                return executeVoid("ROLLBACK;SET autocommit=1");
+                rollback = executeVoid("ROLLBACK;SET autocommit=1");
             } else {
-                return executeVoid("ROLLBACK").then(executeVoid("SET autocommit=1"));
+                rollback = executeVoid("ROLLBACK").then(executeVoid("SET autocommit=1"));
             }
+
+            return recoverIsolationLevel(rollback);
         });
     }
 
@@ -205,11 +274,26 @@ public final class MySqlConnection implements Connection {
         return executeVoid(String.format("ROLLBACK TO SAVEPOINT `%s`", name));
     }
 
+    /**
+     * MySQL does not have any way to query the isolation level of the current transaction,
+     * only inferred from past statements, so driver can not make sure the result is right.
+     * <p>
+     * See https://bugs.mysql.com/bug.php?id=53341
+     * <p>
+     * {@inheritDoc}
+     */
+    @Override
+    public IsolationLevel getTransactionIsolationLevel() {
+        return currentLevel;
+    }
+
     @Override
     public Mono<Void> setTransactionIsolationLevel(IsolationLevel isolationLevel) {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
 
-        return executeVoid(String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()));
+        // Set next transaction isolation level.
+        return executeVoid(String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()))
+            .doOnSuccess(ignored -> currentLevel = isolationLevel);
     }
 
     @Override
@@ -237,8 +321,14 @@ public final class MySqlConnection implements Connection {
         });
     }
 
-    boolean isAutoCommit() {
+    @Override
+    public boolean isAutoCommit() {
         return (context.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0;
+    }
+
+    @Override
+    public Mono<Void> setAutoCommit(boolean autoCommit) {
+        return executeVoid(String.format("SET autocommit=%d", autoCommit ? 1 : 0));
     }
 
     boolean isInTransaction() {
@@ -247,5 +337,65 @@ public final class MySqlConnection implements Connection {
 
     private Mono<Void> executeVoid(String sql) {
         return SimpleQueryFlow.execute(client, sql).doOnNext(SAFE_RELEASE).then();
+    }
+
+    private Mono<Void> recoverIsolationLevel(Mono<Void> commitOrRollback) {
+        if (currentLevel != sessionLevel) {
+            // Need recover next transaction isolation level to session isolation level.
+            return commitOrRollback.doOnSuccessOrError((ignored, throwable) -> {
+                if (throwable == null || throwable instanceof R2dbcException) {
+                    // Succeed or failed by server executing, just recover current isolation level.
+                    currentLevel = sessionLevel;
+                }
+            });
+        }
+
+        return commitOrRollback;
+    }
+
+    /**
+     * @param client  must be logged-in
+     * @param context capabilities must be initialized
+     */
+    static Mono<MySqlConnection> create(Client client, ConnectionContext context) {
+        requireNonNull(client, "client must not be null");
+        requireNonNull(context, "context must not be null");
+
+        Codecs codecs = Codecs.getInstance();
+        ServerVersion version = context.getServerVersion();
+        String query;
+
+        if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8x) || (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5x) && version.isLessThan(TX_LEVEL_8x))) {
+            query = "SELECT @@transaction_isolation AS i";
+        } else {
+            query = "SELECT @@tx_isolation AS i";
+        }
+
+        return new SimpleMySqlStatement(client, codecs, context, query)
+            .execute()
+            .flatMap(ISOLATION_LEVEL_HANDLER)
+            .last()
+            .map(level -> new MySqlConnection(client, context, codecs, level));
+    }
+
+    private static IsolationLevel convertIsolationLevel(@Nullable String name) {
+        if (name == null) {
+            logger.warn("Isolation level is null in current session, fallback to repeatable read");
+            return IsolationLevel.REPEATABLE_READ;
+        }
+
+        switch (name) {
+            case "READ-UNCOMMITTED":
+                return IsolationLevel.READ_UNCOMMITTED;
+            case "READ-COMMITTED":
+                return IsolationLevel.READ_COMMITTED;
+            case "REPEATABLE-READ":
+                return IsolationLevel.REPEATABLE_READ;
+            case "SERIALIZABLE":
+                return IsolationLevel.SERIALIZABLE;
+            default:
+                logger.warn("Unknown isolation level {} in current session, fallback to repeatable read", name);
+                return IsolationLevel.REPEATABLE_READ;
+        }
     }
 }

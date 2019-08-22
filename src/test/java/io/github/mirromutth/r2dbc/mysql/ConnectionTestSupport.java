@@ -92,11 +92,6 @@ abstract class ConnectionTestSupport extends CompatibilityTestSupport {
     }
 
     @Test
-    void createSavepoint() {
-        complete(connection -> connection.createSavepoint("foo"));
-    }
-
-    @Test
     void setTransactionIsolationLevel() {
         complete(connection -> connection.setTransactionIsolationLevel(IsolationLevel.READ_COMMITTED));
     }
