@@ -5,6 +5,8 @@
 ### Maven
 
 target/
+*.jar
+.mvn/wrapper/MavenWrapperDownloader.java
 
 ### IntelliJ IDEA
 
