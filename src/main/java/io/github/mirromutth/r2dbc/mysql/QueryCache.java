@@ -33,10 +33,13 @@ interface QueryCache {
     static QueryCache create(CacheConfiguration configuration) {
         CacheType type = configuration.getType();
 
-        if (type == CacheType.INDEFINITE) {
-            return new IndefiniteQueryCache();
-        } else {
-            throw new IllegalStateException("Unsupported cache type " + type);
+        switch (type) {
+            case INDEFINITE:
+                return new IndefiniteQueryCache();
+            case W_TINY_LFU:
+                return new WindowTinyLfuQueryCache(configuration.getSize());
+            default:
+                throw new IllegalStateException("Unsupported cache type " + type);
         }
     }
 }

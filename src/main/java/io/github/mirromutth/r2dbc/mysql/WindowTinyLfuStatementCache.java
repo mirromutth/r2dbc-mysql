@@ -30,16 +30,19 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  * <p>
  * It is just a minimal implementation of Window Tiny LFU not like Caffeine (inspired by the paper arXiv:1512.00727 [cs.OS]),
  * does not have features such as dynamic window, time-based expires, etc.
+ * <p>
+ * It is NOT thread-safety.
  */
 final class WindowTinyLfuStatementCache implements StatementCache {
 
+    // Maybe use BiMap?
+    private final Map<String, Lru.Node<Mono<Integer>>> hashing = new HashMap<>();
+
     private final Client client;
 
-    private final Map<String, Lru.Node<Value>> hashing;
+    private final Lru<Mono<Integer>> window;
 
-    private final Lru<Value> window;
-
-    private final Slru<Value> slru;
+    private final Slru<Mono<Integer>> slru;
 
     private final FrequencySketch sketch;
 
@@ -49,7 +52,6 @@ final class WindowTinyLfuStatementCache implements StatementCache {
         int windowSize = capacity / 100;
 
         this.client = client;
-        this.hashing = new HashMap<>(); // Keep the default capacity of hashing map.
         this.window = new Lru<>(Math.max(1, windowSize));
         this.slru = new Slru<>(Math.max(1, capacity - windowSize));
         this.sketch = new FrequencySketch(capacity);
@@ -62,7 +64,7 @@ final class WindowTinyLfuStatementCache implements StatementCache {
         return Mono.defer(() -> {
             sketch.increment(sql.hashCode());
 
-            Lru.Node<Value> node = hashing.get(sql);
+            Lru.Node<Mono<Integer>> node = hashing.get(sql);
 
             if (node != null) {
                 if (node.getLru() == window) {
@@ -70,20 +72,20 @@ final class WindowTinyLfuStatementCache implements StatementCache {
                 } else {
                     slru.refresh(node);
                 }
-                return node.getValue().id;
+                return node.getValue();
             }
 
             Mono<Integer> result = QueryFlow.prepare(client, sql).cache();
-            node = new Lru.Node<>(new Value(sql, result));
+            node = new Lru.Node<>(sql, result);
             hashing.put(sql, node);
 
-            Lru.Node<Value> windowEvicted = window.push(node);
+            Lru.Node<Mono<Integer>> windowEvicted = window.push(node);
 
             if (windowEvicted == null) {
                 return result;
             }
 
-            Value slruEvicted = slru.nextEviction();
+            Lru.Node<Mono<Integer>> slruEvicted = slru.nextEviction();
 
             if (slruEvicted == null) {
                 // SLRU will be not evict any node, just add it to SLRU, no-one is victim.
@@ -93,13 +95,13 @@ final class WindowTinyLfuStatementCache implements StatementCache {
 
             // Need to check if it is joining SLRU worthily or not.
             // Let's choose victim between windowEvicted and slruEvicted! Ready for the Battle!
-            int windowHashCode = windowEvicted.getValue().sql.hashCode();
-            int slruHashCode = slruEvicted.sql.hashCode();
+            int windowHashCode = windowEvicted.getKey().hashCode();
+            int slruHashCode = slruEvicted.getKey().hashCode();
 
-            Lru.Node<Value> victim;
+            Lru.Node<Mono<Integer>> victim;
 
             if (sketch.frequency(windowHashCode) > sketch.frequency(slruHashCode)) {
-                // Victim is also slruEvicted, but contains whole node.
+                // Victim is also slruEvicted.
                 victim = slru.push(windowEvicted);
             } else {
                 // Window has evicted from LRU list, just close and remove.
@@ -111,24 +113,11 @@ final class WindowTinyLfuStatementCache implements StatementCache {
                 return result;
             }
 
-            Value value = victim.getValue();
-            String victimSql = value.sql;
+            String victimSql = victim.getKey();
 
-            return value.id.flatMap(id -> QueryFlow.close(client, id))
+            return victim.getValue().flatMap(id -> QueryFlow.close(client, id))
                 .doOnTerminate(() -> hashing.remove(victimSql))
                 .then(result);
         });
-    }
-
-    private static final class Value {
-
-        private final String sql;
-
-        private final Mono<Integer> id;
-
-        private Value(String sql, Mono<Integer> id) {
-            this.sql = sql;
-            this.id = id;
-        }
     }
 }

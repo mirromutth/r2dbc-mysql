@@ -126,26 +126,28 @@ final class Lru<T> {
             ++size;
             return null;
         } else {
-            Node<T> tail = this.tail;
+            Node<T> currentTail = this.tail;
+            Node<T> tail;
 
-            if (tail == null || tail.prev == null) {
+            if (currentTail == null || (tail = currentTail.prev) == null) {
                 throw new IllegalStateException("LRU must be contains least two elements when choose victim element");
             }
-            this.tail = tail.prev;
-            this.tail.next = null;
 
-            tail.reInit();
+            tail.next = null;
+            this.tail = tail;
 
-            return tail;
+            currentTail.reInit();
+
+            return currentTail;
         }
     }
 
     @Nullable
-    T nextEviction() {
+    Lru.Node<T> nextEviction() {
         if (size < limit || tail == null) {
             return null;
         } else {
-            return tail.getValue();
+            return tail;
         }
     }
 
@@ -168,6 +170,8 @@ final class Lru<T> {
 
     static final class Node<T> {
 
+        private final String key;
+
         private final T value;
 
         @Nullable
@@ -179,8 +183,13 @@ final class Lru<T> {
         @Nullable
         private Node<T> next;
 
-        Node(T value) {
+        Node(String key, T value) {
+            this.key = key;
             this.value = value;
+        }
+
+        public String getKey() {
+            return key;
         }
 
         T getValue() {

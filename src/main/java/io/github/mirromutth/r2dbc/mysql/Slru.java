@@ -61,7 +61,7 @@ final class Slru<T> {
     }
 
     @Nullable
-    T nextEviction() {
+    Lru.Node<T> nextEviction() {
         return probation.nextEviction();
     }
 

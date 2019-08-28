@@ -33,17 +33,17 @@ class LruTest {
     @Test
     void refresh() {
         Lru<Integer> list = new Lru<>(3);
-        Lru.Node<Integer> one = new Lru.Node<>(1);
+        Lru.Node<Integer> one = new Lru.Node<>("1", 1);
         assertNull(list.push(one));
         list.refresh(one);
         assertEquals(list.toString(), Collections.singletonList(1).toString());
-        Lru.Node<Integer> two = new Lru.Node<>(2);
+        Lru.Node<Integer> two = new Lru.Node<>("2", 2);
         assertNull(list.push(two));
         list.refresh(one);
         assertEquals(list.toString(), Arrays.asList(1, 2).toString());
         list.refresh(two);
         assertEquals(list.toString(), Arrays.asList(2, 1).toString());
-        Lru.Node<Integer> three = new Lru.Node<>(3);
+        Lru.Node<Integer> three = new Lru.Node<>("3", 3);
         assertNull(list.push(three));
         list.refresh(two);
         assertEquals(list.toString(), Arrays.asList(2, 3, 1).toString());
@@ -55,7 +55,7 @@ class LruTest {
         assertEquals(list.toString(), Arrays.asList(3, 2, 1).toString());
         list.refresh(three);
         assertEquals(list.toString(), Arrays.asList(3, 2, 1).toString());
-        Lru.Node<Integer> victim = list.push(new Lru.Node<>(4));
+        Lru.Node<Integer> victim = list.push(new Lru.Node<>("4", 4));
         assertNotNull(victim);
         assertEquals(victim.getValue(), 1);
         assertEquals(list.toString(), Arrays.asList(4, 3, 2).toString());
@@ -65,13 +65,13 @@ class LruTest {
     void push() {
         Lru<Integer> list = new Lru<>(3);
         assertEquals(list.toString(), Collections.emptyList().toString());
-        assertNull(list.push(new Lru.Node<>(1)));
+        assertNull(list.push(new Lru.Node<>("1", 1)));
         assertEquals(list.toString(), Collections.singletonList(1).toString());
-        assertNull(list.push(new Lru.Node<>(2)));
+        assertNull(list.push(new Lru.Node<>("2", 2)));
         assertEquals(list.toString(), Arrays.asList(2, 1).toString());
-        assertNull(list.push(new Lru.Node<>(3)));
+        assertNull(list.push(new Lru.Node<>("3", 3)));
         assertEquals(list.toString(), Arrays.asList(3, 2, 1).toString());
-        Lru.Node<Integer> victim = list.push(new Lru.Node<>(4));
+        Lru.Node<Integer> victim = list.push(new Lru.Node<>("4", 4));
         assertNotNull(victim);
         assertEquals(victim.getValue(), 1);
         assertEquals(list.toString(), Arrays.asList(4, 3, 2).toString());

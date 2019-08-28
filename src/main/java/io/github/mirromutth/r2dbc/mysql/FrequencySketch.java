@@ -86,7 +86,7 @@ final class FrequencySketch {
         int size = Math.min(capacity, MAX_CAPACITY);
         int sampling = (size == 0) ? SAMPLE_MULTIPLIER : (SAMPLE_MULTIPLIER * size);
 
-        this.table = new long[(size == 0) ? 1 : nextPowerOfTwo(size)];
+        this.table = new long[size == 0 ? 1 : nextPowerOfTwo(size)];
         this.tableMask = Math.max(0, table.length - 1);
 
         if (sampling <= 0) {
@@ -150,7 +150,7 @@ final class FrequencySketch {
      */
     private boolean incrementAt(int i, int j) {
         int offset = j << 2;
-        long mask = (0xfL << offset);
+        long mask = (0xFL << offset);
         if ((table[i] & mask) != mask) {
             table[i] += (1L << offset);
             return true;
@@ -186,7 +186,7 @@ final class FrequencySketch {
      * Applies a supplemental hash function to a given hashCode, which defends against poor quality
      * hash functions.
      */
-    private int spread(int x) {
+    private static int spread(int x) {
         x = ((x >>> 16) ^ x) * 0x45d9f3b;
         x = ((x >>> 16) ^ x) * 0x45d9f3b;
         return (x >>> 16) ^ x;
@@ -206,7 +206,7 @@ final class FrequencySketch {
      * @param x must be a positive integer and it must less than 1073741824 (i.e. 1 << 30, the {@link #MAX_CAPACITY})
      * @return the least power of 2 greater than or equal to {@code x}.
      */
-    static int nextPowerOfTwo(int x) {
+    private static int nextPowerOfTwo(int x) {
         x = x - 1;
         x |= (x >>> 1);
         x |= (x >>> 2);
