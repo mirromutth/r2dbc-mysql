@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.function.Consumer;
 
 /**
- * Cache line padding for False Sharding left. This assumes that the cache is 64 bytes.
+ * Cache line left padding for False Sharding. This assumes that the cache is 64 bytes.
  */
 @SuppressWarnings("WeakerAccess")
 abstract class LeftPad {
@@ -29,7 +29,7 @@ abstract class LeftPad {
 }
 
 /**
- * Cache line padding for False Sharding middle between read index and write index.
+ * Cache line padding for read index and write index of {@link RingBuffer}.
  * <p>
  * Note: AtomicLongFieldUpdater maybe provided by lock-based implementation,
  * and this ring buffer no need a unique sequence not like Disruptor,
@@ -56,7 +56,7 @@ abstract class RingBufferPad extends LeftPad {
 }
 
 /**
- * Cache line padding for RingBuffer event.
+ * Cache line padding for {@link RingBuffer} event.
  */
 @SuppressWarnings("WeakerAccess")
 abstract class EventPad extends LeftPad {
@@ -83,7 +83,6 @@ final class RingBuffer<T> extends RingBufferPad {
 
     private static final int MASK = SIZE - 1;
 
-    // 4 * 16 = 64, 64 bytes is the most case of CPU cache line size.
     private final Event[] array;
 
     private final Consumer<T> consumer;
