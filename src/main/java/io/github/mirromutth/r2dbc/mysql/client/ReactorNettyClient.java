@@ -23,7 +23,6 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
-import io.netty.channel.Channel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -96,11 +95,14 @@ final class ReactorNettyClient implements Client {
 
                 return it;
             })
-            .doOnError(throwable -> {
+            .subscribe(this.responseProcessor::onNext, throwable -> {
                 logger.error("Connection Error: {}", throwable.getMessage(), throwable);
-                connection.dispose();
-            })
-            .subscribe(this.responseProcessor::onNext, this.responseProcessor::onError, this.responseProcessor::onComplete);
+                try {
+                    responseProcessor.onError(throwable);
+                } finally {
+                    connection.dispose();
+                }
+            }, this.responseProcessor::onComplete);
     }
 
     @Override

@@ -199,16 +199,21 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
         testType(EnumData.class, "ENUM('ONE','TWO','THREE')", true, null, EnumData.ONE, EnumData.TWO, EnumData.THREE);
     }
 
+    @Test
     abstract void bit();
 
+    @Test
     abstract void set();
 
+    @Test
     void json() {
-        // MySQL 5.5 and 5.6 unsupported JSON.
+        // MySQL 5.5 and 5.6 unsupported JSON, just succeed.
     }
 
+    @Test
     abstract void date();
 
+    @Test
     abstract void time();
 
     @Test
@@ -229,8 +234,10 @@ abstract class IntegrationTestSupport extends CompatibilityTestSupport {
 
     abstract Mono<Void> testTimeDuration(Connection connection, Duration origin, LocalTime time);
 
+    @Test
     abstract void dateTime();
 
+    @Test
     abstract void timestamp();
 
     static Flux<Integer> extractId(Result result) {

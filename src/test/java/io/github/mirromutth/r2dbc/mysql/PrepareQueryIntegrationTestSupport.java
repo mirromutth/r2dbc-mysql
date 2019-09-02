@@ -53,6 +53,29 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
         super(configuration);
     }
 
+    /**
+     * See https://github.com/mirromutth/r2dbc-mysql/issues/50.
+     */
+    @Test
+    void multiQueries() {
+        String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,email VARCHAR(190),password VARCHAR(190),updated_at DATETIME,created_at DATETIME)";
+        connectionFactory.create()
+            .flatMap(connection -> Mono.from(connection.createStatement(tdl)
+                .execute())
+                .flatMap(CompatibilityTestSupport::extractRowsUpdated)
+                .thenMany(Flux.range(0, 10)
+                    .flatMap(it -> Flux.from(connection.createStatement("INSERT INTO test VALUES(DEFAULT,?,?,NOW(),NOW())")
+                        .bind(0, String.format("integration-test%d@mail.com", it))
+                        .bind(1, "******")
+                        .execute())
+                        .flatMap(CompatibilityTestSupport::extractRowsUpdated)))
+                .onErrorResume(e -> close(connection).then(Mono.error(e)))
+                .concatWith(close(connection))
+                .then())
+            .as(StepVerifier::create)
+            .verifyComplete();
+    }
+
     @Test
     @Override
     void set() {
