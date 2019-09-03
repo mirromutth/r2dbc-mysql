@@ -120,7 +120,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
             return PrepareQueryFlow.prepare(client, query.getSql())
                 .flatMapMany(metadata -> PrepareQueryFlow.execute(client, metadata, bindings.iterator())
-                    .map(messages -> new MySqlResult(codecs, context, generatedKeyName, messages)))
+                    .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages)))
                 .doOnCancel(bindings::clear)
                 .doOnError(e -> bindings.clear());
         });

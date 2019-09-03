@@ -25,30 +25,23 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
  */
 final class ResultDecodeContext extends MetadataDecodeContext {
 
-    private final boolean binary;
-
     private final DefinitionMetadataMessage[] metadataMessages;
 
     private final AtomicInteger columns = new AtomicInteger();
 
-    private volatile boolean inMetadata = true;
+    private boolean inMetadata = true;
 
-    ResultDecodeContext(boolean binary, boolean deprecateEof, int totalColumns) {
+    ResultDecodeContext(boolean deprecateEof, int totalColumns) {
         super(deprecateEof);
 
         require(totalColumns > 0, "result must has least 1 column");
 
-        this.binary = binary;
         this.metadataMessages = new DefinitionMetadataMessage[totalColumns];
     }
 
     @Override
     public String toString() {
-        return "DecodeContext-Result{binary=" + binary + "}";
-    }
-
-    public boolean isBinary() {
-        return binary;
+        return "DecodeContext-Result";
     }
 
     @Override

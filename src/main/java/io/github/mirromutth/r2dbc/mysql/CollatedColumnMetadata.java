@@ -68,6 +68,10 @@ final class CollatedColumnMetadata {
         return Arrays.toString(idSorted);
     }
 
+    MySqlColumnMetadata[] getIdSorted() {
+        return idSorted;
+    }
+
     MySqlColumnMetadata getMetadata(int index) {
         if (index < 0 || index >= idSorted.length) {
             throw new ArrayIndexOutOfBoundsException(String.format("column index %d is invalid, total %d", index, idSorted.length));

@@ -77,8 +77,6 @@ public final class ServerMessageDecoder {
         try {
             if (decodeContext instanceof PreparedMetadataDecodeContext) {
                 return decodePreparedMetadata(joined, context, (PreparedMetadataDecodeContext) decodeContext);
-            } else if (decodeContext instanceof WaitPrepareDecodeContext) {
-                return decodeOnWaitPrepare(joined, context);
             } else if (decodeContext instanceof CommandDecodeContext) {
                 return decodeCommandMessage(joined, context);
             } else if (decodeContext instanceof ConnectionDecodeContext) {
@@ -136,54 +134,28 @@ public final class ServerMessageDecoder {
             // Should not has other messages when metadata reading.
         }
 
-        if (decodeContext.isBinary()) {
-            if (Headers.OK == header) {
-                // If header is 0, SHOULD NOT be OK message.
-                // Binary row message always starts with 0x00 (i.e. binary row header).
-                // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
-                try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
-                    return BinaryRowMessage.decode(reader, decodeContext);
+        if (isRow(buffers, firstBuf, header)) {
+            return new RowMessage(FieldReader.of(JOINER, buffers));
+        } else if (header == Headers.EOF) {
+            int byteSize = firstBuf.readableBytes();
+
+            if (OkMessage.isValidSize(byteSize)) {
+                ByteBuf joined = JOINER.join(buffers);
+
+                try {
+                    return OkMessage.decode(joined, context);
+                } finally {
+                    joined.release();
+                }
+            } else if (EofMessage.isValidSize(byteSize)) {
+                ByteBuf joined = JOINER.join(buffers);
+
+                try {
+                    return EofMessage.decode(joined);
+                } finally {
+                    joined.release();
                 }
             }
-        } else if (isTextRow(buffers, firstBuf, header)) {
-            try (FieldReader reader = FieldReader.of(JOINER, buffers)) {
-                return TextRowMessage.decode(reader, decodeContext.getTotalColumns());
-            }
-        }
-
-        switch (header) {
-            case Headers.OK:
-                if (OkMessage.isValidSize(firstBuf.readableBytes())) {
-                    ByteBuf joined = JOINER.join(buffers);
-
-                    try {
-                        return OkMessage.decode(joined, context);
-                    } finally {
-                        joined.release();
-                    }
-                }
-
-                break;
-            case Headers.EOF:
-                int byteSize = firstBuf.readableBytes();
-
-                if (OkMessage.isValidSize(byteSize)) {
-                    ByteBuf joined = JOINER.join(buffers);
-
-                    try {
-                        return OkMessage.decode(joined, context);
-                    } finally {
-                        joined.release();
-                    }
-                } else if (EofMessage.isValidSize(byteSize)) {
-                    ByteBuf joined = JOINER.join(buffers);
-
-                    try {
-                        return EofMessage.decode(joined);
-                    } finally {
-                        joined.release();
-                    }
-                }
         }
 
         long totalBytes = 0;
@@ -196,7 +168,7 @@ public final class ServerMessageDecoder {
             buffers.clear();
         }
 
-        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on %s result phase", header, totalBytes, decodeContext.isBinary() ? "binary" : "text"));
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on result phase", header, totalBytes));
     }
 
     private static ServerMessage decodeCommandMessage(ByteBuf buf, ConnectionContext context) {
@@ -205,7 +177,9 @@ public final class ServerMessageDecoder {
             case Headers.ERROR:
                 return ErrorMessage.decode(buf);
             case Headers.OK:
-                if (OkMessage.isValidSize(buf.readableBytes())) {
+                if (PreparedOkMessage.isLooksLike(buf)) {
+                    return PreparedOkMessage.decode(buf);
+                } else if (OkMessage.isValidSize(buf.readableBytes())) {
                     return OkMessage.decode(buf, context);
                 }
 
@@ -232,34 +206,6 @@ public final class ServerMessageDecoder {
         }
 
         throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on command phase", header, buf.readableBytes()));
-    }
-
-    private static ServerMessage decodeOnWaitPrepare(ByteBuf buf, ConnectionContext context) {
-        short header = buf.getUnsignedByte(buf.readerIndex());
-
-        switch (header) {
-            case Headers.ERROR:
-                return ErrorMessage.decode(buf);
-            case Headers.OK:
-                // Should be prepared ok, but test in here...
-                if (PreparedOkMessage.isLooksLike(buf)) {
-                    return PreparedOkMessage.decode(buf);
-                } else if (OkMessage.isValidSize(buf.readableBytes())) {
-                    return OkMessage.decode(buf, context);
-                }
-
-                break;
-            case Headers.EOF:
-                int byteSize = buf.readableBytes();
-
-                if (OkMessage.isValidSize(byteSize)) {
-                    return OkMessage.decode(buf, context);
-                } else if (EofMessage.isValidSize(byteSize)) {
-                    return EofMessage.decode(buf);
-                }
-        }
-
-        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on waiting prepare metadata phase", header, buf.readableBytes()));
     }
 
     private static ServerMessage decodeConnectionMessage(ByteBuf buf, ConnectionContext context) {
@@ -320,41 +266,24 @@ public final class ServerMessageDecoder {
         }
     }
 
-    private static boolean isTextRow(List<ByteBuf> buffers, ByteBuf firstBuf, short header) {
+    private static boolean isRow(List<ByteBuf> buffers, ByteBuf firstBuf, short header) {
         if (header == DataValues.NULL_VALUE) {
             // NULL_VALUE (0xFB) is not header of var integer and not header of OK (0x0 or 0xFE)
             return true;
         } else if (header == Headers.EOF) {
-            // 0xFE means it maybe EOF, or var int (64-bits) header.
-            long allBytes = firstBuf.readableBytes();
-
-            if (allBytes > Byte.BYTES + Long.BYTES) {
-                long needBytes = firstBuf.getLongLE(firstBuf.readerIndex() + Byte.BYTES) + Byte.BYTES + Long.BYTES;
-                // Maybe var int (64-bits), try to get 64-bits var integer.
-                // Minimal length for first field with size by var integer encoded.
-                // Should not be OK message if it is big message.
-                if (allBytes >= needBytes) {
-                    return true;
-                }
-
-                int size = buffers.size();
-                for (int i = 1; i < size; ++i) {
-                    allBytes += buffers.get(i).readableBytes();
-
-                    if (allBytes >= needBytes) {
-                        return true;
-                    }
-                }
-
-                return false;
+            // 0xFE means it maybe EOF, or var int (64-bits) header in text row.
+            if (buffers.size() > 1) {
+                // Multi-buffers, must be big data row message.
+                return true;
             } else {
-                // Is not a var integer, it is not text row.
-                return false;
+                // Not EOF or OK.
+                int size = firstBuf.readableBytes();
+                return !EofMessage.isValidSize(size) && !OkMessage.isValidSize(size);
             }
         } else {
             // If header is 0, SHOULD NOT be OK message.
             // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
-            // Now, it is not OK message, not be error message, it must be text row.
+            // Now, it is not OK message, not be error message, it must be row.
             return true;
         }
     }

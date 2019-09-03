@@ -19,16 +19,16 @@ package io.github.mirromutth.r2dbc.mysql.message.server;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 
 import java.util.List;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
- * A field reader considers read {@link FieldValue}s from {@link ByteBuf}(s) and
- * release {@link ByteBuf}(s) when close.
+ * A field reader considers read {@link FieldValue}s from {@link ByteBuf}(s).
  */
-interface FieldReader extends AutoCloseable {
+interface FieldReader extends ReferenceCounted {
 
     /**
      * It will not change reader index.
@@ -52,9 +52,6 @@ interface FieldReader extends AutoCloseable {
     FieldValue readSizeFixedField(int length);
 
     FieldValue readVarIntSizedField();
-
-    @Override
-    void close();
 
     @SuppressWarnings("ForLoopReplaceableByForEach")
     static FieldReader of(ByteBufJoiner joiner, List<ByteBuf> buffers) {

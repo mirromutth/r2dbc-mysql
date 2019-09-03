@@ -29,6 +29,7 @@ import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.util.function.Predicate;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -41,7 +42,7 @@ public interface Client {
      * @param request one request for get server responses.
      * @return The result should be completed by handler, otherwise it will NEVER be completed.
      */
-    Flux<ServerMessage> exchange(ExchangeableMessage request);
+    Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete);
 
     Mono<Void> sendOnly(SendOnlyMessage message);
 

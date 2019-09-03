@@ -35,6 +35,9 @@ final class SimpleQueryFlow {
     // Metadata EOF message will be not receive in here.
     static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof CommandDoneMessage;
 
+    private static final Predicate<ServerMessage> EXECUTE_DONE = message ->
+        message instanceof ErrorMessage || (message instanceof CommandDoneMessage && ((CommandDoneMessage) message).isDone());
+
     /**
      * Execute multi-query with one-by-one. Query execution terminates with a
      * {@link ErrorMessage} and send Exception to signal.
@@ -69,17 +72,11 @@ final class SimpleQueryFlow {
      * completed by {@link CommandDoneMessage} when it is last result.
      */
     static Flux<ServerMessage> execute(Client client, String sql) {
-        return client.exchange(new SimpleQueryMessage(sql)).handle((message, sink) -> {
+        return client.exchange(new SimpleQueryMessage(sql), EXECUTE_DONE).handle((message, sink) -> {
             if (message instanceof ErrorMessage) {
                 sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
-                return;
-            }
-
-            sink.next(message);
-
-            // Metadata EOF message will be not receive in here.
-            if (message instanceof CommandDoneMessage && ((CommandDoneMessage) message).isDone()) {
-                sink.complete();
+            } else {
+                sink.next(message);
             }
         });
     }

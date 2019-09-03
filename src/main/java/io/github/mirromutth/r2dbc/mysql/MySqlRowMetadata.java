@@ -16,6 +16,7 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
+import io.github.mirromutth.r2dbc.mysql.codec.FieldInformation;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import io.r2dbc.spi.RowMetadata;
 
@@ -61,6 +62,10 @@ final class MySqlRowMetadata implements RowMetadata {
     @Override
     public String toString() {
         return String.format("MySqlRowMetadata{metadata=%s}", collated.toString());
+    }
+
+    MySqlColumnMetadata[] unwrap() {
+        return collated.getIdSorted();
     }
 
     static MySqlRowMetadata create(DefinitionMetadataMessage[] columns) {

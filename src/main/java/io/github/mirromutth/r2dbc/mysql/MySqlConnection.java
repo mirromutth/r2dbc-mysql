@@ -40,6 +40,7 @@ import reactor.util.annotation.Nullable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireValidName;
@@ -65,6 +66,9 @@ public final class MySqlConnection implements Connection {
 
     private static final ServerVersion TX_LEVEL_8x = ServerVersion.create(8, 0, 0);
 
+    private static final Predicate<ServerMessage> PING_DONE = message ->
+        message instanceof ErrorMessage || (message instanceof CommandDoneMessage && ((CommandDoneMessage) message).isDone());
+
     /**
      * Convert result to isolation level which considered {@code null}.
      */
@@ -76,14 +80,10 @@ public final class MySqlConnection implements Connection {
     private static final BiConsumer<ServerMessage, SynchronousSink<Boolean>> PING_HANDLER = (message, sink) -> {
         if (message instanceof ErrorMessage) {
             ErrorMessage msg = (ErrorMessage) message;
-
             logger.debug("Remote validate failed: [{}] [{}] {}", msg.getErrorCode(), msg.getSqlState(), msg.getErrorMessage());
-
             sink.next(false);
-            sink.complete();
         } else if (message instanceof CommandDoneMessage && ((CommandDoneMessage) message).isDone()) {
             sink.next(true);
-            sink.complete();
         } else {
             ReferenceCountUtil.safeRelease(message);
         }
@@ -309,7 +309,7 @@ public final class MySqlConnection implements Connection {
                 return Mono.just(false);
             }
 
-            return client.exchange(PingMessage.getInstance())
+            return client.exchange(PingMessage.getInstance(), PING_DONE)
                 .handle(PING_HANDLER)
                 .last()
                 .onErrorResume(e -> {
