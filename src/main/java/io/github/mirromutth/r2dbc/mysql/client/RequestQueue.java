@@ -46,32 +46,26 @@ final class RequestQueue extends ActiveStatus implements Runnable {
 
     @Override
     public void run() {
-        Runnable nextCommand = this.queue.poll();
+        Runnable runnable = queue.poll();
 
-        if (nextCommand != null) {
-            nextCommand.run();
-            return;
+        if (runnable == null) {
+            // Queue was empty, set it to inactive.
+            ACTIVE_UPDATER.lazySet(this, 0);
+        } else {
+            runnable.run();
         }
-
-        ACTIVE_UPDATER.compareAndSet(this, 1, 0);
     }
 
     void submit(Runnable exchange) {
         if (ACTIVE_UPDATER.compareAndSet(this, 0, 1)) {
             exchange.run();
         } else {
-            if (!this.queue.offer(exchange)) {
+            if (!queue.offer(exchange)) {
                 throw new IllegalStateException("Request queue is full");
             }
 
             if (ACTIVE_UPDATER.compareAndSet(this, 0, 1)) {
-                Runnable runnable = this.queue.poll();
-
-                if (runnable != null) {
-                    runnable.run();
-                } else {
-                    ACTIVE_UPDATER.compareAndSet(this, 1, 0);
-                }
+                run();
             }
         }
     }
