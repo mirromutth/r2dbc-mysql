@@ -22,7 +22,7 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.CompleteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
@@ -166,7 +166,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             return false;
         }
 
-        if (msg instanceof CommandDoneMessage) {
+        if (msg instanceof CompleteMessage) {
             // Metadata EOF message will be not receive in here.
             setDecodeContext(DecodeContext.command());
         } else if (msg instanceof SyntheticMetadataMessage) {

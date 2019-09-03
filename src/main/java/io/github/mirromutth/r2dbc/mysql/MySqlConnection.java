@@ -22,7 +22,7 @@ import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.constant.ServerStatuses;
 import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.client.PingMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.CompleteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
@@ -67,7 +67,7 @@ public final class MySqlConnection implements Connection {
     private static final ServerVersion TX_LEVEL_8x = ServerVersion.create(8, 0, 0);
 
     private static final Predicate<ServerMessage> PING_DONE = message ->
-        message instanceof ErrorMessage || (message instanceof CommandDoneMessage && ((CommandDoneMessage) message).isDone());
+        message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
 
     /**
      * Convert result to isolation level which considered {@code null}.
@@ -82,7 +82,7 @@ public final class MySqlConnection implements Connection {
             ErrorMessage msg = (ErrorMessage) message;
             logger.debug("Remote validate failed: [{}] [{}] {}", msg.getErrorCode(), msg.getSqlState(), msg.getErrorMessage());
             sink.next(false);
-        } else if (message instanceof CommandDoneMessage && ((CommandDoneMessage) message).isDone()) {
+        } else if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
             sink.next(true);
         } else {
             ReferenceCountUtil.safeRelease(message);
