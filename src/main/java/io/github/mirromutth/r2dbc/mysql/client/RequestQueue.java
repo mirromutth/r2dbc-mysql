@@ -43,6 +43,9 @@ final class RequestQueue extends ActiveStatus implements Runnable {
 
     private final Queue<Runnable> queue = Queues.<Runnable>small().get();
 
+    /**
+     * Current exchange completed, refresh to next exchange or set to inactive.
+     */
     @Override
     public void run() {
         Runnable runnable = queue.poll();
@@ -55,20 +58,36 @@ final class RequestQueue extends ActiveStatus implements Runnable {
         }
     }
 
+    /**
+     * Submit an exchange task. If the queue is inactive, it will execute directly rather than queuing.
+     * Otherwise it will be queuing.
+     *
+     * @param exchange the exchange task includes request messages sending and response messages processor.
+     */
     void submit(Runnable exchange) {
         if (ACTIVE_UPDATER.compareAndSet(this, 0, 1)) {
             exchange.run();
         } else {
+            // Prev task may be completing before queue offer, and queue maybe empty now,
+            // so queue may be inactive now.
             if (!queue.offer(exchange)) {
                 throw new IllegalStateException("Request queue is full");
             }
 
+            // Try execute if queue is inactive.
             if (ACTIVE_UPDATER.compareAndSet(this, 0, 1)) {
                 run();
             }
         }
     }
 
+    /**
+     * Keep padding, maybe useful, maybe useless, whatever we should make sure padding
+     * would not be reduced by compiler.
+     *
+     * @param v any value, because it is not matter
+     * @return {@code v} self which type is {@code long}
+     */
     long keeping(int v) {
         return p0 = p1 = p2 = p3 = p4 = p5 = p6 = p7 = p9 = pa = pb = pc = pd = pe = pf = p8 = v;
     }
