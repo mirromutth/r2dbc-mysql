@@ -22,16 +22,15 @@ import reactor.util.concurrent.Queues;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
-@SuppressWarnings("WeakerAccess")
 abstract class ActiveStatus extends LeftPadding {
 
     static final AtomicIntegerFieldUpdater<ActiveStatus> ACTIVE_UPDATER = AtomicIntegerFieldUpdater.newUpdater(ActiveStatus.class, "active");
 
     private volatile int active; // p8 first part
 
-    protected int p8; // p8 second part
+    int p8; // p8 second part
 
-    protected long p9, pa, pb, pc, pd, pe, pf;
+    long p9, pa, pb, pc, pd, pe, pf;
 }
 
 /**
