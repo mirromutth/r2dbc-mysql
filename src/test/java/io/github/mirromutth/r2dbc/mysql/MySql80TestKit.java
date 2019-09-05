@@ -19,14 +19,14 @@ package io.github.mirromutth.r2dbc.mysql;
 import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 
 /**
- * An implementation of {@link MySqlExampleSupport} for MySQL 5.5.
+ * An implementation of {@link MySqlTestKitSupport} for MySQL 8.0.
  */
-final class MySql55Example extends MySqlExampleSupport {
+final class MySql80TestKit extends MySqlTestKitSupport {
 
     static final MySqlConnectionConfiguration CONFIGURATION =
-        MySqlContainers.getConfigurationByVersion("5_5", SslMode.PREFERRED, null);
+        MySqlContainers.getConfigurationByVersion("8_0", SslMode.PREFERRED, null);
 
-    MySql55Example() {
+    MySql80TestKit() {
         super(CONFIGURATION);
     }
 }

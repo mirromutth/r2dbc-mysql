@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 final class MySql57PrepareQueryIntegrationTest extends PrepareQueryIntegrationTestSupport {
 
     MySql57PrepareQueryIntegrationTest() {
-        super(MySql57Example.CONFIGURATION);
+        super(MySql57TestKit.CONFIGURATION);
     }
 
     @Test

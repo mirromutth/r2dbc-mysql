@@ -22,7 +22,7 @@ import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Statement;
-import io.r2dbc.spi.test.Example;
+import io.r2dbc.spi.test.TestKit;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,15 +35,15 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
- * Base class considers implementations of {@link Example}.
+ * Base class considers implementations of {@link TestKit}.
  */
-abstract class MySqlExampleSupport implements Example<String> {
+abstract class MySqlTestKitSupport implements TestKit<String> {
 
     private final MySqlConnectionFactory connectionFactory;
 
     private final JdbcOperations jdbcOperations;
 
-    MySqlExampleSupport(MySqlConnectionConfiguration configuration) {
+    MySqlTestKitSupport(MySqlConnectionConfiguration configuration) {
         this.connectionFactory = MySqlConnectionFactory.from(configuration);
         this.jdbcOperations = getJdbc(configuration);
     }
@@ -93,7 +93,7 @@ abstract class MySqlExampleSupport implements Example<String> {
 
                 return Flux.from(statement.execute())
                     .flatMap(it -> it.map((row, rowMetadata) -> row.get(0)))
-                    .concatWith(Example.close(connection)); // Should close connection after result consume
+                    .concatWith(TestKit.close(connection)); // Should close connection after result consume
             })
             .as(StepVerifier::create)
             .expectNextCount(1)
@@ -112,7 +112,7 @@ abstract class MySqlExampleSupport implements Example<String> {
 
                 return Flux.from(statement.execute())
                     .flatMap(Result::getRowsUpdated) // Result should be subscribed
-                    .concatWith(Example.close(connection));
+                    .concatWith(TestKit.close(connection));
             })
             .as(StepVerifier::create)
             .expectNextCount(10).as("values from insertions")
@@ -130,7 +130,7 @@ abstract class MySqlExampleSupport implements Example<String> {
                 .execute())
                 .flatMap(Result::getRowsUpdated) // Result should be subscribed
 
-                .concatWith(Example.close(connection)))
+                .concatWith(TestKit.close(connection)))
             .as(StepVerifier::create)
             .expectNextCount(1).as("rows inserted")
             .verifyComplete();
@@ -147,7 +147,7 @@ abstract class MySqlExampleSupport implements Example<String> {
                 .execute())
                 .flatMap(Result::getRowsUpdated) // Result should be subscribed
 
-                .concatWith(Example.close(connection)))
+                .concatWith(TestKit.close(connection)))
             .as(StepVerifier::create)
             .expectNextCount(1).as("rows inserted")
             .verifyComplete();
@@ -164,7 +164,7 @@ abstract class MySqlExampleSupport implements Example<String> {
                 .execute())
                 .flatMap(Result::getRowsUpdated) // Result should be subscribed
 
-                .concatWith(Example.close(connection)))
+                .concatWith(TestKit.close(connection)))
             .as(StepVerifier::create)
             .expectNextCount(1).as("rows inserted")
             .verifyComplete();

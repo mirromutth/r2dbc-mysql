@@ -22,6 +22,6 @@ package io.github.mirromutth.r2dbc.mysql;
 final class MySql57ConnectionTest extends ConnectionTestSupport {
 
     MySql57ConnectionTest() {
-        super(MySql57Example.CONFIGURATION);
+        super(MySql57TestKit.CONFIGURATION);
     }
 }

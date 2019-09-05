@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 final class MySql80PrepareQueryIntegrationTest extends PrepareQueryIntegrationTestSupport {
 
     MySql80PrepareQueryIntegrationTest() {
-        super(MySql80Example.CONFIGURATION);
+        super(MySql80TestKit.CONFIGURATION);
     }
 
     @Test

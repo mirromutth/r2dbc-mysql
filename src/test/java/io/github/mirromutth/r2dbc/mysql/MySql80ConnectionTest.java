@@ -22,6 +22,6 @@ package io.github.mirromutth.r2dbc.mysql;
 final class MySql80ConnectionTest extends ConnectionTestSupport {
 
     MySql80ConnectionTest() {
-        super(MySql80Example.CONFIGURATION);
+        super(MySql80TestKit.CONFIGURATION);
     }
 }

@@ -22,6 +22,6 @@ package io.github.mirromutth.r2dbc.mysql;
 final class MySql55SimpleQueryIntegrationTest extends SimpleQueryIntegrationTestSupport {
 
     MySql55SimpleQueryIntegrationTest() {
-        super(MySql55Example.CONFIGURATION);
+        super(MySql55TestKit.CONFIGURATION);
     }
 }
