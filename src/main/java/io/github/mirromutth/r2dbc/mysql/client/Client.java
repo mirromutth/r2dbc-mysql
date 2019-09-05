@@ -39,8 +39,14 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 public interface Client {
 
     /**
-     * @param request one request for get server responses.
-     * @return The result should be completed by handler, otherwise it will NEVER be completed.
+     * Perform an exchange of messages. Calling this method while a previous exchange is active will
+     * return a deferred handle and queue the request until the previous exchange terminates.
+     *
+     * @param request  one request for get server responses
+     * @param complete determining the last response frame to {@code Subscriber#onComplete()}
+     *                 complete the stream and prevent multiple subscribers from consuming
+     *                 previous, active response streams
+     * @return A {@link Flux} of incoming messages that ends with the end of the frame
      */
     Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete);
 
