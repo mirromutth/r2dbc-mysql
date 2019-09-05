@@ -17,14 +17,15 @@
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.LargeFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
-import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.CompositeByteBuf;
+import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCountUtil;
 
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
  * {@link Integer#MAX_VALUE}, it would be exists when MySQL server return LOB types
  * (i.e. BLOB, CLOB), LONGTEXT length can be unsigned int32.
  */
-final class LargeFieldReader implements FieldReader {
+final class LargeFieldReader extends AbstractReferenceCounted implements FieldReader {
 
     private final ByteBuf[] buffers;
 
@@ -110,7 +111,15 @@ final class LargeFieldReader implements FieldReader {
     }
 
     @Override
-    public void close() {
+    public LargeFieldReader touch(Object hint) {
+        for (ByteBuf buffer : buffers) {
+            buffer.touch(hint);
+        }
+        return this;
+    }
+
+    @Override
+    protected void deallocate() {
         for (ByteBuf buffer : buffers) {
             ReferenceCountUtil.safeRelease(buffer);
         }

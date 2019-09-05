@@ -19,16 +19,13 @@ package io.github.mirromutth.r2dbc.mysql.client;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
 import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.client.ClientMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.PreparedExecuteMessage;
-import io.github.mirromutth.r2dbc.mysql.message.client.SimpleQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.github.mirromutth.r2dbc.mysql.message.server.ColumnCountMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.CompleteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.DecodeContext;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessageDecoder;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerStatusMessage;
@@ -56,24 +53,16 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageDuplexCodec.class);
 
-    private volatile DecodeContext decodeContext = DecodeContext.connection();
-
-    private volatile boolean binaryResult = false;
+    private DecodeContext decodeContext = DecodeContext.connection();
 
     @Nullable
-    private volatile SequenceIdProvider.Linkable linkableIdProvider;
+    private SequenceIdProvider.Linkable linkableIdProvider;
 
     private final ConnectionContext context;
 
     private final AtomicBoolean closing;
 
     private final ServerMessageDecoder decoder = new ServerMessageDecoder();
-
-    private final Runnable FORMAT_TEXT = () -> this.binaryResult = false;
-
-    private final Runnable FORMAT_BIN = () -> this.binaryResult = true;
-
-    private final Runnable WAIT_PREPARE = () -> this.setDecodeContext(DecodeContext.waitPrepare());
 
     MessageDuplexCodec(ConnectionContext context, AtomicBoolean closing) {
         this.context = requireNonNull(context, "context must not be null");
@@ -152,13 +141,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     @Nullable
     private Runnable onDone(ChannelHandlerContext ctx, ClientMessage message) {
-        if (message instanceof SimpleQueryMessage) {
-            return FORMAT_TEXT;
-        } else if (message instanceof PrepareQueryMessage) {
-            return WAIT_PREPARE;
-        } else if (message instanceof PreparedExecuteMessage) {
-            return FORMAT_BIN;
-        } else if (message instanceof SslRequest) {
+        if (message instanceof SslRequest) {
             return () -> ctx.channel().pipeline().fireUserEventTriggered(SslState.BRIDGING);
         }
 
@@ -179,11 +162,11 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
         if (msg instanceof ColumnCountMessage) {
             boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
-            setDecodeContext(DecodeContext.result(this.binaryResult, deprecateEof, ((ColumnCountMessage) msg).getTotalColumns()));
+            setDecodeContext(DecodeContext.result(deprecateEof, ((ColumnCountMessage) msg).getTotalColumns()));
             return false;
         }
 
-        if (msg instanceof CommandDoneMessage) {
+        if (msg instanceof CompleteMessage) {
             // Metadata EOF message will be not receive in here.
             setDecodeContext(DecodeContext.command());
         } else if (msg instanceof SyntheticMetadataMessage) {

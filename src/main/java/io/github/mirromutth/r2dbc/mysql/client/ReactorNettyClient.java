@@ -23,7 +23,6 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
-import io.netty.channel.Channel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -38,6 +37,8 @@ import reactor.netty.Connection;
 import reactor.netty.FutureMono;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -48,11 +49,15 @@ final class ReactorNettyClient implements Client {
 
     private static final Logger logger = LoggerFactory.getLogger(ReactorNettyClient.class);
 
+    private static final Function<Flux<ServerMessage>, Flux<ServerMessage>> IDENTITY = Function.identity();
+
     private final Connection connection;
+
+    private final ConnectionContext context;
 
     private final EmitterProcessor<ServerMessage> responseProcessor = EmitterProcessor.create(false);
 
-    private final ConnectionContext context;
+    private final RequestQueue requestQueue = new RequestQueue();
 
     private final AtomicBoolean closing = new AtomicBoolean();
 
@@ -96,50 +101,87 @@ final class ReactorNettyClient implements Client {
 
                 return it;
             })
-            .doOnError(throwable -> {
-                logger.error("Connection Error: {}", throwable.getMessage(), throwable);
-                connection.dispose();
-            })
-            .subscribe(this.responseProcessor::onNext, this.responseProcessor::onError, this.responseProcessor::onComplete);
+            .subscribe(this.responseProcessor::onNext, throwable -> {
+                try {
+                    logger.error("Connection Error: {}", throwable.getMessage(), throwable);
+                    responseProcessor.onError(throwable);
+                } finally {
+                    connection.dispose();
+                }
+            }, this.responseProcessor::onComplete);
     }
 
     @Override
-    public Flux<ServerMessage> exchange(ExchangeableMessage request) {
+    public Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete) {
         requireNonNull(request, "request must not be null");
 
-        return Flux.defer(() -> {
+        boolean[] completed = new boolean[]{false};
+
+        return Mono.<Flux<ServerMessage>>create(sink -> {
             if (closing.get()) {
-                return Flux.error(new IllegalStateException("cannot send messages because the connection is closed"));
+                sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
+                return;
             }
 
-            send(request);
+            requestQueue.submit(() -> {
+                send(request);
+                sink.success(responseProcessor);
+            });
+        })
+            .flatMapMany(IDENTITY)
+            .<ServerMessage>handle((message, sink) -> {
+                sink.next(message);
 
-            return responseProcessor;
-        });
+                if (complete.test(message)) {
+                    completed[0] = true;
+                    sink.complete();
+                }
+            })
+            .doOnTerminate(requestQueue)
+            .doOnCancel(exchangeCancel(completed));
     }
 
     @Override
     public Mono<Void> sendOnly(SendOnlyMessage message) {
         requireNonNull(message, "message must not be null");
 
-        return Mono.defer(() -> {
+        return Mono.<Flux<ServerMessage>>create(sink -> {
             if (closing.get()) {
-                return Mono.error(new IllegalStateException("cannot send messages because the connection is closed"));
+                sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
+                return;
             }
 
-            return FutureMono.from(send(message));
-        });
+            requestQueue.submit(() -> {
+                send(message);
+                sink.success(Flux.empty());
+            });
+        })
+            .flatMapMany(IDENTITY)
+            .doOnTerminate(requestQueue)
+            .then();
     }
 
     @Override
     public Mono<ServerMessage> nextMessage() {
-        return Mono.defer(() -> {
+        boolean[] completed = new boolean[]{false};
+
+        return Mono.<Flux<ServerMessage>>create(sink -> {
             if (closing.get()) {
-                return Mono.error(new IllegalStateException("cannot get messages because the connection is closed"));
+                sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
+                return;
             }
 
-            return responseProcessor.next();
-        });
+            requestQueue.submit(() -> sink.success(responseProcessor));
+        })
+            .flatMapMany(IDENTITY)
+            .<ServerMessage>handle((message, sink) -> {
+                sink.next(message);
+                completed[0] = true;
+                sink.complete();
+            })
+            .doOnTerminate(requestQueue)
+            .doOnCancel(exchangeCancel(completed))
+            .last();
     }
 
     @Override
@@ -188,5 +230,13 @@ final class ReactorNettyClient implements Client {
     private Future<Void> send(ClientMessage message) {
         logger.debug("Request: {}", message);
         return connection.channel().writeAndFlush(message);
+    }
+
+    private static Runnable exchangeCancel(boolean[] completed) {
+        return () -> {
+            if (!completed[0]) {
+                logger.error("Exchange cancelled while exchange is active. This is likely a bug leading to unpredictable outcome.");
+            }
+        };
     }
 }

@@ -14,21 +14,12 @@
  * limitations under the License.
  */
 
-package io.github.mirromutth.r2dbc.mysql.message.server;
+package io.github.mirromutth.r2dbc.mysql.internal;
 
 /**
- * An implementation of {@link DecodeContext} after prepare query sent. The next server message
- * header is 0x00 meaning it is {@code PreparedOkMessage} instead of {@code OkMessage}.
+ * Left padding for False Sharding.
  */
-final class WaitPrepareDecodeContext implements DecodeContext {
+public abstract class LeftPadding {
 
-    static final WaitPrepareDecodeContext INSTANCE = new WaitPrepareDecodeContext();
-
-    private WaitPrepareDecodeContext() {
-    }
-
-    @Override
-    public String toString() {
-        return "DecodeContext-WaitPrepare";
-    }
+    protected long p0, p1, p2, p3, p4, p5, p6, p7;
 }

@@ -19,8 +19,6 @@ package io.github.mirromutth.r2dbc.mysql;
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
-import io.netty.util.AbstractReferenceCounted;
-import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Row;
 import reactor.util.annotation.Nullable;
 
@@ -32,7 +30,7 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 /**
  * An implementation of {@link Row} for MySQL database.
  */
-public final class MySqlRow extends AbstractReferenceCounted implements Row {
+public final class MySqlRow implements Row {
 
     private final FieldValue[] fields;
 
@@ -69,24 +67,6 @@ public final class MySqlRow extends AbstractReferenceCounted implements Row {
     @Nullable
     public <T> T get(Object identifier, ParameterizedType type) {
         return getByType(identifier, type);
-    }
-
-    @Override
-    public MySqlRow touch(@Nullable Object hint) {
-        for (FieldValue field : fields) {
-            if (field != null) {
-                field.touch(hint);
-            }
-        }
-
-        return this;
-    }
-
-    @Override
-    protected void deallocate() {
-        for (FieldValue field : fields) {
-            ReferenceCountUtil.safeRelease(field);
-        }
     }
 
     @Nullable

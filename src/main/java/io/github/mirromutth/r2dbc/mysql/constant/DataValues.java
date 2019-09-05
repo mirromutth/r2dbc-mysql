@@ -25,6 +25,8 @@ public final class DataValues {
 
     public static final byte TERMINAL = 0;
 
+    public static final byte AUTH_SUCCEED = 3;
+
     private DataValues() {
     }
 }

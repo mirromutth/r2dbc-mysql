@@ -56,7 +56,7 @@ final class MySqlSyntheticBatch extends MySqlBatch {
     public Flux<MySqlResult> execute() {
         return SimpleQueryFlow.execute(client, statements)
             .windowUntil(SimpleQueryFlow.RESULT_DONE)
-            .map(messages -> new MySqlResult(codecs, context, null, messages));
+            .map(messages -> new MySqlResult(false, codecs, context, null, messages));
     }
 
     @Override

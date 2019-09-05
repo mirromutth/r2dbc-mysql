@@ -18,12 +18,13 @@ package io.github.mirromutth.r2dbc.mysql;
 
 import io.github.mirromutth.r2dbc.mysql.codec.Codecs;
 import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
-import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.EofMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.RowMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Row;
@@ -48,6 +49,8 @@ public final class MySqlResult implements Result {
 
     private static final Function<OkMessage, Integer> ROWS_UPDATED = message -> (int) message.getAffectedRows();
 
+    private final boolean isBinary;
+
     private final Codecs codecs;
 
     private final ConnectionContext context;
@@ -59,12 +62,14 @@ public final class MySqlResult implements Result {
 
     private final MonoProcessor<OkMessage> okProcessor = MonoProcessor.create();
 
-    private volatile MySqlRowMetadata rowMetadata;
+    private MySqlRowMetadata rowMetadata;
 
     /**
+     * @param isBinary rows is binary.
      * @param messages must include complete signal.
      */
-    MySqlResult(Codecs codecs, ConnectionContext context, @Nullable String generatedKeyName, Flux<ServerMessage> messages) {
+    MySqlResult(boolean isBinary, Codecs codecs, ConnectionContext context, @Nullable String generatedKeyName, Flux<ServerMessage> messages) {
+        this.isBinary = isBinary;
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.context = requireNonNull(context, "context must not be null");
         this.generatedKeyName = generatedKeyName;
@@ -145,18 +150,29 @@ public final class MySqlResult implements Result {
         MySqlRowMetadata rowMetadata = this.rowMetadata;
 
         if (rowMetadata == null) {
+            ReferenceCountUtil.safeRelease(message);
             sink.error(new IllegalStateException("No MySqlRowMetadata available"));
             return;
         }
 
-        MySqlRow row = new MySqlRow(message.getFields(), rowMetadata, this.codecs, message.isBinary(), this.context);
+        FieldValue[] fields;
         T t;
 
         try {
-            // Can NOT just sink.next(f.apply(...)) because of finally release
-            t = f.apply(row, rowMetadata);
+            fields = message.decode(isBinary, rowMetadata.unwrap());
         } finally {
-            ReferenceCountUtil.safeRelease(row);
+            // Release row messages' reader.
+            ReferenceCountUtil.safeRelease(message);
+        }
+
+        try {
+            // Can NOT just sink.next(f.apply(...)) because of finally release
+            t = f.apply(new MySqlRow(fields, rowMetadata, codecs, isBinary, context), rowMetadata);
+        } finally {
+            // Release decoded field values.
+            for (FieldValue field : fields) {
+                ReferenceCountUtil.safeRelease(field);
+            }
         }
 
         sink.next(t);

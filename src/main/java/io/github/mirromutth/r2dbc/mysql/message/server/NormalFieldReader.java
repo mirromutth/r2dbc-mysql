@@ -16,9 +16,9 @@
 
 package io.github.mirromutth.r2dbc.mysql.message.server;
 
+import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.github.mirromutth.r2dbc.mysql.message.FieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
-import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
@@ -65,7 +65,41 @@ final class NormalFieldReader implements FieldReader {
     }
 
     @Override
-    public void close() {
-        buf.release();
+    public int refCnt() {
+        return buf.refCnt();
+    }
+
+    @Override
+    public NormalFieldReader retain() {
+        buf.retain();
+        return this;
+    }
+
+    @Override
+    public NormalFieldReader retain(int increment) {
+        buf.retain(increment);
+        return this;
+    }
+
+    @Override
+    public NormalFieldReader touch() {
+        buf.touch();
+        return this;
+    }
+
+    @Override
+    public NormalFieldReader touch(Object hint) {
+        buf.touch(hint);
+        return this;
+    }
+
+    @Override
+    public boolean release() {
+        return buf.release();
+    }
+
+    @Override
+    public boolean release(int decrement) {
+        return buf.release(decrement);
     }
 }

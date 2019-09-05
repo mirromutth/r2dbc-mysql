@@ -20,6 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.authentication.MySqlAuthProvider;
 import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.constant.AuthTypes;
 import io.github.mirromutth.r2dbc.mysql.constant.Capabilities;
+import io.github.mirromutth.r2dbc.mysql.constant.DataValues;
 import io.github.mirromutth.r2dbc.mysql.constant.SqlStates;
 import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
@@ -32,6 +33,7 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeHeader;
 import io.github.mirromutth.r2dbc.mysql.message.server.HandshakeRequest;
 import io.github.mirromutth.r2dbc.mysql.message.server.OkMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
@@ -42,6 +44,7 @@ import reactor.util.annotation.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -282,69 +285,81 @@ final class LoginFlow {
             }
         },
         SSL {
+
+            private final Predicate<ServerMessage> sslComplete = message -> message instanceof ErrorMessage || message instanceof SyntheticSslResponseMessage;
+
             @Override
             Mono<State> handle(LoginFlow flow) {
-                return flow.client.exchange(flow.createSslRequest()).next().handle((message, sink) -> {
-                    if (message instanceof ErrorMessage) {
-                        sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
-                    } else if (message instanceof SyntheticSslResponseMessage) {
-                        flow.sslCompleted = true;
-                        sink.next(HANDSHAKE);
-                        sink.complete();
-                    } else {
-                        sink.error(new IllegalStateException(String.format("Unexpected message type '%s' in SSL handshake phase", message.getClass().getSimpleName())));
-                    }
-                });
+                return flow.client.exchange(flow.createSslRequest(), sslComplete)
+                    .<State>handle((message, sink) -> {
+                        if (message instanceof ErrorMessage) {
+                            sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
+                        } else if (message instanceof SyntheticSslResponseMessage) {
+                            flow.sslCompleted = true;
+                            sink.next(HANDSHAKE);
+                        } else {
+                            sink.error(new IllegalStateException(String.format("Unexpected message type '%s' in SSL handshake phase", message.getClass().getSimpleName())));
+                        }
+                    })
+                    .last();
             }
         },
         HANDSHAKE {
+
+            private final Predicate<ServerMessage> handshakeComplete = message ->
+                message instanceof ErrorMessage || message instanceof OkMessage ||
+                    (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) ||
+                    message instanceof AuthChangeMessage;
+
             @Override
             Mono<State> handle(LoginFlow flow) {
                 return flow.createHandshakeResponse()
-                    .flatMapMany(flow.client::exchange)
+                    .flatMapMany(message -> flow.client.exchange(message, handshakeComplete))
                     .<State>handle((message, sink) -> {
                         if (message instanceof ErrorMessage) {
                             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
                         } else if (message instanceof OkMessage) {
                             sink.next(COMPLETED);
-                            sink.complete();
                         } else if (message instanceof AuthMoreDataMessage) {
-                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != 3) {
+                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) {
                                 if (logger.isInfoEnabled()) {
                                     logger.info("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
                                 }
                                 sink.next(FULL_AUTH);
-                                sink.complete();
                             }
                             // Otherwise success, wait until OK message or Error message.
                         } else if (message instanceof AuthChangeMessage) {
                             flow.changeAuth((AuthChangeMessage) message);
                             sink.next(FULL_AUTH);
-                            sink.complete();
                         } else {
                             sink.error(new IllegalStateException(String.format("Unexpected message type '%s' in handshake response phase", message.getClass().getSimpleName())));
                         }
-                    }).next();
+                    })
+                    .last();
             }
         },
         /**
          * FULL_AUTH is also authentication change response phase.
          */
         FULL_AUTH {
+
+            private final Predicate<ServerMessage> fullAuthComplete = message ->
+                message instanceof ErrorMessage || message instanceof OkMessage;
+
             @Override
             Mono<State> handle(LoginFlow flow) {
                 return flow.createFullAuthResponse()
-                    .flatMap(response -> flow.client.exchange(response).next())
-                    .handle((message, sink) -> {
+                    .flatMapMany(response -> flow.client.exchange(response, fullAuthComplete))
+                    .<State>handle((message, sink) -> {
                         if (message instanceof ErrorMessage) {
                             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
                         } else if (message instanceof OkMessage) {
                             sink.next(COMPLETED);
-                            sink.complete();
                         } else {
                             sink.error(new IllegalStateException(String.format("Unexpected message type '%s' in full authentication phase", message.getClass().getSimpleName())));
                         }
-                    });
+                    })
+                    .last();
             }
         },
         COMPLETED {

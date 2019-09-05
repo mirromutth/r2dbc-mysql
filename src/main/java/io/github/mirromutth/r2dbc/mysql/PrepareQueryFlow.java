@@ -20,7 +20,7 @@ import io.github.mirromutth.r2dbc.mysql.client.Client;
 import io.github.mirromutth.r2dbc.mysql.message.client.PrepareQueryMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ErrorMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.PreparedOkMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.CommandDoneMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.CompleteMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import io.netty.util.ReferenceCountUtil;
@@ -32,11 +32,18 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Iterator;
+import java.util.function.Predicate;
 
 /**
  * Parametrized query message flow for {@link ParametrizedMySqlStatement}.
  */
 final class PrepareQueryFlow {
+
+    private static final Predicate<ServerMessage> PREPARE_DONE = message ->
+        message instanceof ErrorMessage || (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted());
+
+    private static final Predicate<ServerMessage> EXECUTE_DONE = message ->
+        message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
 
     private static final Logger logger = LoggerFactory.getLogger(PrepareQueryFlow.class);
 
@@ -44,20 +51,18 @@ final class PrepareQueryFlow {
     }
 
     static Mono<StatementMetadata> prepare(Client client, String sql) {
-        return client.exchange(new PrepareQueryMessage(sql)).<StatementMetadata>handle((message, sink) -> {
-            if (message instanceof ErrorMessage) {
-                sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
-            } else if (message instanceof SyntheticMetadataMessage) {
-                if (((SyntheticMetadataMessage) message).isCompleted()) {
-                    sink.complete(); // Must wait for last metadata message.
+        return client.exchange(new PrepareQueryMessage(sql), PREPARE_DONE)
+            .<StatementMetadata>handle((message, sink) -> {
+                if (message instanceof ErrorMessage) {
+                    sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+                } else if (message instanceof PreparedOkMessage) {
+                    PreparedOkMessage preparedOk = (PreparedOkMessage) message;
+                    sink.next(new StatementMetadata(client, sql, preparedOk.getStatementId()));
+                } else {
+                    ReferenceCountUtil.release(message);
                 }
-            } else if (message instanceof PreparedOkMessage) {
-                PreparedOkMessage preparedOk = (PreparedOkMessage) message;
-                sink.next(new StatementMetadata(client, sql, preparedOk.getStatementId()));
-            } else {
-                ReferenceCountUtil.release(message);
-            }
-        }).last(); // Fetch last for wait on complete.
+            })
+            .last(); // Fetch last for wait on complete.
     }
 
     static Flux<Flux<ServerMessage>> execute(Client client, StatementMetadata metadata, Iterator<Binding> iterator) {
@@ -65,7 +70,7 @@ final class PrepareQueryFlow {
 
         return bindingEmitter.startWith(iterator.next())
             .onErrorResume(e -> metadata.close().then(Mono.error(e)))
-            .map(binding -> client.exchange(binding.toMessage(metadata.getStatementId()))
+            .map(binding -> client.exchange(binding.toMessage(metadata.getStatementId()), EXECUTE_DONE)
                 .handle((response, sink) -> {
                     if (response instanceof ErrorMessage) {
                         R2dbcException e = ExceptionFactory.createException((ErrorMessage) response, metadata.getSql());
@@ -81,7 +86,7 @@ final class PrepareQueryFlow {
                     sink.next(response);
 
                     // Metadata EOF message will be not receive in here.
-                    if (response instanceof CommandDoneMessage && ((CommandDoneMessage) response).isDone()) {
+                    if (response instanceof CompleteMessage && ((CompleteMessage) response).isDone()) {
                         if (bindingEmitter.isCancelled()) {
                             metadata.close().subscribe(null, e -> logger.error("Statement {} close failed", metadata.getStatementId(), e));
                             return;
@@ -94,8 +99,6 @@ final class PrepareQueryFlow {
                                 bindingEmitter.onComplete();
                             }, bindingEmitter::onComplete);
                         }
-
-                        sink.complete();
                     }
                 }));
     }

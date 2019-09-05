@@ -29,12 +29,8 @@ public interface DecodeContext {
         return CommandDecodeContext.INSTANCE;
     }
 
-    static DecodeContext waitPrepare() {
-        return WaitPrepareDecodeContext.INSTANCE;
-    }
-
-    static DecodeContext result(boolean binary, boolean deprecateEof, int totalColumns) {
-        return new ResultDecodeContext(binary, deprecateEof, totalColumns);
+    static DecodeContext result(boolean deprecateEof, int totalColumns) {
+        return new ResultDecodeContext(deprecateEof, totalColumns);
     }
 
     static DecodeContext preparedMetadata(boolean deprecateEof, int totalColumns, int totalParameters) {

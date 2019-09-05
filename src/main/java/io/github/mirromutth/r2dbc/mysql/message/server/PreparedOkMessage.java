@@ -25,6 +25,8 @@ public final class PreparedOkMessage implements ServerMessage, WarningMessage {
 
     private static final int MIN_SIZE = Byte.BYTES + Integer.BYTES + Short.BYTES + Short.BYTES + Byte.BYTES;
 
+    private static final int WARNING_SIZE = MIN_SIZE + Short.BYTES;
+
     private final int statementId;
 
     private final int totalColumns;
@@ -59,12 +61,10 @@ public final class PreparedOkMessage implements ServerMessage, WarningMessage {
 
     static boolean isLooksLike(ByteBuf buf) {
         int readerIndex = buf.readerIndex();
+        int readableBytes = buf.readableBytes();
 
-        if (buf.readableBytes() < MIN_SIZE) {
-            return false;
-        }
-
-        return buf.getByte(readerIndex) == 0 && buf.getByte(readerIndex + 9) == 0;
+        return (readableBytes == MIN_SIZE || readableBytes == WARNING_SIZE) &&
+            buf.getByte(readerIndex) == 0 && buf.getByte(readerIndex + 9) == 0;
     }
 
     static PreparedOkMessage decode(ByteBuf buf) {
