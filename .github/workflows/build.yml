@@ -4,8 +4,6 @@ on:
   push:
     branches:
     - master
-    tags:
-    - 'v*'
   pull_request:
     branches:
     - master
@@ -19,5 +17,38 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
+    - name: Set up MySQL 5.5
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        mysql version: 5.5
+        host port: 3550
+        container port: 3550
+        mysql database: r2dbc
+        mysql root password: ${{ secrets.DatabasePassword }}
+    - name: Set up MySQL 5.6
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        mysql version: 5.6
+        host port: 3560
+        container port: 3560
+        mysql database: r2dbc
+        mysql root password: ${{ secrets.DatabasePassword }}
+    - name: Set up MySQL 5.7
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        mysql version: 5.7
+        host port: 3570
+        container port: 3570
+        mysql database: r2dbc
+        mysql root password: ${{ secrets.DatabasePassword }}
+    - name: Set up MySQL 8.0
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        mysql version: 8.0
+        host port: 3800
+        container port: 3800
+        collation server: utf8mb4_0900_ai_ci
+        mysql database: r2dbc
+        mysql root password: ${{ secrets.DatabasePassword }}
     - name: Build with Maven
-      run: mvn package --file pom.xml -DskipTests=true
+      run: mvn package --file pom.xml -Dmysql.root.password=${{ secrets.DatabasePassword }}
