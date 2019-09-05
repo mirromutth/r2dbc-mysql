@@ -1,4 +1,4 @@
-# Reactive Relational Database Connectivity MySQL Implementation [![r2dbc-mysql](https://jitpack.io/v/mirromutth/r2dbc-mysql.svg)](https://jitpack.io/#mirromutth/r2dbc-mysql)
+# Reactive Relational Database Connectivity MySQL Implementation [![](https://jitpack.io/v/mirromutth/r2dbc-mysql.svg)](https://jitpack.io/#mirromutth/r2dbc-mysql)
 
 This project contains the [MySQL][m] implementation of the [R2DBC SPI](https://github.com/r2dbc/r2dbc-spi).
 This implementation is not intended to be used directly, but rather to be
