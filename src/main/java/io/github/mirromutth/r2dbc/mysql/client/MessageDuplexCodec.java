@@ -105,9 +105,12 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         if (msg instanceof ClientMessage) {
-            ClientMessage message = (ClientMessage) msg;
-            message.encode(ctx.alloc(), this.context)
-                .subscribe(WriteSubscriber.create(ctx, promise, this.linkableIdProvider, onDone(ctx, message)));
+            ((ClientMessage) msg).encode(ctx.alloc(), this.context)
+                .subscribe(WriteSubscriber.create(ctx, promise, this.linkableIdProvider));
+
+            if (msg instanceof SslRequest) {
+                ctx.channel().pipeline().fireUserEventTriggered(SslState.BRIDGING);
+            }
         } else {
             if (logger.isWarnEnabled()) {
                 logger.warn("Unknown message type {} on writing", msg.getClass());
@@ -139,23 +142,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         this.linkableIdProvider = null;
     }
 
-    @Nullable
-    private Runnable onDone(ChannelHandlerContext ctx, ClientMessage message) {
-        if (message instanceof SslRequest) {
-            return () -> ctx.channel().pipeline().fireUserEventTriggered(SslState.BRIDGING);
-        }
-
-        return null;
-    }
-
     private boolean decodeFilter(ServerMessage msg) {
-        if (msg instanceof WarningMessage && logger.isInfoEnabled()) {
-            int warnings = ((WarningMessage) msg).getWarnings();
-            if (warnings > 0) {
-                logger.info("MySQL server has {} warnings", warnings);
-            }
-        }
-
         if (msg instanceof ServerStatusMessage) {
             this.context.setServerStatuses(((ServerStatusMessage) msg).getServerStatuses());
         }

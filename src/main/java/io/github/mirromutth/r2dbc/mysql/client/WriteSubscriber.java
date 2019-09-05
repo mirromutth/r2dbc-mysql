@@ -17,6 +17,7 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
+import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -39,14 +40,10 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     private final SequenceIdProvider provider;
 
-    @Nullable
-    private final Runnable onComplete;
-
-    private WriteSubscriber(ChannelHandlerContext ctx, ChannelPromise promise, SequenceIdProvider provider, @Nullable Runnable onComplete) {
+    private WriteSubscriber(ChannelHandlerContext ctx, ChannelPromise promise, SequenceIdProvider provider) {
         this.ctx = ctx;
         this.promise = promise;
         this.provider = provider;
-        this.onComplete = onComplete;
     }
 
     @Override
@@ -59,7 +56,7 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
         ctx.write(ctx.alloc().buffer(Envelopes.PART_HEADER_SIZE, Envelopes.PART_HEADER_SIZE)
             .writeMediumLE(buf.readableBytes())
             .writeByte(provider.next()));
-        ctx.writeAndFlush(buf);
+        ctx.write(buf);
     }
 
     @Override
@@ -74,23 +71,15 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     @Override
     public void onComplete() {
-        if (onComplete == null) {
-            promise.setSuccess();
-        } else {
-            try {
-                onComplete.run();
-            } finally {
-                promise.setSuccess();
-            }
-        }
+        promise.setSuccess();
     }
 
-    static WriteSubscriber create(ChannelHandlerContext ctx, ChannelPromise promise, @Nullable SequenceIdProvider provider, @Nullable Runnable onComplete) {
+    static WriteSubscriber create(ChannelHandlerContext ctx, ChannelPromise promise, @Nullable SequenceIdProvider provider) {
         if (provider == null) {
             // Used by this message ByteBuf stream only, can be unsafe.
             provider = SequenceIdProvider.unsafe();
         }
 
-        return new WriteSubscriber(ctx, promise, provider, onComplete);
+        return new WriteSubscriber(ctx, promise, provider);
     }
 }

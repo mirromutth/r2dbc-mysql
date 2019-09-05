@@ -23,6 +23,7 @@ import io.github.mirromutth.r2dbc.mysql.message.client.ExchangeableMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.ExitMessage;
 import io.github.mirromutth.r2dbc.mysql.message.client.SendOnlyMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
+import io.github.mirromutth.r2dbc.mysql.message.server.WarningMessage;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -33,10 +34,13 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SynchronousSink;
 import reactor.netty.Connection;
 import reactor.netty.FutureMono;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -50,6 +54,16 @@ final class ReactorNettyClient implements Client {
     private static final Logger logger = LoggerFactory.getLogger(ReactorNettyClient.class);
 
     private static final Function<Flux<ServerMessage>, Flux<ServerMessage>> IDENTITY = Function.identity();
+
+    private static final Consumer<ServerMessage> INFO_LOGGING = ReactorNettyClient::infoLogging;
+
+    private static final Consumer<ServerMessage> DEBUG_LOGGING = message -> {
+        logger.debug("Response: {}", message);
+        infoLogging(message);
+    };
+
+    private static final BiConsumer<Object, SynchronousSink<ServerMessage>> INBOUND_HANDLE =
+        ReactorNettyClient::inboundHandle;
 
     private final Connection connection;
 
@@ -79,36 +93,27 @@ final class ReactorNettyClient implements Client {
 
         if (InternalLoggerFactory.getInstance(ReactorNettyClient.class).isTraceEnabled()) {
             // Or just use logger.isTraceEnabled()?
+            logger.debug("Connection tracking logging is enabled");
             connection.addHandlerFirst(LoggingHandler.class.getSimpleName(), new LoggingHandler(ReactorNettyClient.class, LogLevel.TRACE));
         }
 
-        connection.inbound().receiveObject()
-            .<ServerMessage>handle((msg, sink) -> {
-                if (msg instanceof ServerMessage) {
-                    if (msg instanceof ReferenceCounted) {
-                        ((ReferenceCounted) msg).retain();
-                    }
-                    sink.next((ServerMessage) msg);
-                } else {
-                    // ReferenceCounted will released by Netty.
-                    sink.error(new IllegalStateException("Impossible inbound type: " + msg.getClass()));
-                }
-            })
-            .as(it -> {
-                if (logger.isDebugEnabled()) {
-                    return it.doOnNext(message -> logger.debug("Response: {}", message));
-                }
+        Flux<ServerMessage> inbound = connection.inbound().receiveObject()
+            .handle(INBOUND_HANDLE);
 
-                return it;
-            })
-            .subscribe(this.responseProcessor::onNext, throwable -> {
-                try {
-                    logger.error("Connection Error: {}", throwable.getMessage(), throwable);
-                    responseProcessor.onError(throwable);
-                } finally {
-                    connection.dispose();
-                }
-            }, this.responseProcessor::onComplete);
+        if (logger.isDebugEnabled()) {
+            inbound = inbound.doOnNext(DEBUG_LOGGING);
+        } else if (logger.isInfoEnabled()) {
+            inbound = inbound.doOnNext(INFO_LOGGING);
+        }
+
+        inbound.subscribe(this.responseProcessor::onNext, throwable -> {
+            try {
+                logger.error("Connection Error: {}", throwable.getMessage(), throwable);
+                responseProcessor.onError(throwable);
+            } finally {
+                connection.dispose();
+            }
+        }, this.responseProcessor::onComplete);
     }
 
     @Override
@@ -193,12 +198,13 @@ final class ReactorNettyClient implements Client {
             }
 
             // Should force any query which is processing and make sure send exit message.
-            return FutureMono.from(send(ExitMessage.getInstance())).as(it -> {
-                if (logger.isDebugEnabled()) {
-                    return it.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully"));
-                }
-                return it;
-            }).then(forceClose());
+            Mono<Void> closer = FutureMono.from(send(ExitMessage.getInstance()));
+
+            if (logger.isDebugEnabled()) {
+                closer = closer.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully"));
+            }
+
+            return closer.then(forceClose());
         });
     }
 
@@ -232,11 +238,32 @@ final class ReactorNettyClient implements Client {
         return connection.channel().writeAndFlush(message);
     }
 
+    private static void inboundHandle(Object msg, SynchronousSink<ServerMessage> sink) {
+        if (msg instanceof ServerMessage) {
+            if (msg instanceof ReferenceCounted) {
+                ((ReferenceCounted) msg).retain();
+            }
+            sink.next((ServerMessage) msg);
+        } else {
+            // ReferenceCounted will released by Netty.
+            sink.error(new IllegalStateException("Impossible inbound type: " + msg.getClass()));
+        }
+    }
+
     private static Runnable exchangeCancel(boolean[] completed) {
         return () -> {
             if (!completed[0]) {
                 logger.error("Exchange cancelled while exchange is active. This is likely a bug leading to unpredictable outcome.");
             }
         };
+    }
+
+    private static void infoLogging(ServerMessage message) {
+        if (message instanceof WarningMessage) {
+            int warnings = ((WarningMessage) message).getWarnings();
+            if (warnings != 0) {
+                logger.info("MySQL reports {} warning(s)", warnings);
+            }
+        }
     }
 }
