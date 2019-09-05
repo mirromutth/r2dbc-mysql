@@ -1,4 +1,4 @@
-name: R2DBC MySQL CI
+name: build
 
 on:
   push:
