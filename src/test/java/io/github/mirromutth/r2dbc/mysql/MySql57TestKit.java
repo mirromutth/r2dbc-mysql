@@ -24,7 +24,7 @@ import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
 final class MySql57TestKit extends MySqlTestKitSupport {
 
     static final MySqlConnectionConfiguration CONFIGURATION =
-        MySqlContainers.getConfigurationByVersion("5_7", SslMode.PREFERRED, null);
+        MySqlContainers.getConfigurationByVersion(3570);
 
     MySql57TestKit() {
         super(CONFIGURATION);
