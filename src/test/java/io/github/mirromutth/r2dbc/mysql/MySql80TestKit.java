@@ -16,15 +16,12 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.constant.SslMode;
-
 /**
  * An implementation of {@link MySqlTestKitSupport} for MySQL 8.0.
  */
 final class MySql80TestKit extends MySqlTestKitSupport {
 
-    static final MySqlConnectionConfiguration CONFIGURATION =
-        MySqlContainers.getConfigurationByVersion(3800);
+    static final MySqlConnectionConfiguration CONFIGURATION = getConfiguration(3800);
 
     MySql80TestKit() {
         super(CONFIGURATION);
