@@ -54,28 +54,43 @@ public final class MySqlRow implements Row {
     }
 
     @Override
-    public <T> T get(Object identifier, Class<T> type) {
-        return getByType(identifier, type);
+    public <T> T get(int index, Class<T> type) {
+        return get0(index, type);
+    }
+
+    @Override
+    public <T> T get(String name, Class<T> type) {
+        return get0(name, type);
     }
 
     /**
-     * @param identifier must be {@link Integer} or {@link String}, means field ordinal or field name.
-     * @param type must be {@link ParameterizedType} linked {@code T}
-     * @param <T> generic type, like {@code Set<String>}, {@code List<String>} or JSON-Serializable type when JSON serializer valid.
+     * @param index the column index starting at 0
+     * @param type  must be {@link ParameterizedType} linked {@code T}
+     * @param <T>   generic type, like {@code Set<String>}, {@code List<String>} or JSON-Serializable type when JSON serializer valid.
      * @return {@code type} specified generic instance.
      */
     @Nullable
-    public <T> T get(Object identifier, ParameterizedType type) {
-        return getByType(identifier, type);
+    public <T> T get(int index, ParameterizedType type) {
+        return get0(index, type);
     }
 
     @Nullable
-    private <T> T getByType(Object identifier, Type type) {
+    public <T> T get(String name, ParameterizedType type) {
+        return get0(name, type);
+    }
+
+    @Nullable
+    private <T> T get0(int index, Type type) {
         requireNonNull(type, "type must not be null");
 
-        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(identifier);
-        FieldValue field = fields[info.getIndex()];
+        return codecs.decode(fields[index], rowMetadata.getColumnMetadata(index), type, binary, context);
+    }
 
-        return codecs.decode(field, info, type, binary, context);
+    @Nullable
+    private <T> T get0(String name, Type type) {
+        requireNonNull(type, "type must not be null");
+
+        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(name);
+        return codecs.decode(fields[info.getIndex()], info, type, binary, context);
     }
 }

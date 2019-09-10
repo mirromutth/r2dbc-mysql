@@ -16,56 +16,102 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.codec.FieldInformation;
 import io.github.mirromutth.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import io.r2dbc.spi.RowMetadata;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link RowMetadata} for MySQL database text/binary results.
+ *
+ * @see MySqlColumnNames column name searching rules.
  */
 final class MySqlRowMetadata implements RowMetadata {
 
-    private final CollatedColumnMetadata collated;
+    private static final Comparator<MySqlColumnMetadata> NAME_COMPARATOR = (left, right) ->
+        MySqlColumnNames.compare(left.getName(), right.getName());
 
-    private MySqlRowMetadata(MySqlColumnMetadata[] metadata) {
-        this.collated = new CollatedColumnMetadata(metadata);
+    private final MySqlColumnMetadata[] idSorted;
+
+    private final MySqlColumnMetadata[] nameSorted;
+
+    /**
+     * Copied column names from {@link #nameSorted}.
+     */
+    private final String[] names;
+
+    private final ColumnNameSet nameSet;
+
+    private MySqlRowMetadata(MySqlColumnMetadata[] idSorted) {
+        int size = idSorted.length;
+
+        if (size <= 0) {
+            throw new IllegalArgumentException("least 1 column metadata");
+        }
+
+        MySqlColumnMetadata[] nameSorted = new MySqlColumnMetadata[size];
+        System.arraycopy(idSorted, 0, nameSorted, 0, size);
+        Arrays.sort(nameSorted, NAME_COMPARATOR);
+
+        this.idSorted = idSorted;
+        this.nameSorted = nameSorted;
+        this.names = getNames(nameSorted);
+        this.nameSet = new ColumnNameSet(this.names);
     }
 
     @Override
-    public MySqlColumnMetadata getColumnMetadata(Object identifier) {
-        requireNonNull(identifier, "identifier must not be null");
-
-        if (identifier instanceof Integer) {
-            return collated.getMetadata((Integer) identifier);
-        } else if (identifier instanceof String) {
-            return collated.getMetadata((String) identifier);
+    public MySqlColumnMetadata getColumnMetadata(int index) {
+        if (index < 0 || index >= idSorted.length) {
+            throw new ArrayIndexOutOfBoundsException(String.format("column index %d is invalid, total %d", index, idSorted.length));
         }
 
-        throw new IllegalArgumentException("identifier should either be an Integer index or a String column name.");
+        return idSorted[index];
+    }
+
+    @Override
+    public MySqlColumnMetadata getColumnMetadata(String name) {
+        requireNonNull(name, "name must not be null");
+
+        int index = MySqlColumnNames.nameSearch(this.names, name);
+
+        if (index < 0) {
+            throw new NoSuchElementException(String.format("column name '%s' does not exist in %s", name, Arrays.toString(this.names)));
+        }
+
+        return nameSorted[index];
     }
 
     @Override
     public List<MySqlColumnMetadata> getColumnMetadatas() {
-        return collated.allValues();
+        switch (idSorted.length) {
+            case 0:
+                return Collections.emptyList();
+            case 1:
+                return Collections.singletonList(idSorted[0]);
+            default:
+                return Collections.unmodifiableList(Arrays.asList(idSorted));
+        }
     }
 
     @Override
     public Set<String> getColumnNames() {
-        return collated.nameSet();
+        return nameSet;
     }
 
     @Override
     public String toString() {
-        return String.format("MySqlRowMetadata{metadata=%s}", collated.toString());
+        return String.format("MySqlRowMetadata{metadata=%s, sortedNames=%s}", Arrays.toString(idSorted), nameSet);
     }
 
     MySqlColumnMetadata[] unwrap() {
-        return collated.getIdSorted();
+        return idSorted;
     }
 
     static MySqlRowMetadata create(DefinitionMetadataMessage[] columns) {
@@ -77,5 +123,16 @@ final class MySqlRowMetadata implements RowMetadata {
         }
 
         return new MySqlRowMetadata(metadata);
+    }
+
+    private static String[] getNames(MySqlColumnMetadata[] metadata) {
+        int size = metadata.length;
+        String[] names = new String[size];
+
+        for (int i = 0; i < size; ++i) {
+            names[i] = metadata[i].getName();
+        }
+
+        return names;
     }
 }

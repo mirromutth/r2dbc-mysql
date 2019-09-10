@@ -54,30 +54,52 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
         // lastInsertId may be negative if key is BIGINT UNSIGNED and value overflow than signed int64.
         this.lastInsertId = lastInsertId;
         // Singleton name must be sorted.
-        this.nameSet = ColumnNameSet.fromSorted(new String[]{keyName});
+        this.nameSet = new ColumnNameSet(keyName);
     }
 
     @Override
-    public <T> T get(Object identifier, Class<T> type) {
-        requireNonNull(identifier, "identifier must not be null");
+    public <T> T get(int index, Class<T> type) {
         requireNonNull(type, "type must not be null");
-        assertValidIdentifier(identifier);
+        assertValidIndex(index);
 
         return get0(type);
     }
 
     @Override
-    public Number get(Object identifier) {
-        requireNonNull(identifier, "identifier must not be null");
-        assertValidIdentifier(identifier);
+    public <T> T get(String name, Class<T> type) {
+        requireNonNull(name, "name must not be null");
+        requireNonNull(type, "type must not be null");
+        assertValidName(name);
+
+        return get0(type);
+    }
+
+    @Override
+    public Number get(int index) {
+        assertValidIndex(index);
 
         return get0(getJavaType0());
     }
 
     @Override
-    public ColumnMetadata getColumnMetadata(Object identifier) {
-        requireNonNull(identifier, "identifier must not be null");
-        assertValidIdentifier(identifier);
+    public Number get(String name) {
+        requireNonNull(name, "name must not be null");
+        assertValidName(name);
+
+        return get0(getJavaType0());
+    }
+
+    @Override
+    public ColumnMetadata getColumnMetadata(int index) {
+        assertValidIndex(index);
+
+        return this;
+    }
+
+    @Override
+    public ColumnMetadata getColumnMetadata(String name) {
+        requireNonNull(name, "name must not be null");
+        assertValidName(name);
 
         return this;
     }
@@ -124,17 +146,9 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
         return null;
     }
 
-    private void assertValidIdentifier(Object identifier) {
-        if (identifier instanceof Integer) {
-            if ((Integer) identifier != 0) {
-                throw new ArrayIndexOutOfBoundsException(String.format("column index %d is invalid, total 1", identifier));
-            }
-        } else if (identifier instanceof String) {
-            if (!nameSet.contains(identifier)) {
-                throw new NoSuchElementException(String.format("column name '%s' does not exist in %s", identifier, this.nameSet));
-            }
-        } else {
-            throw new IllegalArgumentException("identifier should either be an Integer index or a String column name.");
+    private void assertValidName(String name) {
+        if (!nameSet.contains(name)) {
+            throw new NoSuchElementException(String.format("column name '%s' does not exist in %s", name, this.nameSet));
         }
     }
 
@@ -148,6 +162,12 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
             return BigInteger.class;
         } else {
             return Long.TYPE;
+        }
+    }
+
+    private static void assertValidIndex(int index) {
+        if (index != 0) {
+            throw new ArrayIndexOutOfBoundsException(String.format("column index %d is invalid, total 1", index));
         }
     }
 }
