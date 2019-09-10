@@ -51,4 +51,4 @@ jobs:
         mysql database: r2dbc
         mysql root password: ${{ secrets.DatabasePassword }}
     - name: Build with Maven
-      run: mvn package --file pom.xml -B -Dmysql.root.password=${{ secrets.DatabasePassword }}
+      run: mvn package --file pom.xml -B -Dmaven.javadoc.skip=true -Dmysql.root.password=${{ secrets.DatabasePassword }}
