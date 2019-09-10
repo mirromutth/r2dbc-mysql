@@ -83,7 +83,8 @@ public final class MySqlRow implements Row {
     private <T> T get0(int index, Type type) {
         requireNonNull(type, "type must not be null");
 
-        return codecs.decode(fields[index], rowMetadata.getColumnMetadata(index), type, binary, context);
+        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(index);
+        return codecs.decode(fields[index], info, type, binary, context);
     }
 
     @Nullable
