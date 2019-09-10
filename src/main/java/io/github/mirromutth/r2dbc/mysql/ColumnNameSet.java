@@ -36,7 +36,12 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
 
     private final String[] names;
 
-    private ColumnNameSet(String[] names) {
+    /**
+     * Construct a {@link ColumnNameSet} by sorted {@code names} without array copy.
+     *
+     * @param names must be sorted by {@link MySqlColumnNames#compare(CharSequence, CharSequence)}.
+     */
+    ColumnNameSet(String... names) {
         this.names = names;
     }
 
@@ -166,16 +171,6 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
     @Override
     public String toString() {
         return Arrays.toString(names);
-    }
-
-    /**
-     * Construct a {@link ColumnNameSet} by sorted {@code names} without array copy.
-     *
-     * @param names must be sorted by {@link MySqlColumnNames#compare(CharSequence, CharSequence)}.
-     * @return a {@link ColumnNameSet} from {@code names}.
-     */
-    static ColumnNameSet fromSorted(String[] names) {
-        return new ColumnNameSet(names);
     }
 
     private static final class Itr implements Iterator<String> {

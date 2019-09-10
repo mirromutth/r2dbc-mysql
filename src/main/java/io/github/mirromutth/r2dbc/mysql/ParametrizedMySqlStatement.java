@@ -29,7 +29,6 @@ import java.util.Spliterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
@@ -61,7 +60,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     }
 
     @Override
-    public MySqlStatementSupport add() {
+    public MySqlStatement add() {
         assertNotExecuted();
 
         this.bindings.validatedFinish();
@@ -69,17 +68,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     }
 
     @Override
-    public MySqlStatementSupport bind(Object identifier, Object value) {
-        requireNonNull(identifier, "identifier must not be null");
-        require(identifier instanceof String, "identifier must be a String");
-        requireNonNull(value, "value must not be null");
-
-        addBinding(query.getIndexes((String) identifier), codecs.encode(value, context));
-        return this;
-    }
-
-    @Override
-    public MySqlStatementSupport bind(int index, Object value) {
+    public MySqlStatement bind(int index, Object value) {
         requireNonNull(value, "value must not be null");
 
         addBinding(index, codecs.encode(value, context));
@@ -87,22 +76,30 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     }
 
     @Override
-    public MySqlStatementSupport bindNull(Object identifier, Class<?> type) {
-        requireNonNull(identifier, "identifier must not be null");
-        require(identifier instanceof String, "identifier must be a String");
-        // Useless, but should be checked in here, for programming robustness
-        requireNonNull(type, "type must not be null");
+    public MySqlStatement bind(String name, Object value) {
+        requireNonNull(name, "name must not be null");
+        requireNonNull(value, "value must not be null");
 
-        addBinding(query.getIndexes((String) identifier), codecs.encodeNull());
+        addBinding(query.getIndexes(name), codecs.encode(value, context));
         return this;
     }
 
     @Override
-    public MySqlStatementSupport bindNull(int index, Class<?> type) {
+    public MySqlStatement bindNull(int index, Class<?> type) {
         // Useless, but should be checked in here, for programming robustness
         requireNonNull(type, "type must not be null");
 
         addBinding(index, codecs.encodeNull());
+        return this;
+    }
+
+    @Override
+    public MySqlStatement bindNull(String name, Class<?> type) {
+        requireNonNull(name, "name must not be null");
+        // Useless, but should be checked in here, for programming robustness
+        requireNonNull(type, "type must not be null");
+
+        addBinding(query.getIndexes(name), codecs.encodeNull());
         return this;
     }
 

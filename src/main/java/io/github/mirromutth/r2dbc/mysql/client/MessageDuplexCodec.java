@@ -30,7 +30,6 @@ import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerMessageDecoder;
 import io.github.mirromutth.r2dbc.mysql.message.server.ServerStatusMessage;
 import io.github.mirromutth.r2dbc.mysql.message.server.SyntheticMetadataMessage;
-import io.github.mirromutth.r2dbc.mysql.message.server.WarningMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;

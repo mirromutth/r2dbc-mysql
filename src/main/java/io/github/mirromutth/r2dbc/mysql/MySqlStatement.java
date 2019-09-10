@@ -34,13 +34,13 @@ public interface MySqlStatement extends Statement {
      * {@inheritDoc}
      */
     @Override
-    MySqlStatement bind(Object identifier, Object value);
+    MySqlStatement bind(int index, Object value);
 
     /**
      * {@inheritDoc}
      */
     @Override
-    MySqlStatement bind(int index, Object value);
+    MySqlStatement bind(String name, Object value);
 
     /**
      * {@inheritDoc}
@@ -102,13 +102,13 @@ public interface MySqlStatement extends Statement {
      * {@inheritDoc}
      */
     @Override
-    MySqlStatement bindNull(Object identifier, Class<?> type);
+    MySqlStatement bindNull(int index, Class<?> type);
 
     /**
      * {@inheritDoc}
      */
     @Override
-    MySqlStatement bindNull(int index, Class<?> type);
+    MySqlStatement bindNull(String name, Class<?> type);
 
     /**
      * {@inheritDoc}

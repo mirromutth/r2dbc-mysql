@@ -49,22 +49,22 @@ final class SimpleMySqlStatement extends MySqlStatementSupport {
     }
 
     @Override
-    public MySqlStatement bind(Object identifier, Object value) {
-        throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
-    }
-
-    @Override
     public MySqlStatement bind(int index, Object value) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
-    public MySqlStatement bindNull(Object identifier, Class<?> type) {
+    public MySqlStatement bind(String name, Object value) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
     public MySqlStatement bindNull(int index, Class<?> type) {
+        throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
+    }
+
+    @Override
+    public MySqlStatement bindNull(String name, Class<?> type) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
