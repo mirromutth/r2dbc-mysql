@@ -16,11 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
-import io.netty.buffer.ByteBuf;
-
-import java.nio.charset.StandardCharsets;
-
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.require;
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -29,13 +24,17 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  */
 public final class ServerVersion implements Comparable<ServerVersion> {
 
-    public static final ServerVersion NONE = new ServerVersion(0, 0, 0, "");
-
-    private static final String[] ENTERPRISES = new String[] {
+    private static final String[] ENTERPRISES = new String[]{
         "enterprise",
         "commercial",
         "advanced"
     };
+
+    /**
+     * Unresolved version string, do NOT use it on {@link #hashCode()},
+     * {@link #equals(Object)} or {@link #compareTo(ServerVersion)}.
+     */
+    private transient final String origin;
 
     private final int major;
 
@@ -43,71 +42,11 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     private final int patch;
 
-    /**
-     * Don't use it on {@link #hashCode()}, {@link #equals(Object)} or {@link #compareTo(ServerVersion)}.
-     */
-    private transient final String postfix;
-
-    private ServerVersion(int major, int minor, int patch, String postfix) {
+    private ServerVersion(String origin, int major, int minor, int patch) {
+        this.origin = origin;
         this.major = major;
         this.minor = minor;
         this.patch = patch;
-        this.postfix = postfix;
-    }
-
-    /**
-     * Parse a {@link ServerVersion} from {@link String}.
-     *
-     * @param version origin version string.
-     * @return A {@link ServerVersion} that value decode from {@code version}.
-     * @throws IllegalArgumentException if {@code version} is null, or any version part overflows to a negative integer.
-     */
-    public static ServerVersion parse(ByteBuf version) {
-        requireNonNull(version, "version must not be null");
-
-        int major = CodecUtils.readIntInDigits(version, false);
-
-        if (!version.isReadable()) {
-            // End-of-buffer.
-            return create0(major, 0, 0, "");
-        } else if (version.getByte(version.readerIndex()) != '.') {
-            // Is not '.', has only postfix after major.
-            return create0(major, 0, 0, version.toString(StandardCharsets.US_ASCII));
-        }
-
-        // Skip last point '.' after read major.
-        int minor = CodecUtils.readIntInDigits(version.skipBytes(1), false);
-
-        if (!version.isReadable()) {
-            return create0(major, minor, 0, "");
-        } else if (version.getByte(version.readerIndex()) != '.') {
-            // Is not '.', has only postfix after minor.
-            return create0(major, minor, 0, version.toString(StandardCharsets.US_ASCII));
-        }
-
-        // Skip last point '.' after read minor.
-        int patch = CodecUtils.readIntInDigits(version.skipBytes(1), false);
-
-        if (!version.isReadable()) {
-            // End-of-buffer, version just like X.Y.Z without any postfix.
-            return create0(major, minor, patch, "");
-        } else {
-            // Has a postfix.
-            return create0(major, minor, patch, version.toString(StandardCharsets.US_ASCII));
-        }
-    }
-
-    /**
-     * Create a {@link ServerVersion} that value is {@literal major.minor.patch}.
-     *
-     * @param major must not be a negative integer
-     * @param minor must not be a negative integer
-     * @param patch must not be a negative integer
-     * @return A server version that value is {@literal major.minor.patch}
-     * @throws IllegalArgumentException if any version part is negative integer.
-     */
-    public static ServerVersion create(int major, int minor, int patch) {
-        return create0(major, minor, patch, "");
     }
 
     /**
@@ -152,15 +91,11 @@ public final class ServerVersion implements Comparable<ServerVersion> {
         return patch;
     }
 
-    public String getPostfix() {
-        return postfix;
-    }
-
     public boolean isEnterprise() {
         // TODO: optimize performance using substring matching/searching algorithms, like two-way or KMP.
         for (String enterprise : ENTERPRISES) {
             // Maybe should ignore case?
-            if (postfix.contains(enterprise)) {
+            if (origin.contains(enterprise)) {
                 return true;
             }
         }
@@ -198,22 +133,98 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     @Override
     public String toString() {
-        if (postfix.isEmpty()) {
+        if (origin.isEmpty()) {
             return String.format("%d.%d.%d", major, minor, patch);
         } else {
-            return String.format("%d.%d.%d%s", major, minor, patch, postfix);
+            return origin;
         }
     }
 
-    private static ServerVersion create0(int major, int minor, int patch, String postfix) {
+    /**
+     * Parse a {@link ServerVersion} from {@link String}.
+     *
+     * @param version origin version string.
+     * @return A {@link ServerVersion} that value decode from {@code version}.
+     * @throws IllegalArgumentException if {@code version} is null, or any version part overflows to a negative integer.
+     */
+    public static ServerVersion parse(String version) {
+        requireNonNull(version, "version must not be null");
+
+        int length = version.length();
+        int[] index = new int[]{0};
+        int major = readInt(version, length, index);
+
+        if (index[0] >= length) {
+            // End-of-string.
+            return create0(version, major, 0, 0);
+        } else if (version.charAt(index[0]) != '.') {
+            // Is not '.', has only postfix after major.
+            return create0(version, major, 0, 0);
+        } else {
+            // Skip last '.' after major.
+            ++index[0];
+        }
+
+        int minor = readInt(version, length, index);
+
+        if (index[0] >= length) {
+            return create0(version, major, minor, 0);
+        } else if (version.charAt(index[0]) != '.') {
+            // Is not '.', has only postfix after minor.
+            return create0(version, major, minor, 0);
+        } else {
+            // Skip last '.' after minor.
+            ++index[0];
+        }
+
+        return create0(version, major, minor, readInt(version, length, index));
+    }
+
+    /**
+     * Create a {@link ServerVersion} that value is {@literal major.minor.patch}.
+     *
+     * @param major must not be a negative integer
+     * @param minor must not be a negative integer
+     * @param patch must not be a negative integer
+     * @return A server version that value is {@literal major.minor.patch}
+     * @throws IllegalArgumentException if any version part is negative integer.
+     */
+    public static ServerVersion create(int major, int minor, int patch) {
+        return create0("", major, minor, patch);
+    }
+
+    private static ServerVersion create0(String origin, int major, int minor, int patch) {
         require(major >= 0, "major version must not be a negative integer");
         require(minor >= 0, "minor version must not be a negative integer");
         require(patch >= 0, "patch version must not be a negative integer");
 
-        if (major == 0 && minor == 0 && patch == 0) {
-            return NONE;
+        return new ServerVersion(origin, major, minor, patch);
+    }
+
+    /**
+     * C-style number parse, it most like {@code ByteBuf.read*(...)} and use external read index.
+     *
+     * @param input  the input string
+     * @param length the size of {@code version}
+     * @param index  reference of external read index, it will increase to the location of read
+     * @return the integer read by {@code input}
+     */
+    private static int readInt(String input, int length, int[/* 1 */] index) {
+        int ans = 0, i;
+        char ch;
+
+        for (i = index[0]; i < length; ++i) {
+            ch = input.charAt(i);
+
+            if (ch < '0' || ch > '9') {
+                break;
+            } else {
+                ans = ans * 10 + (ch - '0');
+            }
         }
 
-        return new ServerVersion(major, minor, patch, postfix);
+        index[0] = i;
+
+        return ans;
     }
 }

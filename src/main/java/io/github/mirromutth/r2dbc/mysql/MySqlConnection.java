@@ -70,10 +70,10 @@ public final class MySqlConnection implements Connection {
         message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
 
     /**
-     * Convert result to isolation level which considered {@code null}.
+     * Convert initialize result to {@link InitData}.
      */
-    private static final Function<MySqlResult, Publisher<IsolationLevel>> ISOLATION_LEVEL_HANDLER =
-        r -> r.map((row, meta) -> convertIsolationLevel(row.get(0, String.class)));
+    private static final Function<MySqlResult, Publisher<InitData>> INIT_HANDLER =
+        r -> r.map((row, meta) -> new InitData(convertIsolationLevel(row.get(0, String.class)), row.get(1, String.class)));
 
     private static final Consumer<ServerMessage> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
 
@@ -97,6 +97,8 @@ public final class MySqlConnection implements Connection {
 
     private final ConnectionContext context;
 
+    private final MySqlConnectionMetadata metadata;
+
     private final IsolationLevel sessionLevel;
 
     /**
@@ -111,12 +113,13 @@ public final class MySqlConnection implements Connection {
      */
     private volatile IsolationLevel currentLevel;
 
-    private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, IsolationLevel sessionLevel) {
+    private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, InitData data) {
         this.client = client;
         this.context = context;
-        this.sessionLevel = sessionLevel;
-        this.currentLevel = sessionLevel;
+        this.sessionLevel = data.level;
+        this.currentLevel = data.level;
         this.codecs = codecs;
+        this.metadata = new MySqlConnectionMetadata(context.getServerVersion().toString(), data.product);
         this.batchSupported = (context.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
 
         if (this.batchSupported) {
@@ -274,6 +277,11 @@ public final class MySqlConnection implements Connection {
         return executeVoid(String.format("ROLLBACK TO SAVEPOINT `%s`", name));
     }
 
+    @Override
+    public MySqlConnectionMetadata getMetadata() {
+        return metadata;
+    }
+
     /**
      * MySQL does not have any way to query the isolation level of the current transaction,
      * only inferred from past statements, so driver can not make sure the result is right.
@@ -365,17 +373,18 @@ public final class MySqlConnection implements Connection {
         ServerVersion version = context.getServerVersion();
         String query;
 
+        // Maybe create a InitFlow for data initialization after login?
         if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8x) || (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5x) && version.isLessThan(TX_LEVEL_8x))) {
-            query = "SELECT @@transaction_isolation AS i";
+            query = "SELECT @@transaction_isolation AS i, @@version_comment AS v";
         } else {
-            query = "SELECT @@tx_isolation AS i";
+            query = "SELECT @@tx_isolation AS i, @@version_comment AS v";
         }
 
         return new SimpleMySqlStatement(client, codecs, context, query)
             .execute()
-            .flatMap(ISOLATION_LEVEL_HANDLER)
+            .flatMap(INIT_HANDLER)
             .last()
-            .map(level -> new MySqlConnection(client, context, codecs, level));
+            .map(data -> new MySqlConnection(client, context, codecs, data));
     }
 
     private static IsolationLevel convertIsolationLevel(@Nullable String name) {
@@ -396,6 +405,19 @@ public final class MySqlConnection implements Connection {
             default:
                 logger.warn("Unknown isolation level {} in current session, fallback to repeatable read", name);
                 return IsolationLevel.REPEATABLE_READ;
+        }
+    }
+
+    private static class InitData {
+
+        private final IsolationLevel level;
+
+        @Nullable
+        private final String product;
+
+        private InitData(IsolationLevel level, @Nullable String product) {
+            this.level = level;
+            this.product = product;
         }
     }
 }

@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class CharCollationTest {
 
-    private static final ServerVersion version = ServerVersion.NONE;
+    private static final ServerVersion version = ServerVersion.create(0, 0, 0);
 
     @Test
     void fromId() {
