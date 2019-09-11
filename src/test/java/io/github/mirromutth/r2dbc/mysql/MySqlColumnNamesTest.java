@@ -48,21 +48,6 @@ class MySqlColumnNamesTest {
     }
 
     @Test
-    void slice() {
-        assertEquals(MySqlColumnNames.slice("123456", 4, 4).toString(), "");
-        assertEquals(MySqlColumnNames.slice("123456", 1, 5).toString(), "2345");
-        assertEquals(MySqlColumnNames.slice("0123456789", 1, 7).subSequence(2, 6).toString(), "3456");
-        assertEquals(MySqlColumnNames.slice("0123456789", 1, 7).subSequence(2, 3).toString(), "3");
-        assertEquals(MySqlColumnNames.slice("123456", 1, 5).charAt(1), '3');
-        assertEquals(MySqlColumnNames.slice("0123456789", 1, 7).subSequence(2, 6).charAt(2), '5');
-        assertEquals(MySqlColumnNames.slice("0123456789", 1, 7).subSequence(2, 3).charAt(0), '3');
-
-        assertEquals(MySqlColumnNames.slice("`name`", 1, "`name`".length() - 1).toString(), "name");
-        assertEquals(MySqlColumnNames.slice("`id`", 1, "`id`".length() - 1).toString(), "id");
-        assertEquals(MySqlColumnNames.slice("`a`", 1, "`a`".length() - 1).toString(), "a");
-    }
-
-    @Test
     void nameSearch() {
         Consumer<String> judge = name -> {
             if (CS_NAME_SET.contains(name)) {
