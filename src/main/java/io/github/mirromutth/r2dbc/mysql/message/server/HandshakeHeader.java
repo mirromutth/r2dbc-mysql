@@ -20,6 +20,8 @@ import io.github.mirromutth.r2dbc.mysql.ServerVersion;
 import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
+import java.nio.charset.StandardCharsets;
+
 import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
@@ -69,7 +71,7 @@ public final class HandshakeHeader {
 
     static HandshakeHeader decode(ByteBuf buf) {
         short protocolVersion = buf.readUnsignedByte();
-        ServerVersion serverVersion = ServerVersion.parse(CodecUtils.readCStringSlice(buf));
+        ServerVersion serverVersion = ServerVersion.parse(CodecUtils.readCStringSlice(buf).toString(StandardCharsets.US_ASCII));
         return new HandshakeHeader(protocolVersion, serverVersion, buf.readIntLE());
     }
 

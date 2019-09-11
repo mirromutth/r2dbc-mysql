@@ -32,9 +32,11 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
  */
 public final class ConnectionContext {
 
+    private static final ServerVersion NONE_VERSION = ServerVersion.create(0, 0, 0);
+
     private volatile int connectionId = -1;
 
-    private volatile ServerVersion serverVersion = ServerVersion.NONE;
+    private volatile ServerVersion serverVersion = NONE_VERSION;
 
     private final String database;
 

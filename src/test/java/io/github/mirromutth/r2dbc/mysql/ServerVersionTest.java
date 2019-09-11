@@ -16,8 +16,6 @@
 
 package io.github.mirromutth.r2dbc.mysql;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,17 +27,17 @@ class ServerVersionTest {
 
     @Test
     void parse() {
-        ServerVersion v5_7_12 = parse("5.7.12");
-        ServerVersion v8 = parse("8.0.0");
-        ServerVersion v8_1 = parse("8.1.0");
-        ServerVersion v56_78_910 = parse("56.78.910");
-        ServerVersion v0 = parse("");
+        ServerVersion v5_7_12 = ServerVersion.parse("5.7.12");
+        ServerVersion v8 = ServerVersion.parse("8.0.0");
+        ServerVersion v8_1 = ServerVersion.parse("8.1.0");
+        ServerVersion v56_78_910 = ServerVersion.parse("56.78.910");
+        ServerVersion v0 = ServerVersion.parse("");
 
-        assertEquals(ServerVersion.create(0, 0, 0), parse("-1"));
-        assertEquals(ServerVersion.create(8, 0, 0), parse("8.-1"));
-        assertEquals(ServerVersion.create(0, 0, 0), parse("-5.6.7"));
-        assertEquals(ServerVersion.create(5, 0, 0), parse("5.-6.7"));
-        assertEquals(ServerVersion.create(5, 6, 0), parse("5.6.-7"));
+        assertEquals(ServerVersion.create(0, 0, 0), ServerVersion.parse("-1"));
+        assertEquals(ServerVersion.create(8, 0, 0), ServerVersion.parse("8.-1"));
+        assertEquals(ServerVersion.create(0, 0, 0), ServerVersion.parse("-5.6.7"));
+        assertEquals(ServerVersion.create(5, 0, 0), ServerVersion.parse("5.-6.7"));
+        assertEquals(ServerVersion.create(5, 6, 0), ServerVersion.parse("5.6.-7"));
 
         assertEquals(v5_7_12, ServerVersion.create(5, 7, 12));
         assertEquals(v8, ServerVersion.create(8, 0, 0));
@@ -47,84 +45,74 @@ class ServerVersionTest {
         assertEquals(v56_78_910, ServerVersion.create(56, 78, 910));
         assertEquals(v0, ServerVersion.create(0, 0, 0));
 
-        assertEquals(v5_7_12, parse("5.7.12.17"));
-        assertEquals(v5_7_12, parse("5.7.12-17"));
-        assertEquals(v5_7_12, parse("5.7.12.RELEASE"));
-        assertEquals(v5_7_12, parse("5.7.12.RC2"));
-        assertEquals(v5_7_12, parse("5.7.12RC2"));
-        assertEquals(v5_7_12, parse("5.7.12-v2"));
-        assertEquals(v5_7_12, parse("5.7.12-RC2"));
+        assertEquals(v5_7_12, ServerVersion.parse("5.7.12.17"));
+        assertEquals(v5_7_12, ServerVersion.parse("5.7.12-17"));
+        assertEquals(v5_7_12, ServerVersion.parse("5.7.12.RELEASE"));
+        assertEquals(v5_7_12, ServerVersion.parse("5.7.12.RC2"));
+        assertEquals(v5_7_12, ServerVersion.parse("5.7.12RC2"));
+        assertEquals(v5_7_12, ServerVersion.parse("5.7.12-v2"));
+        assertEquals(v5_7_12, ServerVersion.parse("5.7.12-RC2"));
 
-        assertEquals(v8, parse("8"));
-        assertEquals(v8, parse("8-2"));
-        assertEquals(v8, parse("8v2"));
-        assertEquals(v8, parse("8-v2"));
-        assertEquals(v8, parse("8.0"));
-        assertEquals(v8, parse("8.0-2"));
-        assertEquals(v8, parse("8.0v2"));
-        assertEquals(v8, parse("8.0.0-2"));
-        assertEquals(v8, parse("8.0.0v2"));
-        assertEquals(v8, parse("8.0.0-v2"));
+        assertEquals(v8, ServerVersion.parse("8"));
+        assertEquals(v8, ServerVersion.parse("8-2"));
+        assertEquals(v8, ServerVersion.parse("8v2"));
+        assertEquals(v8, ServerVersion.parse("8-v2"));
+        assertEquals(v8, ServerVersion.parse("8.0"));
+        assertEquals(v8, ServerVersion.parse("8.0-2"));
+        assertEquals(v8, ServerVersion.parse("8.0v2"));
+        assertEquals(v8, ServerVersion.parse("8.0.0-2"));
+        assertEquals(v8, ServerVersion.parse("8.0.0v2"));
+        assertEquals(v8, ServerVersion.parse("8.0.0-v2"));
 
-        assertEquals(v8_1, parse("8.1"));
-        assertEquals(v8_1, parse("8.1-2"));
-        assertEquals(v8_1, parse("8.1v2"));
-        assertEquals(v8_1, parse("8.1-v2"));
-        assertEquals(v8_1, parse("8.1.0-2"));
-        assertEquals(v8_1, parse("8.1.0v2"));
-        assertEquals(v8_1, parse("8.1.0-v2"));
+        assertEquals(v8_1, ServerVersion.parse("8.1"));
+        assertEquals(v8_1, ServerVersion.parse("8.1-2"));
+        assertEquals(v8_1, ServerVersion.parse("8.1v2"));
+        assertEquals(v8_1, ServerVersion.parse("8.1-v2"));
+        assertEquals(v8_1, ServerVersion.parse("8.1.0-2"));
+        assertEquals(v8_1, ServerVersion.parse("8.1.0v2"));
+        assertEquals(v8_1, ServerVersion.parse("8.1.0-v2"));
 
-        assertEquals(v56_78_910, parse("56.78.910.17"));
-        assertEquals(v56_78_910, parse("56.78.910-12"));
-        assertEquals(v56_78_910, parse("56.78.910.RELEASE"));
-        assertEquals(v56_78_910, parse("56.78.910.RC2"));
-        assertEquals(v56_78_910, parse("56.78.910RC2"));
-        assertEquals(v56_78_910, parse("56.78.910-v2"));
-        assertEquals(v56_78_910, parse("56.78.910-RC2"));
+        assertEquals(v56_78_910, ServerVersion.parse("56.78.910.17"));
+        assertEquals(v56_78_910, ServerVersion.parse("56.78.910-12"));
+        assertEquals(v56_78_910, ServerVersion.parse("56.78.910.RELEASE"));
+        assertEquals(v56_78_910, ServerVersion.parse("56.78.910.RC2"));
+        assertEquals(v56_78_910, ServerVersion.parse("56.78.910RC2"));
+        assertEquals(v56_78_910, ServerVersion.parse("56.78.910-v2"));
+        assertEquals(v56_78_910, ServerVersion.parse("56.78.910-RC2"));
 
-        assertEquals(parse("5.7.12.17").toString(), "5.7.12.17");
-        assertEquals(parse("5.7.12-17").toString(), "5.7.12-17");
-        assertEquals(parse("5.7.12.RELEASE").toString(), "5.7.12.RELEASE");
-        assertEquals(parse("5.7.12.RC2").toString(), "5.7.12.RC2");
-        assertEquals(parse("5.7.12RC2").toString(), "5.7.12RC2");
-        assertEquals(parse("5.7.12-v2").toString(), "5.7.12-v2");
-        assertEquals(parse("5.7.12-RC2").toString(), "5.7.12-RC2");
+        assertEquals(ServerVersion.parse("5.7.12.17").toString(), "5.7.12.17");
+        assertEquals(ServerVersion.parse("5.7.12-17").toString(), "5.7.12-17");
+        assertEquals(ServerVersion.parse("5.7.12.RELEASE").toString(), "5.7.12.RELEASE");
+        assertEquals(ServerVersion.parse("5.7.12.RC2").toString(), "5.7.12.RC2");
+        assertEquals(ServerVersion.parse("5.7.12RC2").toString(), "5.7.12RC2");
+        assertEquals(ServerVersion.parse("5.7.12-v2").toString(), "5.7.12-v2");
+        assertEquals(ServerVersion.parse("5.7.12-RC2").toString(), "5.7.12-RC2");
 
-        assertEquals(parse("8").toString(), "8.0.0");
-        assertEquals(parse("8-2").toString(), "8.0.0-2");
-        assertEquals(parse("8v2").toString(), "8.0.0v2");
-        assertEquals(parse("8-v2").toString(), "8.0.0-v2");
-        assertEquals(parse("8.0").toString(), "8.0.0");
-        assertEquals(parse("8.0-2").toString(), "8.0.0-2");
-        assertEquals(parse("8.0v2").toString(), "8.0.0v2");
-        assertEquals(parse("8.0.0-2").toString(), "8.0.0-2");
-        assertEquals(parse("8.0.0v2").toString(), "8.0.0v2");
-        assertEquals(parse("8.0.0-v2").toString(), "8.0.0-v2");
+        assertEquals(ServerVersion.parse("8").toString(), "8");
+        assertEquals(ServerVersion.parse("8-2").toString(), "8-2");
+        assertEquals(ServerVersion.parse("8v2").toString(), "8v2");
+        assertEquals(ServerVersion.parse("8-v2").toString(), "8-v2");
+        assertEquals(ServerVersion.parse("8.0").toString(), "8.0");
+        assertEquals(ServerVersion.parse("8.0-2").toString(), "8.0-2");
+        assertEquals(ServerVersion.parse("8.0v2").toString(), "8.0v2");
+        assertEquals(ServerVersion.parse("8.0.0-2").toString(), "8.0.0-2");
+        assertEquals(ServerVersion.parse("8.0.0v2").toString(), "8.0.0v2");
+        assertEquals(ServerVersion.parse("8.0.0-v2").toString(), "8.0.0-v2");
 
-        assertEquals(parse("8.1").toString(), "8.1.0");
-        assertEquals(parse("8.1-2").toString(), "8.1.0-2");
-        assertEquals(parse("8.1v2").toString(), "8.1.0v2");
-        assertEquals(parse("8.1-v2").toString(), "8.1.0-v2");
-        assertEquals(parse("8.1.0-2").toString(), "8.1.0-2");
-        assertEquals(parse("8.1.0v2").toString(), "8.1.0v2");
-        assertEquals(parse("8.1.0-v2").toString(), "8.1.0-v2");
+        assertEquals(ServerVersion.parse("8.1").toString(), "8.1");
+        assertEquals(ServerVersion.parse("8.1-2").toString(), "8.1-2");
+        assertEquals(ServerVersion.parse("8.1v2").toString(), "8.1v2");
+        assertEquals(ServerVersion.parse("8.1-v2").toString(), "8.1-v2");
+        assertEquals(ServerVersion.parse("8.1.0-2").toString(), "8.1.0-2");
+        assertEquals(ServerVersion.parse("8.1.0v2").toString(), "8.1.0v2");
+        assertEquals(ServerVersion.parse("8.1.0-v2").toString(), "8.1.0-v2");
 
-        assertEquals(parse("56.78.910.17").toString(), "56.78.910.17");
-        assertEquals(parse("56.78.910-12").toString(), "56.78.910-12");
-        assertEquals(parse("56.78.910.RELEASE").toString(), "56.78.910.RELEASE");
-        assertEquals(parse("56.78.910.RC2").toString(), "56.78.910.RC2");
-        assertEquals(parse("56.78.910RC2").toString(), "56.78.910RC2");
-        assertEquals(parse("56.78.910-v2").toString(), "56.78.910-v2");
-        assertEquals(parse("56.78.910-RC2").toString(), "56.78.910-RC2");
-    }
-
-    private static ServerVersion parse(String version) {
-        ByteBuf buf = Unpooled.wrappedBuffer(version.getBytes());
-
-        try {
-            return ServerVersion.parse(buf);
-        } finally {
-            buf.release();
-        }
+        assertEquals(ServerVersion.parse("56.78.910.17").toString(), "56.78.910.17");
+        assertEquals(ServerVersion.parse("56.78.910-12").toString(), "56.78.910-12");
+        assertEquals(ServerVersion.parse("56.78.910.RELEASE").toString(), "56.78.910.RELEASE");
+        assertEquals(ServerVersion.parse("56.78.910.RC2").toString(), "56.78.910.RC2");
+        assertEquals(ServerVersion.parse("56.78.910RC2").toString(), "56.78.910RC2");
+        assertEquals(ServerVersion.parse("56.78.910-v2").toString(), "56.78.910-v2");
+        assertEquals(ServerVersion.parse("56.78.910-RC2").toString(), "56.78.910-RC2");
     }
 }
