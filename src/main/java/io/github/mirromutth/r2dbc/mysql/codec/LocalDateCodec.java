@@ -22,7 +22,6 @@ import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
-import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
@@ -52,7 +51,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
             LocalDate date = readDateBinary(buf, bytes);
 
             if (date == null) {
-                return ZeroDateHandler.handle(context.getZeroDateOption(), true, buf, index, bytes, ROUND);
+                return CodecDateUtils.handle(context.getZeroDateOption(), true, buf, index, bytes, ROUND);
             } else {
                 return date;
             }
@@ -60,7 +59,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
             LocalDate date = readDateText(buf);
 
             if (date == null) {
-                return ZeroDateHandler.handle(context.getZeroDateOption(), false, buf, index, bytes, ROUND);
+                return CodecDateUtils.handle(context.getZeroDateOption(), false, buf, index, bytes, ROUND);
             }
 
             return date;
@@ -84,9 +83,9 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     @Nullable
     static LocalDate readDateText(ByteBuf buf) {
-        int year = CodecUtils.readIntInDigits(buf, true);
-        int month = CodecUtils.readIntInDigits(buf, true);
-        int day = CodecUtils.readIntInDigits(buf, true);
+        int year = CodecDateUtils.readIntInDigits(buf);
+        int month = CodecDateUtils.readIntInDigits(buf);
+        int day = CodecDateUtils.readIntInDigits(buf);
 
         if (month == 0 || day == 0) {
             return null;

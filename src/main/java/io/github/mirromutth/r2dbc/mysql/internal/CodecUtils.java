@@ -408,35 +408,4 @@ public final class CodecUtils {
             buf.writeByte(0);
         }
     }
-
-    public static int readIntInDigits(ByteBuf buf, boolean skipLast) {
-        if (!buf.isReadable()) {
-            return 0;
-        }
-
-        int readerIndex = buf.readerIndex();
-        int writerIndex = buf.writerIndex();
-        int result = 0;
-        byte digit;
-
-        for (int i = readerIndex; i < writerIndex; ++i) {
-            digit = buf.getByte(i);
-
-            if (digit >= '0' && digit <= '9') {
-                result = result * 10 + (digit - '0');
-            } else {
-                if (skipLast) {
-                    buf.readerIndex(i + 1);
-                } else {
-                    buf.readerIndex(i);
-                }
-                // Is not digit, means parse completed.
-                return result;
-            }
-        }
-
-        // Parse until end-of-buffer.
-        buf.readerIndex(writerIndex);
-        return result;
-    }
 }

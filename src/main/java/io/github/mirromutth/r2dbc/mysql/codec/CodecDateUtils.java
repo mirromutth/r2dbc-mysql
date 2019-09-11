@@ -27,11 +27,35 @@ import java.nio.charset.StandardCharsets;
 import java.time.temporal.Temporal;
 
 /**
- * An utility for handle "zero date" general logic.
+ * An utility with date/time generic logic for {@link Codec} implementations.
  */
-final class ZeroDateHandler {
+final class CodecDateUtils {
 
-    private ZeroDateHandler() {
+    static int readIntInDigits(ByteBuf buf) {
+        if (!buf.isReadable()) {
+            return 0;
+        }
+
+        int readerIndex = buf.readerIndex();
+        int writerIndex = buf.writerIndex();
+        int result = 0;
+        byte digit;
+
+        for (int i = readerIndex; i < writerIndex; ++i) {
+            digit = buf.getByte(i);
+
+            if (digit >= '0' && digit <= '9') {
+                result = result * 10 + (digit - '0');
+            } else {
+                buf.readerIndex(i + 1);
+                // Is not digit, means parse completed.
+                return result;
+            }
+        }
+
+        // Parse until end-of-buffer.
+        buf.readerIndex(writerIndex);
+        return result;
     }
 
     @Nullable
@@ -51,5 +75,8 @@ final class ZeroDateHandler {
         }
 
         throw new R2dbcNonTransientResourceException(message, SqlStates.ILLEGAL_ARGUMENT);
+    }
+
+    private CodecDateUtils() {
     }
 }

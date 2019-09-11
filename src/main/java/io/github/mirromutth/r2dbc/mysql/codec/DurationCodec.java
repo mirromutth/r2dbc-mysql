@@ -22,7 +22,6 @@ import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
-import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -66,9 +65,9 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
 
     private static Duration decodeText(ByteBuf buf) {
         boolean isNegative = LocalTimeCodec.readNegative(buf);
-        int hour = CodecUtils.readIntInDigits(buf, true);
-        int minute = CodecUtils.readIntInDigits(buf, true);
-        int second = CodecUtils.readIntInDigits(buf, true);
+        int hour = CodecDateUtils.readIntInDigits(buf);
+        int minute = CodecDateUtils.readIntInDigits(buf);
+        int second = CodecDateUtils.readIntInDigits(buf);
         long totalSeconds = TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second;
 
         return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);

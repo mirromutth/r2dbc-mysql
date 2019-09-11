@@ -22,7 +22,6 @@ import io.github.mirromutth.r2dbc.mysql.internal.ConnectionContext;
 import io.github.mirromutth.r2dbc.mysql.message.NormalFieldValue;
 import io.github.mirromutth.r2dbc.mysql.message.ParameterValue;
 import io.github.mirromutth.r2dbc.mysql.message.client.ParameterWriter;
-import io.github.mirromutth.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -72,9 +71,9 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
     static LocalTime readTimeText(ByteBuf buf) {
         boolean isNegative = readNegative(buf);
-        int hour = CodecUtils.readIntInDigits(buf, true);
-        int minute = CodecUtils.readIntInDigits(buf, true);
-        int second = CodecUtils.readIntInDigits(buf, true);
+        int hour = CodecDateUtils.readIntInDigits(buf);
+        int minute = CodecDateUtils.readIntInDigits(buf);
+        int second = CodecDateUtils.readIntInDigits(buf);
 
         if (isNegative) {
             // The `hour` is a positive integer.

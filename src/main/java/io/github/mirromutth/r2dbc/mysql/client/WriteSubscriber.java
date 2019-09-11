@@ -17,7 +17,6 @@
 package io.github.mirromutth.r2dbc.mysql.client;
 
 import io.github.mirromutth.r2dbc.mysql.constant.Envelopes;
-import io.github.mirromutth.r2dbc.mysql.message.client.SslRequest;
 import io.github.mirromutth.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;

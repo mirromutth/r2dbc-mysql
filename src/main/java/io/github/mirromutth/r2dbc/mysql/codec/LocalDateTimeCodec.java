@@ -54,7 +54,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
             LocalDateTime dateTime = decodeBinary(buf, bytes);
 
             if (dateTime == null) {
-                return ZeroDateHandler.handle(context.getZeroDateOption(), true, buf, index, bytes, ROUND);
+                return CodecDateUtils.handle(context.getZeroDateOption(), true, buf, index, bytes, ROUND);
             } else {
                 return dateTime;
             }
@@ -62,7 +62,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
             LocalDateTime dateTime = decodeText(buf);
 
             if (dateTime == null) {
-                return ZeroDateHandler.handle(context.getZeroDateOption(), false, buf, index, bytes, ROUND);
+                return CodecDateUtils.handle(context.getZeroDateOption(), false, buf, index, bytes, ROUND);
             }
 
             return dateTime;
