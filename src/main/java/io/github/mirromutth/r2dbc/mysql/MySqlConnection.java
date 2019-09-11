@@ -60,11 +60,11 @@ public final class MySqlConnection implements Connection {
      *
      * @see #create(Client, ConnectionContext) judge server version before get the isolation level.
      */
-    private static final ServerVersion TRAN_LEVEL_8x = ServerVersion.create(8, 0, 3);
+    private static final ServerVersion TRAN_LEVEL_8X = ServerVersion.create(8, 0, 3);
 
-    private static final ServerVersion TRAN_LEVEL_5x = ServerVersion.create(5, 7, 20);
+    private static final ServerVersion TRAN_LEVEL_5X = ServerVersion.create(5, 7, 20);
 
-    private static final ServerVersion TX_LEVEL_8x = ServerVersion.create(8, 0, 0);
+    private static final ServerVersion TX_LEVEL_8X = ServerVersion.create(8, 0, 0);
 
     private static final Predicate<ServerMessage> PING_DONE = message ->
         message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
@@ -374,7 +374,7 @@ public final class MySqlConnection implements Connection {
         String query;
 
         // Maybe create a InitFlow for data initialization after login?
-        if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8x) || (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5x) && version.isLessThan(TX_LEVEL_8x))) {
+        if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8X) || (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5X) && version.isLessThan(TX_LEVEL_8X))) {
             query = "SELECT @@transaction_isolation AS i, @@version_comment AS v";
         } else {
             query = "SELECT @@tx_isolation AS i, @@version_comment AS v";
