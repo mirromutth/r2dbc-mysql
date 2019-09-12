@@ -29,9 +29,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Unit tests for {@link MySqlColumnNames}.
+ * Unit tests for {@link MySqlNames}.
  */
-class MySqlColumnNamesTest {
+class MySqlNamesTest {
 
     private static final String[] NAMES = {"c", "dD", "cBc", "Dca", "ADC", "DcA", "abc", "b", "B", "dA", "AB", "a", "Abc", "ABC", "A", "ab", "cc", "Da", "CbC"};
 
@@ -44,33 +44,33 @@ class MySqlColumnNamesTest {
     static {
         CS_NAME_SET.addAll(Arrays.asList(NAMES));
         CI_NAME_SET.addAll(Arrays.asList(NAMES));
-        Arrays.sort(NAMES, MySqlColumnNames::compare);
+        Arrays.sort(NAMES, MySqlNames::compare);
     }
 
     @Test
     void nameSearch() {
         Consumer<String> judge = name -> {
             if (CS_NAME_SET.contains(name)) {
-                assertEquals(NAMES[MySqlColumnNames.nameSearch(NAMES, name)], name);
-                assertEquals(NAMES[MySqlColumnNames.nameSearch(NAMES, String.format("`%s`", name))], name);
+                assertEquals(NAMES[MySqlNames.nameSearch(NAMES, name)], name);
+                assertEquals(NAMES[MySqlNames.nameSearch(NAMES, String.format("`%s`", name))], name);
             } else if (CI_NAME_SET.contains(name)) {
-                assertTrue(NAMES[MySqlColumnNames.nameSearch(NAMES, name)].equalsIgnoreCase(name));
-                assertEquals(MySqlColumnNames.nameSearch(NAMES, String.format("`%s`", name)), -1);
+                assertTrue(NAMES[MySqlNames.nameSearch(NAMES, name)].equalsIgnoreCase(name));
+                assertEquals(MySqlNames.nameSearch(NAMES, String.format("`%s`", name)), -1);
             } else {
-                assertEquals(MySqlColumnNames.nameSearch(NAMES, name), -1);
-                assertEquals(MySqlColumnNames.nameSearch(NAMES, String.format("`%s`", name)), -1);
+                assertEquals(MySqlNames.nameSearch(NAMES, name), -1);
+                assertEquals(MySqlNames.nameSearch(NAMES, String.format("`%s`", name)), -1);
             }
         };
         nameGenerate(1, judge);
         nameGenerate(2, judge);
         nameGenerate(3, judge);
 
-        assertEquals(SINGLETON[MySqlColumnNames.nameSearch(SINGLETON, "name")], "name");
-        assertEquals(SINGLETON[MySqlColumnNames.nameSearch(SINGLETON, "Name")], "name");
-        assertEquals(SINGLETON[MySqlColumnNames.nameSearch(SINGLETON, "nAMe")], "name");
-        assertEquals(SINGLETON[MySqlColumnNames.nameSearch(SINGLETON, "`name`")], "name");
-        assertEquals(MySqlColumnNames.nameSearch(SINGLETON, "`Name`"), -1);
-        assertEquals(MySqlColumnNames.nameSearch(SINGLETON, "`nAMe`"), -1);
+        assertEquals(SINGLETON[MySqlNames.nameSearch(SINGLETON, "name")], "name");
+        assertEquals(SINGLETON[MySqlNames.nameSearch(SINGLETON, "Name")], "name");
+        assertEquals(SINGLETON[MySqlNames.nameSearch(SINGLETON, "nAMe")], "name");
+        assertEquals(SINGLETON[MySqlNames.nameSearch(SINGLETON, "`name`")], "name");
+        assertEquals(MySqlNames.nameSearch(SINGLETON, "`Name`"), -1);
+        assertEquals(MySqlNames.nameSearch(SINGLETON, "`nAMe`"), -1);
     }
 
     /**

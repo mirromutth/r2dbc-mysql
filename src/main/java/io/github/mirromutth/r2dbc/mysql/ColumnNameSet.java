@@ -30,7 +30,7 @@ import java.util.function.Predicate;
 /**
  * An implementation of {@link Set<String>} for {@code RowMetadata.getColumnNames} results.
  *
- * @see MySqlColumnNames column name searching rules.
+ * @see MySqlNames column name searching rules.
  */
 final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
 
@@ -39,7 +39,7 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
     /**
      * Construct a {@link ColumnNameSet} by sorted {@code names} without array copy.
      *
-     * @param names must be sorted by {@link MySqlColumnNames#compare(CharSequence, CharSequence)}.
+     * @param names must be sorted by {@link MySqlNames#compare(String, String)}.
      */
     ColumnNameSet(String... names) {
         this.names = names;
@@ -48,7 +48,7 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
     @Override
     public boolean contains(Object o) {
         if (o instanceof String) {
-            return MySqlColumnNames.nameSearch(this.names, (String) o) >= 0;
+            return MySqlNames.nameSearch(this.names, (String) o) >= 0;
         }
 
         return false;

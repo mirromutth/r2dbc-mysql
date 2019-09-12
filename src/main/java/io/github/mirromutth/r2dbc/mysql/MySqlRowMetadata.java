@@ -31,12 +31,12 @@ import static io.github.mirromutth.r2dbc.mysql.internal.AssertUtils.requireNonNu
 /**
  * An implementation of {@link RowMetadata} for MySQL database text/binary results.
  *
- * @see MySqlColumnNames column name searching rules.
+ * @see MySqlNames column name searching rules.
  */
 final class MySqlRowMetadata implements RowMetadata {
 
     private static final Comparator<MySqlColumnMetadata> NAME_COMPARATOR = (left, right) ->
-        MySqlColumnNames.compare(left.getName(), right.getName());
+        MySqlNames.compare(left.getName(), right.getName());
 
     private final MySqlColumnMetadata[] idSorted;
 
@@ -79,7 +79,7 @@ final class MySqlRowMetadata implements RowMetadata {
     public MySqlColumnMetadata getColumnMetadata(String name) {
         requireNonNull(name, "name must not be null");
 
-        int index = MySqlColumnNames.nameSearch(this.names, name);
+        int index = MySqlNames.nameSearch(this.names, name);
 
         if (index < 0) {
             throw new NoSuchElementException(String.format("column name '%s' does not exist in %s", name, Arrays.toString(this.names)));
