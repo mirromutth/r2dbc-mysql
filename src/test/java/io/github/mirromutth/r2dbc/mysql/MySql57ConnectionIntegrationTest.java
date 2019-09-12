@@ -17,11 +17,11 @@
 package io.github.mirromutth.r2dbc.mysql;
 
 /**
- * An implementation of {@link ConnectionTestSupport} for {@link MySqlConnection} unit tests in MySQL 5.6.
+ * An implementation of {@link ConnectionIntegrationTestSupport} for {@link MySqlConnection} unit tests in MySQL 5.7.
  */
-final class MySql56ConnectionTest extends ConnectionTestSupport {
+final class MySql57ConnectionIntegrationTest extends ConnectionIntegrationTestSupport {
 
-    MySql56ConnectionTest() {
-        super(MySql56TestKit.CONFIGURATION);
+    MySql57ConnectionIntegrationTest() {
+        super(MySql57TestKit.CONFIGURATION);
     }
 }

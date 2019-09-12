@@ -49,9 +49,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Base class considers data integration unit tests in simple query for implementations of {@link IntegrationTestSupport}.
+ * Base class considers data integration unit tests in simple query for implementations of {@link QueryIntegrationTestSupport}.
  */
-abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport {
+abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSupport {
 
     private static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
         .appendValue(ChronoField.HOUR_OF_DAY, 2)
@@ -129,7 +129,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
         return Mono.from(connection.createStatement(String.format("INSERT INTO test VALUES(DEFAULT,'%s')", originValue))
             .returnGeneratedValues("id")
             .execute())
-            .flatMapMany(IntegrationTestSupport::extractId)
+            .flatMapMany(QueryIntegrationTestSupport::extractId)
             .concatMap(id -> connection.createStatement(String.format("SELECT value FROM test WHERE id=%d", id))
                 .execute())
             .<Optional<LocalTime>>flatMap(r -> extractOptionalField(r, LocalTime.class))
@@ -137,7 +137,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             .doOnNext(t -> assertEquals(t, time))
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0")
                 .execute()))
-            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .flatMap(QueryIntegrationTestSupport::extractRowsUpdated)
             .then();
     }
 
@@ -208,7 +208,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
             .flatMap(connection -> {
                 Mono<Void> task = Mono.from(connection.createStatement(String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)", defined))
                     .execute())
-                    .flatMap(CompatibilityTestSupport::extractRowsUpdated)
+                    .flatMap(IntegrationTestSupport::extractRowsUpdated)
                     .then();
 
                 for (ValueString<?> value : values) {
@@ -293,7 +293,7 @@ abstract class SimpleQueryIntegrationTestSupport extends IntegrationTestSupport 
                 return it;
             })
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0").execute()))
-            .flatMap(CompatibilityTestSupport::extractRowsUpdated)
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .doOnNext(u -> assertEquals(u, 1))
             .then();
     }

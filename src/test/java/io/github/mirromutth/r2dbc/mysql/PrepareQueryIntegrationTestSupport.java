@@ -45,9 +45,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Base class considers data integration unit tests in prepare query for implementations of {@link IntegrationTestSupport}.
+ * Base class considers data integration unit tests in prepare query for implementations of {@link QueryIntegrationTestSupport}.
  */
-abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport {
+abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSupport {
 
     PrepareQueryIntegrationTestSupport(MySqlConnectionConfiguration configuration) {
         super(configuration);
@@ -62,13 +62,13 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
         connectionFactory.create()
             .flatMap(connection -> Mono.from(connection.createStatement(tdl)
                 .execute())
-                .flatMap(CompatibilityTestSupport::extractRowsUpdated)
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
                 .thenMany(Flux.range(0, 10)
                     .flatMap(it -> Flux.from(connection.createStatement("INSERT INTO test VALUES(DEFAULT,?,?,NOW(),NOW())")
                         .bind(0, String.format("integration-test%d@mail.com", it))
                         .bind(1, "******")
                         .execute())
-                        .flatMap(CompatibilityTestSupport::extractRowsUpdated)))
+                        .flatMap(IntegrationTestSupport::extractRowsUpdated)))
                 .onErrorResume(e -> close(connection).then(Mono.error(e)))
                 .concatWith(close(connection))
                 .then())
@@ -112,7 +112,7 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
             .bind(0, origin)
             .returnGeneratedValues("id")
             .execute())
-            .flatMapMany(IntegrationTestSupport::extractId)
+            .flatMapMany(QueryIntegrationTestSupport::extractId)
             .concatMap(id -> connection.createStatement("SELECT value FROM test WHERE id=?")
                 .bind(0, id)
                 .execute())
@@ -121,7 +121,7 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
             .doOnNext(t -> assertEquals(t, time))
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0")
                 .execute()))
-            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .flatMap(QueryIntegrationTestSupport::extractRowsUpdated)
             .then();
     }
 
@@ -166,7 +166,7 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
         connectionFactory.create()
             .flatMap(connection -> Mono.from(connection.createStatement(String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)", defined))
                 .execute())
-                .flatMap(CompatibilityTestSupport::extractRowsUpdated)
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
                 .thenMany(Flux.fromIterable(convertOptional(values)).concatMap(value -> testOne(connection, type, valueSelect, value.orElse(null))))
                 .concatWith(close(connection))
                 .then())
@@ -272,7 +272,7 @@ abstract class PrepareQueryIntegrationTestSupport extends IntegrationTestSupport
                 return it;
             })
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0").execute()))
-            .flatMap(CompatibilityTestSupport::extractRowsUpdated)
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .doOnNext(u -> assertEquals(u, 1))
             .then();
     }
