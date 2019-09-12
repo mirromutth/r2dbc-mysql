@@ -32,11 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Unit tests for {@link MySqlConnection}.
+ * Base class considers integration unit tests for {@link MySqlConnection}.
  */
-abstract class ConnectionTestSupport extends CompatibilityTestSupport {
+abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
 
-    ConnectionTestSupport(MySqlConnectionConfiguration configuration) {
+    ConnectionIntegrationTestSupport(MySqlConnectionConfiguration configuration) {
         super(configuration);
     }
 
