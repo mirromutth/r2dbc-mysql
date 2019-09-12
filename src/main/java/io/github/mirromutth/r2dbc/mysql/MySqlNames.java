@@ -33,7 +33,7 @@ package io.github.mirromutth.r2dbc.mysql;
  *
  * @see #compare(String, String)
  */
-final class MySqlColumnNames {
+final class MySqlNames {
 
     /**
      * @param names column names ordered by {@link #compare}
@@ -49,9 +49,10 @@ final class MySqlColumnNames {
     }
 
     private static int binarySearch(String[] names, String name, boolean ignoreCase) {
-        int left = 0, right = names.length - 1;
+        int left = 0, right = names.length - 1, middle, compared;
         int nameStart = ignoreCase ? 0 : 1, nameEnd = ignoreCase ? name.length() : name.length() - 1;
         int ciResult = -1;
+        String value;
 
         while (left <= right) {
             // `left + (right - left) / 2` for ensure no overflow,
@@ -59,9 +60,9 @@ final class MySqlColumnNames {
             // when `left` and `right` is not negative integer.
             // And `left` must greater or equals than 0,
             // `right` greater then or equals to `left`.
-            int middle = (left + right) >>> 1;
-            String value = names[middle];
-            int compared = compare0(value, name, nameStart, nameEnd);
+            middle = (left + right) >>> 1;
+            value = names[middle];
+            compared = compare0(value, name, nameStart, nameEnd);
 
             if (compared < 0) {
                 left = middle + 1;
@@ -85,11 +86,7 @@ final class MySqlColumnNames {
             }
         }
 
-        if (ignoreCase && ciResult >= 0) {
-            return ciResult;
-        }
-
-        return -1;
+        return ignoreCase ? ciResult : -1;
     }
 
     /**
@@ -124,7 +121,7 @@ final class MySqlColumnNames {
                     csCompared = leftCh - rightCh;
                 }
 
-                // Use `Character.toLowerCase` for latin alpha.
+                // Use `Character.toLowerCase` for all latin alphabets, not just ASCII.
                 leftCh = Character.toLowerCase(leftCh);
                 rightCh = Character.toLowerCase(rightCh);
 
@@ -144,6 +141,6 @@ final class MySqlColumnNames {
         }
     }
 
-    private MySqlColumnNames() {
+    private MySqlNames() {
     }
 }
