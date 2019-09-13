@@ -22,7 +22,7 @@
         </encoder>
     </appender>
 
-    <logger name="io.github.mirromutth" level="INFO"/>
+    <logger name="dev.miku.r2dbc.mysql" level="INFO"/>
     <logger name="org.testcontainers"   level="INFO"/>
     <logger name="reactor.netty"        level="INFO"/>
     <logger name="com.zaxxer.hikari"    level="WARN"/>
