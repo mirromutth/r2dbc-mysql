@@ -157,6 +157,12 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
 
     @Test
     @Override
+    void varbinary() {
+        testTypeQuota(Object.class, "VARBINARY(50)", Functions.BYTE_ARRAY, false, new byte[0], null, new byte[]{1,2,3,4,5});
+    }
+
+    @Test
+    @Override
     void bit() {
         testTypeQuota(Boolean.class, "BIT(1)", Functions.BOOLEAN, false, null, false, true);
         testTypeQuota(byte[].class, "BIT(16)", Functions.BYTE_ARRAY, false, null, new byte[]{(byte) 0xCD, (byte) 0xEF});
