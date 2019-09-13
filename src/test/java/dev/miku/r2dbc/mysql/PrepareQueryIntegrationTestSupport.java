@@ -76,10 +76,8 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
             .verifyComplete();
     }
 
-    /**
-     * See https://github.com/mirromutth/r2dbc-mysql/issues/62 .
-     */
     @Test
+    @Override
     void varbinary() {
         testType(Object.class, "VARBINARY(50)", true, new byte[0], null, new byte[]{1,2,3,4,5});
     }

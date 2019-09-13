@@ -199,6 +199,12 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         testType(EnumData.class, "ENUM('ONE','TWO','THREE')", true, null, EnumData.ONE, EnumData.TWO, EnumData.THREE);
     }
 
+    /**
+     * See https://github.com/mirromutth/r2dbc-mysql/issues/62 .
+     */
+    @Test
+    abstract void varbinary();
+
     @Test
     abstract void bit();
 
