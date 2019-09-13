@@ -16,13 +16,12 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import dev.miku.r2dbc.mysql.constant.SslMode;
-import dev.miku.r2dbc.mysql.constant.TlsVersions;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
-import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
 import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.constant.SslMode;
+import dev.miku.r2dbc.mysql.constant.TlsVersions;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -36,6 +35,8 @@ import reactor.netty.tcp.SslProvider;
 import javax.net.ssl.SSLEngine;
 import java.io.File;
 import java.net.InetSocketAddress;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A handler for build SSL handler and bridging.
@@ -68,8 +69,8 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     private volatile MySqlSslConfiguration ssl;
 
     SslBridgeHandler(ConnectionContext context, MySqlSslConfiguration ssl) {
-        this.context = AssertUtils.requireNonNull(context, "context must not be null");
-        this.ssl = AssertUtils.requireNonNull(ssl, "ssl must not be null");
+        this.context = requireNonNull(context, "context must not be null");
+        this.ssl = requireNonNull(ssl, "ssl must not be null");
         this.verifyIdentity = ssl.getSslMode().verifyIdentity();
     }
 

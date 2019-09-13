@@ -16,13 +16,14 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Change authentication plugin type and salt message.
@@ -34,8 +35,8 @@ public final class AuthChangeMessage implements ServerMessage {
     private final byte[] salt;
 
     private AuthChangeMessage(String authType, byte[] salt) {
-        this.authType = AssertUtils.requireNonNull(authType, "authType must not be null");
-        this.salt = AssertUtils.requireNonNull(salt, "salt must not be null");
+        this.authType = requireNonNull(authType, "authType must not be null");
+        this.salt = requireNonNull(salt, "salt must not be null");
     }
 
     public String getAuthType() {

@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
-
 import java.util.Objects;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Subject Alternative Name (aka. SAN, subjectAltName) in SSL.
@@ -37,9 +38,9 @@ final class San {
     private final int type;
 
     San(String value, int type) {
-        AssertUtils.require(type > 0, "type must be a positive integer");
+        require(type > 0, "type must be a positive integer");
 
-        this.value = AssertUtils.requireNonNull(value, "value must not be null");
+        this.value = requireNonNull(value, "value must not be null");
         this.type = type;
     }
 

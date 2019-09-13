@@ -16,7 +16,8 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * MySQL server version, looks like {@literal "8.0.14"}, or {@literal "8.0.14-rc2"}.
@@ -140,7 +141,7 @@ public final class ServerVersion implements Comparable<ServerVersion> {
      * @throws IllegalArgumentException if {@code version} is null, or any version part overflows to a negative integer.
      */
     public static ServerVersion parse(String version) {
-        AssertUtils.requireNonNull(version, "version must not be null");
+        requireNonNull(version, "version must not be null");
 
         int length = version.length();
         int[] index = new int[]{0};
@@ -186,9 +187,9 @@ public final class ServerVersion implements Comparable<ServerVersion> {
     }
 
     private static ServerVersion create0(String origin, int major, int minor, int patch) {
-        AssertUtils.require(major >= 0, "major version must not be a negative integer");
-        AssertUtils.require(minor >= 0, "minor version must not be a negative integer");
-        AssertUtils.require(patch >= 0, "patch version must not be a negative integer");
+        require(major >= 0, "major version must not be a negative integer");
+        require(minor >= 0, "minor version must not be a negative integer");
+        require(patch >= 0, "patch version must not be a negative integer");
 
         return new ServerVersion(origin, major, minor, patch);
     }

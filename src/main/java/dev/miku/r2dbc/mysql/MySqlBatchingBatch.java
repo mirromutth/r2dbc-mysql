@@ -18,9 +18,10 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import reactor.core.publisher.Flux;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlBatch} for executing a collection of statements
@@ -37,14 +38,14 @@ final class MySqlBatchingBatch extends MySqlBatch {
     private StringBuilder builder;
 
     MySqlBatchingBatch(Client client, Codecs codecs, ConnectionContext context) {
-        this.client = AssertUtils.requireNonNull(client, "client must not be null");
-        this.codecs = AssertUtils.requireNonNull(codecs, "codecs must not be null");
-        this.context = AssertUtils.requireNonNull(context, "context must not be null");
+        this.client = requireNonNull(client, "client must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
+        this.context = requireNonNull(context, "context must not be null");
     }
 
     @Override
     public MySqlBatch add(String sql) {
-        AssertUtils.requireNonNull(sql, "sql must not be null");
+        requireNonNull(sql, "sql must not be null");
 
         int index = lastNonWhitespace(sql);
 

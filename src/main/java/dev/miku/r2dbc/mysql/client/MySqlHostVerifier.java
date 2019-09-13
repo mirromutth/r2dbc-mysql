@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.internal.AddressUtils;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.util.annotation.Nullable;
@@ -40,6 +39,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+
 /**
  * MySQL hostname verifier, it is NOT an implementation of {@code HostnameVerifier}, because it
  * needs to throw detailed exception which behavior not like {@code HostnameVerifier.verity}.
@@ -54,8 +55,8 @@ final class MySqlHostVerifier {
     }
 
     static void accept(String host, SSLSession session) throws SSLException {
-        AssertUtils.requireNonNull(host, "host must not be null");
-        AssertUtils.requireNonNull(session, "session must not be null");
+        requireNonNull(host, "host must not be null");
+        requireNonNull(session, "session must not be null");
 
         Certificate[] certs = session.getPeerCertificates();
 

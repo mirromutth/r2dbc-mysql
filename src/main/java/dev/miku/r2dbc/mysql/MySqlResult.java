@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
+import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import dev.miku.r2dbc.mysql.message.server.EofMessage;
@@ -25,7 +25,6 @@ import dev.miku.r2dbc.mysql.message.server.OkMessage;
 import dev.miku.r2dbc.mysql.message.server.RowMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Row;
@@ -40,6 +39,8 @@ import reactor.util.annotation.Nullable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link Result} representing the results of a query against the MySQL database.
@@ -69,10 +70,10 @@ public final class MySqlResult implements Result {
      */
     MySqlResult(boolean isBinary, Codecs codecs, ConnectionContext context, @Nullable String generatedKeyName, Flux<ServerMessage> messages) {
         this.isBinary = isBinary;
-        this.codecs = AssertUtils.requireNonNull(codecs, "codecs must not be null");
-        this.context = AssertUtils.requireNonNull(context, "context must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
+        this.context = requireNonNull(context, "context must not be null");
         this.generatedKeyName = generatedKeyName;
-        this.messages = new AtomicReference<>(AssertUtils.requireNonNull(messages, "messages must not be null"));
+        this.messages = new AtomicReference<>(requireNonNull(messages, "messages must not be null"));
     }
 
     @Override
@@ -82,7 +83,7 @@ public final class MySqlResult implements Result {
 
     @Override
     public <T> Publisher<T> map(BiFunction<Row, RowMetadata, ? extends T> f) {
-        AssertUtils.requireNonNull(f, "mapping function must not be null");
+        requireNonNull(f, "mapping function must not be null");
 
         if (generatedKeyName == null) {
             return results().handle((message, sink) -> handleResult(message, sink, f));

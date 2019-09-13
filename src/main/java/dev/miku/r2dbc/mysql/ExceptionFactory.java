@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import io.r2dbc.spi.R2dbcBadGrammarException;
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
@@ -27,6 +26,8 @@ import io.r2dbc.spi.R2dbcRollbackException;
 import io.r2dbc.spi.R2dbcTimeoutException;
 import io.r2dbc.spi.R2dbcTransientResourceException;
 import reactor.util.annotation.Nullable;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A factory for generate {@link R2dbcException}s.
@@ -40,7 +41,7 @@ final class ExceptionFactory {
     private static final String SYNTAX_ERROR_PREFIX = "42";
 
     static R2dbcException createException(ErrorMessage message, @Nullable String sql) {
-        AssertUtils.requireNonNull(message, "error message must not be null");
+        requireNonNull(message, "error message must not be null");
 
         int errorCode = message.getErrorCode();
         String sqlState = message.getSqlState();

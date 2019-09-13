@@ -16,12 +16,13 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * MySQL error message, sql state will be a property independently.
@@ -40,7 +41,7 @@ public final class ErrorMessage implements ServerMessage {
     private ErrorMessage(int errorCode, @Nullable String sqlState, String errorMessage) {
         this.errorCode = errorCode;
         this.sqlState = sqlState;
-        this.errorMessage = AssertUtils.requireNonNull(errorMessage, "error message must not be null");
+        this.errorMessage = requireNonNull(errorMessage, "error message must not be null");
     }
 
     public int getErrorCode() {

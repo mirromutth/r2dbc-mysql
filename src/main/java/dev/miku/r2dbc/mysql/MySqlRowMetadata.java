@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import io.r2dbc.spi.RowMetadata;
 
@@ -26,6 +25,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link RowMetadata} for MySQL database text/binary results.
@@ -76,7 +77,7 @@ final class MySqlRowMetadata implements RowMetadata {
 
     @Override
     public MySqlColumnMetadata getColumnMetadata(String name) {
-        AssertUtils.requireNonNull(name, "name must not be null");
+        requireNonNull(name, "name must not be null");
 
         int index = MySqlNames.nameSearch(this.names, name);
 

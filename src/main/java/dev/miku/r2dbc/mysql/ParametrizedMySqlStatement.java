@@ -18,9 +18,8 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.message.ParameterValue;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -29,6 +28,8 @@ import java.util.List;
 import java.util.Spliterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Parametrized {@link MySqlStatement} with parameter markers executed against a Microsoft SQL Server database.
@@ -51,10 +52,10 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     private final AtomicBoolean executed = new AtomicBoolean();
 
     ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, PrepareQuery query) {
-        this.client = AssertUtils.requireNonNull(client, "client must not be null");
-        this.codecs = AssertUtils.requireNonNull(codecs, "codecs must not be null");
-        this.context = AssertUtils.requireNonNull(context, "context must not be null");
-        this.query = AssertUtils.requireNonNull(query, "sql must not be null");
+        this.client = requireNonNull(client, "client must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
+        this.context = requireNonNull(context, "context must not be null");
+        this.query = requireNonNull(query, "sql must not be null");
         this.bindings = new Bindings(this.query.getParameters());
     }
 
@@ -68,7 +69,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     @Override
     public MySqlStatement bind(int index, Object value) {
-        AssertUtils.requireNonNull(value, "value must not be null");
+        requireNonNull(value, "value must not be null");
 
         addBinding(index, codecs.encode(value, context));
         return this;
@@ -76,8 +77,8 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     @Override
     public MySqlStatement bind(String name, Object value) {
-        AssertUtils.requireNonNull(name, "name must not be null");
-        AssertUtils.requireNonNull(value, "value must not be null");
+        requireNonNull(name, "name must not be null");
+        requireNonNull(value, "value must not be null");
 
         addBinding(query.getIndexes(name), codecs.encode(value, context));
         return this;
@@ -86,7 +87,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     @Override
     public MySqlStatement bindNull(int index, Class<?> type) {
         // Useless, but should be checked in here, for programming robustness
-        AssertUtils.requireNonNull(type, "type must not be null");
+        requireNonNull(type, "type must not be null");
 
         addBinding(index, codecs.encodeNull());
         return this;
@@ -94,9 +95,9 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     @Override
     public MySqlStatement bindNull(String name, Class<?> type) {
-        AssertUtils.requireNonNull(name, "name must not be null");
+        requireNonNull(name, "name must not be null");
         // Useless, but should be checked in here, for programming robustness
-        AssertUtils.requireNonNull(type, "type must not be null");
+        requireNonNull(type, "type must not be null");
 
         addBinding(query.getIndexes(name), codecs.encodeNull());
         return this;

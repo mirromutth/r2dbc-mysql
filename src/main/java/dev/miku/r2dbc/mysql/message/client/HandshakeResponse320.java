@@ -17,13 +17,14 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A handshake response message sent by clients those do not supporting
@@ -48,9 +49,9 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
 
     HandshakeResponse320(int capabilities, String username, byte[] authentication, String database) {
         this.head = new SslRequest320(capabilities);
-        this.username = AssertUtils.requireNonNull(username, "username must not be null");
-        this.authentication = AssertUtils.requireNonNull(authentication, "authentication must not be null");
-        this.database = AssertUtils.requireNonNull(database, "database must not be null");
+        this.username = requireNonNull(username, "username must not be null");
+        this.authentication = requireNonNull(authentication, "authentication must not be null");
+        this.database = requireNonNull(database, "database must not be null");
     }
 
     @Override

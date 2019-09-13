@@ -23,7 +23,7 @@ import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.constant.SqlStates;
 import dev.miku.r2dbc.mysql.constant.SslMode;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
+import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.FullAuthResponse;
 import dev.miku.r2dbc.mysql.message.client.HandshakeResponse;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
@@ -35,7 +35,6 @@ import dev.miku.r2dbc.mysql.message.server.HandshakeRequest;
 import dev.miku.r2dbc.mysql.message.server.OkMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +45,8 @@ import reactor.util.annotation.Nullable;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Predicate;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A utility class that encapsulates the connection lifecycle phases flow.
@@ -78,10 +79,10 @@ final class LoginFlow {
     private volatile byte[] salt;
 
     private LoginFlow(Client client, SslMode sslMode, ConnectionContext context, String username, @Nullable CharSequence password) {
-        this.client = AssertUtils.requireNonNull(client, "client must not be null");
-        this.sslMode = AssertUtils.requireNonNull(sslMode, "sslMode must not be null");
-        this.context = AssertUtils.requireNonNull(context, "context must not be null");
-        this.username = AssertUtils.requireNonNull(username, "username must not be null");
+        this.client = requireNonNull(client, "client must not be null");
+        this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
+        this.context = requireNonNull(context, "context must not be null");
+        this.username = requireNonNull(username, "username must not be null");
         this.password = password;
     }
 

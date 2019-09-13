@@ -18,8 +18,9 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.netty.buffer.ByteBuf;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * The ssl request message on protocol 3.20. It is also first part of {@link HandshakeResponse320}.
@@ -31,7 +32,7 @@ final class SslRequest320 extends FixedSizeClientMessage implements SslRequest {
     private final int capabilities;
 
     SslRequest320(int capabilities) {
-        AssertUtils.require((capabilities & Capabilities.PROTOCOL_41) == 0, "protocol 4.1 capability should never be set");
+        require((capabilities & Capabilities.PROTOCOL_41) == 0, "protocol 4.1 capability should never be set");
 
         this.capabilities = capabilities;
     }

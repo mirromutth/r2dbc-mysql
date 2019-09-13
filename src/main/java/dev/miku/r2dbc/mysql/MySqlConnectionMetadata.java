@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.r2dbc.spi.ConnectionMetadata;
 import reactor.util.annotation.Nullable;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Connection metadata for a connection connected to MySQL database.
@@ -30,7 +31,7 @@ public final class MySqlConnectionMetadata implements ConnectionMetadata {
     private final String product;
 
     MySqlConnectionMetadata(String version, @Nullable String product) {
-        this.version = AssertUtils.requireNonNull(version, "version must not be null");
+        this.version = requireNonNull(version, "version must not be null");
         this.product = product == null ? "Unknown" : product;
     }
 

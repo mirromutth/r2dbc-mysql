@@ -18,8 +18,9 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.netty.buffer.ByteBuf;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * The ssl request message on protocol 4.1. It is also first part of {@link HandshakeResponse41}.
@@ -39,7 +40,7 @@ final class SslRequest41 extends FixedSizeClientMessage implements SslRequest {
      * @param collationId  0 if server not support protocol 41 or has been not give collation
      */
     SslRequest41(int capabilities, int collationId) {
-        AssertUtils.require(collationId > 0, "collationId must be a positive integer");
+        require(collationId > 0, "collationId must be a positive integer");
 
         this.capabilities = capabilities;
         this.collationId = collationId;

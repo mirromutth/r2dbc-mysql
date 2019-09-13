@@ -19,12 +19,14 @@ package dev.miku.r2dbc.mysql.message.server;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 import java.util.Objects;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Column or parameter definition metadata message.
@@ -57,14 +59,14 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         String database, String tableName, String originTableName, String name, String originName,
         int collationId, long size, short type, short definitions, short decimals
     ) {
-        AssertUtils.require(size >= 0, "size must not be a negative integer");
-        AssertUtils.require(collationId > 0, "collationId must be a positive integer");
+        require(size >= 0, "size must not be a negative integer");
+        require(collationId > 0, "collationId must be a positive integer");
 
-        this.database = AssertUtils.requireNonNull(database, "database must not be null");
-        this.tableName = AssertUtils.requireNonNull(tableName, "tableName must not be null");
-        this.originTableName = AssertUtils.requireNonNull(originTableName, "originTableName must not be null");
-        this.name = AssertUtils.requireNonNull(name, "name must not be null");
-        this.originName = AssertUtils.requireNonNull(originName, "originName must not be null");
+        this.database = requireNonNull(database, "database must not be null");
+        this.tableName = requireNonNull(tableName, "tableName must not be null");
+        this.originTableName = requireNonNull(originTableName, "originTableName must not be null");
+        this.name = requireNonNull(name, "name must not be null");
+        this.originName = requireNonNull(originName, "originName must not be null");
         this.collationId = collationId;
         this.size = size;
         this.type = type;

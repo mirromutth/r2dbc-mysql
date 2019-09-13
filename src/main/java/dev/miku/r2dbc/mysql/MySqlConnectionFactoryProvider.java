@@ -18,12 +18,13 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
 
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 import static io.r2dbc.spi.ConnectionFactoryOptions.CONNECT_TIMEOUT;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
@@ -59,7 +60,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
 
     @Override
     public ConnectionFactory create(ConnectionFactoryOptions options) {
-        AssertUtils.requireNonNull(options, "connectionFactoryOptions must not be null");
+        requireNonNull(options, "connectionFactoryOptions must not be null");
 
         MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder();
 
@@ -92,7 +93,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         String sslKey = options.getValue(SSL_KEY);
         CharSequence sslKeyPassword = options.getValue(SSL_KEY_PASSWORD);
         if (sslKey != null || sslCert != null) {
-            AssertUtils.require(sslKey != null && sslCert != null, "SSL key and cert must be both null or both non-null");
+            require(sslKey != null && sslCert != null, "SSL key and cert must be both null or both non-null");
 
             builder.sslKeyAndCert(sslCert, sslKey, sslKeyPassword);
         }
@@ -110,7 +111,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
 
     @Override
     public boolean supports(ConnectionFactoryOptions options) {
-        AssertUtils.requireNonNull(options, "connectionFactoryOptions must not be null");
+        requireNonNull(options, "connectionFactoryOptions must not be null");
         return MYSQL_DRIVER.equals(options.getValue(DRIVER));
     }
 

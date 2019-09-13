@@ -16,13 +16,14 @@
 
 package dev.miku.r2dbc.mysql.message;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 
 import java.util.List;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link FieldValue} considers large field value which bytes more
@@ -36,7 +37,7 @@ public final class LargeFieldValue extends AbstractReferenceCounted implements F
     private final List<ByteBuf> buffers;
 
     public LargeFieldValue(List<ByteBuf> buffers) {
-        this.buffers = AssertUtils.requireNonNull(buffers, "buffers must not be null");
+        this.buffers = requireNonNull(buffers, "buffers must not be null");
     }
 
     public ByteBuf[] getBufferSlices() {

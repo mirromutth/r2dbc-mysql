@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.message.client.PingMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
@@ -42,6 +41,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireValidName;
 
 /**
  * An implementation of {@link Connection} for connecting to the MySQL database.
@@ -188,7 +190,7 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> createSavepoint(String name) {
-        AssertUtils.requireValidName(name, "Savepoint name must not be empty and not contain backticks");
+        requireValidName(name, "Savepoint name must not be empty and not contain backticks");
 
         String sql = String.format("SAVEPOINT `%s`", name);
 
@@ -225,7 +227,7 @@ public final class MySqlConnection implements Connection {
      */
     @Override
     public MySqlStatement createStatement(String sql) {
-        AssertUtils.requireNonNull(sql, "sql must not be null");
+        requireNonNull(sql, "sql must not be null");
 
         int index = PrepareQuery.indexOfParameter(sql);
 
@@ -242,7 +244,7 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> releaseSavepoint(String name) {
-        AssertUtils.requireValidName(name, "Savepoint name must not be empty and not contain backticks");
+        requireValidName(name, "Savepoint name must not be empty and not contain backticks");
 
         return executeVoid(String.format("RELEASE SAVEPOINT `%s`", name));
     }
@@ -270,7 +272,7 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> rollbackTransactionToSavepoint(String name) {
-        AssertUtils.requireValidName(name, "Savepoint name must not be empty and not contain backticks");
+        requireValidName(name, "Savepoint name must not be empty and not contain backticks");
 
         return executeVoid(String.format("ROLLBACK TO SAVEPOINT `%s`", name));
     }
@@ -295,7 +297,7 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> setTransactionIsolationLevel(IsolationLevel isolationLevel) {
-        AssertUtils.requireNonNull(isolationLevel, "isolationLevel must not be null");
+        requireNonNull(isolationLevel, "isolationLevel must not be null");
 
         // Set next transaction isolation level.
         return executeVoid(String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()))
@@ -304,7 +306,7 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Boolean> validate(ValidationDepth depth) {
-        AssertUtils.requireNonNull(depth, "depth must not be null");
+        requireNonNull(depth, "depth must not be null");
 
         if (depth == ValidationDepth.LOCAL) {
             return Mono.fromSupplier(client::isConnected);
@@ -364,8 +366,8 @@ public final class MySqlConnection implements Connection {
      * @param context capabilities must be initialized
      */
     static Mono<MySqlConnection> create(Client client, ConnectionContext context) {
-        AssertUtils.requireNonNull(client, "client must not be null");
-        AssertUtils.requireNonNull(context, "context must not be null");
+        requireNonNull(client, "client must not be null");
+        requireNonNull(context, "context must not be null");
 
         Codecs codecs = Codecs.getInstance();
         ServerVersion version = context.getServerVersion();

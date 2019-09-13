@@ -16,9 +16,9 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
-
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * An implementation of {@link DecodeContext} for text or binary result.
@@ -34,7 +34,7 @@ final class ResultDecodeContext extends MetadataDecodeContext {
     ResultDecodeContext(boolean deprecateEof, int totalColumns) {
         super(deprecateEof);
 
-        AssertUtils.require(totalColumns > 0, "result must has least 1 column");
+        require(totalColumns > 0, "result must has least 1 column");
 
         this.metadataMessages = new DefinitionMetadataMessage[totalColumns];
     }

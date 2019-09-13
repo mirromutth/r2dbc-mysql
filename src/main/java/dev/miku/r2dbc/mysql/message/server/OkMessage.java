@@ -17,12 +17,13 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * OK message, it maybe a complete signal of command, or a succeed signal for the Connection Phase of connection lifecycle.
@@ -51,7 +52,7 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
         this.lastInsertId = lastInsertId;
         this.serverStatuses = serverStatuses;
         this.warnings = warnings;
-        this.information = AssertUtils.requireNonNull(information, "information must not be null");
+        this.information = requireNonNull(information, "information must not be null");
     }
 
     public long getAffectedRows() {

@@ -16,12 +16,11 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
+import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
+import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
-import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.channel.ChannelOption;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -31,6 +30,8 @@ import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.function.Predicate;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An abstraction that wraps the networking part of exchanging methods.
@@ -64,10 +65,10 @@ public interface Client {
     void loginSuccess();
 
     static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port, MySqlSslConfiguration ssl, ConnectionContext context, @Nullable Duration connectTimeout) {
-        AssertUtils.requireNonNull(connectionProvider, "connectionProvider must not be null");
-        AssertUtils.requireNonNull(host, "host must not be null");
-        AssertUtils.requireNonNull(ssl, "ssl must not be null");
-        AssertUtils.requireNonNull(context, "context must not be null");
+        requireNonNull(connectionProvider, "connectionProvider must not be null");
+        requireNonNull(host, "host must not be null");
+        requireNonNull(ssl, "ssl must not be null");
+        requireNonNull(context, "context must not be null");
 
         TcpClient client = TcpClient.create(connectionProvider);
 

@@ -17,14 +17,15 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
-import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.r2dbc.spi.Row;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link Row} for MySQL database.
@@ -45,11 +46,11 @@ public final class MySqlRow implements Row {
     private final ConnectionContext context;
 
     MySqlRow(FieldValue[] fields, MySqlRowMetadata rowMetadata, Codecs codecs, boolean binary, ConnectionContext context) {
-        this.fields = AssertUtils.requireNonNull(fields, "fields must not be null");
-        this.rowMetadata = AssertUtils.requireNonNull(rowMetadata, "rowMetadata must not be null");
-        this.codecs = AssertUtils.requireNonNull(codecs, "codecs must not be null");
+        this.fields = requireNonNull(fields, "fields must not be null");
+        this.rowMetadata = requireNonNull(rowMetadata, "rowMetadata must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.binary = binary;
-        this.context = AssertUtils.requireNonNull(context, "context must not be null");
+        this.context = requireNonNull(context, "context must not be null");
     }
 
     @Override
@@ -80,7 +81,7 @@ public final class MySqlRow implements Row {
 
     @Nullable
     private <T> T get0(int index, Type type) {
-        AssertUtils.requireNonNull(type, "type must not be null");
+        requireNonNull(type, "type must not be null");
 
         MySqlColumnMetadata info = rowMetadata.getColumnMetadata(index);
         return codecs.decode(fields[index], info, type, binary, context);
@@ -88,7 +89,7 @@ public final class MySqlRow implements Row {
 
     @Nullable
     private <T> T get0(String name, Type type) {
-        AssertUtils.requireNonNull(type, "type must not be null");
+        requireNonNull(type, "type must not be null");
 
         MySqlColumnMetadata info = rowMetadata.getColumnMetadata(name);
         return codecs.decode(fields[info.getIndex()], info, type, binary, context);

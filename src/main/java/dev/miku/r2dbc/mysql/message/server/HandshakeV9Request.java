@@ -18,11 +18,12 @@ package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.AuthTypes;
 import dev.miku.r2dbc.mysql.constant.EmptyArrays;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * MySQL Handshake Message for protocol version 9.
@@ -34,8 +35,8 @@ final class HandshakeV9Request implements HandshakeRequest {
     private final byte[] salt;
 
     private HandshakeV9Request(HandshakeHeader header, byte[] salt) {
-        this.header = AssertUtils.requireNonNull(header, "header must not be null");
-        this.salt = AssertUtils.requireNonNull(salt, "salt must not be null");
+        this.header = requireNonNull(header, "header must not be null");
+        this.salt = requireNonNull(salt, "salt must not be null");
     }
 
     @Override

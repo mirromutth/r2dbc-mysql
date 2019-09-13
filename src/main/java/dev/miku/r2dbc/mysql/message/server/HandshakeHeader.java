@@ -16,12 +16,13 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.StandardCharsets;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * The handshake generic header, all protocol versions contains
@@ -40,7 +41,7 @@ public final class HandshakeHeader {
 
     private HandshakeHeader(short protocolVersion, ServerVersion serverVersion, int connectionId) {
         this.protocolVersion = protocolVersion;
-        this.serverVersion = AssertUtils.requireNonNull(serverVersion, "serverVersion must not be null");
+        this.serverVersion = requireNonNull(serverVersion, "serverVersion must not be null");
         this.connectionId = connectionId;
     }
 

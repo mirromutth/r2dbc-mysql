@@ -17,7 +17,8 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * A ssl request for multi-versions.
@@ -27,7 +28,7 @@ public interface SslRequest extends ExchangeableMessage {
     int getCapabilities();
 
     static SslRequest from(int capabilities, int collationId) {
-        AssertUtils.require((capabilities & Capabilities.SSL) != 0, "capabilities must be SSL enabled");
+        require((capabilities & Capabilities.SSL) != 0, "capabilities must be SSL enabled");
 
         if ((capabilities & Capabilities.PROTOCOL_41) == 0) {
             return new SslRequest320(capabilities);

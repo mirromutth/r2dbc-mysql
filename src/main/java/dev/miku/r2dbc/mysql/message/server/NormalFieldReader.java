@@ -16,12 +16,13 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * An implementation of {@link FieldReader} considers result bytes is less or equals than {@link Integer#MAX_VALUE}.
@@ -46,14 +47,14 @@ final class NormalFieldReader implements FieldReader {
 
     @Override
     public byte[] readSizeFixedBytes(int length) {
-        AssertUtils.require(length > 0, "length must be a positive integer");
+        require(length > 0, "length must be a positive integer");
 
         return ByteBufUtil.getBytes(buf.readSlice(length));
     }
 
     @Override
     public FieldValue readSizeFixedField(int length) {
-        AssertUtils.require(length > 0, "length must be a positive integer");
+        require(length > 0, "length must be a positive integer");
 
         return new NormalFieldValue(buf.readRetainedSlice(length));
     }

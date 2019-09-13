@@ -16,13 +16,14 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 
 import java.util.List;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A field reader considers read {@link FieldValue}s from {@link ByteBuf}(s).
@@ -54,8 +55,8 @@ interface FieldReader extends ReferenceCounted {
 
     @SuppressWarnings("ForLoopReplaceableByForEach")
     static FieldReader of(ByteBufJoiner joiner, List<ByteBuf> buffers) {
-        AssertUtils.requireNonNull(joiner, "joiner must not be null");
-        AssertUtils.requireNonNull(buffers, "buffers must not be null");
+        requireNonNull(joiner, "joiner must not be null");
+        requireNonNull(buffers, "buffers must not be null");
 
         int size = buffers.size();
         long totalSize = 0;

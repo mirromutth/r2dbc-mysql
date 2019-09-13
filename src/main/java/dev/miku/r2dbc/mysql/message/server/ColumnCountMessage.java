@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import io.netty.buffer.ByteBuf;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * A message that is start envelope for {@literal SELECT} query result,
@@ -29,7 +30,7 @@ public final class ColumnCountMessage implements ServerMessage {
     private final int totalColumns;
 
     private ColumnCountMessage(int totalColumns) {
-        AssertUtils.require(totalColumns > 0, "totalColumns must be a positive integer");
+        require(totalColumns > 0, "totalColumns must be a positive integer");
 
         this.totalColumns = totalColumns;
     }

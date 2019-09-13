@@ -16,15 +16,14 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
+import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
+import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.ExitMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.WarningMessage;
-import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -44,6 +43,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of client based on the Reactor Netty project.
@@ -75,9 +76,9 @@ final class ReactorNettyClient implements Client {
     private final AtomicBoolean closing = new AtomicBoolean();
 
     ReactorNettyClient(Connection connection, MySqlSslConfiguration ssl, ConnectionContext context) {
-        AssertUtils.requireNonNull(connection, "connection must not be null");
-        AssertUtils.requireNonNull(context, "context must not be null");
-        AssertUtils.requireNonNull(ssl, "ssl must not be null");
+        requireNonNull(connection, "connection must not be null");
+        requireNonNull(context, "context must not be null");
+        requireNonNull(ssl, "ssl must not be null");
 
         this.connection = connection;
         this.context = context;
@@ -117,7 +118,7 @@ final class ReactorNettyClient implements Client {
 
     @Override
     public Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete) {
-        AssertUtils.requireNonNull(request, "request must not be null");
+        requireNonNull(request, "request must not be null");
 
         boolean[] completed = new boolean[]{false};
 
@@ -147,7 +148,7 @@ final class ReactorNettyClient implements Client {
 
     @Override
     public Mono<Void> sendOnly(SendOnlyMessage message) {
-        AssertUtils.requireNonNull(message, "message must not be null");
+        requireNonNull(message, "message must not be null");
 
         return Mono.<Flux<ServerMessage>>create(sink -> {
             if (closing.get()) {

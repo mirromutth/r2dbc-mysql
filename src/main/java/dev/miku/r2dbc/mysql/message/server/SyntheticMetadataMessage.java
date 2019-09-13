@@ -16,9 +16,9 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
-
 import java.util.Arrays;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A message contains a bundle of {@link DefinitionMetadataMessage}s, {@link #isCompleted()} returning
@@ -34,7 +34,7 @@ public final class SyntheticMetadataMessage implements ServerMessage {
 
     SyntheticMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages) {
         this.completed = completed;
-        this.messages = AssertUtils.requireNonNull(messages, "messages must not be null");
+        this.messages = requireNonNull(messages, "messages must not be null");
     }
 
     public final DefinitionMetadataMessage[] unwrap() {

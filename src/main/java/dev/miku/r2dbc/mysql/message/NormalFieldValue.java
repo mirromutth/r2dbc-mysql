@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.message;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCounted;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link FieldValue} considers field value bytes is less or equals than {@link Integer#MAX_VALUE}.
@@ -29,7 +30,7 @@ public final class NormalFieldValue extends AbstractReferenceCounted implements 
     private final ByteBuf buf;
 
     public NormalFieldValue(ByteBuf buf) {
-        this.buf = AssertUtils.requireNonNull(buf, "buf must not be null");
+        this.buf = requireNonNull(buf, "buf must not be null");
     }
 
     public ByteBuf getBufferSlice() {

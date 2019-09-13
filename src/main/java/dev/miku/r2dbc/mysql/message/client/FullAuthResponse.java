@@ -16,11 +16,12 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.util.Arrays;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Full authentication response, i.e. authentication change response.
@@ -30,7 +31,7 @@ public final class FullAuthResponse extends EnvelopeClientMessage implements Exc
     private final byte[] authentication;
 
     public FullAuthResponse(byte[] authentication) {
-        this.authentication = AssertUtils.requireNonNull(authentication, "authentication must not be null");
+        this.authentication = requireNonNull(authentication, "authentication must not be null");
     }
 
     @Override

@@ -16,8 +16,10 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import reactor.util.annotation.Nullable;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireValidName;
 
 /**
  * Base class considers generic logic for {@link MySqlStatement} implementations.
@@ -31,14 +33,14 @@ abstract class MySqlStatementSupport implements MySqlStatement {
 
     @Override
     public final MySqlStatement returnGeneratedValues(String... columns) {
-        AssertUtils.requireNonNull(columns, "columns must not be null");
+        requireNonNull(columns, "columns must not be null");
 
         switch (columns.length) {
             case 0:
                 this.generatedKeyName = LAST_INSERT_ID;
                 break;
             case 1:
-                this.generatedKeyName = AssertUtils.requireValidName(columns[0], "id name must not be empty and not contain backticks");
+                this.generatedKeyName = requireValidName(columns[0], "id name must not be empty and not contain backticks");
                 break;
             default:
                 throw new IllegalArgumentException("MySQL only supports single generated value");

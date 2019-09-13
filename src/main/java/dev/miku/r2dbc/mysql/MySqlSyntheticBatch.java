@@ -18,12 +18,13 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlBatch} for executing a collection of statements
@@ -40,9 +41,9 @@ final class MySqlSyntheticBatch extends MySqlBatch {
     private final List<String> statements = new ArrayList<>();
 
     MySqlSyntheticBatch(Client client, Codecs codecs, ConnectionContext context) {
-        this.client = AssertUtils.requireNonNull(client, "client must not be null");
-        this.codecs = AssertUtils.requireNonNull(codecs, "codecs must not be null");
-        this.context = AssertUtils.requireNonNull(context, "context must not be null");
+        this.client = requireNonNull(client, "client must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
+        this.context = requireNonNull(context, "context must not be null");
     }
 
     @Override

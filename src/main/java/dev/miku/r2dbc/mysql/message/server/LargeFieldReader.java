@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.LargeFieldValue;
@@ -31,6 +30,8 @@ import io.netty.util.ReferenceCountUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
 
 /**
  * An implementation of {@link FieldReader} for large result which bytes more than
@@ -60,7 +61,7 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
 
     @Override
     public byte[] readSizeFixedBytes(int length) {
-        AssertUtils.require(length > 0, "length must be a positive integer");
+        require(length > 0, "length must be a positive integer");
 
         ByteBuf buf = nonEmptyBuffer();
 
@@ -73,7 +74,7 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
 
     @Override
     public FieldValue readSizeFixedField(int length) {
-        AssertUtils.require(length > 0, "length must be a positive integer");
+        require(length > 0, "length must be a positive integer");
 
         ByteBuf buf = nonEmptyBuffer();
 

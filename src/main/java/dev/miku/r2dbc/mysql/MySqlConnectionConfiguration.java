@@ -19,11 +19,13 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.constant.EmptyArrays;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.Objects;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * MySQL configuration of connection.
@@ -57,12 +59,12 @@ public final class MySqlConnectionConfiguration {
         String host, int port, @Nullable Duration connectTimeout, @Nullable MySqlSslConfiguration ssl,
         ZeroDateOption zeroDateOption, String username, @Nullable CharSequence password, @Nullable String database
     ) {
-        this.host = AssertUtils.requireNonNull(host, "host must not be null");
+        this.host = requireNonNull(host, "host must not be null");
         this.port = port;
         this.connectTimeout = connectTimeout;
-        this.ssl = AssertUtils.requireNonNull(ssl, "ssl must not be null");
-        this.zeroDateOption = AssertUtils.requireNonNull(zeroDateOption, "zeroDateOption must not be null");
-        this.username = AssertUtils.requireNonNull(username, "username must not be null");
+        this.ssl = requireNonNull(ssl, "ssl must not be null");
+        this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
+        this.username = requireNonNull(username, "username must not be null");
         this.password = password;
         this.database = database == null || database.isEmpty() ? "" : database;
     }
@@ -184,7 +186,7 @@ public final class MySqlConnectionConfiguration {
         }
 
         public Builder host(String host) {
-            this.host = AssertUtils.requireNonNull(host, "host must not be null");
+            this.host = requireNonNull(host, "host must not be null");
             return this;
         }
 
@@ -204,22 +206,22 @@ public final class MySqlConnectionConfiguration {
         }
 
         public Builder username(String username) {
-            this.username = AssertUtils.requireNonNull(username, "username must not be null");
+            this.username = requireNonNull(username, "username must not be null");
             return this;
         }
 
         public Builder zeroDateOption(ZeroDateOption zeroDate) {
-            this.zeroDateOption = AssertUtils.requireNonNull(zeroDate, "zeroDateOption must not be null");
+            this.zeroDateOption = requireNonNull(zeroDate, "zeroDateOption must not be null");
             return this;
         }
 
         public Builder sslMode(SslMode sslMode) {
-            this.sslMode = AssertUtils.requireNonNull(sslMode, "sslMode must not be null");
+            this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
             return this;
         }
 
         public Builder tlsVersion(String... tlsVersion) {
-            AssertUtils.requireNonNull(tlsVersion, "tlsVersion must not be null");
+            requireNonNull(tlsVersion, "tlsVersion must not be null");
 
             int size = tlsVersion.length;
 
@@ -243,7 +245,7 @@ public final class MySqlConnectionConfiguration {
         }
 
         public Builder sslKeyAndCert(@Nullable String sslCert, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword) {
-            AssertUtils.require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null), "SSL key and cert must be both null or both non-null");
+            require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null), "SSL key and cert must be both null or both non-null");
 
             this.sslCert = sslCert;
             this.sslKey = sslKey;

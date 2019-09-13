@@ -16,16 +16,17 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
+import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link Codecs}.
@@ -69,7 +70,7 @@ final class DefaultCodecs implements Codecs {
     private final Map<Class<?>, PrimitiveCodec<?>> primitiveCodecs;
 
     private DefaultCodecs(Codec<?, ?, ?>... codecs) {
-        this.codecs = AssertUtils.requireNonNull(codecs, "codecs must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
 
         Map<Class<?>, PrimitiveCodec<?>> primitiveCodecs = new HashMap<>();
 
@@ -89,10 +90,10 @@ final class DefaultCodecs implements Codecs {
      */
     @Override
     public <T> T decode(FieldValue value, FieldInformation info, Type type, boolean binary, ConnectionContext context) {
-        AssertUtils.requireNonNull(value, "value must not be null");
-        AssertUtils.requireNonNull(info, "info must not be null");
-        AssertUtils.requireNonNull(context, "context must not be null");
-        AssertUtils.requireNonNull(type, "type must not be null");
+        requireNonNull(value, "value must not be null");
+        requireNonNull(info, "info must not be null");
+        requireNonNull(context, "context must not be null");
+        requireNonNull(type, "type must not be null");
 
         Type target = chooseTarget(info, type);
 
@@ -133,7 +134,7 @@ final class DefaultCodecs implements Codecs {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T decodeLastInsertId(long value, Class<T> type) {
-        AssertUtils.requireNonNull(type, "type must not be null");
+        requireNonNull(type, "type must not be null");
 
         if (Byte.TYPE == type || Byte.class == type) {
             return (T) Byte.valueOf((byte) value);
@@ -168,8 +169,8 @@ final class DefaultCodecs implements Codecs {
 
     @Override
     public ParameterValue encode(Object value, ConnectionContext context) {
-        AssertUtils.requireNonNull(value, "value must not be null");
-        AssertUtils.requireNonNull(context, "context must not be null");
+        requireNonNull(value, "value must not be null");
+        requireNonNull(context, "context must not be null");
 
         for (Codec<?, ?, ?> codec : codecs) {
             if (codec.canEncode(value)) {

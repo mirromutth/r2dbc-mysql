@@ -17,11 +17,12 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
+import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
 import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
 import dev.miku.r2dbc.mysql.message.server.ColumnCountMessage;
+import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.message.server.DecodeContext;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.PreparedOkMessage;
@@ -29,8 +30,6 @@ import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessageDecoder;
 import dev.miku.r2dbc.mysql.message.server.ServerStatusMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
-import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -41,6 +40,8 @@ import org.slf4j.LoggerFactory;
 import reactor.util.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Client/server messages encode/decode logic.
@@ -63,8 +64,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     private final ServerMessageDecoder decoder = new ServerMessageDecoder();
 
     MessageDuplexCodec(ConnectionContext context, AtomicBoolean closing) {
-        this.context = AssertUtils.requireNonNull(context, "context must not be null");
-        this.closing = AssertUtils.requireNonNull(closing, "closing must not be null");
+        this.context = requireNonNull(context, "context must not be null");
+        this.closing = requireNonNull(closing, "closing must not be null");
     }
 
     @Override

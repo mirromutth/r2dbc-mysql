@@ -19,7 +19,6 @@ package dev.miku.r2dbc.mysql.message.server;
 import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
 import dev.miku.r2dbc.mysql.constant.Headers;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
@@ -32,6 +31,8 @@ import reactor.util.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+
 /**
  * Generic message decoder logic.
  */
@@ -43,9 +44,9 @@ public final class ServerMessageDecoder {
 
     @Nullable
     public ServerMessage decode(ByteBuf envelope, ConnectionContext context, DecodeContext decodeContext, @Nullable SequenceIdProvider.Linkable idProvider) {
-        AssertUtils.requireNonNull(envelope, "envelope must not be null");
-        AssertUtils.requireNonNull(context, "context must not be null");
-        AssertUtils.requireNonNull(decodeContext, "decodeContext must not be null");
+        requireNonNull(envelope, "envelope must not be null");
+        requireNonNull(context, "context must not be null");
+        requireNonNull(decodeContext, "decodeContext must not be null");
 
         if (readNotFinish(envelope, idProvider)) {
             return null;

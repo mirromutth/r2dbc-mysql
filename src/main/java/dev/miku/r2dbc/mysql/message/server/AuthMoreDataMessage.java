@@ -16,11 +16,12 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Authentication more data request, means continue send auth change response message if is exists.
@@ -30,7 +31,7 @@ public final class AuthMoreDataMessage implements ServerMessage {
     private final byte[] authMethodData;
 
     private AuthMoreDataMessage(byte[] authMethodData) {
-        this.authMethodData = AssertUtils.requireNonNull(authMethodData, "authMethodData must not be null");
+        this.authMethodData = requireNonNull(authMethodData, "authMethodData must not be null");
     }
 
     public byte[] getAuthMethodData() {

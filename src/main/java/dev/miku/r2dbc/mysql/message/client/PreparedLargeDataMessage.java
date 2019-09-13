@@ -16,13 +16,14 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Send parameter long data for prepared statements, it should be used by LOB types. (e.g. BLOB, CLOB)
@@ -44,7 +45,7 @@ public final class PreparedLargeDataMessage extends LargeClientMessage implement
     public PreparedLargeDataMessage(int statementId, int parameterId, Publisher<ByteBuf> data) {
         this.statementId = statementId;
         this.parameterId = parameterId;
-        this.data = AssertUtils.requireNonNull(data, "data must not be null");
+        this.data = requireNonNull(data, "data must not be null");
     }
 
     @Override

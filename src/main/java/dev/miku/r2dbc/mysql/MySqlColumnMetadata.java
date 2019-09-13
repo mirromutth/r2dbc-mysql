@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.codec.FieldInformation;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.Clob;
@@ -34,6 +33,9 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link ColumnMetadata} for MySQL database.
@@ -59,11 +61,11 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
     private final int collationId;
 
     private MySqlColumnMetadata(int index, short type, String name, short definitions, boolean nonNull, long size, int decimals, int collationId) {
-        AssertUtils.require(index >= 0, "index must not be a negative integer");
-        AssertUtils.require(size >= 0, "size must not be a negative integer");
-        AssertUtils.require(decimals >= 0, "decimals must not be a negative integer");
-        AssertUtils.requireNonNull(name, "name must not be null");
-        AssertUtils.require(collationId > 0, "collationId must be a positive integer");
+        require(index >= 0, "index must not be a negative integer");
+        require(size >= 0, "size must not be a negative integer");
+        require(decimals >= 0, "decimals must not be a negative integer");
+        requireNonNull(name, "name must not be null");
+        require(collationId > 0, "collationId must be a positive integer");
 
         this.index = index;
         this.type = type;

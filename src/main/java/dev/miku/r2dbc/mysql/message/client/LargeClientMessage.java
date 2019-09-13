@@ -16,12 +16,13 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Base class considers large or unable to calculate length messages for {@link ClientMessage} implementations.
@@ -44,8 +45,8 @@ abstract class LargeClientMessage implements ClientMessage {
      */
     @Override
     public Flux<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
-        AssertUtils.requireNonNull(allocator, "allocator must not be null");
-        AssertUtils.requireNonNull(context, "context must not be null");
+        requireNonNull(allocator, "allocator must not be null");
+        requireNonNull(context, "context must not be null");
 
         return Flux.create(sink -> fragments(allocator, context)
             .subscribe(new LargeMessageSlicer(allocator, sink)));

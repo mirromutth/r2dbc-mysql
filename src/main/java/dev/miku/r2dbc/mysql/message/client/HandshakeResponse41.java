@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.EmptyArrays;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
@@ -27,6 +26,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A handshake response message sent by clients those supporting
@@ -59,11 +60,11 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
     HandshakeResponse41(int capabilities, int collationId, String username, byte[] authentication, String authType, String database, Map<String, String> attributes) {
         this.head = new SslRequest41(capabilities, collationId);
 
-        this.username = AssertUtils.requireNonNull(username, "username must not be null");
-        this.authentication = AssertUtils.requireNonNull(authentication, "authentication must not be null");
-        this.database = AssertUtils.requireNonNull(database, "database must not be null");
-        this.authType = AssertUtils.requireNonNull(authType, "authType must not be null");
-        this.attributes = AssertUtils.requireNonNull(attributes, "attributes must not be null");
+        this.username = requireNonNull(username, "username must not be null");
+        this.authentication = requireNonNull(authentication, "authentication must not be null");
+        this.database = requireNonNull(database, "database must not be null");
+        this.authType = requireNonNull(authType, "authType must not be null");
+        this.attributes = requireNonNull(attributes, "attributes must not be null");
     }
 
     @Override

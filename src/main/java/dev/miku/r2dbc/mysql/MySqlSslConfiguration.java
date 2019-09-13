@@ -17,11 +17,13 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.constant.SslMode;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import reactor.util.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Objects;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * MySQL configuration of SSL.
@@ -45,12 +47,12 @@ public final class MySqlSslConfiguration {
     private final String sslCert;
 
     MySqlSslConfiguration(SslMode sslMode, String[] tlsVersion, @Nullable String sslCa, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert) {
-        AssertUtils.requireNonNull(sslMode, "sslMode must not be null");
-        AssertUtils.require(!sslMode.verifyCertificate() || sslCa != null, "SSL CA must not be null when verifying mode has set");
-        AssertUtils.require((sslKey == null && sslCert == null) || (sslKey != null && sslCert != null), "SSL key and cert must be both null or both non-null");
+        requireNonNull(sslMode, "sslMode must not be null");
+        require(!sslMode.verifyCertificate() || sslCa != null, "SSL CA must not be null when verifying mode has set");
+        require((sslKey == null && sslCert == null) || (sslKey != null && sslCert != null), "SSL key and cert must be both null or both non-null");
 
-        this.sslMode = AssertUtils.requireNonNull(sslMode, "sslMode must not be null");
-        this.tlsVersion = AssertUtils.requireNonNull(tlsVersion, "tlsVersion must not be null");
+        this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
+        this.tlsVersion = requireNonNull(tlsVersion, "tlsVersion must not be null");
         this.sslCa = sslCa;
         this.sslKey = sslKey;
         this.sslKeyPassword = sslKeyPassword;

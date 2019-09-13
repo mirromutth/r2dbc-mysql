@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.CursorTypes;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import io.netty.buffer.ByteBuf;
@@ -28,6 +27,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A message to execute a prepared statement once with parameter.
@@ -48,7 +49,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
     public PreparedExecuteMessage(int statementId, ParameterValue[] parameters) {
         this.statementId = statementId;
-        this.parameters = AssertUtils.requireNonNull(parameters, "parameters must not be null");
+        this.parameters = requireNonNull(parameters, "parameters must not be null");
     }
 
     @Override

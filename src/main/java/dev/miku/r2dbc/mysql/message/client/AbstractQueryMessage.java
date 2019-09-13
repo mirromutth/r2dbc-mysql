@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -24,6 +23,8 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * Base class considers statement logic of prepared statement and simple statement.
@@ -36,7 +37,7 @@ abstract class AbstractQueryMessage extends LargeClientMessage implements Exchan
 
     AbstractQueryMessage(byte flag, CharSequence sql) {
         this.flag = flag;
-        this.sql = AssertUtils.requireNonNull(sql, "sql must not be null");
+        this.sql = requireNonNull(sql, "sql must not be null");
     }
 
     public CharSequence getSql() {

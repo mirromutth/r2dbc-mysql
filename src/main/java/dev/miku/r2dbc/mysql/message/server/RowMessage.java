@@ -16,13 +16,14 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import dev.miku.r2dbc.mysql.codec.FieldInformation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.constant.DataValues;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
-import dev.miku.r2dbc.mysql.codec.FieldInformation;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * A message includes data fields which is a row of result.
@@ -34,7 +35,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
     private final FieldReader reader;
 
     RowMessage(FieldReader reader) {
-        this.reader = AssertUtils.requireNonNull(reader, "reader must not be null");
+        this.reader = requireNonNull(reader, "reader must not be null");
     }
 
     public final FieldValue[] decode(boolean isBinary, FieldInformation[] context) {

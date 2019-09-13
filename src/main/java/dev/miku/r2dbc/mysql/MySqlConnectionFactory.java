@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.constant.SslMode;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
@@ -26,6 +25,8 @@ import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 
 import java.time.Duration;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link ConnectionFactory} for creating connections to a MySQL database.
@@ -49,7 +50,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
     }
 
     public static MySqlConnectionFactory from(MySqlConnectionConfiguration configuration) {
-        AssertUtils.requireNonNull(configuration, "configuration must not be null");
+        requireNonNull(configuration, "configuration must not be null");
 
         return new MySqlConnectionFactory(Mono.defer(() -> {
             ConnectionContext context = new ConnectionContext(configuration.getDatabase(), configuration.getZeroDateOption());

@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.internal.AssertUtils;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import io.r2dbc.spi.Row;
@@ -29,6 +28,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+
+import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link Row} for support to reading last inserted ID.
@@ -48,8 +49,8 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
     private final ColumnNameSet nameSet;
 
     InsertSyntheticRow(Codecs codecs, String keyName, long lastInsertId) {
-        this.codecs = AssertUtils.requireNonNull(codecs, "codecs must not be null");
-        this.keyName = AssertUtils.requireNonNull(keyName, "keyName must not be null");
+        this.codecs = requireNonNull(codecs, "codecs must not be null");
+        this.keyName = requireNonNull(keyName, "keyName must not be null");
         // lastInsertId may be negative if key is BIGINT UNSIGNED and value overflow than signed int64.
         this.lastInsertId = lastInsertId;
         // Singleton name must be sorted.
@@ -58,7 +59,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
 
     @Override
     public <T> T get(int index, Class<T> type) {
-        AssertUtils.requireNonNull(type, "type must not be null");
+        requireNonNull(type, "type must not be null");
         assertValidIndex(index);
 
         return get0(type);
@@ -66,8 +67,8 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
 
     @Override
     public <T> T get(String name, Class<T> type) {
-        AssertUtils.requireNonNull(name, "name must not be null");
-        AssertUtils.requireNonNull(type, "type must not be null");
+        requireNonNull(name, "name must not be null");
+        requireNonNull(type, "type must not be null");
         assertValidName(name);
 
         return get0(type);
@@ -82,7 +83,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
 
     @Override
     public Number get(String name) {
-        AssertUtils.requireNonNull(name, "name must not be null");
+        requireNonNull(name, "name must not be null");
         assertValidName(name);
 
         return get0(getJavaType0());
@@ -97,7 +98,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
 
     @Override
     public ColumnMetadata getColumnMetadata(String name) {
-        AssertUtils.requireNonNull(name, "name must not be null");
+        requireNonNull(name, "name must not be null");
         assertValidName(name);
 
         return this;
