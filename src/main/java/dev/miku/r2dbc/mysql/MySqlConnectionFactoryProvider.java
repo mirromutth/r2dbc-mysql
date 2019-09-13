@@ -111,12 +111,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     @Override
     public boolean supports(ConnectionFactoryOptions options) {
         AssertUtils.requireNonNull(options, "connectionFactoryOptions must not be null");
-
-        if (!MYSQL_DRIVER.equals(options.getValue(DRIVER))) {
-            return false;
-        }
-
-        return options.hasOption(HOST) && options.hasOption(USER);
+        return MYSQL_DRIVER.equals(options.getValue(DRIVER));
     }
 
     @Override
