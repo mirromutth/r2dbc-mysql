@@ -27,6 +27,24 @@
     <name>Reactive Relational Database Connectivity - MySQL</name>
     <url>https://github.com/mirromutth/r2dbc-mysql</url>
 
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Mirro Mutth</name>
+            <email>mirromutth@gmail.com</email>
+        </developer>
+    </developers>
+    <scm>
+        <connection>scm:git:git://github.com/mirromutth/r2dbc-mysql.git</connection>
+        <developerConnection>scm:git:ssh://github.com:mirromutth/r2dbc-mysql.git</developerConnection>
+        <url>https://github.com/mirromutth/r2dbc-mysql</url>
+    </scm>
+
     <properties>
         <assertj.version>3.12.2</assertj.version>
         <java.version>1.8</java.version>
