@@ -92,7 +92,6 @@ public final class ServerVersion implements Comparable<ServerVersion> {
     }
 
     public boolean isEnterprise() {
-        // TODO: optimize performance using substring matching/searching algorithms, like two-way or KMP.
         for (String enterprise : ENTERPRISES) {
             // Maybe should ignore case?
             if (origin.contains(enterprise)) {
@@ -114,13 +113,7 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
         ServerVersion that = (ServerVersion) o;
 
-        if (major != that.major) {
-            return false;
-        }
-        if (minor != that.minor) {
-            return false;
-        }
-        return patch == that.patch;
+        return major == that.major && minor == that.minor && patch == that.patch;
     }
 
     @Override
