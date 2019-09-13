@@ -54,7 +54,7 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
     }
 
     /**
-     * See https://github.com/mirromutth/r2dbc-mysql/issues/50.
+     * See https://github.com/mirromutth/r2dbc-mysql/issues/50 .
      */
     @Test
     void multiQueries() {
@@ -74,6 +74,14 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
                 .then())
             .as(StepVerifier::create)
             .verifyComplete();
+    }
+
+    /**
+     * See https://github.com/mirromutth/r2dbc-mysql/issues/62 .
+     */
+    @Test
+    void varbinary() {
+        testType(Object.class, "VARBINARY(50)", true, new byte[0], null, new byte[]{1,2,3,4,5});
     }
 
     @Test
