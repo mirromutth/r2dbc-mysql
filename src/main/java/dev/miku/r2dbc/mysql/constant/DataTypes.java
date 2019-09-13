@@ -92,7 +92,10 @@ public final class DataTypes {
      */
     public static final short BLOB = 252;
 
-    public static final short VAR_STRING = 253;
+    /**
+     * i.e. VAR STRING in MySQL documentation, but it is binary type.
+     */
+    public static final short VAR_BINARY = 253;
 
     public static final short STRING = 254;
 
