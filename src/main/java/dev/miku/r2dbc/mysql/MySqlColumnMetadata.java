@@ -163,7 +163,11 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
             case DataTypes.ENUMERABLE:
             case DataTypes.VAR_STRING:
             case DataTypes.STRING:
-                return String.class;
+                if (collationId == CharCollation.BINARY_ID) {
+                    return byte[].class;
+                } else {
+                    return String.class;
+                }
             case DataTypes.BIT:
             case DataTypes.GEOMETRY:
                 return byte[].class;
