@@ -128,7 +128,7 @@ final class DefaultCodecs implements Codecs {
             }
         }
 
-        throw new IllegalArgumentException(String.format("Cannot decode value of type %s for type %d", target, info.getType()));
+        throw new IllegalArgumentException(String.format("Cannot decode value of type %s for type %d with collation %d", target, info.getType(), info.getCollationId()));
     }
 
     @SuppressWarnings("unchecked")
