@@ -46,7 +46,7 @@ final class TypePredicates {
     static boolean isString(short type) {
         return DataTypes.VARCHAR == type ||
             DataTypes.STRING == type ||
-            DataTypes.VAR_STRING == type ||
+            DataTypes.VAR_BINARY == type ||
             DataTypes.ENUMERABLE == type ||
             DataTypes.JSON == type ||
             DataTypes.SET == type;
