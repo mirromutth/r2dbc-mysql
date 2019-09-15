@@ -162,15 +162,13 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
     }
 
     private void complete(Function<? super MySqlConnection, Publisher<?>> runner) {
-        run(runner).then().as(StepVerifier::create).verifyComplete();
-    }
-
-    private Mono<Void> run(Function<? super MySqlConnection, Publisher<?>> runner) {
-        return connectionFactory.create()
+        connectionFactory.create()
             .flatMap(connection -> Flux.from(runner.apply(connection))
                 .onErrorResume(e -> close(connection).then(Mono.error(e)))
                 .concatWith(close(connection))
-                .then());
+                .then())
+            .as(StepVerifier::create)
+            .verifyComplete();
     }
 
     private static String formattedSelect(String condition) {

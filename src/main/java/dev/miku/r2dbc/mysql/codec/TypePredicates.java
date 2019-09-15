@@ -46,10 +46,14 @@ final class TypePredicates {
     static boolean isString(short type) {
         return DataTypes.VARCHAR == type ||
             DataTypes.STRING == type ||
-            DataTypes.VAR_BINARY == type ||
+            DataTypes.VARBINARY == type ||
             DataTypes.ENUMERABLE == type ||
             DataTypes.JSON == type ||
             DataTypes.SET == type;
+    }
+
+    static boolean isBinary(short type) {
+        return DataTypes.BIT == type || DataTypes.GEOMETRY == type || isString(type) || isLob(type);
     }
 
     private TypePredicates() {

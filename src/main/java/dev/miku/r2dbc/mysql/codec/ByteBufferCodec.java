@@ -18,45 +18,50 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.constant.EmptyArrays;
+import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
 
-import java.util.Arrays;
+import java.nio.ByteBuffer;
 
 /**
- * Codec for {@link byte[]}.
+ * Codec for {@link ByteBuffer}.
  */
-final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
+final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
 
-    static final ByteArrayCodec INSTANCE = new ByteArrayCodec();
+    static final ByteBufferCodec INSTANCE = new ByteBufferCodec();
 
-    private ByteArrayCodec() {
-        super(byte[].class);
+    private ByteBufferCodec() {
+        super(ByteBuffer.class);
     }
 
     @Override
-    public byte[] decode(NormalFieldValue value, FieldInformation info, Class<? super byte[]> target, boolean binary, ConnectionContext context) {
+    public ByteBuffer decode(NormalFieldValue value, FieldInformation info, Class<? super ByteBuffer> target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
-            return EmptyArrays.EMPTY_BYTES;
+            return ByteBuffer.wrap(EmptyArrays.EMPTY_BYTES);
         }
-        return ByteBufUtil.getBytes(buf);
-    }
 
-    @Override
-    public boolean canEncode(Object value) {
-        return value instanceof byte[];
+        ByteBuffer result = ByteBuffer.allocate(buf.readableBytes());
+
+        buf.readBytes(result);
+        result.flip();
+
+        return result;
     }
 
     @Override
     public ParameterValue encode(Object value, ConnectionContext context) {
-        return new ByteArrayValue((byte[]) value);
+        return new ByteBufferValue((ByteBuffer) value);
+    }
+
+    @Override
+    public boolean canEncode(Object value) {
+        return value instanceof ByteBuffer;
     }
 
     @Override
@@ -64,17 +69,17 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
         return TypePredicates.isBinary(info.getType());
     }
 
-    private static final class ByteArrayValue extends AbstractParameterValue {
+    private static final class ByteBufferValue extends AbstractParameterValue {
 
-        private final byte[] bytes;
+        private final ByteBuffer buffer;
 
-        private ByteArrayValue(byte[] bytes) {
-            this.bytes = bytes;
+        private ByteBufferValue(ByteBuffer buffer) {
+            this.buffer = buffer;
         }
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeByteArray(bytes));
+            return Mono.fromRunnable(() -> writer.writeByteBuffer(buffer));
         }
 
         @Override
@@ -87,18 +92,16 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ByteArrayValue)) {
+            if (!(o instanceof ByteBufferValue)) {
                 return false;
             }
-
-            ByteArrayValue that = (ByteArrayValue) o;
-
-            return Arrays.equals(bytes, that.bytes);
+            ByteBufferValue that = (ByteBufferValue) o;
+            return buffer.equals(that.buffer);
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(bytes);
+            return buffer.hashCode();
         }
     }
 }

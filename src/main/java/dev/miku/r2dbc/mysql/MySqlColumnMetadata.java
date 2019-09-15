@@ -29,6 +29,7 @@ import reactor.util.annotation.NonNull;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -161,15 +162,19 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
             case DataTypes.VARCHAR:
             case DataTypes.JSON:
             case DataTypes.ENUMERABLE:
-            case DataTypes.VAR_BINARY:
+            case DataTypes.VARBINARY:
             case DataTypes.STRING:
                 if (collationId == CharCollation.BINARY_ID) {
-                    return byte[].class;
+                    return ByteBuffer.class;
                 } else {
                     return String.class;
                 }
             case DataTypes.BIT:
+                return ByteBuffer.class;
             case DataTypes.GEOMETRY:
+                // Most of Geometry libraries were using byte[] to encode/decode which based on WKT (includes Extended-WKT) or WKB
+                // MySQL using WKB for encoding/decoding, so use byte[] instead of ByteBuffer by default type.
+                // It maybe change after R2DBC SPI specify default type for GEOMETRY.
                 return byte[].class;
             case DataTypes.SET:
                 return String[].class;
