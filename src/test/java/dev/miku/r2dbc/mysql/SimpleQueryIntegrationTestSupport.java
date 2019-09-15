@@ -26,6 +26,7 @@ import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.Type;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,6 +41,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -106,7 +108,13 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
 
         testType(String.class, defined, true, null, "ONE,TWO,THREE", "ONE", "", "ONE,THREE");
         testTypeRef(String[].class, defined, Functions.STRING_ARRAY, null, new String[]{"ONE", "TWO", "THREE"}, new String[]{"ONE"}, new String[]{}, new String[]{"ONE", "THREE"});
-        testTypeRef(stringSet, defined, Functions.SET, null, new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")), Collections.singleton("ONE"), Collections.emptySet(), new HashSet<>(Arrays.asList("ONE", "THREE")));
+        testTypeRef(
+            stringSet, defined, Functions.SET, null,
+            new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")),
+            Collections.singleton("ONE"),
+            Collections.emptySet(),
+            new HashSet<>(Arrays.asList("ONE", "THREE"))
+        );
         testTypeRef(enumSet, defined, Functions.SET, null, EnumSet.allOf(EnumData.class), EnumSet.of(EnumData.ONE), EnumSet.noneOf(EnumData.class), EnumSet.of(EnumData.ONE, EnumData.THREE));
     }
 
@@ -158,7 +166,8 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
     @Test
     @Override
     void varbinary() {
-        testTypeQuota(Object.class, "VARBINARY(50)", Functions.BYTE_ARRAY, false, new byte[0], null, new byte[]{1,2,3,4,5});
+        testTypeQuota(byte[].class, "VARBINARY(50)", Functions.BYTE_ARRAY, false, new byte[0], null, new byte[]{1, 2, 3, 4, 5});
+        testTypeQuota(ByteBuffer.class, "VARBINARY(50)", Functions.BYTE_BUFFER, false, ByteBuffer.allocate(0), null, ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5}));
     }
 
     @Test
@@ -166,7 +175,8 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
     void bit() {
         testTypeQuota(Boolean.class, "BIT(1)", Functions.BOOLEAN, false, null, false, true);
         testTypeQuota(byte[].class, "BIT(16)", Functions.BYTE_ARRAY, false, null, new byte[]{(byte) 0xCD, (byte) 0xEF});
-        testTypeQuota(BitSet.class, "BIT(16)", Functions.BIT_SET, false, null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
+        testTypeQuota(BitSet.class, "BIT(16)", Functions.BIT_SET, false, BitSet.valueOf(new byte[0]), null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
+        testTypeQuota(ByteBuffer.class, "BIT(16)", Functions.BYTE_BUFFER, false, null, ByteBuffer.wrap(new byte[]{1, 2}));
     }
 
     @SafeVarargs
@@ -321,6 +331,17 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
             byte b = bytes[idx];
             return String.format("%d%d%d%d%d%d%d%d", (b >>> 7) & 1, (b >>> 6) & 1, (b >>> 5) & 1, (b >>> 4) & 1, (b >>> 3) & 1, (b >>> 2) & 1, (b >>> 1) & 1, b & 1);
         }).collect(Collectors.joining("", "b'", "'"));
+
+        private static final Function<ByteBuffer, String> BYTE_BUFFER = buffer -> {
+            StringJoiner joiner = new StringJoiner("", "b'", "'");
+
+            for (int i = buffer.position(); i < buffer.limit(); ++i) {
+                byte b = buffer.get(i);
+                joiner.add(String.format("%d%d%d%d%d%d%d%d", (b >>> 7) & 1, (b >>> 6) & 1, (b >>> 5) & 1, (b >>> 4) & 1, (b >>> 3) & 1, (b >>> 2) & 1, (b >>> 1) & 1, b & 1));
+            }
+
+            return joiner.toString();
+        };
 
         private static final Function<BitSet, String> BIT_SET = b -> {
             byte[] bytes = b.toByteArray();

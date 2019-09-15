@@ -406,6 +406,28 @@ public final class ParameterWriter implements Disposable {
         }
     }
 
+    public void writeByteBuffer(ByteBuffer buffer) {
+        int bufferBytes = buffer.remaining();
+
+        if (bufferBytes <= 0) {
+            // Zero of var int, not terminal.
+            writableBuffer(Byte.BYTES).writeByte(0);
+            return;
+        }
+
+        int varIntBytes = CodecUtils.varIntBytes(bufferBytes);
+
+        // (without overflow) bufferBytes + varIntBytes > Integer.MAX_VALUE
+        if (bufferBytes > Integer.MAX_VALUE - varIntBytes) {
+            CodecUtils.writeVarInt(writableBuffer(varIntBytes), bufferBytes);
+            writableBuffer(buffer.remaining()).writeBytes(buffer);
+        } else {
+            ByteBuf buf = writableBuffer(bufferBytes + varIntBytes);
+            CodecUtils.writeVarInt(buf, bufferBytes);
+            buf.writeBytes(buffer);
+        }
+    }
+
     public void writeByteBuffers(List<ByteBuffer> buffers) {
         long bufferBytes = 0;
 

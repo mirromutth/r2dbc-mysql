@@ -296,7 +296,7 @@ If you want to raise an issue, please follow the recommendations below:
 - The MySQL database server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
 - Do not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
 - If `Statement` bound `returnGeneratedValues`, the `Result` of the `Statement` can be called both: `getRowsUpdated` to get affected rows, and `map` to get last inserted ID.
-- Try not search some rows by binary field, like `BIT` or `BLOB`, MySQL supports such queries is not good.
+- Try not search some rows by binary field, like `BIT` or `BLOB`, MySQL supports such queries is not good (but `VARBINARY` is OK).
 
 ## License
 

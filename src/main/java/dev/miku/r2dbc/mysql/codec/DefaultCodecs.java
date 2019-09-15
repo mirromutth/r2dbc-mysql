@@ -62,6 +62,7 @@ final class DefaultCodecs implements Codecs {
         ClobCodec.INSTANCE,
         BlobCodec.INSTANCE,
 
+        ByteBufferCodec.INSTANCE,
         ByteArrayCodec.INSTANCE
     );
 

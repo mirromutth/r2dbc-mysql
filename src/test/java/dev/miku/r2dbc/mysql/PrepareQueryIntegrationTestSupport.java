@@ -26,6 +26,7 @@ import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -74,12 +75,6 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
                 .then())
             .as(StepVerifier::create)
             .verifyComplete();
-    }
-
-    @Test
-    @Override
-    void varbinary() {
-        testType(Object.class, "VARBINARY(50)", true, new byte[0], null, new byte[]{1,2,3,4,5});
     }
 
     @Test
@@ -146,10 +141,18 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
 
     @Test
     @Override
+    void varbinary() {
+        testTypeRef(byte[].class, "VARBINARY(50)", true, new byte[0], null, new byte[]{1, 2, 3, 4, 5});
+        testTypeRef(ByteBuffer.class, "VARBINARY(50)", true, ByteBuffer.allocate(0), null, ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5}));
+    }
+
+    @Test
+    @Override
     void bit() {
         testTypeRef(Boolean.class, "BIT(1)", true, null, false, true);
         testTypeRef(byte[].class, "BIT(16)", false, null, new byte[]{(byte) 0xCD, (byte) 0xEF});
-        testTypeRef(BitSet.class, "BIT(16)", false, null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
+        testTypeRef(BitSet.class, "BIT(16)", false, BitSet.valueOf(new byte[0]), null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
+        testTypeRef(ByteBuffer.class, "BIT(16)", false, null, ByteBuffer.wrap(new byte[]{1, 2}));
     }
 
     @SafeVarargs
@@ -200,7 +203,11 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
                 insert.bindNull(0, (Class<?>) ((ParameterizedType) type).getRawType());
             }
         } else {
-            insert.bind(0, value);
+            if (value instanceof ByteBuffer) {
+                insert.bind(0, ((ByteBuffer) value).slice());
+            } else {
+                insert.bind(0, value);
+            }
         }
 
         return Mono.from(insert.returnGeneratedValues("id")
@@ -246,8 +253,13 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
                     if (value == null) {
                         valueSelect = connection.createStatement("SELECT value FROM test WHERE value IS NULL");
                     } else {
-                        valueSelect = connection.createStatement("SELECT value FROM test WHERE value=?")
-                            .bind(0, value);
+                        valueSelect = connection.createStatement("SELECT value FROM test WHERE value=?");
+
+                        if (value instanceof ByteBuffer) {
+                            valueSelect.bind(0, ((ByteBuffer) value).slice());
+                        } else {
+                            valueSelect.bind(0, value);
+                        }
                     }
 
                     return it.then(Mono.from(valueSelect.execute()))
