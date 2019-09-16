@@ -40,6 +40,9 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
         super(configuration);
     }
 
+    /**
+     * See https://github.com/mirromutth/r2dbc-mysql/issues/45 .
+     */
     @Test
     void selectFromOtherDatabase() {
         complete(connection -> Flux.from(connection.createStatement("SELECT * FROM `information_schema`.`innodb_trx`").execute())
