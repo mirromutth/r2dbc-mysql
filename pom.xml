@@ -26,6 +26,7 @@
 
     <name>Reactive Relational Database Connectivity - MySQL</name>
     <url>https://github.com/mirromutth/r2dbc-mysql</url>
+    <description>R2DBC MySQL Implementation</description>
 
     <licenses>
         <license>
@@ -61,6 +62,7 @@
         <reactor.version>Dysprosium-M1</reactor.version>
         <slf4j.version>1.7.26</slf4j.version>
         <testcontainers.version>1.12.0</testcontainers.version>
+        <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
     <dependencyManagement>
@@ -264,6 +266,19 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.22.1</version>
                 <configuration>
@@ -312,6 +327,17 @@
             </resource>
         </resources>
     </build>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+    </distributionManagement>
 
     <repositories>
         <repository>
