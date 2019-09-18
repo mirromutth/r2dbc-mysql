@@ -21,6 +21,7 @@ import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -115,12 +116,23 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
                 throw new IllegalStateException("Statement was already executed");
             }
 
-            return PrepareQueryFlow.prepare(client, query.getSql())
-                .flatMapMany(metadata -> PrepareQueryFlow.execute(client, metadata, bindings.iterator())
-                    .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages)))
+            String sql = query.getSql();
+
+            return QueryFlow.prepare(client, sql)
                 .doOnCancel(bindings::clear)
-                .doOnError(e -> bindings.clear());
+                .flatMapMany(id -> toResults(sql, id)
+                    .onErrorResume(e -> {
+                        bindings.clear();
+                        return QueryFlow.close(client, id).then(Mono.error(e));
+                    })
+                    .concatWith(QueryFlow.close(client, id).then(Mono.empty())));
         });
+    }
+
+    private Flux<MySqlResult> toResults(String sql, int statementId) {
+        return QueryFlow.execute(client, sql, statementId, bindings.bindings)
+            .windowUntil(QueryFlow.RESULT_DONE)
+            .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
     }
 
     private void addBinding(int index, ParameterValue value) {

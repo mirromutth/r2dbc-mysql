@@ -342,7 +342,7 @@ public final class MySqlConnection implements Connection {
     }
 
     private Mono<Void> executeVoid(String sql) {
-        return SimpleQueryFlow.execute(client, sql).doOnNext(SAFE_RELEASE).then();
+        return QueryFlow.execute(client, sql).doOnNext(SAFE_RELEASE).then();
     }
 
     private Mono<Void> recoverIsolationLevel(Mono<Void> commitOrRollback) {
