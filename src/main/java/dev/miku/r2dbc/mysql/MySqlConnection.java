@@ -58,7 +58,7 @@ public final class MySqlConnection implements Connection {
      * current session isolation level will be {@literal @@transaction_isolation},
      * otherwise it is {@literal @@tx_isolation}.
      *
-     * @see #create(Client, ConnectionContext) judge server version before get the isolation level.
+     * @see #create judge server version before get the isolation level.
      */
     private static final ServerVersion TRAN_LEVEL_8X = ServerVersion.create(8, 0, 3);
 
@@ -348,12 +348,13 @@ public final class MySqlConnection implements Connection {
     private Mono<Void> recoverIsolationLevel(Mono<Void> commitOrRollback) {
         if (currentLevel != sessionLevel) {
             // Need recover next transaction isolation level to session isolation level.
-            return commitOrRollback.doOnSuccessOrError((ignored, throwable) -> {
-                if (throwable == null || throwable instanceof R2dbcException) {
-                    // Succeed or failed by server executing, just recover current isolation level.
-                    currentLevel = sessionLevel;
-                }
-            });
+            // Succeed or failed by server executing, just recover current isolation level.
+            return commitOrRollback.doOnSuccess(ignored -> currentLevel = sessionLevel)
+                .doOnError(e -> {
+                    if (e instanceof R2dbcException) {
+                        currentLevel = sessionLevel;
+                    }
+                });
         }
 
         return commitOrRollback;
