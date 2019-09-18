@@ -35,7 +35,7 @@ import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
  * Parametrized {@link MySqlStatement} with parameter markers executed against a Microsoft SQL Server database.
  * <p>
  * MySQL uses indexed parameters which are marked by {@literal ?} without naming. This implementation uses
- * {@link PrepareQuery} to implement named parameters, and different indexes can have the same name.
+ * {@link Query} to implement named parameters, and different indexes can have the same name.
  */
 final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
@@ -45,13 +45,13 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     private final ConnectionContext context;
 
-    private final PrepareQuery query;
+    private final Query query;
 
     private final Bindings bindings;
 
     private final AtomicBoolean executed = new AtomicBoolean();
 
-    ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, PrepareQuery query) {
+    ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, Query query) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.context = requireNonNull(context, "context must not be null");

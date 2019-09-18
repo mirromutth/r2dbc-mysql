@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.constant.EmptyArrays;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import reactor.util.annotation.Nullable;
@@ -24,6 +23,7 @@ import reactor.util.annotation.Nullable;
 import java.time.Duration;
 import java.util.Objects;
 
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_STRINGS;
 import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
@@ -158,7 +158,7 @@ public final class MySqlConnectionConfiguration {
 
         private SslMode sslMode = SslMode.PREFERRED;
 
-        private String[] tlsVersion = EmptyArrays.EMPTY_STRINGS;
+        private String[] tlsVersion = EMPTY_STRINGS;
 
         @Nullable
         private String sslCa;
@@ -230,7 +230,7 @@ public final class MySqlConnectionConfiguration {
                 System.arraycopy(tlsVersion, 0, versions, 0, size);
                 this.tlsVersion = versions;
             } else {
-                this.tlsVersion = EmptyArrays.EMPTY_STRINGS;
+                this.tlsVersion = EMPTY_STRINGS;
             }
             return this;
         }

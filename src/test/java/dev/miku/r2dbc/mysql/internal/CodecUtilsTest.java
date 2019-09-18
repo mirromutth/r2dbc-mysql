@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql.internal;
 
 import dev.miku.r2dbc.mysql.constant.Headers;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,6 +28,6 @@ class CodecUtilsTest {
 
     @Test
     void eofHeaderEqualsInt64Code() {
-        Assertions.assertEquals(Headers.EOF, CodecUtils.VAR_INT_8_BYTE_CODE);
+        assertEquals(Headers.EOF, CodecUtils.VAR_INT_8_BYTE_CODE);
     }
 }

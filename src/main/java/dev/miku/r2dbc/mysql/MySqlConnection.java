@@ -229,16 +229,14 @@ public final class MySqlConnection implements Connection {
     public MySqlStatement createStatement(String sql) {
         requireNonNull(sql, "sql must not be null");
 
-        int index = PrepareQuery.indexOfParameter(sql);
+        Query query = Query.parse(sql);
 
-        if (index < 0) {
-            // No parameter mark, it must be simple query.
+        if (query.isPrepared()) {
+            logger.debug("Create a statement provided by prepare query");
+            return new ParametrizedMySqlStatement(client, codecs, context, query);
+        } else {
             logger.debug("Create a statement provided by simple query");
             return new SimpleMySqlStatement(client, codecs, context, sql);
-        } else {
-            // Find parameter mark, it should be prepare query.
-            logger.debug("Create a statement provided by prepare query");
-            return new ParametrizedMySqlStatement(client, codecs, context, PrepareQuery.parse(sql, index));
         }
     }
 

@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.constant.EmptyArrays;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
@@ -26,6 +25,8 @@ import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
+
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
  * Codec for {@link ByteBuffer}.
@@ -43,7 +44,7 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
         ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
-            return ByteBuffer.wrap(EmptyArrays.EMPTY_BYTES);
+            return ByteBuffer.wrap(EMPTY_BYTES);
         }
 
         ByteBuffer result = ByteBuffer.allocate(buf.readableBytes());

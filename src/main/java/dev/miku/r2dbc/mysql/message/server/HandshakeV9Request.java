@@ -17,12 +17,12 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.AuthTypes;
-import dev.miku.r2dbc.mysql.constant.EmptyArrays;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
 
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
@@ -93,7 +93,7 @@ final class HandshakeV9Request implements HandshakeRequest {
         int bytes = buf.readableBytes();
 
         if (bytes <= 0) {
-            return new HandshakeV9Request(header, EmptyArrays.EMPTY_BYTES);
+            return new HandshakeV9Request(header, EMPTY_BYTES);
         }
 
         byte[] salt;

@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.constant.EmptyArrays;
 import dev.miku.r2dbc.mysql.internal.CodecUtils;
 import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
@@ -27,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
 
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
 
 /**
@@ -147,7 +147,7 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     private void writeAttrs(ByteBuf buf, Charset charset) {
         if (attributes.isEmpty()) {
-            CodecUtils.writeVarIntSizedBytes(buf, EmptyArrays.EMPTY_BYTES);
+            CodecUtils.writeVarIntSizedBytes(buf, EMPTY_BYTES);
             return;
         }
 

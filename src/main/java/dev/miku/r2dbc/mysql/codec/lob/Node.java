@@ -16,14 +16,15 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
-import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.EmptyArrays;
 import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.collation.CharCollation;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
  * A {@link ByteBuf} wrapper for used by {@link ScalarBlob} or {@link ScalarClob}.
@@ -65,7 +66,7 @@ final class Node {
 
         try {
             if (!buf.isReadable()) {
-                return ByteBuffer.wrap(EmptyArrays.EMPTY_BYTES);
+                return ByteBuffer.wrap(EMPTY_BYTES);
             }
 
             ByteBuffer result = ByteBuffer.allocate(buf.readableBytes());

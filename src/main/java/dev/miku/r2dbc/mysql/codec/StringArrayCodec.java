@@ -18,16 +18,17 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.constant.EmptyArrays;
+import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
+
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_STRINGS;
 
 /**
  * Codec for {@link String[]}.
@@ -45,7 +46,7 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
         ByteBuf buf = value.getBufferSlice();
 
         if (!buf.isReadable()) {
-            return EmptyArrays.EMPTY_STRINGS;
+            return EMPTY_STRINGS;
         }
 
         int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');

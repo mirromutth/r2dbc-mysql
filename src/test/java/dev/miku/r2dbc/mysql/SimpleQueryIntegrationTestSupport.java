@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql;
 
 import io.r2dbc.spi.Connection;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import org.testcontainers.shaded.org.apache.commons.lang.ArrayUtils;
@@ -311,7 +310,7 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
             })
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0").execute()))
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .doOnNext(u -> Assertions.assertEquals(u, 1))
+            .doOnNext(u -> assertEquals(u, 1))
             .then();
     }
 
