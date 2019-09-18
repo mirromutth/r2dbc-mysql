@@ -16,6 +16,8 @@
 
 package dev.miku.r2dbc.mysql;
 
+import java.util.BitSet;
+
 /**
  * An implementation of {@link SimpleQueryIntegrationTestSupport} for data integration in MySQL 5.5 simple statement.
  */
@@ -23,5 +25,11 @@ final class MySql55SimpleQueryIntegrationTest extends SimpleQueryIntegrationTest
 
     MySql55SimpleQueryIntegrationTest() {
         super(MySql55TestKit.CONFIGURATION);
+    }
+
+    @Override
+    BitSet[] bitSetsForBitTest() {
+        // Looks like MySQL 5.5 have bug for BIT.
+        return new BitSet[] {null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD})};
     }
 }

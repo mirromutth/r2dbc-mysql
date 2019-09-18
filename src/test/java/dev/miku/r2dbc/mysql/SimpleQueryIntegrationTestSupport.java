@@ -174,8 +174,12 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
     void bit() {
         testTypeQuota(Boolean.class, "BIT(1)", Functions.BOOLEAN, false, null, false, true);
         testTypeQuota(byte[].class, "BIT(16)", Functions.BYTE_ARRAY, false, null, new byte[]{(byte) 0xCD, (byte) 0xEF});
-        testTypeQuota(BitSet.class, "BIT(16)", Functions.BIT_SET, false, BitSet.valueOf(new byte[0]), null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
+        testTypeQuota(BitSet.class, "BIT(16)", Functions.BIT_SET, false, bitSetsForBitTest());
         testTypeQuota(ByteBuffer.class, "BIT(16)", Functions.BYTE_BUFFER, false, null, ByteBuffer.wrap(new byte[]{1, 2}));
+    }
+
+    BitSet[] bitSetsForBitTest() {
+        return new BitSet[] {BitSet.valueOf(new byte[0]), null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD})};
     }
 
     @SafeVarargs
