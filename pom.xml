@@ -62,6 +62,8 @@
         <reactor.version>Dysprosium-RC1</reactor.version>
         <slf4j.version>1.7.28</slf4j.version>
         <testcontainers.version>1.12.1</testcontainers.version>
+        <hikari-cp.version>3.4.0</hikari-cp.version>
+        <spring-framework.version>5.1.9.RELEASE</spring-framework.version>
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
@@ -183,6 +185,18 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>${mysql.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>${hikari-cp.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+            <version>${spring-framework.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
