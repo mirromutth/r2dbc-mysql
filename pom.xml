@@ -172,24 +172,6 @@
             <artifactId>mysql</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.github.mp911de.microbenchmark-runner</groupId>
-            <artifactId>microbenchmark-runner-junit5</artifactId>
-            <version>${mbr.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.openjdk.jmh</groupId>
-            <artifactId>jmh-core</artifactId>
-            <version>${jmh.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.openjdk.jmh</groupId>
-            <artifactId>jmh-generator-annprocess</artifactId>
-            <version>${jmh.version}</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -355,15 +337,31 @@
                 <enabled>true</enabled>
             </snapshots>
         </repository>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
     </repositories>
 
     <profiles>
         <profile>
             <id>jmh</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.github.mp911de.microbenchmark-runner</groupId>
+                    <artifactId>microbenchmark-runner-junit5</artifactId>
+                    <version>${mbr.version}</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjdk.jmh</groupId>
+                    <artifactId>jmh-core</artifactId>
+                    <version>${jmh.version}</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjdk.jmh</groupId>
+                    <artifactId>jmh-generator-annprocess</artifactId>
+                    <version>${jmh.version}</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
                     <plugin>
@@ -425,6 +423,12 @@
                     </plugin>
                 </plugins>
             </build>
+            <repositories>
+                <repository>
+                    <id>jitpack.io</id>
+                    <url>https://jitpack.io</url>
+                </repository>
+            </repositories>
         </profile>
     </profiles>
 
