@@ -146,6 +146,28 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
         return reader.release(decrement);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof RowMessage)) {
+            return false;
+        }
+        RowMessage that = (RowMessage) o;
+        return reader.equals(that.reader);
+    }
+
+    @Override
+    public int hashCode() {
+        return reader.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "RowMessage(encoded)";
+    }
+
     /**
      * @return {@literal 0} means field is var integer sized in binary result.
      */
