@@ -24,6 +24,8 @@ import dev.miku.r2dbc.mysql.message.client.ExitMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.WarningMessage;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -150,7 +152,7 @@ final class ReactorNettyClient implements Client {
     public Mono<Void> sendOnly(SendOnlyMessage message) {
         requireNonNull(message, "message must not be null");
 
-        return Mono.<Flux<ServerMessage>>create(sink -> {
+        return Mono.<Void>create(sink -> {
             if (closing.get()) {
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
@@ -158,12 +160,9 @@ final class ReactorNettyClient implements Client {
 
             requestQueue.submit(() -> {
                 send(message);
-                sink.success(Flux.empty());
+                sink.success();
             });
-        })
-            .flatMapMany(IDENTITY)
-            .doOnTerminate(requestQueue)
-            .then();
+        }).doOnTerminate(requestQueue);
     }
 
     @Override
@@ -191,20 +190,29 @@ final class ReactorNettyClient implements Client {
 
     @Override
     public Mono<Void> close() {
-        return Mono.defer(() -> {
-            if (!this.closing.compareAndSet(false, true)) {
+        return Mono.create(sink -> {
+            if (!closing.compareAndSet(false, true)) {
                 // client is closing or closed
-                return Mono.empty();
+                sink.success();
+                return;
             }
 
-            // Should force any query which is processing and make sure send exit message.
-            Mono<Void> closer = FutureMono.from(send(ExitMessage.getInstance()));
+            requestQueue.submit(() -> send(ExitMessage.getInstance())
+                .addListener((ChannelFutureListener) future -> {
+                    if (future.isSuccess()) {
+                        logger.debug("Exit message has been sent successfully");
+                    } else {
+                        Throwable cause = future.cause();
+                        if (cause != null) {
+                            logger.error("Exit message sending failed, force closing", cause);
+                        } else {
+                            // Must be cancelled.
+                            logger.warn("Exit message sending cancelled, force closing");
+                        }
+                    }
 
-            if (logger.isDebugEnabled()) {
-                closer = closer.doOnSuccess(ignored -> logger.debug("Exit message has been sent successfully"));
-            }
-
-            return closer.then(forceClose());
+                    future.channel().close().addListener(closer -> sink.success());
+                }));
         });
     }
 
