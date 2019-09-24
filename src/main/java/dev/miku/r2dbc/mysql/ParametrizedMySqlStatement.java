@@ -81,7 +81,14 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
         requireNonNull(name, "name must not be null");
         requireNonNull(value, "value must not be null");
 
-        addBinding(query.getIndexes(name), codecs.encode(value, context));
+        Object indexes = query.getIndexes(name);
+
+        if (indexes instanceof Integer) {
+            addBinding((Integer) indexes, codecs.encode(value, context));
+        } else {
+            addBinding((Query.Indexes) indexes, codecs.encode(value, context));
+        }
+
         return this;
     }
 
@@ -100,7 +107,14 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
         // Useless, but should be checked in here, for programming robustness
         requireNonNull(type, "type must not be null");
 
-        addBinding(query.getIndexes(name), codecs.encodeNull());
+        Object indexes = query.getIndexes(name);
+
+        if (indexes instanceof Integer) {
+            addBinding((Integer) indexes, codecs.encodeNull());
+        } else {
+            addBinding((Query.Indexes) indexes, codecs.encodeNull());
+        }
+
         return this;
     }
 
@@ -141,13 +155,10 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
         this.bindings.getCurrent().add(index, value);
     }
 
-    private void addBinding(int[] indexes, ParameterValue value) {
+    private void addBinding(Query.Indexes indexes, ParameterValue value) {
         assertNotExecuted();
 
-        Binding current = this.bindings.getCurrent();
-        for (int index : indexes) {
-            current.add(index, value);
-        }
+        indexes.bind(this.bindings.getCurrent(), value);
     }
 
     private void assertNotExecuted() {

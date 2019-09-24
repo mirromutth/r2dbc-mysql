@@ -16,12 +16,11 @@
 
 package dev.miku.r2dbc.mysql;
 
-import java.util.ArrayList;
+import dev.miku.r2dbc.mysql.message.ParameterValue;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,11 +31,11 @@ final class Query {
 
     private final String sql;
 
-    private final Map<String, int[]> nameKeyedIndex;
+    private final Map<String, Object> nameKeyedIndex;
 
     private final int parameters;
 
-    private Query(String sql, Map<String, int[]> nameKeyedIndex, int parameters) {
+    private Query(String sql, Map<String, Object> nameKeyedIndex, int parameters) {
         this.sql = sql;
         this.nameKeyedIndex = nameKeyedIndex;
         this.parameters = parameters;
@@ -46,8 +45,8 @@ final class Query {
         return sql;
     }
 
-    int[] getIndexes(String identifier) {
-        int[] index = nameKeyedIndex.get(identifier);
+    Object getIndexes(String identifier) {
+        Object index = nameKeyedIndex.get(identifier);
 
         if (index == null) {
             throw new IllegalArgumentException(String.format("No such parameter with identifier '%s'", identifier));
@@ -91,7 +90,7 @@ final class Query {
     @Override
     public int hashCode() {
         int result = sql.hashCode();
-        result = 31 * result + nameKeyedIndex.hashCode(); // TODO: correct array hashing
+        result = 31 * result + nameKeyedIndex.hashCode();
         result = 31 * result + parameters;
         return result;
     }
@@ -102,44 +101,7 @@ final class Query {
             return "Query{sql=REDACTED}";
         }
 
-        StringBuilder builder = new StringBuilder(64 + (nameKeyedIndex.size() << 2))
-            .append("Query{sql=REDACTED, parameters=")
-            .append(parameters)
-            .append(", nameKeyedIndex=");
-
-        Iterator<Map.Entry<String, int[]>> iter = nameKeyedIndex.entrySet().iterator();
-
-        if (!iter.hasNext()) {
-            return builder.append("{}") // Map start and end literal
-                .append('}') // Object end literal
-                .toString();
-        }
-
-        Map.Entry<String, int[]> entry = iter.next();
-        builder.append('{') // Map start literal
-            .append(entry.getKey())
-            .append('=')
-            .append(Arrays.toString(entry.getValue()));
-
-        while (iter.hasNext()) {
-            entry = iter.next();
-            builder.append(',')
-                .append(entry.getKey())
-                .append('=')
-                .append(Arrays.toString(entry.getValue()));
-        }
-
-        return builder.append('}') // Map end literal
-            .append('}') // Object literal
-            .toString();
-    }
-
-    /**
-     * @param sql a standard MySQL statement.
-     * @return the index of first parameter mark in {@code sql}, or {@literal -1} if it is not a prepare query.
-     */
-    static int indexOfParameter(String sql) {
-        return findParamMark(sql, 0);
+        return String.format("Query{sql=REDACTED, parameters=%d, nameKeyedIndex=%s", parameters, nameKeyedIndex);
     }
 
     /**
@@ -165,8 +127,11 @@ final class Query {
             return new Query(sql, Collections.emptyMap(), 0);
         }
 
-        Map<String, List<Integer>> nameKeyedParams = new HashMap<>();
-        SqlBuilder sqlBuilder = new SqlBuilder(sql);
+        Map<String, Object> nameKeyedParams = new HashMap<>();
+        // If sql does not contains named-parameter, sqlBuilder will always be null.
+        StringBuilder sqlBuilder = null;
+        // The last parameter end index of sql.
+        int lastEnd = 0;
         String anyName = null;
         int length = sql.length();
         int paramCount = 0;
@@ -190,18 +155,25 @@ final class Query {
                         ++offset;
                     }
 
-                    String name = sqlBuilder.parameter(start, offset);
+                    if (sqlBuilder == null) {
+                        sqlBuilder = new StringBuilder(sql.length() - offset + start);
+                    }
+
+                    sqlBuilder.append(sql, lastEnd, start);
+                    lastEnd = offset;
+
+                    String name = sql.substring(start, offset);
                     int paramIndex = paramCount - 1;
+                    Object value = nameKeyedParams.get(name);
 
                     anyName = name;
 
-                    if (nameKeyedParams.containsKey(name)) {
-                        List<Integer> value = nameKeyedParams.get(name);
-                        value.add(paramIndex);
+                    if (value == null) {
+                        nameKeyedParams.put(name, paramIndex);
+                    } else if (value instanceof Integer) {
+                        nameKeyedParams.put(name, new Indexes((Integer) value, paramIndex));
                     } else {
-                        List<Integer> value = new ArrayList<>();
-                        value.add(paramIndex);
-                        nameKeyedParams.put(name, value);
+                        ((Indexes) value).push(paramIndex);
                     }
                 }
             } // offset is length or end of a parameter.
@@ -211,29 +183,25 @@ final class Query {
             }
         }
 
-        String parsedSql = sqlBuilder.toString();
-        int mapSize = nameKeyedParams.size();
+        String parsedSql;
 
-        if (anyName == null || mapSize == 0) {
-            return new Query(parsedSql, Collections.emptyMap(), paramCount);
+        if (sqlBuilder == null) {
+            parsedSql = sql;
+        } else if (lastEnd < length) {
+            // Contains more plain sql.
+            parsedSql = sqlBuilder.append(sql, lastEnd, length).toString();
+        } else {
+            parsedSql = sqlBuilder.toString();
         }
 
-        if (mapSize == 1) {
-            return new Query(parsedSql, Collections.singletonMap(anyName, convert(nameKeyedParams.get(anyName))), paramCount);
+        switch (nameKeyedParams.size()) {
+            case 0:
+                return new Query(parsedSql, Collections.emptyMap(), paramCount);
+            case 1:
+                return new Query(parsedSql, Collections.singletonMap(anyName, nameKeyedParams.get(anyName)), paramCount);
+            default:
+                return new Query(parsedSql, nameKeyedParams, paramCount);
         }
-
-        // ceil(size / 0.75) = ceil((size * 4) / 3) = floor((size * 4 + 3 - 1) / 3)
-        Map<String, int[]> indexesMap = new HashMap<>(((mapSize << 2) + 2) / 3, 0.75f);
-
-        for (Map.Entry<String, List<Integer>> entry : nameKeyedParams.entrySet()) {
-            List<Integer> value = entry.getValue();
-
-            if (value != null && !value.isEmpty()) {
-                indexesMap.put(entry.getKey(), convert(value));
-            }
-        }
-
-        return new Query(parsedSql, indexesMap, paramCount);
     }
 
     /**
@@ -325,56 +293,92 @@ final class Query {
         return -1;
     }
 
-    private static int[] convert(List<Integer> indexes) {
-        int size = indexes.size();
-        int[] result = new int[size];
+    static final class Indexes {
 
-        for (int i = 0; i < size; ++i) {
-            result[i] = indexes.get(i);
+        private static final int INIT_CAPACITY = 8;
+
+        private int size = 2;
+
+        private int[] data;
+
+        private Indexes(int first, int second) {
+            int[] data = new int[INIT_CAPACITY];
+
+            data[0] = first;
+            data[1] = second;
+
+            this.data = data;
         }
 
-        return result;
-    }
+        private void push(int another) {
+            int i = size++;
 
-    private static final class SqlBuilder {
-
-        private final String sql;
-
-        private int lastEnd = 0;
-
-        private StringBuilder builder;
-
-        private SqlBuilder(String sql) {
-            this.sql = sql;
-        }
-
-        private String parameter(int start, int end) {
-            getBuilder().append(sql, lastEnd, start);
-            lastEnd = end;
-            return sql.substring(start, end);
-        }
-
-        private StringBuilder getBuilder() {
-            if (builder == null) {
-                builder = new StringBuilder(sql.length());
+            if (i >= data.length) {
+                int[] newData = new int[data.length << 1];
+                System.arraycopy(data, 0, newData, 0, data.length);
+                data = newData;
             }
 
-            return builder;
+            data[i] = another;
+        }
+
+        void bind(Binding binding, ParameterValue value) {
+            for (int i = 0; i < size; ++i) {
+                binding.add(data[i], value);
+            }
+        }
+
+        int[] toIntArray() {
+            return Arrays.copyOf(data, size);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof Indexes)) {
+                return false;
+            }
+
+            Indexes indexes = (Indexes) o;
+
+            if (size != indexes.size) {
+                return false;
+            }
+
+            for (int i = 0; i < size; ++i) {
+                if (data[i] != indexes.data[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 1;
+
+            for (int i = 0; i < size; ++i) {
+                result = 31 * result + data[i];
+            }
+
+            return result;
         }
 
         @Override
         public String toString() {
-            if (builder == null) {
-                return sql;
+            StringBuilder builder = new StringBuilder()
+                .append('[')
+                .append(data[0]);
+
+            for (int i = 1; i < size; ++i) {
+                builder.append(", ")
+                    .append(data[i]);
             }
 
-            int length = sql.length();
-
-            if (lastEnd < length) {
-                return builder.append(sql, lastEnd, length).toString();
-            }
-
-            return builder.toString();
+            return builder.append(']').toString();
         }
     }
 }
