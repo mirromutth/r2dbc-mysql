@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
-import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 import reactor.core.publisher.Mono;
 
 /**

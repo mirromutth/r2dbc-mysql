@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.collation;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link CharsetTarget} that has charset name only.

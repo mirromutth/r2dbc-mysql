@@ -18,8 +18,8 @@ package dev.miku.r2dbc.mysql;
 
 import reactor.util.annotation.Nullable;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireValidName;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireValidName;
 
 /**
  * Base class considers generic logic for {@link MySqlStatement} implementations.

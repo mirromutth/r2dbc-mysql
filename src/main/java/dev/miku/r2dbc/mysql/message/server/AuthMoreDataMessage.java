@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Authentication more data request, means continue send auth change response message if is exists.

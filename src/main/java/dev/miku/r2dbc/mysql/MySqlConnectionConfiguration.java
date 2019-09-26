@@ -24,8 +24,8 @@ import java.time.Duration;
 import java.util.Objects;
 
 import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_STRINGS;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL configuration of connection.

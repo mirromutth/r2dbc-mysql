@@ -20,7 +20,7 @@ import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
 import io.netty.buffer.ByteBuf;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
  * The ssl request message on protocol 4.1. It is also first part of {@link HandshakeResponse41}.

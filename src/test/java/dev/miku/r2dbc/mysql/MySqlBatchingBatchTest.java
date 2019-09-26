@@ -3,7 +3,7 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

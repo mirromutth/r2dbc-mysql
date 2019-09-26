@@ -14,20 +14,12 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.internal;
-
-import dev.miku.r2dbc.mysql.constant.Headers;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+package dev.miku.r2dbc.mysql.util;
 
 /**
- * Unit tests for {@link CodecUtils} protocol.
+ * Left padding for False Sharding.
  */
-class CodecUtilsTest {
+public abstract class LeftPadding {
 
-    @Test
-    void eofHeaderEqualsInt64Code() {
-        assertEquals(Headers.EOF, CodecUtils.VAR_INT_8_BYTE_CODE);
-    }
+    protected long p0, p1, p2, p3, p4, p5, p6, p7;
 }

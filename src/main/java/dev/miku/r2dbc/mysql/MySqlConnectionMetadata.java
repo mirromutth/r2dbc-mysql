@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql;
 import io.r2dbc.spi.ConnectionMetadata;
 import reactor.util.annotation.Nullable;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Connection metadata for a connection connected to MySQL database.

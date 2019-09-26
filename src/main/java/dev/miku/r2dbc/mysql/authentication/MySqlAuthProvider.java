@@ -21,7 +21,7 @@ import dev.miku.r2dbc.mysql.constant.AuthTypes;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import reactor.util.annotation.Nullable;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL authorization provider for connection phase.

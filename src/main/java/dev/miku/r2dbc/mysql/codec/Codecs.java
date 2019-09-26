@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.Type;

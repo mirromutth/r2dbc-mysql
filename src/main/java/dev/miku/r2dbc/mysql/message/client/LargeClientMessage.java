@@ -16,13 +16,13 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Base class considers large or unable to calculate length messages for {@link ClientMessage} implementations.

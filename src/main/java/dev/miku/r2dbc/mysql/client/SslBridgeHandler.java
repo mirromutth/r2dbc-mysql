@@ -17,10 +17,10 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
-import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.TlsVersions;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -36,7 +36,7 @@ import javax.net.ssl.SSLEngine;
 import java.io.File;
 import java.net.InetSocketAddress;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A handler for build SSL handler and bridging.

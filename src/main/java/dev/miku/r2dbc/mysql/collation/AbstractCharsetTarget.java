@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.collation;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
  * Base class for {@link CharsetTarget}.

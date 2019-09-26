@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.internal;
+package dev.miku.r2dbc.mysql.util;
 
 import java.util.regex.Pattern;
 

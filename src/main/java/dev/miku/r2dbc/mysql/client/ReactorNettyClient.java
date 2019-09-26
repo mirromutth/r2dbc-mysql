@@ -17,14 +17,13 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.ExitMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.WarningMessage;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
@@ -46,7 +45,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of client based on the Reactor Netty project.

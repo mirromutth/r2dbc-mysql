@@ -23,7 +23,7 @@ import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A message includes data fields which is a row of result.

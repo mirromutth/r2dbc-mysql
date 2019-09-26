@@ -19,8 +19,8 @@ package dev.miku.r2dbc.mysql.message.server;
 import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
 import dev.miku.r2dbc.mysql.constant.Headers;
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
@@ -31,7 +31,7 @@ import reactor.util.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Generic message decoder logic.

@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.internal;
+package dev.miku.r2dbc.mysql.util;
 
-import dev.miku.r2dbc.mysql.ServerVersion;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;

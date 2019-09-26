@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.message.server;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
  * An implementation of {@link DecodeContext} for text or binary result.

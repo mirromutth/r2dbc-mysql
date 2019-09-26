@@ -21,7 +21,7 @@ import reactor.util.annotation.Nullable;
 
 import static dev.miku.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
 import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "mysql_native_password".

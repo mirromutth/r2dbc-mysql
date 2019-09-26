@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.message.server;
 
 import java.util.Arrays;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A message contains a bundle of {@link DefinitionMetadataMessage}s, {@link #isCompleted()} returning

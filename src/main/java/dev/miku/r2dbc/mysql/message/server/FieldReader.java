@@ -23,7 +23,7 @@ import io.netty.util.ReferenceCounted;
 
 import java.util.List;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A field reader considers read {@link FieldValue}s from {@link ByteBuf}(s).

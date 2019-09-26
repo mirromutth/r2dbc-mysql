@@ -17,8 +17,8 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A handshake response message sent by clients those supporting

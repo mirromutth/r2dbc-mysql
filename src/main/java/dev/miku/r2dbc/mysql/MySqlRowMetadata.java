@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link RowMetadata} for MySQL database text/binary results.

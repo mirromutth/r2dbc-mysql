@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
 import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
@@ -41,7 +41,7 @@ import reactor.util.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Client/server messages encode/decode logic.

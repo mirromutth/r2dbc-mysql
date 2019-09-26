@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
@@ -26,7 +26,7 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link Codecs}.

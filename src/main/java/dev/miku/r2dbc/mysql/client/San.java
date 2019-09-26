@@ -18,8 +18,8 @@ package dev.miku.r2dbc.mysql.client;
 
 import java.util.Objects;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Subject Alternative Name (aka. SAN, subjectAltName) in SSL.

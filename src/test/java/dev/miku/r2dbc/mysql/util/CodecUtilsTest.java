@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
+package dev.miku.r2dbc.mysql.util;
+
+import dev.miku.r2dbc.mysql.constant.Headers;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 /**
- * Utility code and internal data structure used throughout the project.
+ * Unit tests for {@link CodecUtils} protocol.
  */
+class CodecUtilsTest {
 
-@NonNullApi
-package dev.miku.r2dbc.mysql.internal;
-
-import reactor.util.annotation.NonNullApi;
+    @Test
+    void eofHeaderEqualsInt64Code() {
+        assertEquals(Headers.EOF, CodecUtils.VAR_INT_8_BYTE_CODE);
+    }
+}

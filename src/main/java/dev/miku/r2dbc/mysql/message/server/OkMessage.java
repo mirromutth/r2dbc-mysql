@@ -17,13 +17,13 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * OK message, it maybe a complete signal of command, or a succeed signal for the Connection Phase of connection lifecycle.

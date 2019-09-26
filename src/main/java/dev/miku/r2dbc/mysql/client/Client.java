@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
@@ -31,7 +31,7 @@ import reactor.util.annotation.Nullable;
 import java.time.Duration;
 import java.util.function.Predicate;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An abstraction that wraps the networking part of exchanging methods.

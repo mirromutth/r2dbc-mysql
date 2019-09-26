@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
@@ -31,7 +31,7 @@ import io.netty.util.ReferenceCountUtil;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
  * An implementation of {@link FieldReader} for large result which bytes more than

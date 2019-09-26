@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.collation;
 
-import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 
 import java.nio.charset.Charset;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Character collation of MySQL

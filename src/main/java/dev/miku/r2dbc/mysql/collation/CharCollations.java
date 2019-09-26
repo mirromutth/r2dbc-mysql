@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.collation;
 
-import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 
 /**
  * A constant utility that is contains all {@link CharCollation}s.

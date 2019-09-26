@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.codec;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 
 import java.time.Year;
 

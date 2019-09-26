@@ -16,13 +16,13 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.ServerVersion;
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.StandardCharsets;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * The handshake generic header, all protocol versions contains

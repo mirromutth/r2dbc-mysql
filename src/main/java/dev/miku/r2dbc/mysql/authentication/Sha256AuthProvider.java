@@ -23,7 +23,7 @@ import java.nio.CharBuffer;
 
 import static dev.miku.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
 import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "sha256_password".

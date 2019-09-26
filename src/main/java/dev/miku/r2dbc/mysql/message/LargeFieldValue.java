@@ -23,7 +23,7 @@ import io.netty.util.ReferenceCounted;
 
 import java.util.List;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link FieldValue} considers large field value which bytes more

@@ -23,8 +23,9 @@ import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.message.client.PingMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
@@ -42,8 +43,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireValidName;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireValidName;
 
 /**
  * An implementation of {@link Connection} for connecting to the MySQL database.

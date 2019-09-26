@@ -16,13 +16,13 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
  * An implementation of {@link FieldReader} considers result bytes is less or equals than {@link Integer#MAX_VALUE}.

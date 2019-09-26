@@ -19,14 +19,14 @@ package dev.miku.r2dbc.mysql.message.server;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 import java.util.Objects;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Column or parameter definition metadata message.

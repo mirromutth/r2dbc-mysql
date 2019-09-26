@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.internal.CodecUtils;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
  * A message that is start envelope for {@literal SELECT} query result,

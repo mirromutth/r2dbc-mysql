@@ -23,7 +23,7 @@ import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.constant.SqlStates;
 import dev.miku.r2dbc.mysql.constant.SslMode;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.FullAuthResponse;
 import dev.miku.r2dbc.mysql.message.client.HandshakeResponse;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
@@ -35,6 +35,7 @@ import dev.miku.r2dbc.mysql.message.server.HandshakeRequest;
 import dev.miku.r2dbc.mysql.message.server.OkMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +47,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A utility class that encapsulates the connection lifecycle phases flow.

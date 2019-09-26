@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.collation;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Generic properties and logic for {@link CharCollation}.

@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.internal;
-
 /**
- * Left padding for False Sharding.
+ * Utility code used throughout the project.
  */
-public abstract class LeftPadding {
 
-    protected long p0, p1, p2, p3, p4, p5, p6, p7;
-}
+@NonNullApi
+package dev.miku.r2dbc.mysql.util;
+
+import reactor.util.annotation.NonNullApi;

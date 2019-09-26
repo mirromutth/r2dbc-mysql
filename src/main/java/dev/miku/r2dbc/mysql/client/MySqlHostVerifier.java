@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import dev.miku.r2dbc.mysql.internal.AddressUtils;
+import dev.miku.r2dbc.mysql.util.AddressUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.util.annotation.Nullable;
@@ -39,7 +39,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL hostname verifier, it is NOT an implementation of {@code HostnameVerifier}, because it

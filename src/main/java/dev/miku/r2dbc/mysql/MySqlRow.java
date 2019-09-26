@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.r2dbc.spi.Row;
 import reactor.util.annotation.Nullable;
@@ -25,7 +25,7 @@ import reactor.util.annotation.Nullable;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link Row} for MySQL database.

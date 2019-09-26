@@ -17,12 +17,12 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link ClientMessage} considers the message can be encoded as one envelope.

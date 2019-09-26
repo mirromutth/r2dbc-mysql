@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
  * A ssl request for multi-versions.

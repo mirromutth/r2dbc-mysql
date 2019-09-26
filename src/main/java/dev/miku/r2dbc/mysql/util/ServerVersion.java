@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql;
+package dev.miku.r2dbc.mysql.util;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.require;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL server version, looks like {@literal "8.0.14"}, or {@literal "8.0.14-rc2"}.

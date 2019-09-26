@@ -23,7 +23,7 @@ import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.internal.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.r2dbc.spi.Blob;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;

@@ -21,7 +21,7 @@ import reactor.util.annotation.Nullable;
 
 import static dev.miku.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
 import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in fast authentication phase.

@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 import org.junit.platform.commons.annotation.Testable;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;

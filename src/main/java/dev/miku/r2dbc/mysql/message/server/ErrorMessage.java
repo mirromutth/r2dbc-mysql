@@ -22,7 +22,7 @@ import reactor.util.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-import static dev.miku.r2dbc.mysql.internal.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * MySQL error message, sql state will be a property independently.
