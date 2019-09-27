@@ -200,6 +200,12 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     }
 
     /**
+     * See https://github.com/mirromutth/r2dbc-mysql/issues/69 .
+     */
+    @Test
+    abstract void consumePartially();
+
+    /**
      * See https://github.com/mirromutth/r2dbc-mysql/issues/62 .
      */
     @Test
