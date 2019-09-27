@@ -25,7 +25,9 @@ import dev.miku.r2dbc.mysql.message.server.OkMessage;
 import dev.miku.r2dbc.mysql.message.server.RowMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
+import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
@@ -120,16 +122,18 @@ public final class MySqlResult implements Result {
     }
 
     private Flux<ServerMessage> results() {
-        Flux<ServerMessage> messages = this.messages.getAndSet(null);
+        return Flux.defer(() -> {
+            Flux<ServerMessage> messages = this.messages.getAndSet(null);
 
-        if (messages == null) {
-            return Flux.error(new IllegalStateException("Source has been released"));
-        }
+            if (messages == null) {
+                return Flux.error(new IllegalStateException("Source has been released"));
+            }
 
-        // Result mode, no need ok message.
-        this.okProcessor.onComplete();
+            // Result mode, no need ok message.
+            this.okProcessor.onComplete();
 
-        return messages;
+            return OperatorUtils.discardOnCancel(messages).doOnDiscard(ReferenceCounted.class, ReferenceCounted::release);
+        });
     }
 
     private <T> void handleResult(ServerMessage message, SynchronousSink<T> sink, BiFunction<Row, RowMetadata, ? extends T> f) {

@@ -20,6 +20,7 @@ import io.r2dbc.spi.Connection;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import org.testcontainers.shaded.org.apache.commons.lang.ArrayUtils;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
@@ -178,8 +179,28 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
         testTypeQuota(ByteBuffer.class, "BIT(16)", Functions.BYTE_BUFFER, false, null, ByteBuffer.wrap(new byte[]{1, 2}));
     }
 
+    @Test
+    @Override
+    void consumePartially() {
+        connectionFactory.create()
+            .flatMapMany(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
+                .execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .then(Mono.from(connection.createStatement("SELECT value FROM test").execute()))
+                .flatMapMany(r -> Flux.from(r.map((row, metadata) -> row.get(0, Integer.TYPE))).take(3))
+                .concatWith(Mono.from(connection.createStatement("SELECT value FROM test").execute())
+                    .flatMapMany(r -> Flux.from(r.map((row, metadata) -> row.get(0, Integer.TYPE))).take(2)))
+                .concatWith(close(connection))
+            )
+            .as(StepVerifier::create)
+            .expectNext(1, 2, 3, 1, 2)
+            .verifyComplete();
+    }
+
     BitSet[] bitSetsForBitTest() {
-        return new BitSet[] {BitSet.valueOf(new byte[0]), null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD})};
+        return new BitSet[]{BitSet.valueOf(new byte[0]), null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD})};
     }
 
     @SafeVarargs

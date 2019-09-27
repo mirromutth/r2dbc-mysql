@@ -155,6 +155,30 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
         testTypeRef(ByteBuffer.class, "BIT(16)", false, null, ByteBuffer.wrap(new byte[]{1, 2}));
     }
 
+    @Test
+    @Override
+    void consumePartially() {
+        connectionFactory.create()
+            .flatMapMany(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
+                .execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .then(Mono.from(connection.createStatement("SELECT value FROM test WHERE id > ?")
+                    .bind(0, 0)
+                    .execute()))
+                .flatMapMany(r -> Flux.from(r.map((row, metadata) -> row.get(0, Integer.TYPE))).take(3))
+                .concatWith(Mono.from(connection.createStatement("SELECT value FROM test WHERE id > ?")
+                    .bind(0, 0)
+                    .execute())
+                    .flatMapMany(r -> Flux.from(r.map((row, metadata) -> row.get(0, Integer.TYPE))).take(2)))
+                .concatWith(close(connection))
+            )
+            .as(StepVerifier::create)
+            .expectNext(1, 2, 3, 1, 2)
+            .verifyComplete();
+    }
+
     @SafeVarargs
     @SuppressWarnings("varargs")
     @Override
