@@ -17,42 +17,27 @@
 package dev.miku.r2dbc.mysql.codec.lob;
 
 import dev.miku.r2dbc.mysql.util.ServerVersion;
+import io.r2dbc.spi.Clob;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /**
- * An implementation of {@link ScalarClob} for multi-{@link Node}s.
+ * An implementation of {@link Clob} for multi-{@link Node}s.
  */
-final class MultiClob extends ScalarClob {
-
-    private final Node[] nodes;
+final class MultiClob extends MultiLob implements Clob {
 
     private final int collationId;
 
     private final ServerVersion version;
 
     MultiClob(Node[] nodes, int collationId, ServerVersion version) {
-        this.nodes = nodes;
+        super(nodes);
+
         this.collationId = collationId;
         this.version = version;
     }
 
     @Override
     public Flux<CharSequence> stream() {
-        return Flux.fromArray(this.nodes)
-            .map(node -> node.toCharSequence(collationId, version))
-            .doOnDiscard(Node.class, Node::safeDispose)
-            .doOnCancel(this::releaseAll);
-    }
-
-    @Override
-    public Mono<Void> discard() {
-        return Mono.fromRunnable(this::releaseAll);
-    }
-
-    private void releaseAll() {
-        for (Node node : nodes) {
-            node.safeDispose();
-        }
+        return nodes().map(node -> node.readCharSequence(collationId, version));
     }
 }

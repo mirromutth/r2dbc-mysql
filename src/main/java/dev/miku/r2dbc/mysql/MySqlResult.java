@@ -40,6 +40,7 @@ import reactor.util.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -48,6 +49,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * An implementation of {@link Result} representing the results of a query against the MySQL database.
  */
 public final class MySqlResult implements Result {
+
+    private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
 
     private static final Function<OkMessage, Integer> ROWS_UPDATED = message -> (int) message.getAffectedRows();
 
@@ -132,7 +135,7 @@ public final class MySqlResult implements Result {
             // Result mode, no need ok message.
             this.okProcessor.onComplete();
 
-            return OperatorUtils.discardOnCancel(messages).doOnDiscard(ReferenceCounted.class, ReferenceCounted::release);
+            return OperatorUtils.discardOnCancel(messages).doOnDiscard(ReferenceCounted.class, RELEASE);
         });
     }
 

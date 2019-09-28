@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.codec.lob.ScalarBlob;
+import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.LargeFieldValue;
@@ -48,10 +48,10 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
     @Override
     public Blob decode(FieldValue value, FieldInformation info, Class<? super Blob> target, boolean binary, ConnectionContext context) {
         if (value instanceof NormalFieldValue) {
-            return ScalarBlob.retain(((NormalFieldValue) value).getBufferSlice());
+            return LobUtils.createBlob(((NormalFieldValue) value).getBufferSlice());
         }
 
-        return ScalarBlob.retain(((LargeFieldValue) value).getBufferSlices());
+        return LobUtils.createBlob(((LargeFieldValue) value).getBufferSlices());
     }
 
     @Override
