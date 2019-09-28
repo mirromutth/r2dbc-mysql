@@ -27,7 +27,7 @@ import reactor.util.context.Context;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * A decorating operator that replays signals from its source to a {@link Subscriber} and drains the
+ * A decorating operator that replays signals from its source to a {@link DiscardOnCancelSubscriber} and drains the
  * source upon {@link Subscription#cancel() cancel} and drops data signals until termination.
  * Draining data is required to complete a particular request/response window and clear the protocol
  * state as client code expects to start a request/response conversation without any previous
@@ -48,10 +48,10 @@ final class FluxDiscardOnCancel<T> extends Flux<T> {
 
     @Override
     public void subscribe(CoreSubscriber<? super T> actual) {
-        this.source.subscribe(new Subscriber<>(actual));
+        this.source.subscribe(new DiscardOnCancelSubscriber<>(actual));
     }
 
-    static final class Subscriber<T> extends AtomicBoolean implements CoreSubscriber<T>, Subscription {
+    static final class DiscardOnCancelSubscriber<T> extends AtomicBoolean implements CoreSubscriber<T>, Subscription {
 
         final CoreSubscriber<T> actual;
 
@@ -59,7 +59,7 @@ final class FluxDiscardOnCancel<T> extends Flux<T> {
 
         Subscription s;
 
-        Subscriber(CoreSubscriber<T> actual) {
+        DiscardOnCancelSubscriber(CoreSubscriber<T> actual) {
             this.actual = actual;
             this.ctx = actual.currentContext();
         }
@@ -83,12 +83,18 @@ final class FluxDiscardOnCancel<T> extends Flux<T> {
 
         @Override
         public void onError(Throwable t) {
-            this.actual.onError(t);
+            if (get()) {
+                Operators.onErrorDropped(t, this.ctx);
+            } else {
+                this.actual.onError(t);
+            }
         }
 
         @Override
         public void onComplete() {
-            this.actual.onComplete();
+            if (!get()) {
+                this.actual.onComplete();
+            }
         }
 
         @Override

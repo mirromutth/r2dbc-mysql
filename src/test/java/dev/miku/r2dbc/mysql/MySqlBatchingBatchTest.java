@@ -6,7 +6,7 @@ import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
 /**

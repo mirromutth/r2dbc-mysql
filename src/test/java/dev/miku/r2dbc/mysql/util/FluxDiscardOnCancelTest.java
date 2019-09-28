@@ -39,8 +39,42 @@ class FluxDiscardOnCancelTest {
     private static final int ROWS = 5;
 
     @Test
+    void errorDropped() {
+        int size = 10;
+        int takeSize = 2;
+        int halfSize = size >>> 1;
+        List<Throwable> es = new ArrayList<>();
+        String message = "Some random text just for test";
+        Iterator<Integer> items = createItems(size);
+
+        assertThat(halfSize).isGreaterThan(takeSize << 1);
+        Hooks.onErrorDropped(es::add);
+
+        Flux.fromIterable(() -> items)
+            .doOnNext(it -> {
+                if (it == halfSize) {
+                    throw new IllegalStateException(message);
+                }
+            })
+            .as(OperatorUtils::discardOnCancel)
+            .as(it -> StepVerifier.create(it, 0))
+            .thenRequest(takeSize)
+            .expectNext(0, 1)
+            .thenCancel()
+            .verify();
+
+        assertThat(es).hasSize(1)
+            .element(0)
+            .isExactlyInstanceOf(IllegalStateException.class)
+            .extracting(Throwable::getMessage)
+            .isEqualTo(message);
+    }
+
+    @Test
     void allRelease() {
-        List<MockRow> rows = createRows();
+        List<MockRow> rows = IntStream.range(0, ROWS)
+            .mapToObj(MockRow::new)
+            .collect(Collectors.toList());
 
         Flux.fromIterable(rows)
             .<MockRow>handle((it, sink) -> sink.next(it))
@@ -53,10 +87,11 @@ class FluxDiscardOnCancelTest {
                     it.release();
                 }
             })
-            .take(2)
-            .as(StepVerifier::create)
+            .as(it -> StepVerifier.create(it, 0))
+            .thenRequest(2)
             .expectNext(0, 1)
-            .verifyComplete();
+            .thenCancel()
+            .verify();
 
         assertThat(rows).hasSize(ROWS).extracting(MockRow::refCnt).containsOnly(0);
     }
@@ -89,7 +124,7 @@ class FluxDiscardOnCancelTest {
             .expectNextCount(5)
             .verifyComplete();
 
-        assertThat(publishers).hasSize(2).anyMatch(it -> it.getClass() == FluxDiscardOnCancel.class);
+        assertThat(publishers).hasSize(2).element(1).isExactlyInstanceOf(FluxDiscardOnCancel.class);
     }
 
     @Test
@@ -140,10 +175,6 @@ class FluxDiscardOnCancelTest {
 
     static Iterator<Integer> createItems(int count) {
         return IntStream.range(0, count).boxed().iterator();
-    }
-
-    static List<MockRow> createRows() {
-        return IntStream.range(0, ROWS).mapToObj(MockRow::new).collect(Collectors.toList());
     }
 
     private static final class MockRow extends AbstractReferenceCounted {
