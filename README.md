@@ -19,7 +19,7 @@ This driver provides the following features:
 - [x] General exceptions of error code and standard SQL state mappings.
 - [x] Secure connection with verification (SSL/TLS), auto-select TLS version for community and enterprise editions.
 - [x] Transactions with savepoint.
-- [x] Native ping command. (**unstable**, target is a future SPI that can be verifying with the selectable depth)
+- [x] Native ping command that can be verifying when argument is `ValidationDepth.REMOTE`
 - [ ] Prepared statements cache.
 - [ ] Statement parser cache.
 
