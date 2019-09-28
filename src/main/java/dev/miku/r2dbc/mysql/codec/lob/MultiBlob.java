@@ -16,38 +16,25 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
+import io.r2dbc.spi.Blob;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
+import java.util.function.Function;
 
 /**
- * An implementation of {@link ScalarBlob} for multi-{@link Node}s.
+ * An implementation of {@link Blob} for multi-{@link Node}s.
  */
-final class MultiBlob extends ScalarBlob {
+final class MultiBlob extends MultiLob implements Blob {
 
-    private final Node[] nodes;
+    private static final Function<Node, ByteBuffer> READ_RELEASE = Node::readByteBuffer;
 
     MultiBlob(Node[] nodes) {
-        this.nodes = nodes;
+        super(nodes);
     }
 
     @Override
     public Flux<ByteBuffer> stream() {
-        return Flux.fromArray(this.nodes)
-            .map(Node::toByteBuffer)
-            .doOnDiscard(Node.class, Node::safeDispose)
-            .doOnCancel(this::releaseAll);
-    }
-
-    @Override
-    public Mono<Void> discard() {
-        return Mono.fromRunnable(this::releaseAll);
-    }
-
-    private void releaseAll() {
-        for (Node node : nodes) {
-            node.safeDispose();
-        }
+        return nodes().map(READ_RELEASE);
     }
 }

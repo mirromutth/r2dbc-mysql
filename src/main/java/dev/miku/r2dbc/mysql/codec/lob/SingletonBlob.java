@@ -16,29 +16,21 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
-import reactor.core.publisher.Mono;
+import io.r2dbc.spi.Blob;
 
 import java.nio.ByteBuffer;
 
 /**
- * An implementation of {@link ScalarBlob} for singleton {@link Node}.
+ * An implementation of {@link Blob} for singleton {@link Node}.
  */
-final class SingletonBlob extends ScalarBlob {
-
-    private final Node node;
+final class SingletonBlob extends SingletonLob<ByteBuffer> implements Blob {
 
     SingletonBlob(Node node) {
-        this.node = node;
+        super(node);
     }
 
     @Override
-    public Mono<ByteBuffer> stream() {
-        return Mono.fromSupplier(node::toByteBuffer);
-    }
-
-    @Override
-    public Mono<Void> discard() {
-        // No need safety because it is not multi-buffers.
-        return Mono.fromRunnable(node::dispose);
+    protected ByteBuffer consume(Node node) {
+        return node.readByteBuffer();
     }
 }

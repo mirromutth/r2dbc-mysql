@@ -16,36 +16,31 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
-import dev.miku.r2dbc.mysql.util.ServerVersion;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufHolder;
+import io.netty.util.IllegalReferenceCountException;
 import io.netty.util.ReferenceCountUtil;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
- * A {@link ByteBuf} wrapper for used by {@link ScalarBlob} or {@link ScalarClob}.
+ * A {@link ByteBuf} wrapper for used by {@code Blob} or {@code Clob}.
  * <p>
  * Note: the {@link #buf} can only be used once and will be released after use.
  */
-final class Node {
+final class Node implements ByteBufHolder {
 
-    private final AtomicReference<ByteBuf> buf;
+    private final ByteBuf buf;
 
     Node(ByteBuf buf) {
-        this.buf = new AtomicReference<>(buf);
+        this.buf = buf;
     }
 
-    CharSequence toCharSequence(int collationId, ServerVersion version) {
-        ByteBuf buf = this.buf.getAndSet(null);
-
-        if (buf == null) {
-            throw new IllegalStateException("Source has been released");
-        }
-
+    CharSequence readCharSequence(int collationId, ServerVersion version) {
         try {
             if (!buf.isReadable()) {
                 return "";
@@ -57,18 +52,13 @@ final class Node {
         }
     }
 
-    ByteBuffer toByteBuffer() {
-        ByteBuf buf = this.buf.getAndSet(null);
-
-        if (buf == null) {
-            throw new IllegalStateException("Source has been released");
-        }
-
+    ByteBuffer readByteBuffer() {
         try {
             if (!buf.isReadable()) {
                 return ByteBuffer.wrap(EMPTY_BYTES);
             }
 
+            // Maybe allocateDirect?
             ByteBuffer result = ByteBuffer.allocate(buf.readableBytes());
 
             buf.readBytes(result);
@@ -80,19 +70,69 @@ final class Node {
         }
     }
 
-    void safeDispose() {
-        ByteBuf buf = this.buf.getAndSet(null);
+    public ByteBuf content() {
+        int refCnt = buf.refCnt();
 
-        if (buf != null) {
-            ReferenceCountUtil.safeRelease(buf);
+        if (refCnt > 0) {
+            return buf;
+        } else {
+            throw new IllegalReferenceCountException(refCnt);
         }
     }
 
-    void dispose() {
-        ByteBuf buf = this.buf.getAndSet(null);
+    public ByteBufHolder copy() {
+        return replace(buf.copy());
+    }
 
-        if (buf != null) {
-            buf.release();
+    public ByteBufHolder duplicate() {
+        return replace(buf.duplicate());
+    }
+
+    public ByteBufHolder retainedDuplicate() {
+        return replace(buf.retainedDuplicate());
+    }
+
+    public ByteBufHolder replace(ByteBuf content) {
+        return new Node(content);
+    }
+
+    public int refCnt() {
+        return buf.refCnt();
+    }
+
+    public ByteBufHolder retain() {
+        buf.retain();
+        return this;
+    }
+
+    public ByteBufHolder retain(int increment) {
+        buf.retain(increment);
+        return this;
+    }
+
+    public ByteBufHolder touch() {
+        buf.touch();
+        return this;
+    }
+
+    public ByteBufHolder touch(Object hint) {
+        buf.touch(hint);
+        return this;
+    }
+
+    public boolean release() {
+        return buf.release();
+    }
+
+    public boolean release(int decrement) {
+        return buf.release(decrement);
+    }
+
+    static void releaseAll(Node[] nodes) {
+        for (Node node : nodes) {
+            if (node != null) {
+                ReferenceCountUtil.safeRelease(node.buf);
+            }
         }
     }
 }

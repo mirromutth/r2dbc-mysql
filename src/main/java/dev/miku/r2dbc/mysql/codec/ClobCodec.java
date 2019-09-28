@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.codec.lob.ScalarClob;
+import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.FieldValue;
@@ -49,10 +49,10 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
     @Override
     public Clob decode(FieldValue value, FieldInformation info, Class<? super Clob> target, boolean binary, ConnectionContext context) {
         if (value instanceof NormalFieldValue) {
-            return ScalarClob.retain(((NormalFieldValue) value).getBufferSlice(), info.getCollationId(), context.getServerVersion());
+            return LobUtils.createClob(((NormalFieldValue) value).getBufferSlice(), info.getCollationId(), context.getServerVersion());
         }
 
-        return ScalarClob.retain(((LargeFieldValue) value).getBufferSlices(), info.getCollationId(), context.getServerVersion());
+        return LobUtils.createClob(((LargeFieldValue) value).getBufferSlices(), info.getCollationId(), context.getServerVersion());
     }
 
     @Override

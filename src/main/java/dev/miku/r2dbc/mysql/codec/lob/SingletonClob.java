@@ -17,33 +17,26 @@
 package dev.miku.r2dbc.mysql.codec.lob;
 
 import dev.miku.r2dbc.mysql.util.ServerVersion;
-import reactor.core.publisher.Mono;
+import io.r2dbc.spi.Clob;
 
 /**
- * An implementation of {@link ScalarClob} for singleton {@link Node}.
+ * An implementation of {@link Clob} for singleton {@link Node}.
  */
-final class SingletonClob extends ScalarClob {
-
-    private final Node node;
+final class SingletonClob extends SingletonLob<CharSequence> implements Clob {
 
     private final int collationId;
 
     private final ServerVersion version;
 
     SingletonClob(Node node, int collationId, ServerVersion version) {
-        this.node = node;
+        super(node);
+
         this.collationId = collationId;
         this.version = version;
     }
 
     @Override
-    public Mono<CharSequence> stream() {
-        return Mono.fromSupplier(() -> node.toCharSequence(collationId, version));
-    }
-
-    @Override
-    public Mono<Void> discard() {
-        // No need safety because it is not multi-buffers.
-        return Mono.fromRunnable(node::dispose);
+    protected CharSequence consume(Node node) {
+        return node.readCharSequence(collationId, version);
     }
 }
