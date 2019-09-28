@@ -31,6 +31,7 @@ public interface ClientMessage {
      *
      * @param allocator the {@link ByteBufAllocator} to use to get a {@link ByteBuf} data buffer to write into.
      * @param context   current MySQL connection context
+     * @return a {@link Publisher} that produces {@link ByteBuf}s sliced by {@code Envelopes.MAX_ENVELOPE_SIZE}, which containing the encoded message.
      */
     Publisher<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context);
 }
