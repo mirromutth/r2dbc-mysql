@@ -236,12 +236,13 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 | FLOAT | SIGNED/UNSIGNED | `Float`, `BigDecimal` |
 | DOUBLE | SIGNED/UNSIGNED | `Double`, `BigDecimal`  |
 | DECIMAL | SIGNED/UNSIGNED | `BigDecimal`, `Float` (Size less than 7), `Double` (Size less than 16) |
-| BIT | - | `BitSet`, `Boolean` (Size is 1), `byte[]` |
+| BIT | - | `ByteBuffer`, `BitSet`, `Boolean` (Size is 1), `byte[]` |
 | DATETIME/TIMESTAMP | - | `LocalDateTime` |
 | DATE | - | `LocalDate` |
 | TIME | - | `Duration`, `LocalTime` |
 | YEAR | - | `Short`, `Integer`, `Long`, `BigInteger`, `Year` |
 | VARCHAR/NVARCHAR | - | `String` |
+| VARBINARY | - | `ByteBuffer`, `Blob`, `byte[]` |
 | CHAR/NCHAR | - | `String` |
 | ENUM | - | `String`, `Enum<?>` |
 | SET | - | `String[]`, `String`, `Set<String>` and `Set<Enum<?>>` (`Set<T>` need use `ParameterizedType`) |
