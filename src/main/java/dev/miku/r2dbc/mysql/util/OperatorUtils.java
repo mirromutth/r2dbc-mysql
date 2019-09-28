@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.util;
 
+import reactor.core.Fuseable;
 import reactor.core.publisher.Flux;
 
 /**
@@ -37,6 +38,10 @@ public final class OperatorUtils {
      * @return decorated {@link Flux}.
      */
     public static <T> Flux<T> discardOnCancel(Flux<? extends T> source) {
+        if (source instanceof Fuseable) {
+            return new FluxDiscardOnCancelFuseable<>(source);
+        }
+
         return new FluxDiscardOnCancel<>(source);
     }
 

@@ -18,6 +18,8 @@ package dev.miku.r2dbc.mysql.util;
 
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
+import reactor.core.Exceptions;
+import reactor.core.Fuseable;
 import reactor.core.Scannable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
@@ -27,43 +29,45 @@ import reactor.util.context.Context;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * A decorating operator that replays signals from its source to a {@link DiscardOnCancelSubscriber} and drains the
+ * A decorating operator that replays signals from its source to a {@link DiscardOnCancelFuseableSubscriber} and drains the
  * source upon {@link Subscription#cancel() cancel} and drops data signals until termination.
  * Draining data is required to complete a particular request/response window and clear the protocol
  * state as client code expects to start a request/response conversation without any previous
  * response state.
- * <p>
- * This is a slightly altered version of R2DBC SQL Server's implementation:
- * https://github.com/r2dbc/r2dbc-mssql
+ *
+ * @see FluxDiscardOnCancel the version without {@link Fuseable}.
  */
-final class FluxDiscardOnCancel<T> extends FluxOperator<T, T> {
+final class FluxDiscardOnCancelFuseable<T> extends FluxOperator<T, T> implements Fuseable {
 
-    FluxDiscardOnCancel(Flux<? extends T> source) {
+    FluxDiscardOnCancelFuseable(Flux<? extends T> source) {
         super(source);
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super T> actual) {
-        this.source.subscribe(new DiscardOnCancelSubscriber<>(actual));
+        this.source.subscribe(new DiscardOnCancelFuseableSubscriber<>(actual));
     }
 
-    private static final class DiscardOnCancelSubscriber<T> extends AtomicBoolean implements CoreSubscriber<T>, Scannable, Subscription {
+    private static final class DiscardOnCancelFuseableSubscriber<T> extends AtomicBoolean implements CoreSubscriber<T>, Scannable, QueueSubscription<T> {
 
         final CoreSubscriber<? super T> actual;
 
         final Context ctx;
 
-        Subscription s;
+        int sourceMode;
 
-        DiscardOnCancelSubscriber(CoreSubscriber<T> actual) {
+        QueueSubscription<T> s;
+
+        DiscardOnCancelFuseableSubscriber(CoreSubscriber<T> actual) {
             this.actual = actual;
             this.ctx = actual.currentContext();
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         public void onSubscribe(Subscription s) {
             if (Operators.validate(this.s, s)) {
-                this.s = s;
+                this.s = (QueueSubscription<T>) s;
                 this.actual.onSubscribe(this);
             }
         }
@@ -106,15 +110,52 @@ final class FluxDiscardOnCancel<T> extends FluxOperator<T, T> {
         }
 
         @Override
+        public T poll() {
+            try {
+                return this.s.poll();
+            } catch (Throwable e) {
+                throw Exceptions.propagate(Operators.onOperatorError(this.s, e, this.actual.currentContext()));
+            }
+        }
+
+        @Override
         @SuppressWarnings("rawtypes")
         public Object scanUnsafe(Attr key) {
             if (key == Attr.PARENT) {
-                return s;
+                return this.s;
             } else if (key == Attr.ACTUAL) {
-                return actual;
+                return this.actual;
             } else {
                 return null;
             }
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return this.s.isEmpty();
+        }
+
+        @Override
+        public void clear() {
+            this.s.clear();
+        }
+
+        @Override
+        public int requestFusion(int modes) {
+            if ((modes & Fuseable.THREAD_BARRIER) != 0) {
+                return Fuseable.NONE;
+            }
+
+            int m = this.s.requestFusion(modes);
+
+            this.sourceMode = m;
+
+            return m;
+        }
+
+        @Override
+        public int size() {
+            return this.s.size();
         }
     }
 }
