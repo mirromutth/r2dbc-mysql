@@ -21,7 +21,7 @@
 
     <groupId>dev.miku</groupId>
     <artifactId>r2dbc-mysql</artifactId>
-    <version>0.3.0.BUILD-SNAPSHOT</version>
+    <version>0.8.0.BUILD-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Reactive Relational Database Connectivity - MySQL</name>
@@ -58,8 +58,8 @@
         <mysql.version>8.0.17</mysql.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <r2dbc-spi.version>0.8.0.BUILD-SNAPSHOT</r2dbc-spi.version>
-        <reactor.version>Dysprosium-RC1</reactor.version>
+        <r2dbc-spi.version>0.8.0.RC1</r2dbc-spi.version>
+        <reactor.version>Dysprosium-RELEASE</reactor.version>
         <slf4j.version>1.7.28</slf4j.version>
         <testcontainers.version>1.12.1</testcontainers.version>
         <hikari-cp.version>3.4.0</hikari-cp.version>
