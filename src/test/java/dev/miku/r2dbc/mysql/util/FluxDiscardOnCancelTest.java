@@ -18,7 +18,9 @@ package dev.miku.r2dbc.mysql.util;
 
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCounted;
+import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.Test;
+import reactor.core.Fuseable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
 import reactor.test.StepVerifier;
@@ -117,14 +119,20 @@ class FluxDiscardOnCancelTest {
         });
 
         Iterator<Integer> items = createItems(5);
+        Flux<Integer> flux = Flux.fromIterable(() -> items);
 
-        Flux.fromIterable(() -> items)
-            .transform(OperatorUtils::discardOnCancel)
+        flux.transform(OperatorUtils::discardOnCancel)
             .as(StepVerifier::create)
             .expectNextCount(5)
             .verifyComplete();
 
-        assertThat(publishers).hasSize(2).element(1).isExactlyInstanceOf(FluxDiscardOnCancel.class);
+        ObjectAssert<?> element = assertThat(publishers).hasSize(2).element(1);
+
+        if (flux instanceof Fuseable) {
+            element.isExactlyInstanceOf(FluxDiscardOnCancelFuseable.class);
+        } else {
+            element.isExactlyInstanceOf(FluxDiscardOnCancel.class);
+        }
     }
 
     @Test
