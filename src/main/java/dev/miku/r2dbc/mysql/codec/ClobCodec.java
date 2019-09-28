@@ -48,11 +48,7 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
 
     @Override
     public Clob decode(FieldValue value, FieldInformation info, Class<? super Clob> target, boolean binary, ConnectionContext context) {
-        if (value instanceof NormalFieldValue) {
-            return LobUtils.createClob(((NormalFieldValue) value).getBufferSlice(), info.getCollationId(), context.getServerVersion());
-        }
-
-        return LobUtils.createClob(((LargeFieldValue) value).getBufferSlices(), info.getCollationId(), context.getServerVersion());
+        return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
     }
 
     @Override

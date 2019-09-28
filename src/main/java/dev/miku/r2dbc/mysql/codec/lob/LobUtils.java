@@ -16,6 +16,9 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
+import dev.miku.r2dbc.mysql.message.FieldValue;
+import dev.miku.r2dbc.mysql.message.LargeFieldValue;
+import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
@@ -26,23 +29,24 @@ import io.r2dbc.spi.Clob;
  */
 public final class LobUtils {
 
-    public static Blob createBlob(ByteBuf buf) {
-        buf.retain();
-        try {
-            return new SingletonBlob(new Node(buf));
-        } catch (Throwable e) {
-            buf.release();
-            throw e;
-        }
-    }
+    public static Blob createBlob(FieldValue value) {
+        if (value instanceof NormalFieldValue) {
+            ByteBuf buf = ((NormalFieldValue) value).getBufferSlice().retain();
 
-    public static Blob createBlob(ByteBuf[] buffers) {
+            try {
+                return new SingletonBlob(new Node(buf));
+            } catch (Throwable e) {
+                buf.release();
+                throw e;
+            }
+        }
+
+        ByteBuf[] buffers = ((LargeFieldValue) value).getBufferSlices();
         int size = buffers.length;
         Node[] nodes = new Node[size];
 
         try {
-            retainAll(nodes, buffers, size);
-
+            retainToNode(nodes, buffers, size);
             return new MultiBlob(nodes);
         } catch (Throwable e) {
             Node.releaseAll(nodes);
@@ -50,23 +54,24 @@ public final class LobUtils {
         }
     }
 
-    public static Clob createClob(ByteBuf buf, int collationId, ServerVersion version) {
-        buf.retain();
-        try {
-            return new SingletonClob(new Node(buf), collationId, version);
-        } catch (Throwable e) {
-            buf.release();
-            throw e;
-        }
-    }
+    public static Clob createClob(FieldValue value, int collationId, ServerVersion version) {
+        if (value instanceof NormalFieldValue) {
+            ByteBuf buf = ((NormalFieldValue) value).getBufferSlice().retain();
 
-    public static Clob createClob(ByteBuf[] buffers, int collationId, ServerVersion version) {
+            try {
+                return new SingletonClob(new Node(buf), collationId, version);
+            } catch (Throwable e) {
+                buf.release();
+                throw e;
+            }
+        }
+
+        ByteBuf[] buffers = ((LargeFieldValue) value).getBufferSlices();
         int size = buffers.length;
         Node[] nodes = new Node[size];
 
         try {
-            retainAll(nodes, buffers, size);
-
+            retainToNode(nodes, buffers, size);
             return new MultiClob(nodes, collationId, version);
         } catch (Throwable e) {
             Node.releaseAll(nodes);
@@ -74,13 +79,12 @@ public final class LobUtils {
         }
     }
 
-    private static void retainAll(Node[] nodes, ByteBuf[] buffers, int size) {
+    private static void retainToNode(Node[] nodes, ByteBuf[] buffers, int size) {
         for (int i = 0; i < size; ++i) {
             nodes[i] = new Node(buffers[i].retain());
         }
     }
 
     private LobUtils() {
-
     }
 }

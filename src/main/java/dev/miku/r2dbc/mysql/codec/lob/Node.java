@@ -80,19 +80,19 @@ final class Node implements ByteBufHolder {
         }
     }
 
-    public ByteBufHolder copy() {
+    public Node copy() {
         return replace(buf.copy());
     }
 
-    public ByteBufHolder duplicate() {
+    public Node duplicate() {
         return replace(buf.duplicate());
     }
 
-    public ByteBufHolder retainedDuplicate() {
+    public Node retainedDuplicate() {
         return replace(buf.retainedDuplicate());
     }
 
-    public ByteBufHolder replace(ByteBuf content) {
+    public Node replace(ByteBuf content) {
         return new Node(content);
     }
 
@@ -100,22 +100,22 @@ final class Node implements ByteBufHolder {
         return buf.refCnt();
     }
 
-    public ByteBufHolder retain() {
+    public Node retain() {
         buf.retain();
         return this;
     }
 
-    public ByteBufHolder retain(int increment) {
+    public Node retain(int increment) {
         buf.retain(increment);
         return this;
     }
 
-    public ByteBufHolder touch() {
+    public Node touch() {
         buf.touch();
         return this;
     }
 
-    public ByteBufHolder touch(Object hint) {
+    public Node touch(Object hint) {
         buf.touch(hint);
         return this;
     }

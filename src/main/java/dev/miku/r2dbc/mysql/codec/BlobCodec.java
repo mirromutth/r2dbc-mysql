@@ -47,11 +47,7 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
 
     @Override
     public Blob decode(FieldValue value, FieldInformation info, Class<? super Blob> target, boolean binary, ConnectionContext context) {
-        if (value instanceof NormalFieldValue) {
-            return LobUtils.createBlob(((NormalFieldValue) value).getBufferSlice());
-        }
-
-        return LobUtils.createBlob(((LargeFieldValue) value).getBufferSlices());
+        return LobUtils.createBlob(value);
     }
 
     @Override
