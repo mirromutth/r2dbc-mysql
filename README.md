@@ -39,7 +39,7 @@ This driver provides the following features:
 
 ```groovy
 dependencies {
-    implementation 'com.github.mirromutth:r2dbc-mysql:0.8.0.RC1'
+    implementation 'dev.miku:r2dbc-mysql:0.8.0.RC1'
 }
 ```
 
@@ -48,7 +48,7 @@ dependencies {
 ```kotlin
 dependencies {
     // Maybe should to use `compile` instead of `implementation` on the lower version of Gradle.
-    implementation("com.github.mirromutth:r2dbc-mysql:0.8.0.RC1")
+    implementation("dev.miku:r2dbc-mysql:0.8.0.RC1")
 }
 ```
 
