@@ -21,7 +21,7 @@
 
     <groupId>dev.miku</groupId>
     <artifactId>r2dbc-mysql</artifactId>
-    <version>0.8.0.BUILD-SNAPSHOT</version>
+    <version>0.8.0.RC1</version>
     <packaging>jar</packaging>
 
     <name>Reactive Relational Database Connectivity - MySQL</name>

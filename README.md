@@ -1,6 +1,6 @@
 # Reactive Relational Database Connectivity MySQL Implementation
 
-[![Build status](https://github.com/mirromutth/r2dbc-mysql/workflows/build/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions) [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) [![JitPack](https://jitpack.io/v/mirromutth/r2dbc-mysql.svg)](https://jitpack.io/#mirromutth/r2dbc-mysql) [![Downloads per-month](https://img.shields.io/jitpack/dm/github/mirromutth/r2dbc-mysql)](https://jitpack.io/#mirromutth/r2dbc-mysql)
+[![Build status](https://github.com/mirromutth/r2dbc-mysql/workflows/build/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions) [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 This project contains the [MySQL][m] implementation of the [R2DBC SPI](https://github.com/r2dbc/r2dbc-spi).
 This implementation is not intended to be used directly, but rather to be
@@ -27,23 +27,10 @@ This driver provides the following features:
 
 ```xml
 <dependency>
-    <groupId>com.github.mirromutth</groupId>
+    <groupId>dev.miku</groupId>
     <artifactId>r2dbc-mysql</artifactId>
-    <version>0.2.0.M2</version>
+    <version>0.8.0.RC1</version>
 </dependency>
-```
-
-> Note: `com.github.mirromutth` is temporary group ID, it may change during its release or next milestone.
-
-Artifacts can be found at the following repositories.
-
-### Repositories
-
-```xml
-<repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
-</repository>
 ```
 
 ## Gradle
@@ -51,26 +38,17 @@ Artifacts can be found at the following repositories.
 ### Groovy DSL
 
 ```groovy
-repositories {
-    maven { url 'https://jitpack.io' }
-    // ...
-}
-// ...
 dependencies {
-    implementation 'com.github.mirromutth:r2dbc-mysql:0.2.0.M2'
+    implementation 'com.github.mirromutth:r2dbc-mysql:0.8.0.RC1'
 }
 ```
 
 ### Kotlin DSL
 
 ```kotlin
-repositories {
-    maven("https://jitpack.io")
-    // ...
-}
-// ...
 dependencies {
-    compile("com.github.mirromutth:r2dbc-mysql:0.2.0.M2")
+    // Maybe should to use `compile` instead of `implementation` on the lower version of Gradle.
+    implementation("com.github.mirromutth:r2dbc-mysql:0.8.0.RC1")
 }
 ```
 
@@ -193,8 +171,6 @@ connection.createStatement("INSERT INTO `person` (`first_name`, `last_name`) VAL
     .execute(); // return a Publisher include one Result
 ```
 
-> Can only contains one statement (`SELECT`, `INSERT`, `UPDATE`, etc.).
-
 ### Prepared statement
 
 ```java
@@ -209,8 +185,6 @@ connection.createStatement("INSERT INTO `person` (`birth`, `nickname`, `show_nam
     .execute(); // return a Publisher include two Results.
 ```
 
-> Can only contains one statement (`SELECT`, `INSERT`, `UPDATE`, etc.).
-
 - All parameters must be bound before execute, even parameter is `null` (use `bindNull` to bind `null`).
 - In one-to-one binding, because native MySQL prepared statements use index-based parameters, *index-bindings* will have **better** performance than *name-bindings*.
 
@@ -223,7 +197,7 @@ connection.createBatch()
     .execute(); // return a Publisher include two Results.
 ```
 
-> The parameter of `add(String)` can only contains one statement, `;` will be removed if has only whitespace follow the `;`.
+> The last `;` will be removed if has only whitespace follow the last `;`.
 
 ### Transactions
 
@@ -293,7 +267,7 @@ If you want to raise an issue, please follow the recommendations below:
 - Native MySQL data fields encoded by index-based, get fields by index will have **better** performance than get by column name.
 - Every `Result` should be used (call `getRowsUpdated` or `map`, even table definition), can **NOT** just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
 - The MySQL return microseconds when only in prepared statement result (and maybe has not microsecond even in prepared statement result). Therefore this driver does not guarantee time accuracy to microseconds.
-- The MySQL database server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
+- The MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
 - Do not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
 - If `Statement` bound `returnGeneratedValues`, the `Result` of the `Statement` can be called both: `getRowsUpdated` to get affected rows, and `map` to get last inserted ID.
 - Try not search some rows by binary field, like `BIT` or `BLOB`, MySQL supports such queries is not good (but `VARBINARY` is OK).
