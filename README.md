@@ -33,6 +33,25 @@ This driver provides the following features:
 </dependency>
 ```
 
+If you'd rather like the latest snapshots of the upcoming major version, use SonaType Maven snapshot repository and declare the appropriate dependency version.
+
+```xml
+<dependency>
+    <groupId>dev.miku</groupId>
+    <artifactId>r2dbc-mysql</artifactId>
+    <version>${r2dbc-mysql.version}.BUILD-SNAPSHOT</version>
+</dependency>
+
+<repository>
+    <id>sonatype-snapshots</id>
+    <name>SonaType Snapshots</name>
+    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    <snapshots>
+        <enabled>true</enabled>
+    </snapshots>
+</repository>
+```
+
 ## Gradle
 
 ### Groovy DSL
@@ -224,32 +243,32 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 
 | MySQL Type | Unsigned | Support Data Type |
 |---|---|---|
-| INT | UNSIGNED | `Long`, `BigInteger` |
-| INT | SIGNED | `Integer`, `Long`, `BigInteger` |
-| TINYINT | UNSIGNED | `Short`, `Integer`, `Long`, `BigInteger` |
-| TINYINT | SIGNED | `Byte`, `Short`, `Integer`, `Long`, `BigInteger` |
-| SMALLINT | UNSIGNED | `Integer`, `Long`, `BigInteger` |
-| SMALLINT | SIGNED | `Short`, `Integer`, `Long`, `BigInteger` |
-| MEDIUMINT | SIGNED/UNSIGNED | `Integer`, `Long`, `BigInteger` |
-| BIGINT | UNSIGNED | `BigInteger`, `Long` (Not check overflow for ID column) |
-| BIGINT | SIGNED | `Long`, `BigInteger` |
-| FLOAT | SIGNED/UNSIGNED | `Float`, `BigDecimal` |
-| DOUBLE | SIGNED/UNSIGNED | `Double`, `BigDecimal`  |
-| DECIMAL | SIGNED/UNSIGNED | `BigDecimal`, `Float` (Size less than 7), `Double` (Size less than 16) |
-| BIT | - | `ByteBuffer`, `BitSet`, `Boolean` (Size is 1), `byte[]` |
-| DATETIME/TIMESTAMP | - | `LocalDateTime` |
-| DATE | - | `LocalDate` |
-| TIME | - | `Duration`, `LocalTime` |
-| YEAR | - | `Short`, `Integer`, `Long`, `BigInteger`, `Year` |
-| VARCHAR/NVARCHAR | - | `String` |
-| VARBINARY | - | `ByteBuffer`, `Blob`, `byte[]` |
-| CHAR/NCHAR | - | `String` |
-| ENUM | - | `String`, `Enum<?>` |
-| SET | - | `String[]`, `String`, `Set<String>` and `Set<Enum<?>>` (`Set<T>` need use `ParameterizedType`) |
-| BLOB (LONGBLOB, etc.) | - | `Blob`, `byte[]` (Not check overflow) |
-| TEXT (LONGTEXT, etc.) | - | `Clob`, `String` (Not check overflow) |
-| JSON | - | `String`, `Clob` |
-| GEOMETRY | - | `byte[]`, `Blob` |
+| INT | UNSIGNED | [**`Long`**][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
+| INT | SIGNED | [**`Integer`**][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
+| TINYINT | UNSIGNED | [**`Short`**][java-Short-ref], [`Integer`][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
+| TINYINT | SIGNED | [**`Byte`**][java-Byte-ref], [`Short`][java-Short-ref], [`Integer`][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
+| SMALLINT | UNSIGNED | [**`Integer`**][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
+| SMALLINT | SIGNED | [**`Short`**][java-Short-ref], [`Integer`][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
+| MEDIUMINT | SIGNED/UNSIGNED | [**`Integer`**][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
+| BIGINT | UNSIGNED | [**`BigInteger`**][java-BigInteger-ref], [`Long`][java-Long-ref] (Not check overflow for ID column) |
+| BIGINT | SIGNED | [**`Long`**][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
+| FLOAT | SIGNED/UNSIGNED | [**`Float`**][java-Float-ref], [`BigDecimal`][java-BigDecimal-ref] |
+| DOUBLE | SIGNED/UNSIGNED | [**`Double`**][java-Double-ref], [`BigDecimal`][java-BigDecimal-ref]  |
+| DECIMAL | SIGNED/UNSIGNED | [**`BigDecimal`**][java-BigDecimal-ref], [`Float`][java-Float-ref] (Size less than 7), [`Double`][java-Double-ref] (Size less than 16) |
+| BIT | - | [**`ByteBuffer`**][java-ByteBuffer-ref], [`BitSet`][java-BitSet-ref], [`Boolean`][java-Boolean-ref] (Size is 1), `byte[]` |
+| DATETIME/TIMESTAMP | - | [**`LocalDateTime`**][java-LocalDateTime-ref] |
+| DATE | - | [**`LocalDate`**][java-LocalDate-ref] |
+| TIME | - | [**`Duration`**][java-Duration-ref], [`LocalTime`][java-LocalTime-ref] |
+| YEAR | - | [**`Short`**][java-Short-ref], [`Integer`][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref], [`Year`][java-Year-ref] |
+| VARCHAR/NVARCHAR | - | [**`String`**][java-String-ref] |
+| VARBINARY | - | [**`ByteBuffer`**][java-ByteBuffer-ref], `Blob`, `byte[]` |
+| CHAR/NCHAR | - | [**`String`**][java-String-ref] |
+| ENUM | - | [**`String`**][java-String-ref], [`Enum<?>`][java-Enum-ref] |
+| SET | - | **`String[]`**, [`String`][java-String-ref], [`Set<String>`][java-Set-ref] and [`Set<Enum<?>>`][java-Set-ref] ([`Set<T>`][java-Set-ref] need use [`ParameterizedType`][java-ParameterizedType-ref]) |
+| BLOB (LONGBLOB, etc.) | - | **`Blob`**, `byte[]` (Not check overflow) |
+| TEXT (LONGTEXT, etc.) | - | **`Clob`**, [`String`][java-String-ref] (Not check overflow) |
+| JSON | - | [**`String`**][java-String-ref], `Clob` |
+| GEOMETRY | - | **`byte[]`**, `Blob` |
 
 ## Reporting Issues
 
@@ -278,3 +297,23 @@ If you want to raise an issue, please follow the recommendations below:
 This project is released under version 2.0 of the [Apache License](https://www.apache.org/licenses/LICENSE-2.0).
 
 [m]: https://www.mysql.com
+[java-BigDecimal-ref]: https://docs.oracle.com/javase/8/docs/api/java/math/BigDecimal.html
+[java-BigInteger-ref]: https://docs.oracle.com/javase/8/docs/api/java/math/BigInteger.html
+[java-BitSet-ref]: https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html
+[java-Boolean-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Boolean.html
+[java-Byte-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Byte.html
+[java-ByteBuffer-ref]: https://docs.oracle.com/javase/8/docs/api/java/nio/ByteBuffer.html
+[java-Double-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Double.html
+[java-Float-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Float.html
+[java-Integer-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Integer.html
+[java-Long-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Long.html
+[java-LocalDateTime-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/LocalDateTime.html
+[java-LocalDate-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/LocalDate.html
+[java-Duration-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/Duration.html
+[java-LocalTime-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/LocalTime.html
+[java-Year-ref]: https://docs.oracle.com/javase/8/docs/api/java/time/Year.html
+[java-Short-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Short.html
+[java-Enum-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/Enum.html
+[java-String-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/String.html
+[java-Set-ref]: https://docs.oracle.com/javase/8/docs/api/java/util/Set.html
+[java-ParameterizedType-ref]: https://docs.oracle.com/javase/8/docs/api/java/lang/reflect/ParameterizedType.html
