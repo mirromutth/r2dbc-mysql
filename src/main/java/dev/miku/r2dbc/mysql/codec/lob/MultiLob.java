@@ -17,6 +17,8 @@
 package dev.miku.r2dbc.mysql.codec.lob;
 
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
+import io.netty.buffer.ByteBuf;
+import io.netty.util.ReferenceCountUtil;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -24,38 +26,51 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
- * Base class considers multiple {@link Node}s and drains/disposes {@link Node}s on cancellation.
+ * Base class considers multiple {@link ByteBuf}s and drains/disposes {@link ByteBuf}s on cancellation.
  */
-abstract class MultiLob {
+abstract class MultiLob<T> {
 
-    private static final Consumer<Node> RELEASE = Node::release;
+    private static final Consumer<ByteBuf> RELEASE = ByteBuf::release;
 
-    private final AtomicReference<Node[]> nodes;
+    private final AtomicReference<ByteBuf[]> buffers;
 
-    MultiLob(Node[] nodes) {
-        this.nodes = new AtomicReference<>(nodes);
+    MultiLob(ByteBuf[] buffers) {
+        this.buffers = new AtomicReference<>(buffers);
     }
 
-    final Flux<Node> nodes() {
+    public final Flux<T> stream() {
         return Flux.defer(() -> {
-            Node[] nodes = this.nodes.getAndSet(null);
+            ByteBuf[] buffers = this.buffers.getAndSet(null);
 
-            if (nodes == null) {
+            if (buffers == null) {
                 return Flux.error(new IllegalStateException("Source has been released"));
             }
 
-            return OperatorUtils.discardOnCancel(Flux.fromArray(nodes))
-                .doOnDiscard(Node.class, RELEASE);
+            return OperatorUtils.discardOnCancel(Flux.fromArray(buffers))
+                .doOnDiscard(ByteBuf.class, RELEASE)
+                .map(this::consume);
         });
     }
 
     public final Mono<Void> discard() {
         return Mono.fromRunnable(() -> {
-            Node[] nodes = this.nodes.getAndSet(null);
+            ByteBuf[] buffers = this.buffers.getAndSet(null);
 
-            if (nodes != null) {
-                Node.releaseAll(nodes);
+            if (buffers != null) {
+                for (ByteBuf buf : buffers) {
+                    ReferenceCountUtil.safeRelease(buf);
+                }
             }
         });
+    }
+
+    protected abstract T convert(ByteBuf buf);
+
+    private T consume(ByteBuf buf) {
+        try {
+            return convert(buf);
+        } finally {
+            buf.release();
+        }
     }
 }

@@ -21,6 +21,7 @@ import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.netty.buffer.ByteBuf;
+import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.Clob;
 
@@ -34,7 +35,7 @@ public final class LobUtils {
             ByteBuf buf = ((NormalFieldValue) value).getBufferSlice().retain();
 
             try {
-                return new SingletonBlob(new Node(buf));
+                return new SingletonBlob(buf);
             } catch (Throwable e) {
                 buf.release();
                 throw e;
@@ -42,14 +43,19 @@ public final class LobUtils {
         }
 
         ByteBuf[] buffers = ((LargeFieldValue) value).getBufferSlices();
-        int size = buffers.length;
-        Node[] nodes = new Node[size];
+        int size = buffers.length, i = 0;
 
         try {
-            retainToNode(nodes, buffers, size);
-            return new MultiBlob(nodes);
+            for (; i < size; ++i) {
+                buffers[i].retain();
+            }
+
+            return new MultiBlob(buffers);
         } catch (Throwable e) {
-            Node.releaseAll(nodes);
+            for (int j = 0; j < i; ++j) {
+                ReferenceCountUtil.safeRelease(buffers[j]);
+            }
+
             throw e;
         }
     }
@@ -59,7 +65,7 @@ public final class LobUtils {
             ByteBuf buf = ((NormalFieldValue) value).getBufferSlice().retain();
 
             try {
-                return new SingletonClob(new Node(buf), collationId, version);
+                return new SingletonClob(buf, collationId, version);
             } catch (Throwable e) {
                 buf.release();
                 throw e;
@@ -67,21 +73,20 @@ public final class LobUtils {
         }
 
         ByteBuf[] buffers = ((LargeFieldValue) value).getBufferSlices();
-        int size = buffers.length;
-        Node[] nodes = new Node[size];
+        int size = buffers.length, i = 0;
 
         try {
-            retainToNode(nodes, buffers, size);
-            return new MultiClob(nodes, collationId, version);
-        } catch (Throwable e) {
-            Node.releaseAll(nodes);
-            throw e;
-        }
-    }
+            for (; i < size; ++i) {
+                buffers[i].retain();
+            }
 
-    private static void retainToNode(Node[] nodes, ByteBuf[] buffers, int size) {
-        for (int i = 0; i < size; ++i) {
-            nodes[i] = new Node(buffers[i].retain());
+            return new MultiClob(buffers, collationId, version);
+        } catch (Throwable e) {
+            for (int j = 0; j < i; ++j) {
+                ReferenceCountUtil.safeRelease(buffers[j]);
+            }
+
+            throw e;
         }
     }
 

@@ -16,11 +16,13 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
+import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.util.ServerVersion;
+import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
 
 /**
- * An implementation of {@link Clob} for singleton {@link Node}.
+ * An implementation of {@link Clob} for singleton {@link ByteBuf}.
  */
 final class SingletonClob extends SingletonLob<CharSequence> implements Clob {
 
@@ -28,15 +30,19 @@ final class SingletonClob extends SingletonLob<CharSequence> implements Clob {
 
     private final ServerVersion version;
 
-    SingletonClob(Node node, int collationId, ServerVersion version) {
-        super(node);
+    SingletonClob(ByteBuf buf, int collationId, ServerVersion version) {
+        super(buf);
 
         this.collationId = collationId;
         this.version = version;
     }
 
     @Override
-    protected CharSequence consume(Node node) {
-        return node.readCharSequence(collationId, version);
+    protected CharSequence convert(ByteBuf buf) {
+        if (!buf.isReadable()) {
+            return "";
+        }
+
+        return buf.readCharSequence(buf.readableBytes(), CharCollation.fromId(collationId, version).getCharset());
     }
 }

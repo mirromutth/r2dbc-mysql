@@ -16,42 +16,47 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
+import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Base class considers single {@link Node} and drains/disposes the {@link Node} on cancellation.
+ * Base class considers single {@link ByteBuf} and drains/disposes the {@link ByteBuf} on cancellation.
  */
 abstract class SingletonLob<T> {
 
-    private final AtomicReference<Node> node;
+    private final AtomicReference<ByteBuf> buf;
 
-    SingletonLob(Node node) {
-        this.node = new AtomicReference<>(node);
+    SingletonLob(ByteBuf buf) {
+        this.buf = new AtomicReference<>(buf);
     }
 
     public final Mono<T> stream() {
         return Mono.defer(() -> {
-            Node node = this.node.getAndSet(null);
+            ByteBuf buf = this.buf.getAndSet(null);
 
-            if (node == null) {
+            if (buf == null) {
                 return Mono.error(new IllegalStateException("Source has been released"));
             }
 
-            return Mono.just(consume(node));
+            try {
+                return Mono.just(convert(buf));
+            } finally {
+                buf.release();
+            }
         });
     }
 
     public final Mono<Void> discard() {
         return Mono.fromRunnable(() -> {
-            Node node = this.node.getAndSet(null);
+            ByteBuf buf = this.buf.getAndSet(null);
 
-            if (node != null) {
-                node.release();
+            if (buf != null) {
+                buf.release();
             }
         });
     }
 
-    protected abstract T consume(Node node);
+    protected abstract T convert(ByteBuf buf);
 }

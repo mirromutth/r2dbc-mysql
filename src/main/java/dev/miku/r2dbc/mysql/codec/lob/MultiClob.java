@@ -16,28 +16,33 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
+import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.util.ServerVersion;
+import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
-import reactor.core.publisher.Flux;
 
 /**
- * An implementation of {@link Clob} for multi-{@link Node}s.
+ * An implementation of {@link Clob} for multi-{@link ByteBuf}s.
  */
-final class MultiClob extends MultiLob implements Clob {
+final class MultiClob extends MultiLob<CharSequence> implements Clob {
 
     private final int collationId;
 
     private final ServerVersion version;
 
-    MultiClob(Node[] nodes, int collationId, ServerVersion version) {
-        super(nodes);
+    MultiClob(ByteBuf[] buffers, int collationId, ServerVersion version) {
+        super(buffers);
 
         this.collationId = collationId;
         this.version = version;
     }
 
     @Override
-    public Flux<CharSequence> stream() {
-        return nodes().map(node -> node.readCharSequence(collationId, version));
+    protected CharSequence convert(ByteBuf buf) {
+        if (!buf.isReadable()) {
+            return "";
+        }
+
+        return buf.readCharSequence(buf.readableBytes(), CharCollation.fromId(collationId, version).getCharset());
     }
 }

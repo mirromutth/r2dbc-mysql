@@ -16,25 +16,34 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
+import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
-import reactor.core.publisher.Flux;
 
 import java.nio.ByteBuffer;
-import java.util.function.Function;
+
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
 
 /**
- * An implementation of {@link Blob} for multi-{@link Node}s.
+ * An implementation of {@link Blob} for multi-{@link ByteBuf}s.
  */
-final class MultiBlob extends MultiLob implements Blob {
+final class MultiBlob extends MultiLob<ByteBuffer> implements Blob {
 
-    private static final Function<Node, ByteBuffer> READ_RELEASE = Node::readByteBuffer;
-
-    MultiBlob(Node[] nodes) {
-        super(nodes);
+    MultiBlob(ByteBuf[] buffers) {
+        super(buffers);
     }
 
     @Override
-    public Flux<ByteBuffer> stream() {
-        return nodes().map(READ_RELEASE);
+    protected ByteBuffer convert(ByteBuf buf) {
+        if (!buf.isReadable()) {
+            return ByteBuffer.wrap(EMPTY_BYTES);
+        }
+
+        // Maybe allocateDirect?
+        ByteBuffer result = ByteBuffer.allocate(buf.readableBytes());
+
+        buf.readBytes(result);
+        result.flip();
+
+        return result;
     }
 }

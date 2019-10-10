@@ -16,21 +16,34 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
+import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
 
 import java.nio.ByteBuffer;
 
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+
 /**
- * An implementation of {@link Blob} for singleton {@link Node}.
+ * An implementation of {@link Blob} for singleton {@link ByteBuf}.
  */
 final class SingletonBlob extends SingletonLob<ByteBuffer> implements Blob {
 
-    SingletonBlob(Node node) {
-        super(node);
+    SingletonBlob(ByteBuf buf) {
+        super(buf);
     }
 
     @Override
-    protected ByteBuffer consume(Node node) {
-        return node.readByteBuffer();
+    protected ByteBuffer convert(ByteBuf buf) {
+        if (!buf.isReadable()) {
+            return ByteBuffer.wrap(EMPTY_BYTES);
+        }
+
+        // Maybe allocateDirect?
+        ByteBuffer result = ByteBuffer.allocate(buf.readableBytes());
+
+        buf.readBytes(result);
+        result.flip();
+
+        return result;
     }
 }
