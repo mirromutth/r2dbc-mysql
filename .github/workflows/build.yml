@@ -17,6 +17,8 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
+    - name: Shutdown the Default MySQL
+      run: sudo service mysql stop
     - name: Set up MySQL 5.5
       uses: mirromutth/mysql-action@v1.1
       with:
