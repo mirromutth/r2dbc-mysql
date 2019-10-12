@@ -25,13 +25,16 @@ import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.PreparedOkMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
+import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
@@ -49,6 +52,10 @@ final class QueryFlow {
 
     private static final Predicate<ServerMessage> EXECUTE_DONE = message ->
         message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
+
+    private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
+
+    private static final Consumer<Binding> CLEAR = Binding::clear;
 
     /**
      * Prepare a query to an identifier of prepared statement.
@@ -93,8 +100,13 @@ final class QueryFlow {
             return Flux.empty();
         }
 
-        return Flux.fromIterable(bindings)
-            .concatMap(binding -> client.exchange(binding.toMessage(statementId), EXECUTE_DONE).handle(new Handler(sql)));
+        Handler handler = new Handler(sql);
+
+        return OperatorUtils.discardOnCancel(Flux.fromIterable(bindings))
+            .doOnDiscard(Binding.class, CLEAR)
+            .concatMap(binding -> OperatorUtils.discardOnCancel(client.exchange(binding.toMessage(statementId), EXECUTE_DONE)
+                .doOnDiscard(ReferenceCounted.class, RELEASE))
+                .handle(handler));
     }
 
     /**
@@ -118,13 +130,9 @@ final class QueryFlow {
      * completed by {@link CompleteMessage} when it is last result.
      */
     static Flux<ServerMessage> execute(Client client, String sql) {
-        return client.exchange(new SimpleQueryMessage(sql), EXECUTE_DONE).handle((message, sink) -> {
-            if (message instanceof ErrorMessage) {
-                sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
-            } else {
-                sink.next(message);
-            }
-        });
+        return OperatorUtils.discardOnCancel(client.exchange(new SimpleQueryMessage(sql), EXECUTE_DONE))
+            .doOnDiscard(ReferenceCounted.class, RELEASE)
+            .handle(new Handler(sql));
     }
 
     /**
