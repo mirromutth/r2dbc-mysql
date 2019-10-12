@@ -28,6 +28,7 @@ import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.function.Predicate;
 
@@ -70,14 +71,14 @@ public interface Client {
         requireNonNull(ssl, "ssl must not be null");
         requireNonNull(context, "context must not be null");
 
-        TcpClient client = TcpClient.create(connectionProvider);
+        return TcpClient.create(connectionProvider)
+            .bootstrap(b -> {
+                if (connectTimeout != null) {
+                    b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
+                }
 
-        if (connectTimeout != null) {
-            client = client.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
-        }
-
-        return client.host(host)
-            .port(port)
+                return b.remoteAddress(new InetSocketAddress(host, port));
+            })
             .connect()
             .map(conn -> new ReactorNettyClient(conn, ssl, context));
     }

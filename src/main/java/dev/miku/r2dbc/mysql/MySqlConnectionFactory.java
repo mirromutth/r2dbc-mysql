@@ -53,17 +53,18 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
         requireNonNull(configuration, "configuration must not be null");
 
         return new MySqlConnectionFactory(Mono.defer(() -> {
-            ConnectionContext context = new ConnectionContext(configuration.getDatabase(), configuration.getZeroDateOption());
+            ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption());
             String host = configuration.getHost();
             int port = configuration.getPort();
             Duration connectTimeout = configuration.getConnectTimeout();
             MySqlSslConfiguration ssl = configuration.getSsl();
             SslMode sslMode = ssl.getSslMode();
+            String database = configuration.getDatabase();
             String username = configuration.getUsername();
             CharSequence password = configuration.getPassword();
 
             return Client.connect(ConnectionProvider.newConnection(), host, port, ssl, context, connectTimeout)
-                .flatMap(client -> LoginFlow.login(client, sslMode, context, username, password))
+                .flatMap(client -> LoginFlow.login(client, sslMode, database, context, username, password))
                 .flatMap(client -> MySqlConnection.create(client, context));
         }));
     }

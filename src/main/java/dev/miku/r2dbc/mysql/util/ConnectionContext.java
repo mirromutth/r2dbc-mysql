@@ -35,8 +35,6 @@ public final class ConnectionContext {
 
     private volatile ServerVersion serverVersion = NONE_VERSION;
 
-    private final String database;
-
     private final ZeroDateOption zeroDateOption;
 
     /**
@@ -52,8 +50,7 @@ public final class ConnectionContext {
 
     private volatile int capabilities = 0;
 
-    public ConnectionContext(String database, ZeroDateOption zeroDateOption) {
-        this.database = AssertUtils.requireNonNull(database, "database must not be null");
+    public ConnectionContext(ZeroDateOption zeroDateOption) {
         this.zeroDateOption = AssertUtils.requireNonNull(zeroDateOption, "zeroDateOption must not be null");
     }
 
@@ -75,10 +72,6 @@ public final class ConnectionContext {
 
     public CharCollation getCollation() {
         return collation;
-    }
-
-    public String getDatabase() {
-        return database;
     }
 
     public ZeroDateOption getZeroDateOption() {

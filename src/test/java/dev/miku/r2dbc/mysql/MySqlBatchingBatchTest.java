@@ -14,16 +14,14 @@ import static org.mockito.Mockito.mock;
  */
 class MySqlBatchingBatchTest {
 
-    private final Client client = mock(Client.class);
+    private static final Client CLIENT = mock(Client.class);
 
-    private final Codecs codecs = mock(Codecs.class);
-
-    private final ConnectionContext context = new ConnectionContext("", ZeroDateOption.USE_NULL);
-
-    private final MySqlBatchingBatch batch = new MySqlBatchingBatch(client, codecs, context);
+    private static final Codecs CODECS = mock(Codecs.class);
 
     @Test
     void add() {
+        MySqlBatchingBatch batch = new MySqlBatchingBatch(CLIENT, CODECS, new ConnectionContext(ZeroDateOption.USE_NULL));
+
         batch.add("");
         batch.add("INSERT INTO `test` VALUES (100)");
         batch.add("    ");

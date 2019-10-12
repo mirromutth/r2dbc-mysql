@@ -69,6 +69,8 @@ final class LoginFlow {
 
     private final SslMode sslMode;
 
+    private final String database;
+
     private volatile boolean sslCompleted = false;
 
     private volatile MySqlAuthProvider authProvider;
@@ -79,9 +81,10 @@ final class LoginFlow {
 
     private volatile byte[] salt;
 
-    private LoginFlow(Client client, SslMode sslMode, ConnectionContext context, String username, @Nullable CharSequence password) {
+    private LoginFlow(Client client, SslMode sslMode, String database, ConnectionContext context, String username, @Nullable CharSequence password) {
         this.client = requireNonNull(client, "client must not be null");
         this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
+        this.database = requireNonNull(database, "database must not be null");
         this.context = requireNonNull(context, "context must not be null");
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
@@ -155,7 +158,7 @@ final class LoginFlow {
                 username,
                 authorization,
                 authType,
-                context.getDatabase(),
+                database,
                 attributes
             );
         });
@@ -210,7 +213,7 @@ final class LoginFlow {
             }
         }
 
-        if (context.getDatabase().isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
+        if (database.isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
             clientCapabilities &= ~Capabilities.CONNECT_WITH_DB;
         }
 
@@ -231,8 +234,8 @@ final class LoginFlow {
         this.authProvider = null;
     }
 
-    static Mono<Client> login(Client client, SslMode sslMode, ConnectionContext context, String username, @Nullable CharSequence password) {
-        LoginFlow flow = new LoginFlow(client, sslMode, context, username, password);
+    static Mono<Client> login(Client client, SslMode sslMode, String database, ConnectionContext context, String username, @Nullable CharSequence password) {
+        LoginFlow flow = new LoginFlow(client, sslMode, database, context, username, password);
         EmitterProcessor<State> stateMachine = EmitterProcessor.create(true);
 
         return stateMachine.startWith(State.INIT)
