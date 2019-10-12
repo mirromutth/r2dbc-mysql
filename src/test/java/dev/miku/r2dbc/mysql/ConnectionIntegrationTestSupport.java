@@ -135,7 +135,7 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
 
             return Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value VARCHAR(20))")
                 .execute())
-                .thenMany(Flux.from(insertBatch.execute()))
+                .thenMany(insertBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
                 .doOnNext(updated -> assertEquals(updated.intValue(), 1))
                 .reduce(Math::addExact)
