@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.server.DefinitionMetadataMessage;
 import dev.miku.r2dbc.mysql.message.server.EofMessage;
@@ -25,9 +24,8 @@ import dev.miku.r2dbc.mysql.message.server.OkMessage;
 import dev.miku.r2dbc.mysql.message.server.RowMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
-import dev.miku.r2dbc.mysql.util.OperatorUtils;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.Result;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
@@ -40,7 +38,6 @@ import reactor.util.annotation.Nullable;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -49,8 +46,6 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * An implementation of {@link Result} representing the results of a query against the MySQL database.
  */
 public final class MySqlResult implements Result {
-
-    private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
 
     private static final Function<OkMessage, Integer> ROWS_UPDATED = message -> (int) message.getAffectedRows();
 
@@ -135,7 +130,7 @@ public final class MySqlResult implements Result {
             // Result mode, no need ok message.
             this.okProcessor.onComplete();
 
-            return OperatorUtils.discardOnCancel(messages).doOnDiscard(ReferenceCounted.class, RELEASE);
+            return messages;
         });
     }
 

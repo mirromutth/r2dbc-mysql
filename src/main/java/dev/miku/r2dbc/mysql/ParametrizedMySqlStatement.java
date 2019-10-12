@@ -134,19 +134,12 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
             return QueryFlow.prepare(client, sql)
                 .doOnCancel(bindings::clear)
-                .flatMapMany(id -> toResults(sql, id)
-                    .onErrorResume(e -> {
-                        bindings.clear();
-                        return QueryFlow.close(client, id).then(Mono.error(e));
-                    })
+                .flatMapMany(id -> QueryFlow.execute(client, sql, id, bindings.bindings)
+                    .windowUntil(QueryFlow.RESULT_DONE)
+                    .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages))
+                    .onErrorResume(e -> QueryFlow.close(client, id).then(Mono.error(e)))
                     .concatWith(QueryFlow.close(client, id).then(Mono.empty())));
         });
-    }
-
-    private Flux<MySqlResult> toResults(String sql, int statementId) {
-        return QueryFlow.execute(client, sql, statementId, bindings.bindings)
-            .windowUntil(QueryFlow.RESULT_DONE)
-            .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
     }
 
     private void addBinding(int index, ParameterValue value) {
