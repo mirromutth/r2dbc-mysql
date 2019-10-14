@@ -123,7 +123,7 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ### Programmatic Configuration
 
 ```java
-MySqlConnectConfiguration configuration = MySqlConnectConfiguration.builder()
+MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builder()
     .host("127.0.0.1")
     .username("root")
     .port(3306) // optional, default 3306
