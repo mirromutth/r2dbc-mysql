@@ -114,11 +114,7 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
 
     @Override
     public String toString() {
-        return "MixCharsetTarget{" +
-            "fallbackCharset=" + fallbackCharset +
-            ", targets=" + Arrays.toString(targets) +
-            ", byteSize=" + byteSize +
-            '}';
+        return String.format("MixCharsetTarget{fallbackCharset=%s, targets=%s, byteSize=%d}", fallbackCharset, Arrays.toString(targets), byteSize);
     }
 
     private Charset getCharsetNonFail(Charset fallback) {

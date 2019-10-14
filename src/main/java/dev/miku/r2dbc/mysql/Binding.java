@@ -104,8 +104,6 @@ final class Binding {
 
     @Override
     public String toString() {
-        return "Binding{" +
-            "parameters=" + Arrays.toString(parameters) +
-            '}';
+        return String.format("Binding{parameters=%s}", Arrays.toString(parameters));
     }
 }

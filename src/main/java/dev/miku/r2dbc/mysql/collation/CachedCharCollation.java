@@ -34,10 +34,6 @@ final class CachedCharCollation extends AbstractCharCollation {
 
     @Override
     public String toString() {
-        return "CachedCharCollation{" +
-            "id=" + id +
-            ", name='" + name + '\'' +
-            ", target=" + target +
-            '}';
+        return String.format("CachedCharCollation{id=%d, name='%s', target=%s}", id, name, target);
     }
 }

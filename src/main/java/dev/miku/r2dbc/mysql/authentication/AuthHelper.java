@@ -63,7 +63,7 @@ final class AuthHelper {
         try {
             return MessageDigest.getInstance(name);
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalArgumentException(name + " not support of MessageDigest", e);
+            throw new IllegalArgumentException(String.format("%s not support of MessageDigest", name), e);
         }
     }
 
@@ -86,7 +86,7 @@ final class AuthHelper {
         int size = left.length;
 
         if (size != right.length) {
-            throw new IllegalArgumentException("can not xor different sizes " + size + " and " + right.length);
+            throw new IllegalArgumentException(String.format("can not xor different sizes %d and %d", size, right.length));
         }
 
         for (int i = 0; i < size; ++i) {

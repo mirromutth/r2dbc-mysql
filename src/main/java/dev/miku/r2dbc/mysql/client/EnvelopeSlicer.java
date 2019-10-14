@@ -52,7 +52,7 @@ final class EnvelopeSlicer extends LengthFieldBasedFrameDecoder {
     protected long getUnadjustedFrameLength(ByteBuf buf, int offset, int length, ByteOrder order) {
         if (length != Envelopes.SIZE_FIELD_SIZE || order != ByteOrder.LITTLE_ENDIAN) {
             // impossible length or order, only BUG or hack of reflect
-            throw new DecoderException("unsupported lengthFieldLength: " + length + " (only 3) or byteOrder: " + order + " (only LITTLE_ENDIAN)");
+            throw new DecoderException(String.format("unsupported lengthFieldLength: %d (only 3) or byteOrder: %s (only LITTLE_ENDIAN)", length, order));
         }
 
         return buf.getUnsignedMediumLE(offset);

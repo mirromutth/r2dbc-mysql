@@ -55,10 +55,6 @@ final class LazyInitCharCollation extends AbstractCharCollation {
 
     @Override
     public String toString() {
-        return "LazyInitCharCollation{" +
-            "id=" + id +
-            ", name='" + name + '\'' +
-            ", target=" + target +
-            '}';
+        return String.format("LazyInitCharCollation{id=%d, name='%s', target=%s}", id, name, target);
     }
 }

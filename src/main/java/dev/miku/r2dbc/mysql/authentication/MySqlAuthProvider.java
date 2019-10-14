@@ -50,7 +50,7 @@ public interface MySqlAuthProvider {
                 return NoAuthProvider.INSTANCE;
         }
 
-        throw new R2dbcPermissionDeniedException("Authentication type '" + type + "' not supported");
+        throw new R2dbcPermissionDeniedException(String.format("Authentication type '%s' not supported", type));
     }
 
     String getType();

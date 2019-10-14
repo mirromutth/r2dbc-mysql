@@ -69,9 +69,6 @@ final class CachedCharsetTarget extends AbstractCharsetTarget {
 
     @Override
     public String toString() {
-        return "CachedCharsetTarget{" +
-            "charset=" + charset +
-            ", byteSize=" + byteSize +
-            '}';
+        return String.format("CachedCharsetTarget{charset=%s, byteSize=%d}", charset, byteSize);
     }
 }

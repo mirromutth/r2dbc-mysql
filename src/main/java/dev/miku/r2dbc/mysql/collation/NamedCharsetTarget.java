@@ -70,9 +70,6 @@ final class NamedCharsetTarget extends AbstractCharsetTarget {
 
     @Override
     public String toString() {
-        return "NamedCharsetTarget{" +
-            "charsetName='" + charsetName + '\'' +
-            ", byteSize=" + byteSize +
-            '}';
+        return String.format("NamedCharsetTarget{charsetName='%s', byteSize=%d}", charsetName, byteSize);
     }
 }
