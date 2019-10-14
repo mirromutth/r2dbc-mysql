@@ -59,6 +59,8 @@ public final class MySqlConnectionConfiguration {
         String host, int port, @Nullable Duration connectTimeout, @Nullable MySqlSslConfiguration ssl,
         ZeroDateOption zeroDateOption, String username, @Nullable CharSequence password, @Nullable String database
     ) {
+        require(port >= 0 && port <= 0xFFFF, "port must be between 0 and 65535");
+
         this.host = requireNonNull(host, "host must not be null");
         this.port = port;
         this.connectTimeout = connectTimeout;
@@ -196,6 +198,8 @@ public final class MySqlConnectionConfiguration {
         }
 
         public Builder port(int port) {
+            require(port >= 0 && port <= 0xFFFF, "port must be between 0 and 65535");
+
             this.port = port;
             return this;
         }

@@ -32,6 +32,7 @@ import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.function.Predicate;
 
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -68,6 +69,7 @@ public interface Client {
     static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port, MySqlSslConfiguration ssl, ConnectionContext context, @Nullable Duration connectTimeout) {
         requireNonNull(connectionProvider, "connectionProvider must not be null");
         requireNonNull(host, "host must not be null");
+        require(port >= 0 && port <= 0xFFFF, "port must be between 0 and 65535");
         requireNonNull(ssl, "ssl must not be null");
         requireNonNull(context, "context must not be null");
 
@@ -77,7 +79,7 @@ public interface Client {
                     b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
                 }
 
-                return b.remoteAddress(new InetSocketAddress(host, port));
+                return b.remoteAddress(InetSocketAddress.createUnresolved(host, port));
             })
             .connect()
             .map(conn -> new ReactorNettyClient(conn, ssl, context));
