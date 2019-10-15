@@ -75,10 +75,12 @@ public final class ServerMessageDecoder {
         ByteBuf joined = JOINER.join(buffers);
 
         try {
-            if (decodeContext instanceof PreparedMetadataDecodeContext) {
-                return decodePreparedMetadata(joined, context, (PreparedMetadataDecodeContext) decodeContext);
-            } else if (decodeContext instanceof CommandDecodeContext) {
+            if (decodeContext instanceof CommandDecodeContext) {
                 return decodeCommandMessage(joined, context);
+            } else if (decodeContext instanceof PreparedMetadataDecodeContext) {
+                return decodePreparedMetadata(joined, context, (PreparedMetadataDecodeContext) decodeContext);
+            } else if (decodeContext instanceof PrepareQueryDecodeContext) {
+                return decodePrepareQuery(joined);
             } else if (decodeContext instanceof ConnectionDecodeContext) {
                 return decodeConnectionMessage(joined, context);
             }
@@ -171,7 +173,7 @@ public final class ServerMessageDecoder {
         throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on result phase", header, totalBytes));
     }
 
-    private static ServerMessage decodeCommandMessage(ByteBuf buf, ConnectionContext context) {
+    private static ServerMessage decodePrepareQuery(ByteBuf buf) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
             case Headers.ERROR:
@@ -179,7 +181,20 @@ public final class ServerMessageDecoder {
             case Headers.OK:
                 if (PreparedOkMessage.isLooksLike(buf)) {
                     return PreparedOkMessage.decode(buf);
-                } else if (OkMessage.isValidSize(buf.readableBytes())) {
+                }
+                break;
+        }
+
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on prepare query phase", header, buf.readableBytes()));
+    }
+
+    private static ServerMessage decodeCommandMessage(ByteBuf buf, ConnectionContext context) {
+        short header = buf.getUnsignedByte(buf.readerIndex());
+        switch (header) {
+            case Headers.ERROR:
+                return ErrorMessage.decode(buf);
+            case Headers.OK:
+                if (OkMessage.isValidSize(buf.readableBytes())) {
                     return OkMessage.decode(buf, context);
                 }
 

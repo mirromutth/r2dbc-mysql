@@ -29,6 +29,10 @@ public interface DecodeContext {
         return CommandDecodeContext.INSTANCE;
     }
 
+    static DecodeContext prepareQuery() {
+        return PrepareQueryDecodeContext.INSTANCE;
+    }
+
     static DecodeContext result(boolean deprecateEof, int totalColumns) {
         return new ResultDecodeContext(deprecateEof, totalColumns);
     }

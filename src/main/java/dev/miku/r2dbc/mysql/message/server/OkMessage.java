@@ -78,10 +78,6 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
         return (serverStatuses & ServerStatuses.MORE_RESULTS_EXISTS) == 0;
     }
 
-    public String getInformation() {
-        return information;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
