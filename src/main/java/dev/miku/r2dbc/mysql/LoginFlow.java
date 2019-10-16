@@ -56,10 +56,17 @@ final class LoginFlow {
 
     private static final Logger logger = LoggerFactory.getLogger(LoginFlow.class);
 
+    private static final int SUPPORTED_CAPABILITIES = Capabilities.LONG_PASSWORD | Capabilities.LONG_FLAG |
+        Capabilities.CONNECT_WITH_DB | Capabilities.PROTOCOL_41 | Capabilities.SSL | Capabilities.IGNORE_SIGPIPE |
+        Capabilities.TRANSACTIONS | Capabilities.RESERVED | Capabilities.SECURE_CONNECTION |
+        Capabilities.MULTI_STATEMENTS | Capabilities.MULTI_RESULTS | Capabilities.PREPARED_MULTI_RESULTS |
+        Capabilities.PLUGIN_AUTH | Capabilities.CONNECT_ATTRS | Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA |
+        Capabilities.DEPRECATE_EOF | Capabilities.SSL_VERIFY_SERVER_CERT;
+
     /**
      * Connection attributes, always empty for now.
      */
-    private static final Map<String, String> attributes = Collections.emptyMap();
+    private static final Map<String, String> ATTRIBUTES = Collections.emptyMap();
 
     private static final int CURRENT_HANDSHAKE_VERSION = 10;
 
@@ -159,7 +166,7 @@ final class LoginFlow {
                 authorization,
                 authType,
                 database,
-                attributes
+                ATTRIBUTES
             );
         });
     }
@@ -177,18 +184,8 @@ final class LoginFlow {
     }
 
     private int calculateClientCapabilities(int serverCapabilities) {
-        // Remove those flags.
-        int clientCapabilities = serverCapabilities & ~(Capabilities.NO_SCHEMA |
-            Capabilities.COMPRESS |
-            Capabilities.ODBC |
-            Capabilities.LOCAL_FILES |
-            Capabilities.IGNORE_SPACE |
-            Capabilities.INTERACTIVE_CLIENT |
-            Capabilities.HANDLE_EXPIRED_PASSWORD |
-            Capabilities.SESSION_TRACK |
-            Capabilities.OPTIONAL_RESULT_SET_METADATA |
-            Capabilities.REMEMBER_OPTIONS
-        );
+        // Remove unknown flags.
+        int clientCapabilities = serverCapabilities & SUPPORTED_CAPABILITIES;
 
         if ((clientCapabilities & Capabilities.SSL) == 0) {
             // Server unsupported SSL.
@@ -217,7 +214,7 @@ final class LoginFlow {
             clientCapabilities &= ~Capabilities.CONNECT_WITH_DB;
         }
 
-        if (attributes.isEmpty() && (clientCapabilities & Capabilities.CONNECT_ATTRS) != 0) {
+        if (ATTRIBUTES.isEmpty() && (clientCapabilities & Capabilities.CONNECT_ATTRS) != 0) {
             clientCapabilities &= ~Capabilities.CONNECT_ATTRS;
         }
 
