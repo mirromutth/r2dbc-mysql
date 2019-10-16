@@ -17,10 +17,13 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
+import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
+import reactor.util.annotation.Nullable;
 
 import java.nio.charset.Charset;
 import java.util.Objects;
@@ -33,17 +36,18 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class DefinitionMetadataMessage implements ServerMessage {
 
-    private static final int MIN_SIZE = 20;
-
+    @Nullable
     private final String database;
 
-    private final String tableName;
+    private final String table;
 
-    private final String originTableName;
+    @Nullable
+    private final String originTable;
 
-    private final String name;
+    private final String column;
 
-    private final String originName;
+    @Nullable
+    private final String originColumn;
 
     private final int collationId;
 
@@ -56,17 +60,18 @@ public final class DefinitionMetadataMessage implements ServerMessage {
     private final short decimals;
 
     private DefinitionMetadataMessage(
-        String database, String tableName, String originTableName, String name, String originName,
+        @Nullable String database, String table, @Nullable String originTable,
+        String column, @Nullable String originColumn,
         int collationId, long size, short type, short definitions, short decimals
     ) {
         require(size >= 0, "size must not be a negative integer");
         require(collationId > 0, "collationId must be a positive integer");
 
-        this.database = requireNonNull(database, "database must not be null");
-        this.tableName = requireNonNull(tableName, "tableName must not be null");
-        this.originTableName = requireNonNull(originTableName, "originTableName must not be null");
-        this.name = requireNonNull(name, "name must not be null");
-        this.originName = requireNonNull(originName, "originName must not be null");
+        this.database = database;
+        this.table = requireNonNull(table, "table must not be null");
+        this.originTable = originTable;
+        this.column = requireNonNull(column, "column must not be null");
+        this.originColumn = originColumn;
         this.collationId = collationId;
         this.size = size;
         this.type = type;
@@ -74,12 +79,8 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         this.decimals = decimals;
     }
 
-    public String getDatabase() {
-        return database;
-    }
-
-    public String getName() {
-        return name;
+    public String getColumn() {
+        return column;
     }
 
     public int getCollationId() {
@@ -116,52 +117,72 @@ public final class DefinitionMetadataMessage implements ServerMessage {
             type == that.type &&
             definitions == that.definitions &&
             decimals == that.decimals &&
-            database.equals(that.database) &&
-            tableName.equals(that.tableName) &&
-            originTableName.equals(that.originTableName) &&
-            name.equals(that.name) &&
-            originName.equals(that.originName);
+            Objects.equals(database, that.database) &&
+            table.equals(that.table) &&
+            Objects.equals(originTable, that.originTable) &&
+            column.equals(that.column) &&
+            Objects.equals(originColumn, that.originColumn);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(database, tableName, originTableName, name, originName, collationId, size, type, definitions, decimals);
+        return Objects.hash(database, table, originTable, column, originColumn, collationId, size, type, definitions, decimals);
     }
 
     @Override
     public String toString() {
-        return String.format("DefinitionMetadataMessage{database='%s', tableName='%s' (origin:'%s'), name='%s' (origin:'%s'), collationId=%d, size=%d, type=%d, definitions=%x, decimals=%d}",
-            database, tableName, originTableName, name, originName, collationId, size, type, definitions, decimals);
+        return String.format("DefinitionMetadataMessage{database='%s', table='%s' (origin:'%s'), column='%s' (origin:'%s'), collationId=%d, size=%d, type=%d, definitions=%x, decimals=%d}",
+            database, table, originTable, column, originColumn, collationId, size, type, definitions, decimals);
     }
 
-    static boolean isLooksLike(ByteBuf buf) {
-        int bufSize = buf.readableBytes();
-
-        if (bufSize < MIN_SIZE) {
-            return false;
+    static DefinitionMetadataMessage decode(ByteBuf buf, ConnectionContext context) {
+        if ((context.getCapabilities() & Capabilities.PROTOCOL_41) == 0) {
+            return decode320(buf, context);
+        } else {
+            return decode41(buf, context);
         }
-
-        int readerIndex = buf.readerIndex();
-        byte first = buf.getByte(readerIndex);
-
-        if (first != 3) {
-            return false;
-        }
-
-        // "def".equals(buf.toString(readerIndex + 1, 3, StandardCharsets.US_ASCII))
-        return 'd' == buf.getByte(readerIndex + 1) &&
-            'e' == buf.getByte(readerIndex + 2) &&
-            'f' == buf.getByte(readerIndex + 3);
     }
 
-    static DefinitionMetadataMessage decode(ByteBuf buf, Charset charset) {
+    private static DefinitionMetadataMessage decode320(ByteBuf buf, ConnectionContext context) {
+        CharCollation collation = context.getCollation();
+        Charset charset = collation.getCharset();
+        String table = CodecUtils.readVarIntSizedString(buf, charset);
+        String column = CodecUtils.readVarIntSizedString(buf, charset);
+
+        buf.skipBytes(1); // Constant 0x3
+        int size = buf.readUnsignedMediumLE();
+
+        buf.skipBytes(1); // Constant 0x1
+        short type = buf.readUnsignedByte();
+
+        buf.skipBytes(1); // Constant 0x3
+        short definitions = buf.readShortLE();
+        short decimals = buf.readUnsignedByte();
+
+        return new DefinitionMetadataMessage(
+            null,
+            table,
+            null,
+            column,
+            null,
+            collation.getId(),
+            size,
+            type,
+            definitions,
+            decimals
+        );
+    }
+
+    private static DefinitionMetadataMessage decode41(ByteBuf buf, ConnectionContext context) {
         buf.skipBytes(4); // "def" which sized by var integer
 
+        CharCollation collation = context.getCollation();
+        Charset charset = collation.getCharset();
         String database = CodecUtils.readVarIntSizedString(buf, charset);
-        String tableName = CodecUtils.readVarIntSizedString(buf, charset);
-        String originTableName = CodecUtils.readVarIntSizedString(buf, charset);
-        String name = CodecUtils.readVarIntSizedString(buf, charset);
-        String originName = CodecUtils.readVarIntSizedString(buf, charset);
+        String table = CodecUtils.readVarIntSizedString(buf, charset);
+        String originTable = CodecUtils.readVarIntSizedString(buf, charset);
+        String column = CodecUtils.readVarIntSizedString(buf, charset);
+        String originColumn = CodecUtils.readVarIntSizedString(buf, charset);
 
         CodecUtils.readVarInt(buf); // skip constant 0x0c encoded by var integer
 
@@ -171,7 +192,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         short definitions = buf.readShortLE();
 
         if (DataTypes.JSON == type && collationId == CharCollation.BINARY_ID) {
-            collationId = CharCollation.clientCharCollation().getId();
+            collationId = collation.getId();
         }
 
         if ((definitions & ColumnDefinitions.SET) != 0) {
@@ -184,10 +205,10 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
         return new DefinitionMetadataMessage(
             database,
-            tableName,
-            originTableName,
-            name,
-            originName,
+            table,
+            originTable,
+            column,
+            originColumn,
             collationId,
             size,
             type,

@@ -89,7 +89,7 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         return new MySqlColumnMetadata(
             index,
             message.getType(),
-            message.getName(),
+            message.getColumn(),
             definitions,
             (definitions & ColumnDefinitions.NOT_NULL) != 0,
             message.getSize(),
