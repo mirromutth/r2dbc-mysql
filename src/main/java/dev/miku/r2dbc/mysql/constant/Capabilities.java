@@ -21,59 +21,51 @@ package dev.miku.r2dbc.mysql.constant;
  */
 public final class Capabilities {
 
-//    public static final int LONG_PASSWORD = 1; // More secure passwords.
-//    public static final int FOUND_ROWS = 2;
-//    public static final int LONG_FLAG = 4;
+    /**
+     * Can use long password.
+     */
+    public static final int LONG_PASSWORD = 1;
+
+//    public static final int FOUND_ROWS = 2; // Return found rows instead of affected rows, should not enable this.
+
+    /**
+     * Get all column.
+     */
+    public static final int LONG_FLAG = 4;
 
     public static final int CONNECT_WITH_DB = 8;
 
-    /**
-     * Don't allows statement like {@code database.table.column}.
-     */
-    public static final int NO_SCHEMA = 16;
+//    public static final int NO_SCHEMA = 16; // Don't allows statement like {@code database.table.column}.
+//    public static final int COMPRESS = 32; // The deflate compression, old compression flag.
+//    public static final int ODBC = 64; // Is this client ODBC?
+//    public static final int LOCAL_FILES = 128; // Can use local data
+//    public static final int IGNORE_SPACE = 256; // Ignore spaces before '('.
 
-    /**
-     * The deflate compression.
-     */
-    public static final int COMPRESS = 32;
-
-    /**
-     * Is this client ODBC?
-     */
-    public static final int ODBC = 64;
-
-    public static final int LOCAL_FILES = 128;
-
-    /**
-     * Ignore spaces before '('.
-     */
-    public static final int IGNORE_SPACE = 256;
-
-    /**
-     * WARNING: should ALWAYS enable this option before newer protocol comes out.
-     */
     public static final int PROTOCOL_41 = 512;
 
-    /**
-     * Does this client is interactive? (answer is no)
-     */
-    public static final int INTERACTIVE_CLIENT = 1024;
+//    public static final int INTERACTIVE_CLIENT = 1024; // Does this client is interactive? (answer is no)
 
     public static final int SSL = 2048;
 
-//    public static final int IGNORE_SIGPIPE = 4096;
-//    public static final int TRANSACTIONS = 8192;
-//    public static final int RESERVED = 16384;
+    public static final int IGNORE_SIGPIPE = 4096;
+
+    public static final int TRANSACTIONS = 8192;
 
     /**
-     * Is also RESERVED2, allowing second part of authentication hashing salt.
+     * Old flag for PROTOCOL_41.
+     */
+    public static final int RESERVED = 16384;
+
+    /**
+     * Can do 4.1 authentication, is also RESERVED2, allowing second part of authentication hashing salt.
      */
     public static final int SECURE_CONNECTION = 32768;
 
     public static final int MULTI_STATEMENTS = 65536;
 
-//    public static final int MULTI_RESULTS = 1 << 17;
-//    public static final int PREPARED_MULTI_RESULTS = 1 << 18;
+    public static final int MULTI_RESULTS = 1 << 17;
+
+    public static final int PREPARED_MULTI_RESULTS = 1 << 18;
 
     public static final int PLUGIN_AUTH = 1 << 19;
 
@@ -84,26 +76,21 @@ public final class Capabilities {
      */
     public static final int PLUGIN_AUTH_VAR_INT_SIZED_DATA = 1 << 21;
 
-    /**
-     * Client can handle expired passwords.
-     */
-    public static final int HANDLE_EXPIRED_PASSWORD = 1 << 22;
-
-    public static final int SESSION_TRACK = 1 << 23;
+//    public static final int HANDLE_EXPIRED_PASSWORD = 1 << 22; // Client can handle expired passwords.
+//    public static final int SESSION_TRACK = 1 << 23;
 
     /**
      * WARNING: should ALWAYS enable this option. MySQL recommends deprecating EOF messages.
      */
     public static final int DEPRECATE_EOF = 1 << 24;
 
-    /**
-     * WARNING: means server MAYBE have NOT metadata in response, should NEVER enable this option.
-     */
-    public static final int OPTIONAL_RESULT_SET_METADATA = 1 << 25;
+//    public static final int OPTIONAL_RESULT_SET_METADATA = 1 << 25; // means server MAYBE have NOT metadata in response, should NEVER enable this option.
+//    public static final int Z_STD_COMPRESSION = 1 << 26;
+//    public static final int CAPABILITY_EXTENSION = 1 << 29;
 
     public static final int SSL_VERIFY_SERVER_CERT = 1 << 30;
 
-    public static final int REMEMBER_OPTIONS = 1 << 31;
+//    public static final int REMEMBER_OPTIONS = 1 << 31;
 
     private Capabilities() {
     }
