@@ -22,6 +22,7 @@ import reactor.util.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Objects;
 
+import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_STRINGS;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -29,6 +30,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * MySQL configuration of SSL.
  */
 public final class MySqlSslConfiguration {
+
+    private static final MySqlSslConfiguration DISABLED = new MySqlSslConfiguration(SslMode.DISABLED, EMPTY_STRINGS, null, null, null, null);
 
     private final SslMode sslMode;
 
@@ -46,13 +49,9 @@ public final class MySqlSslConfiguration {
     @Nullable
     private final String sslCert;
 
-    MySqlSslConfiguration(SslMode sslMode, String[] tlsVersion, @Nullable String sslCa, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert) {
-        requireNonNull(sslMode, "sslMode must not be null");
-        require(!sslMode.verifyCertificate() || sslCa != null, "SSL CA must not be null when verifying mode has set");
-        require((sslKey == null && sslCert == null) || (sslKey != null && sslCert != null), "SSL key and cert must be both null or both non-null");
-
-        this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
-        this.tlsVersion = requireNonNull(tlsVersion, "tlsVersion must not be null");
+    private MySqlSslConfiguration(SslMode sslMode, String[] tlsVersion, @Nullable String sslCa, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert) {
+        this.sslMode = sslMode;
+        this.tlsVersion = tlsVersion;
         this.sslCa = sslCa;
         this.sslKey = sslKey;
         this.sslKeyPassword = sslKeyPassword;
@@ -119,5 +118,23 @@ public final class MySqlSslConfiguration {
         }
 
         return "DISABLED";
+    }
+
+    static MySqlSslConfiguration disabled() {
+        return DISABLED;
+    }
+
+    static MySqlSslConfiguration create(SslMode sslMode, String[] tlsVersion, @Nullable String sslCa, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert) {
+        requireNonNull(sslMode, "sslMode must not be null");
+
+        if (!sslMode.startSsl()) {
+            return DISABLED;
+        }
+
+        requireNonNull(tlsVersion, "tlsVersion must not be null");
+        require(!sslMode.verifyCertificate() || sslCa != null, "sslCa must not be null when verifying mode has set");
+        require((sslKey == null && sslCert == null) || (sslKey != null && sslCert != null), "sslKey and cert must be both null or both non-null");
+
+        return new MySqlSslConfiguration(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert);
     }
 }

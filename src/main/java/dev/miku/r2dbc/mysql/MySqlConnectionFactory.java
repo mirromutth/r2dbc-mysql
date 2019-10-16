@@ -19,11 +19,16 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import io.netty.channel.unix.DomainSocketAddress;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.netty.resources.ConnectionProvider;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.time.Duration;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -32,6 +37,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * An implementation of {@link ConnectionFactory} for creating connections to a MySQL database.
  */
 public final class MySqlConnectionFactory implements ConnectionFactory {
+
+    private static final Logger logger = LoggerFactory.getLogger(MySqlConnectionFactory.class);
 
     private final Mono<MySqlConnection> client;
 
@@ -53,17 +60,24 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
         requireNonNull(configuration, "configuration must not be null");
 
         return new MySqlConnectionFactory(Mono.defer(() -> {
-            ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption());
-            String host = configuration.getHost();
-            int port = configuration.getPort();
-            Duration connectTimeout = configuration.getConnectTimeout();
-            MySqlSslConfiguration ssl = configuration.getSsl();
-            SslMode sslMode = ssl.getSslMode();
+            MySqlSslConfiguration ssl;
+            SocketAddress address;
+
+            if (configuration.isHost()) {
+                ssl = configuration.getSsl();
+                address = InetSocketAddress.createUnresolved(configuration.getDomain(), configuration.getPort());
+            } else {
+                ssl = MySqlSslConfiguration.disabled();
+                address = new DomainSocketAddress(configuration.getDomain());
+            }
+
             String database = configuration.getDatabase();
             String username = configuration.getUsername();
             CharSequence password = configuration.getPassword();
+            SslMode sslMode = ssl.getSslMode();
+            ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption());
 
-            return Client.connect(ConnectionProvider.newConnection(), host, port, ssl, context, connectTimeout)
+            return Client.connect(address, ssl, context, configuration.getConnectTimeout())
                 .flatMap(client -> LoginFlow.login(client, sslMode, database, context, username, password))
                 .flatMap(client -> MySqlConnection.create(client, context));
         }));

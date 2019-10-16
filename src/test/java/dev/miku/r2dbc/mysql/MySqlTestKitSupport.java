@@ -92,7 +92,7 @@ abstract class MySqlTestKitSupport implements TestKit<String> {
     private static JdbcTemplate getJdbc(MySqlConnectionConfiguration configuration) {
         HikariDataSource source = new HikariDataSource();
 
-        source.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s", configuration.getHost(), configuration.getPort(), configuration.getDatabase()));
+        source.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s", configuration.getDomain(), configuration.getPort(), configuration.getDatabase()));
         source.setUsername(configuration.getUsername());
         source.setPassword(Optional.ofNullable(configuration.getPassword()).map(Object::toString).orElse(null));
         source.setMaximumPoolSize(1);
