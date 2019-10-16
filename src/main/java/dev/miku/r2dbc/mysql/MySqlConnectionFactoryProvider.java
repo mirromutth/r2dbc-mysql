@@ -41,6 +41,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
 
     public static final String MYSQL_DRIVER = "mysql";
 
+    public static final Option<String> UNIX_SOCKET = Option.valueOf("unixSocket");
+
     /**
      * This option indicates special handling when MySQL server returning "zero date" (aka. "0000-00-00 00:00:00")
      */
@@ -75,8 +77,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         }
 
         Boolean isSsl = options.getValue(SSL);
-        if (isSsl != null && !isSsl) {
-            builder.sslMode(SslMode.DISABLED);
+        if (isSsl != null) {
+            builder.sslMode(isSsl ? SslMode.PREFERRED : SslMode.DISABLED);
         }
 
         String sslMode = options.getValue(SSL_MODE);
@@ -98,8 +100,17 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.sslKeyAndCert(sslCert, sslKey, sslKeyPassword);
         }
 
-        MySqlConnectionConfiguration configuration = builder.host(options.getRequiredValue(HOST))
-            .username(options.getRequiredValue(USER))
+        String unixSocket = options.getValue(UNIX_SOCKET);
+        String host = options.getValue(HOST);
+        if (unixSocket == null) {
+            requireNonNull(host, "host must not be null when unixSocket is null");
+
+            builder.host(host);
+        } else {
+            builder.unixSocket(unixSocket);
+        }
+
+        MySqlConnectionConfiguration configuration = builder.username(options.getRequiredValue(USER))
             .password(options.getValue(PASSWORD))
             .connectTimeout(options.getValue(CONNECT_TIMEOUT))
             .database(options.getValue(DATABASE))

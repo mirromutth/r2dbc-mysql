@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.constant.SslMode;
 import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.Option;
@@ -33,7 +34,8 @@ import static io.r2dbc.spi.ConnectionFactoryOptions.PASSWORD;
 import static io.r2dbc.spi.ConnectionFactoryOptions.PORT;
 import static io.r2dbc.spi.ConnectionFactoryOptions.SSL;
 import static io.r2dbc.spi.ConnectionFactoryOptions.USER;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit test for {@link MySqlConnectionFactoryProvider}.
@@ -41,14 +43,102 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class MySqlConnectionFactoryProviderTest {
 
     @Test
-    void get() throws UnsupportedEncodingException {
+    void validUrl() throws UnsupportedEncodingException {
+        assertThat(ConnectionFactories.get("r2dbc:mysql://root@localhost:3306")).isExactlyInstanceOf(MySqlConnectionFactory.class);
+        assertThat(ConnectionFactories.get("r2dbcs:mysql://root@localhost:3306")).isExactlyInstanceOf(MySqlConnectionFactory.class);
+        assertThat(ConnectionFactories.get("r2dbc:mysql://root@localhost:3306?unixSocket=" + URLEncoder.encode("/path/to/mysql.sock", "UTF-8")))
+            .isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        assertThat(ConnectionFactories.get("r2dbcs:mysql://root@localhost:3306?" +
+            "unixSocket=" + URLEncoder.encode("/path/to/mysql.sock", "UTF-8") +
+            "&sslMode=disabled")).isNotNull();
+
+        assertThat(ConnectionFactories.get(
+            "r2dbcs:mysql://root:123456@127.0.0.1:3306/r2dbc?" +
+                "zeroDate=use_round&" +
+                "sslMode=verify_identity&" +
+                String.format("tlsVersion=%s&", URLEncoder.encode("TLSv1.1,TLSv1.2,TLSv1.3", "UTF-8")) +
+                String.format("sslCa=%s&", URLEncoder.encode("/path/to/ca.pem", "UTF-8")) +
+                String.format("sslKey=%s&", URLEncoder.encode("/path/to/client-key.pem", "UTF-8")) +
+                String.format("sslCert=%s&", URLEncoder.encode("/path/to/client-cert.pem", "UTF-8")) +
+                "sslKeyPassword=ssl123456"
+        )).isExactlyInstanceOf(MySqlConnectionFactory.class);
+    }
+
+    @Test
+    void invalidUrl() {
+        assertThat(assertThrows(
+            IllegalArgumentException.class,
+            () -> ConnectionFactories.get("r2dbcs:mysql://root@localhost:3306?" +
+                "unixSocket=" + URLEncoder.encode("/path/to/mysql.sock", "UTF-8"))).getMessage())
+            .contains("sslMode");
+
+        for (SslMode mode : SslMode.values()) {
+            if (mode.startSsl()) {
+                assertThat(assertThrows(
+                    IllegalArgumentException.class,
+                    () -> ConnectionFactories.get("r2dbc:mysql://root@localhost:3306?" +
+                        "unixSocket=" + URLEncoder.encode("/path/to/mysql.sock", "UTF-8") +
+                        "&sslMode=" + mode.name().toLowerCase())).getMessage())
+                    .contains("sslMode");
+            }
+        }
+    }
+
+    @Test
+    void validProgrammatic() {
         ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
             .option(DRIVER, "mysql")
             .option(HOST, "127.0.0.1")
             .option(USER, "root")
             .build();
 
-        assertEquals(ConnectionFactories.get(options).getClass(), MySqlConnectionFactory.class);
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(SSL, true)
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(Option.valueOf("unixSocket"), "/path/to/mysql.sock")
+            .option(USER, "root")
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(Option.valueOf("unixSocket"), "/path/to/mysql.sock")
+            .option(USER, "root")
+            .option(Option.valueOf("sslMode"), "disabled")
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(Option.valueOf("unixSocket"), "/path/to/mysql.sock")
+            .option(USER, "root")
+            .option(SSL, false)
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(Option.valueOf("unixSocket"), "/path/to/mysql.sock")
+            .option(USER, "root")
+            .option(Option.valueOf("sslMode"), "disabled")
+            .option(SSL, true)
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
 
         options = ConnectionFactoryOptions.builder()
             .option(DRIVER, "mysql")
@@ -68,16 +158,31 @@ class MySqlConnectionFactoryProviderTest {
             .option(Option.valueOf("sslKeyPassword"), "ssl123456")
             .build();
 
-        assertEquals(ConnectionFactories.get(options).getClass(), MySqlConnectionFactory.class);
-        assertEquals(ConnectionFactories.get(
-            "r2dbcs:mysql://root:123456@127.0.0.1:3306/r2dbc?" +
-                "zeroDate=use_round&" +
-                "sslMode=verify_identity&" +
-                String.format("tlsVersion=%s&", URLEncoder.encode("TLSv1.1,TLSv1.2,TLSv1.3", "UTF-8")) +
-                String.format("sslCa=%s&", URLEncoder.encode("/path/to/ca.pem", "UTF-8")) +
-                String.format("sslKey=%s&", URLEncoder.encode("/path/to/client-key.pem", "UTF-8")) +
-                String.format("sslCert=%s&", URLEncoder.encode("/path/to/client-cert.pem", "UTF-8")) +
-                "sslKeyPassword=ssl123456"
-        ).getClass(), MySqlConnectionFactory.class);
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+    }
+
+    @Test
+    void invalidProgrammatic() {
+        assertThat(assertThrows(IllegalArgumentException.class, () -> ConnectionFactories.get(ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(Option.valueOf("unixSocket"), "/path/to/mysql.sock")
+            .option(USER, "root")
+            .option(SSL, true)
+            .build()))
+            .getMessage())
+            .contains("sslMode");
+
+        for (SslMode mode : SslMode.values()) {
+            if (mode.startSsl()) {
+                assertThat(assertThrows(IllegalArgumentException.class, () -> ConnectionFactories.get(ConnectionFactoryOptions.builder()
+                    .option(DRIVER, "mysql")
+                    .option(Option.valueOf("unixSocket"), "/path/to/mysql.sock")
+                    .option(USER, "root")
+                    .option(Option.valueOf("sslMode"), mode.name().toLowerCase())
+                    .build()))
+                    .getMessage())
+                    .contains("sslMode");
+            }
+        }
     }
 }
