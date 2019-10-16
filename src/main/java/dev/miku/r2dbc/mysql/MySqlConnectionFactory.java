@@ -22,14 +22,10 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
-import reactor.netty.resources.ConnectionProvider;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.time.Duration;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -37,8 +33,6 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * An implementation of {@link ConnectionFactory} for creating connections to a MySQL database.
  */
 public final class MySqlConnectionFactory implements ConnectionFactory {
-
-    private static final Logger logger = LoggerFactory.getLogger(MySqlConnectionFactory.class);
 
     private final Mono<MySqlConnection> client;
 
