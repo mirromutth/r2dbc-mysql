@@ -57,6 +57,8 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     private final Map<String, String> attributes;
 
+    // private final byte zStdCompressionLevel; // When Z-Standard compression supporting
+
     HandshakeResponse41(int capabilities, int collationId, String username, byte[] authentication, String authType, String database, Map<String, String> attributes) {
         this.head = new SslRequest41(capabilities, collationId);
 

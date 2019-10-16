@@ -309,10 +309,8 @@ public final class ServerMessageDecoder {
 
         if (Headers.EOF == header && EofMessage.isValidSize(buf.readableBytes())) {
             message = EofMessage.decode(buf);
-        } else if (DefinitionMetadataMessage.isLooksLike(buf)) {
-            message = DefinitionMetadataMessage.decode(buf, context.getCollation().getCharset());
         } else {
-            throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d when reading metadata", header, buf.readableBytes()));
+            message = DefinitionMetadataMessage.decode(buf, context);
         }
 
         return decodeContext.putPart(message);

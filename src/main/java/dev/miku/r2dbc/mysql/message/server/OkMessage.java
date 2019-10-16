@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
@@ -132,10 +133,21 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
     static OkMessage decode(ByteBuf buf, ConnectionContext context) {
         buf.skipBytes(1); // OK message header, 0x00 or 0xFE
 
+        int capabilities = context.getCapabilities();
         long affectedRows = CodecUtils.readVarInt(buf);
         long lastInsertId = CodecUtils.readVarInt(buf);
-        short serverStatuses = buf.readShortLE();
-        int warnings = buf.readUnsignedShortLE();
+        short serverStatuses;
+        int warnings;
+
+        if ((capabilities & Capabilities.PROTOCOL_41) != 0) {
+            serverStatuses = buf.readShortLE();
+            warnings = buf.readUnsignedShortLE();
+        } else if ((capabilities & Capabilities.TRANSACTIONS) != 0) {
+            serverStatuses = buf.readShortLE();
+            warnings = 0;
+        } else {
+            warnings = serverStatuses = 0;
+        }
 
         if (buf.isReadable()) {
             Charset charset = context.getCollation().getCharset();

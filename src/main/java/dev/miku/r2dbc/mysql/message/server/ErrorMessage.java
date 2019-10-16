@@ -63,6 +63,7 @@ public final class ErrorMessage implements ServerMessage {
 
         String sqlState;
 
+        // capabilities & PROTOCOL_41, only exists under protocol 4.1
         if ('#' == buf.getByte(buf.readerIndex())) {
             buf.skipBytes(1); // constant '#'
             sqlState = buf.toString(buf.readerIndex(), SQL_STATE_SIZE, StandardCharsets.US_ASCII);
