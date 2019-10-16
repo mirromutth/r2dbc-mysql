@@ -19,26 +19,77 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.TlsVersions;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.Test;
+import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit tests for {@link MySqlConnectionConfiguration}.
  */
-public class MySqlConnectionConfigurationTest {
+class MySqlConnectionConfigurationTest {
+
+    private static final String HOST = "localhost";
+
+    private static final String UNIX_SOCKET = "/path/to/mysql.sock";
+
+    private static final String USERNAME = "root";
+
+    private static final String SSL_CA = "/path/to/mysql/ca.pem";
 
     @Test
-    void minimum() {
+    void invalid() {
         assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().build());
-        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().host("localhost").build());
-        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().username("root").build());
+        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().host(HOST).build());
+        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().unixSocket(UNIX_SOCKET).build());
+        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().username(USERNAME).build());
+    }
 
-        assertNotNull(MySqlConnectionConfiguration.builder().host("localhost").username("root").build());
+    @Test
+    void unixSocket() {
+        for (SslMode mode : SslMode.values()) {
+            if (mode.startSsl()) {
+                assertThat(assertThrows(IllegalArgumentException.class, () -> unixSocketSslMode(mode)).getMessage()).contains("sslMode");
+            } else {
+                assertThat(unixSocketSslMode(SslMode.DISABLED)).isNotNull();
+            }
+        }
+
+        ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(MySqlConnectionConfiguration.builder()
+            .unixSocket(UNIX_SOCKET)
+            .username(USERNAME)
+            .build());
+        asserted.extracting(MySqlConnectionConfiguration::getDomain).isEqualTo(UNIX_SOCKET);
+        asserted.extracting(MySqlConnectionConfiguration::getUsername).isEqualTo(USERNAME);
+        asserted.extracting(MySqlConnectionConfiguration::isHost).isEqualTo(false);
+        asserted.extracting(MySqlConnectionConfiguration::getSsl).extracting(MySqlSslConfiguration::getSslMode).isEqualTo(SslMode.DISABLED);
+    }
+
+    @Test
+    void hosted() {
+        for (SslMode mode : SslMode.values()) {
+            if (mode.verifyCertificate()) {
+                assertThat(assertThrows(IllegalArgumentException.class, () -> hostedSslMode(mode, null)).getMessage())
+                    .contains("sslCa");
+                assertThat(hostedSslMode(mode, SSL_CA)).isNotNull();
+            } else {
+                assertThat(hostedSslMode(mode, null)).isNotNull();
+            }
+        }
+
+        ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(MySqlConnectionConfiguration.builder()
+            .host(HOST)
+            .username(USERNAME)
+            .build());
+        asserted.extracting(MySqlConnectionConfiguration::getDomain).isEqualTo(HOST);
+        asserted.extracting(MySqlConnectionConfiguration::getUsername).isEqualTo(USERNAME);
+        asserted.extracting(MySqlConnectionConfiguration::isHost).isEqualTo(true);
+        asserted.extracting(MySqlConnectionConfiguration::getSsl).extracting(MySqlSslConfiguration::getSslMode).isEqualTo(SslMode.PREFERRED);
     }
 
     @Test
@@ -49,36 +100,41 @@ public class MySqlConnectionConfigurationTest {
 
     @Test
     void allFillUp() {
-        MySqlConnectionConfiguration configuration = filledUp();
-
-        assertNotNull(configuration);
-        assertNotNull(getSsl(configuration));
+        assertThat(filledUp()).extracting(MySqlConnectionConfiguration::getSsl).isNotNull();
     }
 
     @Test
     void isEquals() {
-        assertEquals(filledUp(), filledUp());
+        assertThat(filledUp()).isEqualTo(filledUp()).extracting(Objects::hashCode).isEqualTo(filledUp().hashCode());
     }
 
-    @Test
-    void hashCodeEquals() {
-        assertEquals(filledUp().hashCode(), filledUp().hashCode());
+    private static MySqlConnectionConfiguration unixSocketSslMode(SslMode sslMode) {
+        return MySqlConnectionConfiguration.builder()
+            .unixSocket(UNIX_SOCKET)
+            .username(USERNAME)
+            .sslMode(sslMode)
+            .build();
     }
 
-    public static MySqlSslConfiguration getSsl(MySqlConnectionConfiguration configuration) {
-        return configuration.getSsl();
+    private static MySqlConnectionConfiguration hostedSslMode(SslMode sslMode, @Nullable String sslCa) {
+        return MySqlConnectionConfiguration.builder()
+            .host(HOST)
+            .username(USERNAME)
+            .sslMode(sslMode)
+            .sslCa(sslCa)
+            .build();
     }
 
     private static MySqlConnectionConfiguration filledUp() {
         return MySqlConnectionConfiguration.builder()
-            .host("127.0.0.1")
-            .username("root")
+            .host(HOST)
+            .username(USERNAME)
             .port(3306)
             .password("database-password-in-here")
             .database("r2dbc")
             .connectTimeout(Duration.ofSeconds(3))
             .sslMode(SslMode.VERIFY_IDENTITY)
-            .sslCa("/path/to/mysql/ca.pem")
+            .sslCa(SSL_CA)
             .sslKeyAndCert("/path/to/mysql/client-cert.pem", "/path/to/mysql/client-key.pem", "pem-password-in-here")
             .tlsVersion(TlsVersions.TLS1_1, TlsVersions.TLS1_2, TlsVersions.TLS1_3)
             .zeroDateOption(ZeroDateOption.USE_NULL)

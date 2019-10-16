@@ -37,14 +37,22 @@ public final class MySqlConnectionConfiguration {
      */
     private static final int DEFAULT_PORT = 3306;
 
-    private final String host;
+    /**
+     * {@code true} if {@link #domain} is hostname, otherwise {@link #domain} is unix domain socket path.
+     */
+    private final boolean isHost;
+
+    /**
+     * Domain of connecting, may be hostname or unix domain socket path.
+     */
+    private final String domain;
 
     private final int port;
 
+    private final MySqlSslConfiguration ssl;
+
     @Nullable
     private final Duration connectTimeout;
-
-    private final MySqlSslConfiguration ssl;
 
     private final ZeroDateOption zeroDateOption;
 
@@ -56,12 +64,12 @@ public final class MySqlConnectionConfiguration {
     private final String database;
 
     private MySqlConnectionConfiguration(
-        String host, int port, @Nullable Duration connectTimeout, @Nullable MySqlSslConfiguration ssl,
-        ZeroDateOption zeroDateOption, String username, @Nullable CharSequence password, @Nullable String database
+        boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
+        @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption,
+        String username, @Nullable CharSequence password, @Nullable String database
     ) {
-        require(port >= 0 && port <= 0xFFFF, "port must be between 0 and 65535");
-
-        this.host = requireNonNull(host, "host must not be null");
+        this.isHost = isHost;
+        this.domain = domain;
         this.port = port;
         this.connectTimeout = connectTimeout;
         this.ssl = requireNonNull(ssl, "ssl must not be null");
@@ -75,8 +83,12 @@ public final class MySqlConnectionConfiguration {
         return new Builder();
     }
 
-    String getHost() {
-        return host;
+    boolean isHost() {
+        return isHost;
+    }
+
+    String getDomain() {
+        return domain;
     }
 
     int getPort() {
@@ -118,10 +130,11 @@ public final class MySqlConnectionConfiguration {
             return false;
         }
         MySqlConnectionConfiguration that = (MySqlConnectionConfiguration) o;
-        return port == that.port &&
-            host.equals(that.host) &&
-            Objects.equals(connectTimeout, that.connectTimeout) &&
+        return isHost == that.isHost &&
+            domain.equals(that.domain) &&
+            port == that.port &&
             ssl.equals(that.ssl) &&
+            Objects.equals(connectTimeout, that.connectTimeout) &&
             zeroDateOption == that.zeroDateOption &&
             username.equals(that.username) &&
             Objects.equals(password, that.password) &&
@@ -130,13 +143,18 @@ public final class MySqlConnectionConfiguration {
 
     @Override
     public int hashCode() {
-        return Objects.hash(host, port, connectTimeout, ssl, zeroDateOption, username, password, database);
+        return Objects.hash(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database);
     }
 
     @Override
     public String toString() {
-        return String.format("MySqlConnectionConfiguration{host='%s', port=%d, connectTimeout=%s, ssl=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s'}",
-            host, port, connectTimeout, ssl, zeroDateOption, username, database);
+        if (isHost) {
+            return String.format("MySqlConnectionConfiguration{host=%s, port=%d, ssl=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s'}",
+                domain, port, ssl, connectTimeout, zeroDateOption, username, database);
+        } else {
+            return String.format("MySqlConnectionConfiguration{unixSocket=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s'}",
+                domain, connectTimeout, zeroDateOption, username, database);
+        }
     }
 
     public static final class Builder {
@@ -144,7 +162,9 @@ public final class MySqlConnectionConfiguration {
         @Nullable
         private String database;
 
-        private String host;
+        private boolean isHost = true;
+
+        private String domain;
 
         @Nullable
         private CharSequence password;
@@ -158,7 +178,8 @@ public final class MySqlConnectionConfiguration {
 
         private ZeroDateOption zeroDateOption = ZeroDateOption.USE_NULL;
 
-        private SslMode sslMode = SslMode.PREFERRED;
+        @Nullable
+        private SslMode sslMode;
 
         private String[] tlsVersion = EMPTY_STRINGS;
 
@@ -178,8 +199,18 @@ public final class MySqlConnectionConfiguration {
         }
 
         public MySqlConnectionConfiguration build() {
-            MySqlSslConfiguration ssl = new MySqlSslConfiguration(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert);
-            return new MySqlConnectionConfiguration(host, port, connectTimeout, ssl, zeroDateOption, username, password, database);
+            SslMode sslMode = requireSslMode();
+
+            if (isHost) {
+                requireNonNull(domain, "host must not be null when using TCP socket");
+                require(port >= 0 && port <= 0xFFFF, "port must be between 0 and 65535 when using TCP socket");
+            } else {
+                requireNonNull(domain, "unixSocket must not be null when using unix domain socket");
+                require(!sslMode.startSsl(), "sslMode must be disabled when using unix domain socket");
+            }
+
+            MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert);
+            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database);
         }
 
         public Builder database(@Nullable String database) {
@@ -187,8 +218,15 @@ public final class MySqlConnectionConfiguration {
             return this;
         }
 
+        public Builder unixSocket(String unixSocket) {
+            this.domain = requireNonNull(unixSocket, "unixSocket must not be null");
+            this.isHost = false;
+            return this;
+        }
+
         public Builder host(String host) {
-            this.host = requireNonNull(host, "host must not be null");
+            this.domain = requireNonNull(host, "host must not be null");
+            this.isHost = true;
             return this;
         }
 
@@ -255,6 +293,16 @@ public final class MySqlConnectionConfiguration {
             this.sslKey = sslKey;
             this.sslKeyPassword = sslKeyPassword;
             return this;
+        }
+
+        private SslMode requireSslMode() {
+            SslMode sslMode = this.sslMode;
+
+            if (sslMode == null) {
+                sslMode = isHost ? SslMode.PREFERRED : SslMode.DISABLED;
+            }
+
+            return sslMode;
         }
     }
 }

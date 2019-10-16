@@ -17,22 +17,20 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.channel.ChannelOption;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 
-import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.time.Duration;
 import java.util.function.Predicate;
 
-import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -66,20 +64,18 @@ public interface Client {
 
     void loginSuccess();
 
-    static Mono<Client> connect(ConnectionProvider connectionProvider, String host, int port, MySqlSslConfiguration ssl, ConnectionContext context, @Nullable Duration connectTimeout) {
-        requireNonNull(connectionProvider, "connectionProvider must not be null");
-        requireNonNull(host, "host must not be null");
-        require(port >= 0 && port <= 0xFFFF, "port must be between 0 and 65535");
+    static Mono<Client> connect(SocketAddress address, MySqlSslConfiguration ssl, ConnectionContext context, @Nullable Duration connectTimeout) {
+        requireNonNull(address, "address must not be null");
         requireNonNull(ssl, "ssl must not be null");
         requireNonNull(context, "context must not be null");
 
-        return TcpClient.create(connectionProvider)
+        return TcpClient.newConnection()
             .bootstrap(b -> {
                 if (connectTimeout != null) {
                     b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
                 }
 
-                return b.remoteAddress(InetSocketAddress.createUnresolved(host, port));
+                return b.remoteAddress(address);
             })
             .connect()
             .map(conn -> new ReactorNettyClient(conn, ssl, context));
