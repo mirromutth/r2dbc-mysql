@@ -24,14 +24,14 @@ public final class Capabilities {
     /**
      * Can use long password.
      */
-    public static final int LONG_PASSWORD = 1;
+    private static final int LONG_PASSWORD = 1;
 
 //    public static final int FOUND_ROWS = 2; // Return found rows instead of affected rows, should not enable this.
 
     /**
      * Get all column.
      */
-    public static final int LONG_FLAG = 4;
+    private static final int LONG_FLAG = 4;
 
     public static final int CONNECT_WITH_DB = 8;
 
@@ -47,14 +47,14 @@ public final class Capabilities {
 
     public static final int SSL = 2048;
 
-    public static final int IGNORE_SIGPIPE = 4096;
+    private static final int IGNORE_SIGPIPE = 4096;
 
     public static final int TRANSACTIONS = 8192;
 
     /**
      * Old flag for PROTOCOL_41.
      */
-    public static final int RESERVED = 16384;
+    private static final int RESERVED = 16384;
 
     /**
      * Can do 4.1 authentication, is also RESERVED2, allowing second part of authentication hashing salt.
@@ -63,9 +63,9 @@ public final class Capabilities {
 
     public static final int MULTI_STATEMENTS = 65536;
 
-    public static final int MULTI_RESULTS = 1 << 17;
+    private static final int MULTI_RESULTS = 1 << 17;
 
-    public static final int PREPARED_MULTI_RESULTS = 1 << 18;
+    private static final int PREPARED_MULTI_RESULTS = 1 << 18;
 
     public static final int PLUGIN_AUTH = 1 << 19;
 
@@ -91,6 +91,13 @@ public final class Capabilities {
     public static final int SSL_VERIFY_SERVER_CERT = 1 << 30;
 
 //    public static final int REMEMBER_OPTIONS = 1 << 31;
+
+    public static final int ALL_SUPPORTED = Capabilities.LONG_PASSWORD | Capabilities.LONG_FLAG |
+        Capabilities.CONNECT_WITH_DB | Capabilities.PROTOCOL_41 | Capabilities.SSL | Capabilities.IGNORE_SIGPIPE |
+        Capabilities.TRANSACTIONS | Capabilities.RESERVED | Capabilities.SECURE_CONNECTION |
+        Capabilities.MULTI_STATEMENTS | Capabilities.MULTI_RESULTS | Capabilities.PREPARED_MULTI_RESULTS |
+        Capabilities.PLUGIN_AUTH | Capabilities.CONNECT_ATTRS | Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA |
+        Capabilities.DEPRECATE_EOF | Capabilities.SSL_VERIFY_SERVER_CERT;
 
     private Capabilities() {
     }

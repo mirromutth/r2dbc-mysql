@@ -56,13 +56,6 @@ final class LoginFlow {
 
     private static final Logger logger = LoggerFactory.getLogger(LoginFlow.class);
 
-    private static final int SUPPORTED_CAPABILITIES = Capabilities.LONG_PASSWORD | Capabilities.LONG_FLAG |
-        Capabilities.CONNECT_WITH_DB | Capabilities.PROTOCOL_41 | Capabilities.SSL | Capabilities.IGNORE_SIGPIPE |
-        Capabilities.TRANSACTIONS | Capabilities.RESERVED | Capabilities.SECURE_CONNECTION |
-        Capabilities.MULTI_STATEMENTS | Capabilities.MULTI_RESULTS | Capabilities.PREPARED_MULTI_RESULTS |
-        Capabilities.PLUGIN_AUTH | Capabilities.CONNECT_ATTRS | Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA |
-        Capabilities.DEPRECATE_EOF | Capabilities.SSL_VERIFY_SERVER_CERT;
-
     /**
      * Connection attributes, always empty for now.
      */
@@ -185,7 +178,7 @@ final class LoginFlow {
 
     private int calculateClientCapabilities(int serverCapabilities) {
         // Remove unknown flags.
-        int clientCapabilities = serverCapabilities & SUPPORTED_CAPABILITIES;
+        int clientCapabilities = serverCapabilities & Capabilities.ALL_SUPPORTED;
 
         if ((clientCapabilities & Capabilities.SSL) == 0) {
             // Server unsupported SSL.

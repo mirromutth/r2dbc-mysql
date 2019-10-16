@@ -16,8 +16,11 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import dev.miku.r2dbc.mysql.constant.Capabilities;
+import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.assertj.core.api.AbstractObjectAssert;
@@ -52,7 +55,14 @@ class ServerMessageDecoderTest {
     }
 
     private static ConnectionContext context() {
-        return new ConnectionContext(ZeroDateOption.USE_NULL);
+        ConnectionContext mocked = new ConnectionContext(ZeroDateOption.USE_NULL);
+
+        mocked.setConnectionId(1);
+        mocked.setCapabilities(Capabilities.ALL_SUPPORTED);
+        mocked.setServerVersion(ServerVersion.parse("8.0.18.MOCKED"));
+        mocked.setServerStatuses(ServerStatuses.AUTO_COMMIT);
+
+        return mocked;
     }
 
     @Nullable
