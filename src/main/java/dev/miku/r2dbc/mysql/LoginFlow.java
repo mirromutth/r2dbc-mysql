@@ -316,8 +316,8 @@ final class LoginFlow {
                             sink.next(COMPLETED);
                         } else if (message instanceof AuthMoreDataMessage) {
                             if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) {
-                                if (logger.isInfoEnabled()) {
-                                    logger.info("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
+                                if (logger.isDebugEnabled()) {
+                                    logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
                                 }
                                 sink.next(FULL_AUTH);
                             }
