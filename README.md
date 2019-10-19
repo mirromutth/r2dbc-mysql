@@ -29,7 +29,7 @@ This driver provides the following features:
 <dependency>
     <groupId>dev.miku</groupId>
     <artifactId>r2dbc-mysql</artifactId>
-    <version>0.8.0.RC1</version>
+    <version>0.8.0.RC2</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ If you'd rather like the latest snapshots of the upcoming major version, use Son
 
 ```groovy
 dependencies {
-    implementation 'dev.miku:r2dbc-mysql:0.8.0.RC1'
+    implementation 'dev.miku:r2dbc-mysql:0.8.0.RC2'
 }
 ```
 
@@ -67,7 +67,7 @@ dependencies {
 ```kotlin
 dependencies {
     // Maybe should to use `compile` instead of `implementation` on the lower version of Gradle.
-    implementation("dev.miku:r2dbc-mysql:0.8.0.RC1")
+    implementation("dev.miku:r2dbc-mysql:0.8.0.RC2")
 }
 ```
 
@@ -91,6 +91,15 @@ ConnectionFactory connectionFactory = ConnectionFactories.get(
 )
 
 // Creating a Mono using Project Reactor
+Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
+```
+
+Or use unix domain socket like following:
+
+```java
+// Minimum configuration for unix domain socket
+ConnectionFactory connectionFactory = ConnectionFactories.get("r2dbc:mysql://root@unix?unixSocket=%2Fpath%2Fto%2Fmysql.sock")
+
 Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ```
 
@@ -120,6 +129,20 @@ ConnectionFactory connectionFactory = ConnectionFactories.get(options);
 Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ```
 
+Or use unix domain socket like following:
+
+```java
+// Minimum configuration for unix domain socket
+ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
+    .option(DRIVER, "mysql")
+    .option(Option.valueOf("unixSocket"), "/path/to/mysql.sock")
+    .option(USER, "root")
+    .build();
+ConnectionFactory connectionFactory = ConnectionFactories.get(options);
+
+Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
+```
+
 ### Programmatic Configuration
 
 ```java
@@ -142,12 +165,26 @@ ConnectionFactory connectionFactory = MySqlConnectionFactory.from(configuration)
 Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ```
 
+Or use unix domain socket like following:
+
+```java
+// Minimum configuration for unix domain socket
+MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builder()
+    .unixSocket("/path/to/mysql.sock")
+    .username("root")
+    .build();
+ConnectionFactory connectionFactory = MySqlConnectionFactory.from(configuration);
+
+Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
+```
+
 ### Configuration items
 
 | name | valid values | required | description |
 |---|---|---|---|
 | driver | A constant "mysql" | Required in R2DBC discovery | This driver needs to be discovered by name in R2DBC |
-| host | A hostname or IP | Required | The host of MySQL database server |
+| host | A hostname or IP | Required when `unixSocket` does not exists | The host of MySQL database server |
+| unixSocket | An absolute or relative path | Required when `host` does not exists | The `.sock` file of Unix Domain Socket |
 | port | A positive integer less than 65536 | Optional, default 3306 | The port of MySQL database server |
 | username | A valid MySQL username and not be empty | Required | Who wants to connect to the MySQL database |
 | password | Any printable string | Optional, default no password | The password of the MySQL database user |
