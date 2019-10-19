@@ -2,6 +2,8 @@
 
 ## 0.8.0.RC2
 
+### New features
+
 - Added support for unix domain socket
 
 ### Features change
