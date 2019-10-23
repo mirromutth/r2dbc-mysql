@@ -34,12 +34,21 @@
             <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
         </license>
     </licenses>
+
     <developers>
         <developer>
+            <id>mirromutth</id>
             <name>Mirro Mutth</name>
-            <email>mirromutth@gmail.com</email>
+            <email>mirromutth(at)gmail.com</email>
+            <url>https://miku.dev</url>
+            <roles>
+                <role>R2DBC MySQL Owner</role>
+            </roles>
+            <timezone>+8</timezone>
         </developer>
     </developers>
+
+    <inceptionYear>2018</inceptionYear>
     <scm>
         <connection>scm:git:git://github.com/mirromutth/r2dbc-mysql.git</connection>
         <developerConnection>scm:git:ssh://github.com:mirromutth/r2dbc-mysql.git</developerConnection>
