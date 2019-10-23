@@ -10,6 +10,7 @@ delegate to. See [R2DBC Homepage](https://r2dbc.io).
 This driver provides the following features:
 
 - [x] Support MySQL database server versions between 5.5 to 8.x.
+- [x] Unix domain socket.
 - [x] Login with username/password (or no password)
 - [x] Execution of simple or batch statements without bindings (MySQL use text result for simple or batch statements).
 - [x] Execution of prepared statements with bindings (MySQL use binary result for prepared statements).
