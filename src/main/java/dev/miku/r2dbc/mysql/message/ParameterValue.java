@@ -17,23 +17,17 @@
 package dev.miku.r2dbc.mysql.message;
 
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 /**
  * A parameter value includes encode logic.
  */
-public interface ParameterValue {
+public interface ParameterValue extends Disposable {
 
     boolean isNull();
 
     Mono<Void> writeTo(ParameterWriter writer);
 
     short getType();
-
-    /**
-     * Cancel to binding, do nothing if value has written or has canceled.
-     * <p>
-     * Note: should NEVER throw any exception.
-     */
-    void cancel();
 }

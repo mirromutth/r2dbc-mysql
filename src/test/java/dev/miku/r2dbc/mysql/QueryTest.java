@@ -302,7 +302,7 @@ class QueryTest {
         }
 
         @Override
-        public void cancel() {
+        public void dispose() {
         }
 
         @Override

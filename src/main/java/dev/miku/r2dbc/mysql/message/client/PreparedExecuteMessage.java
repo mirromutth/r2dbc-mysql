@@ -17,12 +17,11 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.CursorTypes;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
@@ -45,21 +44,21 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
     private final int statementId;
 
-    private final ParameterValue[] parameters;
+    private final ParameterValue[] values;
 
-    public PreparedExecuteMessage(int statementId, ParameterValue[] parameters) {
+    public PreparedExecuteMessage(int statementId, ParameterValue[] values) {
         this.statementId = statementId;
-        this.parameters = requireNonNull(parameters, "parameters must not be null");
+        this.values = requireNonNull(values, "values must not be null");
     }
 
     @Override
     public String toString() {
-        return String.format("PreparedExecuteMessage{statementId=%d, has %d parameters}", statementId, parameters.length);
+        return String.format("PreparedExecuteMessage{statementId=%d, has %d parameters}", statementId, values.length);
     }
 
     @Override
     protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
-        int size = parameters.length;
+        int size = values.length;
         ByteBuf buf;
 
         if (size == 0) {
@@ -93,14 +92,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
             buf.writeBoolean(true);
             writeTypes(buf, size);
 
-            ParameterWriter writer = new ParameterWriter(buf);
-            return Flux.fromArray(parameters)
-                .concatMap(param -> param.writeTo(writer))
-                .doOnError(e -> {
-                    writer.dispose();
-                    cancelParameters();
-                })
-                .thenMany(writer.publish());
+            return ParameterWriter.publish(buf, values);
         } catch (Throwable e) {
             buf.release();
             cancelParameters();
@@ -112,7 +104,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
         byte[] nullMap = new byte[ceilDiv8(size)];
 
         for (int i = 0; i < size; ++i) {
-            ParameterValue value = parameters[i];
+            ParameterValue value = values[i];
 
             if (value.isNull()) {
                 nullMap[i >> 3] |= 1 << (i & 7);
@@ -126,23 +118,18 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
     private void writeTypes(ByteBuf buf, int size) {
         for (int i = 0; i < size; ++i) {
-            buf.writeShortLE(parameters[i].getType());
+            buf.writeShortLE(values[i].getType());
         }
     }
 
     private void cancelParameters() {
-        for (ParameterValue parameter : parameters) {
-            parameter.cancel();
+        for (ParameterValue value : values) {
+            value.dispose();
         }
     }
 
     private static int ceilDiv8(int x) {
         int r = x >> 3;
-
-        if ((r << 3) == x) {
-            return r;
-        }
-
-        return r + 1;
+        return (r << 3) == x ? r : r + 1;
     }
 }

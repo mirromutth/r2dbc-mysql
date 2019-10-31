@@ -38,7 +38,7 @@ abstract class AbstractLobValue extends AbstractParameterValue {
     }
 
     @Override
-    public final void cancel() {
+    public final void dispose() {
         try {
             Publisher<Void> discard = getDiscard();
 

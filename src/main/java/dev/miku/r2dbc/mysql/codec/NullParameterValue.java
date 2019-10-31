@@ -50,7 +50,7 @@ final class NullParameterValue implements ParameterValue {
     }
 
     @Override
-    public void cancel() {
+    public void dispose() {
         // No resource to release.
     }
 

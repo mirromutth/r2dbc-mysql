@@ -29,10 +29,10 @@ import java.util.Arrays;
  */
 final class Binding {
 
-    private final ParameterValue[] parameters;
+    private final ParameterValue[] values;
 
     Binding(int length) {
-        this.parameters = new ParameterValue[length];
+        this.values = new ParameterValue[length];
     }
 
     /**
@@ -42,40 +42,40 @@ final class Binding {
      * @param value the {@link ParameterValue} from {@link ParametrizedMySqlStatement}
      */
     void add(int index, ParameterValue value) {
-        if (index < 0 || index >= this.parameters.length) {
-            throw new IndexOutOfBoundsException("index must not be a negative integer and less than " + this.parameters.length);
+        if (index < 0 || index >= this.values.length) {
+            throw new IndexOutOfBoundsException("index must not be a negative integer and less than " + this.values.length);
         }
 
-        this.parameters[index] = value;
+        this.values[index] = value;
     }
 
     PreparedExecuteMessage toMessage(int statementId) {
-        ParameterValue[] parameters = new ParameterValue[this.parameters.length];
+        ParameterValue[] values = new ParameterValue[this.values.length];
 
-        System.arraycopy(this.parameters, 0, parameters, 0, this.parameters.length);
-        Arrays.fill(this.parameters, null);
+        System.arraycopy(this.values, 0, values, 0, this.values.length);
+        Arrays.fill(this.values, null);
 
-        return new PreparedExecuteMessage(statementId, parameters);
+        return new PreparedExecuteMessage(statementId, values);
     }
 
     /**
      * Clear/release binding values.
      */
     void clear() {
-        int size = this.parameters.length;
+        int size = this.values.length;
         for (int i = 0; i < size; ++i) {
-            if (this.parameters[i] != null) {
-                this.parameters[i].cancel();
-                this.parameters[i] = null;
+            if (this.values[i] != null) {
+                this.values[i].dispose();
+                this.values[i] = null;
             }
         }
     }
 
     int findUnbind() {
-        int size = this.parameters.length;
+        int size = this.values.length;
 
         for (int i = 0; i < size; ++i) {
-            if (this.parameters[i] == null) {
+            if (this.values[i] == null) {
                 return i;
             }
         }
@@ -94,16 +94,16 @@ final class Binding {
 
         Binding binding = (Binding) o;
 
-        return Arrays.equals(this.parameters, binding.parameters);
+        return Arrays.equals(this.values, binding.values);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(parameters);
+        return Arrays.hashCode(values);
     }
 
     @Override
     public String toString() {
-        return String.format("Binding{parameters=%s}", Arrays.toString(parameters));
+        return String.format("Binding{values=%s}", Arrays.toString(values));
     }
 }

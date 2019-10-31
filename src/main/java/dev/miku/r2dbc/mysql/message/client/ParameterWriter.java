@@ -18,12 +18,13 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
+import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.ReferenceCountUtil;
 import org.reactivestreams.Publisher;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 import java.nio.ByteBuffer;
@@ -43,7 +44,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * Parameter writer for {@link ByteBuf}(s).
  */
-public final class ParameterWriter implements Disposable {
+public final class ParameterWriter {
 
     private static final String COMMA = ",";
 
@@ -57,14 +58,13 @@ public final class ParameterWriter implements Disposable {
 
     private final ByteBufAllocator allocator;
 
-    private ByteBuf buf;
+    private final List<ByteBuf> buffers;
 
-    private List<ByteBuf> buffers;
+    private ParameterWriter(ByteBuf buf) {
+        requireNonNull(buf, "buf must not be null");
 
-    private int lastIndex = -1;
-
-    ParameterWriter(ByteBuf buf) {
-        this.buf = requireNonNull(buf, "buf must not be null");
+        this.buffers = new ArrayList<>();
+        this.buffers.add(buf);
         this.allocator = buf.alloc();
     }
 
@@ -466,55 +466,30 @@ public final class ParameterWriter implements Disposable {
         }
     }
 
-    Publisher<ByteBuf> publish() {
-        return Flux.defer(() -> {
-            ByteBuf buf = this.buf;
+    private void dispose() {
+        for (ByteBuf buffer : this.buffers) {
+            ReferenceCountUtil.safeRelease(buffer);
+        }
+    }
 
-            if (buf == null) {
-                return Flux.fromIterable(this.buffers);
-            } else {
-                return Flux.just(buf);
+    private Publisher<ByteBuf> allBuffers() {
+        return Flux.defer(() -> {
+            if (this.buffers.size() == 1) {
+                return Flux.just(this.buffers.get(0));
             }
+            return Flux.fromIterable(this.buffers);
         });
     }
 
-    @Override
-    public void dispose() {
-        ReferenceCountUtil.safeRelease(this.buf);
-
-        if (this.buffers != null) {
-            for (ByteBuf buffer : this.buffers) {
-                ReferenceCountUtil.safeRelease(buffer);
-            }
-        }
-    }
-
     private ByteBuf writableBuffer(int bytes) {
-        if (this.buf == null) {
-            ByteBuf buf = this.buffers.get(this.lastIndex);
+        ByteBuf buf = this.buffers.get(this.buffers.size() - 1);
 
-            if (buf.maxWritableBytes() < bytes) {
-                buf = this.allocator.buffer(Math.max(bytes, MIN_CAPACITY));
-                this.buffers.add(buf);
-                ++this.lastIndex;
-            }
-
-            return buf;
-        } else {
-            ByteBuf buf = this.buf;
-
-            if (buf.maxWritableBytes() < bytes) {
-                this.buffers = new ArrayList<>();
-                this.buffers.add(buf);
-                this.buf = null;
-
-                buf = allocator.buffer(Math.max(bytes, MIN_CAPACITY));
-                this.buffers.add(buf);
-                this.lastIndex = 1;
-            }
-
-            return buf;
+        if (buf.maxWritableBytes() < bytes) {
+            buf = this.allocator.buffer(Math.max(bytes, MIN_CAPACITY));
+            this.buffers.add(buf);
         }
+
+        return buf;
     }
 
     private void writeSecondNanos(long seconds, long nanos) {
@@ -618,6 +593,15 @@ public final class ParameterWriter implements Disposable {
         }
     }
 
+    static Publisher<ByteBuf> publish(ByteBuf prefix, ParameterValue[] values) {
+        ParameterWriter writer = new ParameterWriter(prefix);
+        return OperatorUtils.discardOnCancel(Flux.fromArray(values))
+            .doOnDiscard(ParameterValue.class, ParameterValue::dispose)
+            .concatMap(param -> param.writeTo(writer))
+            .doOnError(ignored -> writer.dispose())
+            .thenMany(writer.allBuffers());
+    }
+
     private static ByteBuf writeSeconds0(ByteBuf buf, boolean isNegative, long seconds) {
         return buf.writeBoolean(isNegative)
             .writeIntLE((int) (seconds / SECONDS_OF_DAY))
@@ -635,8 +619,12 @@ public final class ParameterWriter implements Disposable {
             return Collections.singletonList(sequence);
         }
 
-        List<CharSequence> result = new ArrayList<>(ceilDiv(length, eachSize));
+        // ceil(length / eachSize) = floor((length + eachSize - 1) / eachSize), but we
+        // cannot use (length + eachSize - 1) / eachSize, because it may overflow.
+        int r = length / eachSize;
+        List<CharSequence> result = new ArrayList<>(r * eachSize == length ? r : r + 1);
         slicedSequenceTo0(result, sequence, eachSize, length);
+
         return result;
     }
 
@@ -689,17 +677,6 @@ public final class ParameterWriter implements Disposable {
             result.add(sequence.subSequence(read, endIndex));
             read = endIndex;
         }
-    }
-
-    private static int ceilDiv(int a, int b) {
-        // Can not use (a + b - 1) / b, because it may overflow.
-        int r = a / b;
-
-        if (r * b == a) {
-            return r;
-        }
-
-        return r + 1;
     }
 
     private static final class EncodedBuffers {

@@ -29,7 +29,7 @@ abstract class AbstractParameterValue implements ParameterValue {
     }
 
     @Override
-    public void cancel() {
+    public void dispose() {
         // Do nothing for default
     }
 
