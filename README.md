@@ -1,6 +1,6 @@
 # Reactive Relational Database Connectivity MySQL Implementation
 
-[![Build status](https://github.com/mirromutth/r2dbc-mysql/workflows/build/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions) [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Build status](https://github.com/mirromutth/r2dbc-mysql/workflows/build/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions) [![Maven Central](https://img.shields.io/maven-central/v/dev.miku/r2dbc-mysql?color=green&label=Maven%20Central)](https://search.maven.org/search?q=g:%22dev.miku%22%20AND%20a:%22r2dbc-mysql%22) [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 This project contains the [MySQL][m] implementation of the [R2DBC SPI](https://github.com/r2dbc/r2dbc-spi).
 This implementation is not intended to be used directly, but rather to be
