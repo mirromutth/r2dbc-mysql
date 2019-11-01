@@ -130,8 +130,8 @@ final class QueryFlow {
      * completed by {@link CompleteMessage} when it is last result.
      */
     static Flux<ServerMessage> execute(Client client, String sql) {
-        return OperatorUtils.discardOnCancel(client.exchange(new SimpleQueryMessage(sql), EXECUTE_DONE))
-            .doOnDiscard(ReferenceCounted.class, RELEASE)
+        return Flux.defer(() -> OperatorUtils.discardOnCancel(client.exchange(new SimpleQueryMessage(sql), EXECUTE_DONE))
+            .doOnDiscard(ReferenceCounted.class, RELEASE))
             .handle(new Handler(sql));
     }
 
