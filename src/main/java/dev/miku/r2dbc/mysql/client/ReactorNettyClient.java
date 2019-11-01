@@ -56,6 +56,8 @@ final class ReactorNettyClient implements Client {
 
     private static final Function<Flux<ServerMessage>, Flux<ServerMessage>> IDENTITY = Function.identity();
 
+    private static final Function<Flux<ServerMessage>, Mono<ServerMessage>> NEXT = Flux::next;
+
     private static final Consumer<ServerMessage> INFO_LOGGING = ReactorNettyClient::infoLogging;
 
     private static final Consumer<ServerMessage> DEBUG_LOGGING = message -> {
@@ -86,7 +88,7 @@ final class ReactorNettyClient implements Client {
 
         // Note: encoder/decoder should before reactor bridge.
         connection.addHandlerLast(EnvelopeSlicer.NAME, new EnvelopeSlicer())
-            .addHandlerLast(MessageDuplexCodec.NAME, new MessageDuplexCodec(context, this.closing));
+            .addHandlerLast(MessageDuplexCodec.NAME, new MessageDuplexCodec(context, this.closing, this.requestQueue));
 
         if (ssl.getSslMode().startSsl()) {
             connection.addHandlerFirst(SslBridgeHandler.NAME, new SslBridgeHandler(context, ssl));
@@ -121,10 +123,11 @@ final class ReactorNettyClient implements Client {
     public Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete) {
         requireNonNull(request, "request must not be null");
 
-        boolean[] completed = new boolean[]{false};
+        boolean[] terminated = new boolean[]{false};
 
         return Mono.<Flux<ServerMessage>>create(sink -> {
             if (!isConnected()) {
+                terminated[0] = true;
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
             }
@@ -139,12 +142,12 @@ final class ReactorNettyClient implements Client {
                 sink.next(message);
 
                 if (complete.test(message)) {
-                    completed[0] = true;
+                    terminated[0] = true;
                     sink.complete();
                 }
             })
             .doOnTerminate(requestQueue)
-            .doOnCancel(exchangeCancel(completed));
+            .doOnCancel(exchangeCancel(terminated));
     }
 
     @Override
@@ -166,25 +169,21 @@ final class ReactorNettyClient implements Client {
 
     @Override
     public Mono<ServerMessage> nextMessage() {
-        boolean[] completed = new boolean[]{false};
+        boolean[] terminated = new boolean[]{false};
 
         return Mono.<Flux<ServerMessage>>create(sink -> {
             if (!isConnected()) {
+                terminated[0] = true;
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
             }
 
             requestQueue.submit(() -> sink.success(responseProcessor));
         })
-            .flatMapMany(IDENTITY)
-            .<ServerMessage>handle((message, sink) -> {
-                sink.next(message);
-                completed[0] = true;
-                sink.complete();
-            })
+            .flatMap(NEXT)
+            .doOnNext(ignored -> terminated[0] = true)
             .doOnTerminate(requestQueue)
-            .doOnCancel(exchangeCancel(completed))
-            .last();
+            .doOnCancel(exchangeCancel(terminated));
     }
 
     @Override
@@ -257,9 +256,9 @@ final class ReactorNettyClient implements Client {
         }
     }
 
-    private static Runnable exchangeCancel(boolean[] completed) {
+    private static Runnable exchangeCancel(boolean[] terminated) {
         return () -> {
-            if (!completed[0]) {
+            if (!terminated[0]) {
                 logger.error("Exchange cancelled while exchange is active. This is likely a bug leading to unpredictable outcome.");
             }
         };

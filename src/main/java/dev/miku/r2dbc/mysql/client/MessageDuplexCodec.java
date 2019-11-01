@@ -62,11 +62,14 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     private final AtomicBoolean closing;
 
+    private final RequestQueue requestQueue;
+
     private final ServerMessageDecoder decoder = new ServerMessageDecoder();
 
-    MessageDuplexCodec(ConnectionContext context, AtomicBoolean closing) {
+    MessageDuplexCodec(ConnectionContext context, AtomicBoolean closing, RequestQueue requestQueue) {
         this.context = requireNonNull(context, "context must not be null");
         this.closing = requireNonNull(closing, "closing must not be null");
+        this.requestQueue = requireNonNull(requestQueue, "requestQueue must not be null");
     }
 
     @Override
@@ -123,7 +126,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-        this.decoder.dispose();
+        decoder.dispose();
+        requestQueue.dispose();
 
         // Server has closed the connection without us wanting to close it
         // Typically happens if we send data asynchronously (i.e. previous command didn't complete).

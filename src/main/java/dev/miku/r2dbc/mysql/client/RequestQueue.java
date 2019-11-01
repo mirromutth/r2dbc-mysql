@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.util.LeftPadding;
+import reactor.core.Disposable;
 import reactor.util.concurrent.Queues;
 
 import java.util.Queue;
@@ -90,5 +91,10 @@ final class RequestQueue extends ActiveStatus implements Runnable {
      */
     long keeping(int v) {
         return p0 = p1 = p2 = p3 = p4 = p5 = p6 = p7 = p9 = pa = pb = pc = pd = pe = pf = p8 = v;
+    }
+
+    void dispose() {
+        ACTIVE_UPDATER.lazySet(this, 1);
+        queue.clear();
     }
 }
