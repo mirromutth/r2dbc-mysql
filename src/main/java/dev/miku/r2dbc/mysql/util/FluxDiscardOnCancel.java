@@ -18,6 +18,8 @@ package dev.miku.r2dbc.mysql.util;
 
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
+import reactor.core.Exceptions;
+import reactor.core.Fuseable;
 import reactor.core.Scannable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
@@ -44,26 +46,97 @@ final class FluxDiscardOnCancel<T> extends FluxOperator<T, T> {
 
     @Override
     public void subscribe(CoreSubscriber<? super T> actual) {
-        this.source.subscribe(new DiscardOnCancelSubscriber<>(actual));
+        this.source.subscribe(createSubscriber(actual, false));
     }
 
-    private static final class DiscardOnCancelSubscriber<T> extends AtomicBoolean implements CoreSubscriber<T>, Scannable, Subscription {
+    @SuppressWarnings("unchecked")
+    static <T> CoreSubscriber<T> createSubscriber(CoreSubscriber<? super T> s, boolean fuseable) {
+        if (fuseable) {
+            if (s instanceof Fuseable.ConditionalSubscriber) {
+                return new DiscardOnCancelFuseableConditionalSubscriber<>((Fuseable.ConditionalSubscriber<? super T>) s);
+            }
+            return new DiscardOnCancelFuseableSubscriber<>(s);
+        }
 
-        final CoreSubscriber<? super T> actual;
+        if (s instanceof Fuseable.ConditionalSubscriber) {
+            return new DiscardOnCancelConditionalSubscriber<>((Fuseable.ConditionalSubscriber<? super T>) s);
+        }
+        return new DiscardOnCancelSubscriber<>(s);
+    }
+
+    private static final class DiscardOnCancelSubscriber<T>
+        extends AbstractSubscriber<T, Subscription, CoreSubscriber<? super T>> {
+
+        DiscardOnCancelSubscriber(CoreSubscriber<? super T> actual) {
+            super(actual);
+        }
+    }
+
+    private static final class DiscardOnCancelFuseableSubscriber<T>
+        extends AbstractFuseableSubscriber<T, CoreSubscriber<? super T>> {
+
+        DiscardOnCancelFuseableSubscriber(CoreSubscriber<? super T> actual) {
+            super(actual);
+        }
+    }
+
+    private static final class DiscardOnCancelConditionalSubscriber<T>
+        extends AbstractSubscriber<T, Subscription, Fuseable.ConditionalSubscriber<? super T>>
+        implements Fuseable.ConditionalSubscriber<T> {
+
+        DiscardOnCancelConditionalSubscriber(Fuseable.ConditionalSubscriber<? super T> actual) {
+            super(actual);
+        }
+
+        @Override
+        public boolean tryOnNext(T t) {
+            if (get()) {
+                Operators.onDiscard(t, this.ctx);
+                return true;
+            } else {
+                return this.actual.tryOnNext(t);
+            }
+        }
+    }
+
+    private static final class DiscardOnCancelFuseableConditionalSubscriber<T>
+        extends AbstractFuseableSubscriber<T, Fuseable.ConditionalSubscriber<? super T>>
+        implements Fuseable.ConditionalSubscriber<T> {
+
+        DiscardOnCancelFuseableConditionalSubscriber(Fuseable.ConditionalSubscriber<? super T> actual) {
+            super(actual);
+        }
+
+        @Override
+        public boolean tryOnNext(T t) {
+            if (get()) {
+                Operators.onDiscard(t, this.ctx);
+                return true;
+            } else {
+                return this.actual.tryOnNext(t);
+            }
+        }
+    }
+
+    private static abstract class AbstractSubscriber<T, S extends Subscription, A extends CoreSubscriber<? super T>>
+        extends AtomicBoolean implements CoreSubscriber<T>, Scannable, Subscription {
+
+        final A actual;
 
         final Context ctx;
 
-        Subscription s;
+        S s;
 
-        DiscardOnCancelSubscriber(CoreSubscriber<T> actual) {
+        AbstractSubscriber(A actual) {
             this.actual = actual;
             this.ctx = actual.currentContext();
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         public void onSubscribe(Subscription s) {
             if (Operators.validate(this.s, s)) {
-                this.s = s;
+                this.s = (S) s;
                 this.actual.onSubscribe(this);
             }
         }
@@ -88,7 +161,7 @@ final class FluxDiscardOnCancel<T> extends FluxOperator<T, T> {
 
         @Override
         public void onComplete() {
-            if (!get()) {
+            if (compareAndSet(false, true)) {
                 this.actual.onComplete();
             }
         }
@@ -109,12 +182,60 @@ final class FluxDiscardOnCancel<T> extends FluxOperator<T, T> {
         @SuppressWarnings("rawtypes")
         public Object scanUnsafe(Attr key) {
             if (key == Attr.PARENT) {
-                return s;
+                return this.s;
             } else if (key == Attr.ACTUAL) {
-                return actual;
+                return this.actual;
             } else {
                 return null;
             }
+        }
+    }
+
+    private static abstract class AbstractFuseableSubscriber<T, A extends CoreSubscriber<? super T>>
+        extends AbstractSubscriber<T, Fuseable.QueueSubscription<T>, A>
+        implements Fuseable.QueueSubscription<T> {
+
+        int sourceMode;
+
+        AbstractFuseableSubscriber(A actual) {
+            super(actual);
+        }
+
+        @Override
+        public T poll() {
+            try {
+                return this.s.poll();
+            } catch (Throwable e) {
+                throw Exceptions.propagate(Operators.onOperatorError(this.s, e, this.actual.currentContext()));
+            }
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return this.s.isEmpty();
+        }
+
+        @Override
+        public void clear() {
+            this.s.clear();
+        }
+
+        @Override
+        public int requestFusion(int modes) {
+            if ((modes & Fuseable.THREAD_BARRIER) != 0) {
+                return Fuseable.NONE;
+            }
+
+            int m = this.s.requestFusion(modes);
+
+            this.sourceMode = m;
+
+            return m;
+        }
+
+        @Override
+        public int size() {
+            return this.s.size();
         }
     }
 }
