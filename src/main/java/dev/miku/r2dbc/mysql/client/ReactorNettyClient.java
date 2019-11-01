@@ -124,7 +124,7 @@ final class ReactorNettyClient implements Client {
         boolean[] completed = new boolean[]{false};
 
         return Mono.<Flux<ServerMessage>>create(sink -> {
-            if (closing.get()) {
+            if (!isConnected()) {
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
             }
@@ -152,7 +152,7 @@ final class ReactorNettyClient implements Client {
         requireNonNull(message, "message must not be null");
 
         return Mono.<Void>create(sink -> {
-            if (closing.get()) {
+            if (!isConnected()) {
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
             }
@@ -169,7 +169,7 @@ final class ReactorNettyClient implements Client {
         boolean[] completed = new boolean[]{false};
 
         return Mono.<Flux<ServerMessage>>create(sink -> {
-            if (closing.get()) {
+            if (!isConnected()) {
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
             }
