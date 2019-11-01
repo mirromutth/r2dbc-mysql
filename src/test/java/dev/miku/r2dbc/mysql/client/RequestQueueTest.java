@@ -32,20 +32,27 @@ class RequestQueueTest {
     @Test
     void submit() {
         RequestQueue queue = new RequestQueue();
-        List<Integer> arr = new ArrayList<Integer>() {
+        List<Integer> arr = new AddEventList(queue);
 
-            @Override
-            public boolean add(Integer o) {
-                boolean result = super.add(o);
-                // Mock request completed.
-                queue.run();
-                return result;
-            }
-        };
         queue.submit(() -> arr.add(1));
         queue.submit(() -> arr.add(2));
         queue.submit(() -> arr.add(3));
+
         assertEquals(arr, Arrays.asList(1, 2, 3));
+    }
+
+    @Test
+    void dispose() {
+        RequestQueue queue = new RequestQueue();
+        List<Integer> arr = new AddEventList(queue);
+
+        queue.submit(() -> arr.add(1));
+        queue.submit(() -> arr.add(2));
+        queue.dispose();
+        queue.submit(() -> arr.add(3));
+        queue.submit(() -> arr.add(4));
+
+        assertEquals(arr, Arrays.asList(1, 2));
     }
 
     @Test
@@ -53,5 +60,22 @@ class RequestQueueTest {
         RequestQueue queue = new RequestQueue();
         assertEquals(queue.keeping(1), 1L);
         assertEquals(queue.keeping(-1), -1L);
+    }
+
+    private static final class AddEventList extends ArrayList<Integer> {
+
+        private final RequestQueue queue;
+
+        private AddEventList(RequestQueue queue) {
+            this.queue = queue;
+        }
+
+        @Override
+        public boolean add(Integer o) {
+            boolean result = super.add(o);
+            // Mock request completed.
+            queue.run();
+            return result;
+        }
     }
 }
