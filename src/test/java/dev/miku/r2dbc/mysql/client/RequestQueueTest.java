@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit tests for {@link RequestQueue}.
@@ -49,8 +50,8 @@ class RequestQueueTest {
         queue.submit(() -> arr.add(1));
         queue.submit(() -> arr.add(2));
         queue.dispose();
-        queue.submit(() -> arr.add(3));
-        queue.submit(() -> arr.add(4));
+        assertThrows(IllegalStateException.class, () -> queue.submit(() -> arr.add(3)));
+        assertThrows(IllegalStateException.class, () -> queue.submit(() -> arr.add(4)));
 
         assertEquals(arr, Arrays.asList(1, 2));
     }

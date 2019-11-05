@@ -16,18 +16,28 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import dev.miku.r2dbc.mysql.util.LeftPadding;
 import reactor.core.Disposable;
 import reactor.util.concurrent.Queues;
 
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+abstract class LeftPadding {
+
+    long p0, p1, p2, p3, p4, p5, p6, p7;
+}
+
 abstract class ActiveStatus extends LeftPadding {
 
-    static final AtomicIntegerFieldUpdater<ActiveStatus> ACTIVE_UPDATER = AtomicIntegerFieldUpdater.newUpdater(ActiveStatus.class, "active");
+    static final int DISPOSE = -1;
 
-    private volatile int active; // p8 first part
+    static final int IDLE = 0;
+
+    static final int ACTIVE = 1;
+
+    static final AtomicIntegerFieldUpdater<ActiveStatus> STATUS_UPDATER = AtomicIntegerFieldUpdater.newUpdater(ActiveStatus.class, "status");
+
+    protected volatile int status = IDLE; // p8 first part
 
     int p8; // p8 second part
 
@@ -49,13 +59,23 @@ final class RequestQueue extends ActiveStatus implements Runnable {
      */
     @Override
     public void run() {
-        Runnable runnable = queue.poll();
+        Runnable exchange = queue.poll();
 
-        if (runnable == null) {
-            // Queue was empty, set it to inactive.
-            ACTIVE_UPDATER.lazySet(this, 0);
+        if (exchange == null) {
+            // Queue was empty, set it to idle if it is not disposed.
+            STATUS_UPDATER.compareAndSet(this, ACTIVE, IDLE);
         } else {
-            runnable.run();
+            int status = this.status;
+
+            if (status == DISPOSE) {
+                // Disposed, release polled and should clear queue because don't sure it is empty.
+                if (exchange instanceof Disposable) {
+                    ((Disposable) exchange).dispose();
+                }
+                freeAll();
+            } else {
+                exchange.run();
+            }
         }
     }
 
@@ -66,18 +86,43 @@ final class RequestQueue extends ActiveStatus implements Runnable {
      * @param exchange the exchange task includes request messages sending and response messages processor.
      */
     void submit(Runnable exchange) {
-        if (ACTIVE_UPDATER.compareAndSet(this, 0, 1)) {
+        if (STATUS_UPDATER.compareAndSet(this, IDLE, ACTIVE)) {
+            // Fast path for general way.
             exchange.run();
-        } else {
-            // Prev task may be completing before queue offer, and queue maybe empty now,
-            // so queue may be inactive now.
-            if (!queue.offer(exchange)) {
-                throw new IllegalStateException("Request queue is full");
-            }
+            return;
+        }
 
-            // Try execute if queue is inactive.
-            if (ACTIVE_UPDATER.compareAndSet(this, 0, 1)) {
-                run();
+        // Check dispose after fast path failed.
+        int status = this.status;
+
+        if (status == DISPOSE) {
+            // Disposed and no need clear queue because it should be cleared by other one.
+            if (exchange instanceof Disposable) {
+                ((Disposable) exchange).dispose();
+            }
+            throw new IllegalStateException("Request queue was disposed");
+        }
+
+        // Prev task may be completing before queue offer, so queue may be idle now.
+        if (!queue.offer(exchange)) {
+            if (exchange instanceof Disposable) {
+                ((Disposable) exchange).dispose();
+            }
+            // Even disposed now, no need clear queue because it should be cleared by other one.
+            throw new IllegalStateException("Request queue is full");
+        }
+
+        if (STATUS_UPDATER.compareAndSet(this, IDLE, ACTIVE)) {
+            // Try execute if queue is idle.
+            run();
+        } else {
+            // Check dispose again after offer success and not idle.
+            status = this.status;
+
+            if (status == DISPOSE) {
+                // Disposed, should clear queue because an element has just been offered to the queue.
+                freeAll();
+                throw new IllegalStateException("Request queue was disposed");
             }
         }
     }
@@ -94,7 +139,17 @@ final class RequestQueue extends ActiveStatus implements Runnable {
     }
 
     void dispose() {
-        ACTIVE_UPDATER.lazySet(this, 1);
-        queue.clear();
+        STATUS_UPDATER.set(this, DISPOSE);
+        freeAll();
+    }
+
+    private void freeAll() {
+        Runnable runnable;
+
+        while ((runnable = queue.poll()) != null) {
+            if (runnable instanceof Disposable) {
+                ((Disposable) runnable).dispose();
+            }
+        }
     }
 }

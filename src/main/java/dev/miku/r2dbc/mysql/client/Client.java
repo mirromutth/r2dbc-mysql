@@ -52,7 +52,7 @@ public interface Client {
 
     Mono<Void> sendOnly(SendOnlyMessage message);
 
-    Mono<ServerMessage> nextMessage();
+    Mono<ServerMessage> receiveOnly();
 
     Mono<Void> close();
 
