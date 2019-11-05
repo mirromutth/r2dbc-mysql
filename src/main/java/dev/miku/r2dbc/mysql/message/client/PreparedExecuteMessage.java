@@ -22,9 +22,11 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
+import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -32,7 +34,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * A message to execute a prepared statement once with parameter.
  */
-public final class PreparedExecuteMessage extends LargeClientMessage implements ExchangeableMessage {
+public final class PreparedExecuteMessage extends LargeClientMessage implements ExchangeableMessage, Disposable {
 
     private static final int NO_PARAM_SIZE = Byte.BYTES + Integer.BYTES + Byte.BYTES + Integer.BYTES;
 
@@ -49,6 +51,14 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
     public PreparedExecuteMessage(int statementId, ParameterValue[] values) {
         this.statementId = statementId;
         this.values = requireNonNull(values, "values must not be null");
+    }
+
+    @Override
+    public void dispose() {
+        for (ParameterValue value : values) {
+            value.dispose();
+        }
+        Arrays.fill(values, null);
     }
 
     @Override

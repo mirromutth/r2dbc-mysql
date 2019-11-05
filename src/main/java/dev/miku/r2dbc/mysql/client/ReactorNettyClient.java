@@ -17,21 +17,20 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.ExitMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.WarningMessage;
-import io.netty.channel.ChannelFutureListener;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
-import io.netty.util.concurrent.Future;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -123,67 +122,62 @@ final class ReactorNettyClient implements Client {
     public Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete) {
         requireNonNull(request, "request must not be null");
 
-        boolean[] terminated = new boolean[]{false};
-
         return Mono.<Flux<ServerMessage>>create(sink -> {
             if (!isConnected()) {
-                terminated[0] = true;
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
             }
 
-            requestQueue.submit(() -> {
-                send(request);
-                sink.success(responseProcessor);
-            });
-        })
-            .flatMapMany(IDENTITY)
-            .<ServerMessage>handle((message, sink) -> {
-                sink.next(message);
+            requestQueue.submit(DisposableExchange.wrap(request, () -> {
+                boolean[] completed = new boolean[]{false};
 
-                if (complete.test(message)) {
-                    terminated[0] = true;
-                    sink.complete();
-                }
-            })
-            .doOnTerminate(requestQueue)
-            .doOnCancel(exchangeCancel(terminated));
+                sink.success(send(request)
+                    .thenMany(responseProcessor)
+                    .<ServerMessage>handle((message, response) -> {
+                        response.next(message);
+
+                        if (complete.test(message)) {
+                            completed[0] = true;
+                            response.complete();
+                        }
+                    })
+                    .doOnTerminate(requestQueue)
+                    .doOnCancel(exchangeCancel(completed)));
+            }));
+        }).flatMapMany(IDENTITY);
     }
 
     @Override
     public Mono<Void> sendOnly(SendOnlyMessage message) {
         requireNonNull(message, "message must not be null");
 
-        return Mono.<Void>create(sink -> {
+        return Mono.create(sink -> {
             if (!isConnected()) {
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
+                return;
+            }
+
+            requestQueue.submit(() -> send(message).doOnTerminate(requestQueue).subscribe(null, sink::error, sink::success));
+        });
+    }
+
+    @Override
+    public Mono<ServerMessage> receiveOnly() {
+        return Mono.<Mono<ServerMessage>>create(sink -> {
+            if (!isConnected()) {
+                sink.error(new IllegalStateException("Cannot receive messages because the connection is closed"));
                 return;
             }
 
             requestQueue.submit(() -> {
-                send(message);
-                sink.success();
+                boolean[] completed = new boolean[]{false};
+
+                sink.success(responseProcessor.next()
+                    .doOnNext(ignored -> completed[0] = true)
+                    .doOnTerminate(requestQueue)
+                    .doOnCancel(exchangeCancel(completed)));
             });
-        }).doOnTerminate(requestQueue);
-    }
-
-    @Override
-    public Mono<ServerMessage> nextMessage() {
-        boolean[] terminated = new boolean[]{false};
-
-        return Mono.<Flux<ServerMessage>>create(sink -> {
-            if (!isConnected()) {
-                terminated[0] = true;
-                sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
-                return;
-            }
-
-            requestQueue.submit(() -> sink.success(responseProcessor));
-        })
-            .flatMap(NEXT)
-            .doOnNext(ignored -> terminated[0] = true)
-            .doOnTerminate(requestQueue)
-            .doOnCancel(exchangeCancel(terminated));
+        }).flatMap(Function.identity());
     }
 
     @Override
@@ -196,21 +190,12 @@ final class ReactorNettyClient implements Client {
             }
 
             requestQueue.submit(() -> send(ExitMessage.getInstance())
-                .addListener((ChannelFutureListener) future -> {
-                    if (future.isSuccess()) {
-                        logger.debug("Exit message has been sent successfully");
-                    } else {
-                        Throwable cause = future.cause();
-                        if (cause != null) {
-                            logger.error("Exit message sending failed, force closing", cause);
-                        } else {
-                            // Must be cancelled.
-                            logger.warn("Exit message sending cancelled, force closing");
-                        }
-                    }
-
-                    future.channel().close().addListener(closer -> sink.success());
-                }));
+                .onErrorResume(e -> {
+                    logger.error("Exit message sending failed, force closing", e);
+                    return Mono.empty();
+                })
+                .concatWith(forceClose())
+                .subscribe(null, sink::error, sink::success));
         });
     }
 
@@ -239,9 +224,9 @@ final class ReactorNettyClient implements Client {
         return String.format("ReactorNettyClient(%s){connectionId=%d}", this.closing.get() ? "closing or closed" : "activating", context.getConnectionId());
     }
 
-    private Future<Void> send(ClientMessage message) {
+    private Mono<Void> send(ClientMessage message) {
         logger.debug("Request: {}", message);
-        return connection.channel().writeAndFlush(message);
+        return FutureMono.from(connection.channel().writeAndFlush(message));
     }
 
     private static void inboundHandle(Object msg, SynchronousSink<ServerMessage> sink) {
@@ -256,9 +241,9 @@ final class ReactorNettyClient implements Client {
         }
     }
 
-    private static Runnable exchangeCancel(boolean[] terminated) {
+    private static Runnable exchangeCancel(boolean[] completed) {
         return () -> {
-            if (!terminated[0]) {
+            if (!completed[0]) {
                 logger.error("Exchange cancelled while exchange is active. This is likely a bug leading to unpredictable outcome.");
             }
         };
@@ -270,6 +255,40 @@ final class ReactorNettyClient implements Client {
             if (warnings != 0) {
                 logger.info("MySQL reports {} warning(s)", warnings);
             }
+        }
+    }
+
+    private static final class DisposableExchange implements Runnable, Disposable {
+
+        private final Runnable runnable;
+
+        private final Disposable disposable;
+
+        private DisposableExchange(Runnable runnable, Disposable disposable) {
+            this.runnable = runnable;
+            this.disposable = disposable;
+        }
+
+        @Override
+        public void dispose() {
+            disposable.dispose();
+        }
+
+        @Override
+        public boolean isDisposed() {
+            return disposable.isDisposed();
+        }
+
+        @Override
+        public void run() {
+            runnable.run();
+        }
+
+        private static Runnable wrap(ClientMessage request, Runnable runnable) {
+            if (request instanceof Disposable) {
+                return new DisposableExchange(runnable, (Disposable) request);
+            }
+            return runnable;
         }
     }
 }
