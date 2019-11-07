@@ -24,7 +24,6 @@ import reactor.core.Fuseable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
 import reactor.test.StepVerifier;
-import reactor.test.StepVerifierOptions;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -80,7 +79,6 @@ class FluxDiscardOnCancelTest {
             .collect(Collectors.toList());
 
         Flux.fromIterable(rows)
-            .<MockRow>handle((it, sink) -> sink.next(it))
             .as(OperatorUtils::discardOnCancel)
             .doOnDiscard(ReferenceCounted.class, ReferenceCounted::release)
             .<Integer>handle((it, sink) -> {
@@ -90,7 +88,7 @@ class FluxDiscardOnCancelTest {
                     it.release();
                 }
             })
-            .as(it -> StepVerifier.create(it, StepVerifierOptions.create().initialRequest(0)))
+            .as(it -> StepVerifier.create(it, 0))
             .thenRequest(2)
             .expectNext(0, 1)
             .thenCancel()

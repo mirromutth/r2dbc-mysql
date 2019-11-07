@@ -53,10 +53,6 @@ final class ReactorNettyClient implements Client {
 
     private static final Logger logger = LoggerFactory.getLogger(ReactorNettyClient.class);
 
-    private static final Function<Flux<ServerMessage>, Flux<ServerMessage>> IDENTITY = Function.identity();
-
-    private static final Function<Flux<ServerMessage>, Mono<ServerMessage>> NEXT = Flux::next;
-
     private static final Consumer<ServerMessage> INFO_LOGGING = ReactorNettyClient::infoLogging;
 
     private static final Consumer<ServerMessage> DEBUG_LOGGING = message -> {
@@ -124,14 +120,17 @@ final class ReactorNettyClient implements Client {
 
         return Mono.<Flux<ServerMessage>>create(sink -> {
             if (!isConnected()) {
+                if (request instanceof Disposable) {
+                    ((Disposable) request).dispose();
+                }
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
             }
 
-            requestQueue.submit(DisposableExchange.wrap(request, () -> {
+            requestQueue.submit(RequestTask.wrap(request, sink, () -> {
                 boolean[] completed = new boolean[]{false};
 
-                sink.success(send(request)
+                return send(request)
                     .thenMany(responseProcessor)
                     .<ServerMessage>handle((message, response) -> {
                         response.next(message);
@@ -142,23 +141,26 @@ final class ReactorNettyClient implements Client {
                         }
                     })
                     .doOnTerminate(requestQueue)
-                    .doOnCancel(exchangeCancel(completed)));
+                    .doOnCancel(exchangeCancel(completed));
             }));
-        }).flatMapMany(IDENTITY);
+        }).flatMapMany(identity());
     }
 
     @Override
     public Mono<Void> sendOnly(SendOnlyMessage message) {
         requireNonNull(message, "message must not be null");
 
-        return Mono.create(sink -> {
+        return Mono.<Mono<Void>>create(sink -> {
             if (!isConnected()) {
+                if (message instanceof Disposable) {
+                    ((Disposable) message).dispose();
+                }
                 sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
                 return;
             }
 
-            requestQueue.submit(() -> send(message).doOnTerminate(requestQueue).subscribe(null, sink::error, sink::success));
-        });
+            requestQueue.submit(RequestTask.wrap(message, sink, () -> send(message).doOnTerminate(requestQueue)));
+        }).flatMap(identity());
     }
 
     @Override
@@ -169,34 +171,33 @@ final class ReactorNettyClient implements Client {
                 return;
             }
 
-            requestQueue.submit(() -> {
+            requestQueue.submit(RequestTask.wrap(sink, () -> {
                 boolean[] completed = new boolean[]{false};
 
-                sink.success(responseProcessor.next()
-                    .doOnNext(ignored -> completed[0] = true)
+                return responseProcessor.next()
+                    .doOnSuccess(ignored -> completed[0] = true)
                     .doOnTerminate(requestQueue)
-                    .doOnCancel(exchangeCancel(completed)));
-            });
-        }).flatMap(Function.identity());
+                    .doOnCancel(exchangeCancel(completed));
+            }));
+        }).flatMap(identity());
     }
 
     @Override
     public Mono<Void> close() {
-        return Mono.create(sink -> {
+        return Mono.<Mono<Void>>create(sink -> {
             if (!closing.compareAndSet(false, true)) {
                 // client is closing or closed
                 sink.success();
                 return;
             }
 
-            requestQueue.submit(() -> send(ExitMessage.getInstance())
+            requestQueue.submit(RequestTask.wrap(sink, () -> send(ExitMessage.getInstance())
                 .onErrorResume(e -> {
                     logger.error("Exit message sending failed, force closing", e);
                     return Mono.empty();
                 })
-                .concatWith(forceClose())
-                .subscribe(null, sink::error, sink::success));
-        });
+                .then(forceClose())));
+        }).flatMap(identity());
     }
 
     @Override
@@ -258,37 +259,18 @@ final class ReactorNettyClient implements Client {
         }
     }
 
-    private static final class DisposableExchange implements Runnable, Disposable {
+    @SuppressWarnings("unchecked")
+    private static <T> Function<T, T> identity() {
+        return (Function<T, T>) Identity.INSTANCE;
+    }
 
-        private final Runnable runnable;
+    private static final class Identity implements Function<Object, Object> {
 
-        private final Disposable disposable;
-
-        private DisposableExchange(Runnable runnable, Disposable disposable) {
-            this.runnable = runnable;
-            this.disposable = disposable;
-        }
+        private static final Identity INSTANCE = new Identity();
 
         @Override
-        public void dispose() {
-            disposable.dispose();
-        }
-
-        @Override
-        public boolean isDisposed() {
-            return disposable.isDisposed();
-        }
-
-        @Override
-        public void run() {
-            runnable.run();
-        }
-
-        private static Runnable wrap(ClientMessage request, Runnable runnable) {
-            if (request instanceof Disposable) {
-                return new DisposableExchange(runnable, (Disposable) request);
-            }
-            return runnable;
+        public Object apply(Object o) {
+            return o;
         }
     }
 }

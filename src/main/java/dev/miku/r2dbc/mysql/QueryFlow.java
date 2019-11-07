@@ -104,8 +104,8 @@ final class QueryFlow {
 
         return OperatorUtils.discardOnCancel(Flux.fromIterable(bindings))
             .doOnDiscard(Binding.class, CLEAR)
-            .concatMap(binding -> OperatorUtils.discardOnCancel(client.exchange(binding.toMessage(statementId), EXECUTE_DONE)
-                .doOnDiscard(ReferenceCounted.class, RELEASE))
+            .concatMap(binding -> OperatorUtils.discardOnCancel(client.exchange(binding.toMessage(statementId), EXECUTE_DONE))
+                .doOnDiscard(ReferenceCounted.class, RELEASE)
                 .handle(handler));
     }
 
