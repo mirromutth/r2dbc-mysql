@@ -18,8 +18,8 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -127,7 +127,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
         return Flux.defer(() -> {
             if (!executed.compareAndSet(false, true)) {
-                throw new IllegalStateException("Statement was already executed");
+                return Flux.error(new IllegalStateException("Statement was already executed"));
             }
 
             String sql = query.getSql();
