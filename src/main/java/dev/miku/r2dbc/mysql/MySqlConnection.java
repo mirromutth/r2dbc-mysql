@@ -21,10 +21,10 @@ import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.message.client.PingMessage;
+import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
-import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
@@ -39,7 +39,6 @@ import reactor.core.publisher.SynchronousSink;
 import reactor.util.annotation.Nullable;
 
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -73,10 +72,8 @@ public final class MySqlConnection implements Connection {
     /**
      * Convert initialize result to {@link InitData}.
      */
-    private static final Function<MySqlResult, Publisher<InitData>> INIT_HANDLER =
-        r -> r.map((row, meta) -> new InitData(convertIsolationLevel(row.get(0, String.class)), row.get(1, String.class)));
-
-    private static final Consumer<ServerMessage> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
+    private static final Function<MySqlResult, Publisher<InitData>> INIT_HANDLER = r ->
+        r.map((row, meta) -> new InitData(convertIsolationLevel(row.get(0, String.class)), row.get(1, String.class)));
 
     private static final BiConsumer<ServerMessage, SynchronousSink<Boolean>> PING_HANDLER = (message, sink) -> {
         if (message instanceof ErrorMessage) {
@@ -138,11 +135,11 @@ public final class MySqlConnection implements Connection {
             }
 
             if (!isAutoCommit()) {
-                return executeVoid("START TRANSACTION");
+                return QueryFlow.executeVoid(client, "START TRANSACTION");
             } else if (batchSupported) {
-                return executeVoid("SET autocommit=0;START TRANSACTION");
+                return QueryFlow.executeVoid(client, "SET autocommit=0;START TRANSACTION");
             } else {
-                return executeVoid("SET autocommit=0").then(executeVoid("START TRANSACTION"));
+                return QueryFlow.executeVoid(client, "SET autocommit=0", "START TRANSACTION");
             }
         });
     }
@@ -169,11 +166,11 @@ public final class MySqlConnection implements Connection {
             Mono<Void> commit;
 
             if (isAutoCommit()) {
-                commit = executeVoid("COMMIT");
+                commit = QueryFlow.executeVoid(client, "COMMIT");
             } else if (batchSupported) {
-                commit = executeVoid("COMMIT;SET autocommit=1");
+                commit = QueryFlow.executeVoid(client, "COMMIT;SET autocommit=1");
             } else {
-                commit = executeVoid("COMMIT").then(executeVoid("SET autocommit=1"));
+                commit = QueryFlow.executeVoid(client, "COMMIT", "SET autocommit=1");
             }
 
             return recoverIsolationLevel(commit);
@@ -197,26 +194,22 @@ public final class MySqlConnection implements Connection {
 
         return Mono.defer(() -> {
             if (isInTransaction()) {
-                return executeVoid(sql);
+                return QueryFlow.executeVoid(client, sql);
             }
 
-            // See Example.savePointStartsTransaction, if connection does not in transaction, then starts transaction.
+            // See TestKit.savePointStartsTransaction, if connection does not in transaction, then starts transaction.
             if (batchSupported) {
                 if (isAutoCommit()) {
-                    return executeVoid("SET autocommit=0;START TRANSACTION;" + sql);
+                    return QueryFlow.executeVoid(client, "SET autocommit=0;START TRANSACTION;" + sql);
                 } else {
-                    return executeVoid("START TRANSACTION;" + sql);
+                    return QueryFlow.executeVoid(client, "START TRANSACTION;" + sql);
                 }
             } else {
-                Mono<Void> start;
-
                 if (isAutoCommit()) {
-                    start = executeVoid("SET autocommit=0").then(executeVoid("START TRANSACTION"));
+                    return QueryFlow.executeVoid(client, "SET autocommit=0", "START TRANSACTION", sql);
                 } else {
-                    start = executeVoid("START TRANSACTION");
+                    return QueryFlow.executeVoid(client, "START TRANSACTION", sql);
                 }
-
-                return start.then(executeVoid(sql));
             }
         });
     }
@@ -245,7 +238,7 @@ public final class MySqlConnection implements Connection {
     public Mono<Void> releaseSavepoint(String name) {
         requireValidName(name, "Savepoint name must not be empty and not contain backticks");
 
-        return executeVoid(String.format("RELEASE SAVEPOINT `%s`", name));
+        return QueryFlow.executeVoid(client, String.format("RELEASE SAVEPOINT `%s`", name));
     }
 
     @Override
@@ -258,11 +251,11 @@ public final class MySqlConnection implements Connection {
             Mono<Void> rollback;
 
             if (isAutoCommit()) {
-                rollback = executeVoid("ROLLBACK");
+                rollback = QueryFlow.executeVoid(client, "ROLLBACK");
             } else if (batchSupported) {
-                rollback = executeVoid("ROLLBACK;SET autocommit=1");
+                rollback = QueryFlow.executeVoid(client, "ROLLBACK;SET autocommit=1");
             } else {
-                rollback = executeVoid("ROLLBACK").then(executeVoid("SET autocommit=1"));
+                rollback = QueryFlow.executeVoid(client, "ROLLBACK", "SET autocommit=1");
             }
 
             return recoverIsolationLevel(rollback);
@@ -273,7 +266,7 @@ public final class MySqlConnection implements Connection {
     public Mono<Void> rollbackTransactionToSavepoint(String name) {
         requireValidName(name, "Savepoint name must not be empty and not contain backticks");
 
-        return executeVoid(String.format("ROLLBACK TO SAVEPOINT `%s`", name));
+        return QueryFlow.executeVoid(client, String.format("ROLLBACK TO SAVEPOINT `%s`", name));
     }
 
     @Override
@@ -299,7 +292,7 @@ public final class MySqlConnection implements Connection {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
 
         // Set next transaction isolation level.
-        return executeVoid(String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()))
+        return QueryFlow.executeVoid(client, String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()))
             .doOnSuccess(ignored -> currentLevel = isolationLevel);
     }
 
@@ -335,15 +328,11 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public Mono<Void> setAutoCommit(boolean autoCommit) {
-        return executeVoid(String.format("SET autocommit=%d", autoCommit ? 1 : 0));
+        return QueryFlow.executeVoid(client, String.format("SET autocommit=%d", autoCommit ? 1 : 0));
     }
 
     boolean isInTransaction() {
         return (context.getServerStatuses() & ServerStatuses.IN_TRANSACTION) != 0;
-    }
-
-    private Mono<Void> executeVoid(String sql) {
-        return QueryFlow.execute(client, sql).doOnNext(SAFE_RELEASE).then();
     }
 
     private Mono<Void> recoverIsolationLevel(Mono<Void> commitOrRollback) {

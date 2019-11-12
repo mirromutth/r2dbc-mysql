@@ -135,7 +135,6 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
             return QueryFlow.prepare(client, sql)
                 .doOnCancel(bindings::clear)
                 .flatMapMany(id -> QueryFlow.execute(client, sql, id, bindings.bindings)
-                    .windowUntil(QueryFlow.RESULT_DONE)
                     .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages))
                     .onErrorResume(e -> QueryFlow.close(client, id).then(Mono.error(e)))
                     .concatWith(QueryFlow.close(client, id).then(Mono.empty())));

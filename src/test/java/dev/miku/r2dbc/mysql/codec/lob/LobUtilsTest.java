@@ -74,7 +74,7 @@ class LobUtilsTest {
     }
 
     @Test
-    void consumePartially() {
+    void consumePortion() {
         List<ByteBuf> buffers = createMulti();
 
         Flux.from(LobUtils.createBlob(new LargeFieldValue(buffers)).stream())

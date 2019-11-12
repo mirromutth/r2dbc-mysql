@@ -181,7 +181,7 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
 
     @Test
     @Override
-    void consumePartially() {
+    void consumePortion() {
         connectionFactory.create()
             .flatMapMany(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
                 .execute())

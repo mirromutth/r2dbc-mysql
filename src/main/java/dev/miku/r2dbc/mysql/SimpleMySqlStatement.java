@@ -71,7 +71,6 @@ final class SimpleMySqlStatement extends MySqlStatementSupport {
     @Override
     public Flux<MySqlResult> execute() {
         return QueryFlow.execute(client, sql)
-            .windowUntil(QueryFlow.RESULT_DONE)
             .map(messages -> new MySqlResult(false, codecs, context, generatedKeyName, messages));
     }
 

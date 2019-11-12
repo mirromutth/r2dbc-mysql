@@ -45,7 +45,7 @@ import java.util.function.Predicate;
 final class QueryFlow {
 
     // Metadata EOF message will be not receive in here.
-    static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof CompleteMessage;
+    private static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof CompleteMessage;
 
     private static final Predicate<ServerMessage> PREPARE_DONE = message ->
         message instanceof ErrorMessage || (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted());
@@ -54,6 +54,8 @@ final class QueryFlow {
         message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
 
     private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
+
+    private static final Consumer<Object> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
 
     private static final Consumer<Binding> CLEAR = Binding::clear;
 
@@ -83,8 +85,9 @@ final class QueryFlow {
     }
 
     /**
-     * Execute multiple bindings of a prepared statement with one-by-one. Query execution
-     * terminates with a {@link ErrorMessage} and send Exception to signal.
+     * Execute multiple bindings of a prepared statement with one-by-one. Query execution terminates with
+     * the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will emit an
+     * exception and cancel subsequent bindings execution.
      * <p>
      * It will not close this prepared statement.
      *
@@ -95,7 +98,7 @@ final class QueryFlow {
      * @return the messages received in response to this exchange, and will be completed
      * by {@link CompleteMessage} when it is last result for each binding.
      */
-    static Flux<ServerMessage> execute(Client client, String sql, int statementId, List<Binding> bindings) {
+    static Flux<Flux<ServerMessage>> execute(Client client, String sql, int statementId, List<Binding> bindings) {
         if (bindings.isEmpty()) {
             return Flux.empty();
         }
@@ -106,7 +109,8 @@ final class QueryFlow {
             .doOnDiscard(Binding.class, CLEAR)
             .concatMap(binding -> OperatorUtils.discardOnCancel(client.exchange(binding.toMessage(statementId), EXECUTE_DONE))
                 .doOnDiscard(ReferenceCounted.class, RELEASE)
-                .handle(handler));
+                .handle(handler))
+            .windowUntil(RESULT_DONE);
     }
 
     /**
@@ -121,42 +125,80 @@ final class QueryFlow {
     }
 
     /**
-     * Execute a simple query. Query execution terminates with a {@link ErrorMessage}
-     * and send Exception to signal.
+     * Execute a simple query and return a {@link Mono} for the complete signal or error. Query execution terminates with
+     * the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception.
      *
      * @param client the {@link Client} to exchange messages with.
      * @param sql    the query to execute, can be contains multi-statements.
      * @return the messages received in response to this exchange, and will be
-     * completed by {@link CompleteMessage} when it is last result.
+     * completed by {@link CompleteMessage} for each statement.
      */
-    static Flux<ServerMessage> execute(Client client, String sql) {
-        return Flux.defer(() -> OperatorUtils.discardOnCancel(client.exchange(new SimpleQueryMessage(sql), EXECUTE_DONE))
-            .doOnDiscard(ReferenceCounted.class, RELEASE))
-            .handle(new Handler(sql));
+    static Mono<Void> executeVoid(Client client, String sql) {
+        return Mono.defer(() -> execute0(client, sql).doOnNext(SAFE_RELEASE).then());
     }
 
     /**
-     * Execute multiple simple queries with one-by-one. Query execution terminates with a
-     * {@link ErrorMessage} and send Exception to signal.
+     * Execute multiple simple queries with one-by-one and return a {@link Mono} for the complete signal or
+     * error. Query execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}.
+     * The {@link ErrorMessage} will emit an exception and cancel subsequent statements execution.
+     *
+     * @param client     the {@link Client} to exchange messages with.
+     * @param statements the queries to execute, each element can be contains multi-statements.
+     * @return the messages received in response to this exchange, and will be
+     * completed by {@link CompleteMessage} for each statement.
+     */
+    static Mono<Void> executeVoid(Client client, String... statements) {
+        return Flux.fromArray(statements).concatMap(sql -> execute0(client, sql)).doOnNext(SAFE_RELEASE).then();
+    }
+
+    /**
+     * Execute a simple compound query and return its results. Query execution terminates with
+     * each {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will
+     * emit an exception.
+     *
+     * @param client the {@link Client} to exchange messages with.
+     * @param sql    the query to execute, can be contains multi-statements.
+     * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
+     */
+    static Flux<Flux<ServerMessage>> execute(Client client, String sql) {
+        return Flux.defer(() -> execute0(client, sql).windowUntil(RESULT_DONE));
+    }
+
+    /**
+     * Execute multiple simple compound queries with one-by-one and return their results. Query execution
+     * terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage}
+     * will emit an exception and cancel subsequent statements execution.
      *
      * @param client     the {@link Client} to exchange messages with.
      * @param statements bundled sql for execute.
      * @return the messages received in response to this exchange, and will be
      * completed by {@link CompleteMessage} for each statement.
      */
-    static Flux<ServerMessage> execute(Client client, List<String> statements) {
+    static Flux<Flux<ServerMessage>> execute(Client client, List<String> statements) {
         return Flux.defer(() -> {
-            int size = statements.size();
-
-            switch (size) {
+            switch (statements.size()) {
                 case 0:
                     return Flux.empty();
                 case 1:
-                    return execute(client, statements.get(0));
+                    return execute0(client, statements.get(0)).windowUntil(RESULT_DONE);
                 default:
-                    return Flux.fromIterable(statements).concatMap(sql -> execute(client, sql));
+                    return Flux.fromIterable(statements).concatMap(sql -> execute0(client, sql)).windowUntil(RESULT_DONE);
             }
         });
+    }
+
+    /**
+     * Execute a simple query. Query execution terminates with the last {@link CompleteMessage} or
+     * a {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception.
+     *
+     * @param client the {@link Client} to exchange messages with.
+     * @param sql    the query to execute, can be contains multi-statements.
+     * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
+     */
+    private static Flux<ServerMessage> execute0(Client client, String sql) {
+        return OperatorUtils.discardOnCancel(client.exchange(new SimpleQueryMessage(sql), EXECUTE_DONE))
+            .doOnDiscard(ReferenceCounted.class, RELEASE)
+            .handle(new Handler(sql));
     }
 
     private static final class Handler implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>> {

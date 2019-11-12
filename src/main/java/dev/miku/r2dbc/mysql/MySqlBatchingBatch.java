@@ -62,7 +62,6 @@ final class MySqlBatchingBatch extends MySqlBatch {
     @Override
     public Flux<MySqlResult> execute() {
         return QueryFlow.execute(client, getSql())
-            .windowUntil(QueryFlow.RESULT_DONE)
             .map(messages -> new MySqlResult(false, codecs, context, null, messages));
     }
 
