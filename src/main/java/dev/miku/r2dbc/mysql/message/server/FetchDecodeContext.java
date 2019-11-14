@@ -14,26 +14,20 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.constant;
+package dev.miku.r2dbc.mysql.message.server;
 
 /**
- * Constants for MySQL prepared statement cursor types.
+ * An implementation of {@link DecodeContext} in prepared statements fetch phase.
  */
-public final class CursorTypes {
+final class FetchDecodeContext implements DecodeContext {
 
-    /**
-     * Just return all elements without fetch.
-     */
-    public static final byte NO_CURSOR = 0;
+    static final FetchDecodeContext INSTANCE = new FetchDecodeContext();
 
-    /**
-     * Read only cursor, it will be closed when prepared statement closing.
-     */
-    public static final byte READ_ONLY = 1;
+    @Override
+    public String toString() {
+        return "DecodeContext-Fetch";
+    }
 
-//    public static final byte FOR_UPDATE = 2;
-//    public static final byte SCROLLABLE = 4;
-
-    private CursorTypes() {
+    private FetchDecodeContext() {
     }
 }

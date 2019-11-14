@@ -17,8 +17,11 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
+import dev.miku.r2dbc.mysql.client.Exchangeable;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedCloseMessage;
+import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
+import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
 import dev.miku.r2dbc.mysql.message.client.SimpleQueryMessage;
 import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
@@ -28,13 +31,19 @@ import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
+import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
+import reactor.util.annotation.Nullable;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
@@ -50,7 +59,10 @@ final class QueryFlow {
     private static final Predicate<ServerMessage> PREPARE_DONE = message ->
         message instanceof ErrorMessage || (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted());
 
-    private static final Predicate<ServerMessage> EXECUTE_DONE = message ->
+    private static final Predicate<ServerMessage> METADATA_DONE = message ->
+        message instanceof ErrorMessage || message instanceof SyntheticMetadataMessage;
+
+    private static final Predicate<ServerMessage> FETCH_DONE = message ->
         message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
 
     private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
@@ -66,10 +78,10 @@ final class QueryFlow {
      * @param sql    the parametrize query.
      * @return prepared statement identifier.
      */
-    static Mono<Integer> prepare(Client client, String sql) {
+    static Mono<PreparedIdentifier> prepare(Client client, String sql) {
         return OperatorUtils.discardOnCancel(client.exchange(new PrepareQueryMessage(sql), PREPARE_DONE))
             .doOnDiscard(PreparedOkMessage.class, prepared -> close(client, prepared.getStatementId()).subscribe())
-            .<Integer>handle((message, sink) -> {
+            .<PreparedIdentifier>handle((message, sink) -> {
                 if (message instanceof ErrorMessage) {
                     sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
                 } else if (message instanceof SyntheticMetadataMessage) {
@@ -77,7 +89,7 @@ final class QueryFlow {
                         sink.complete(); // Must wait for last metadata message.
                     }
                 } else if (message instanceof PreparedOkMessage) {
-                    sink.next(((PreparedOkMessage) message).getStatementId());
+                    sink.next(new PreparedIdentifier(client, ((PreparedOkMessage) message).getStatementId()));
                 } else {
                     ReferenceCountUtil.release(message);
                 }
@@ -92,25 +104,23 @@ final class QueryFlow {
      * <p>
      * It will not close this prepared statement.
      *
-     * @param client      the {@link Client} to exchange messages with.
-     * @param sql         the original statement for exception tracing.
-     * @param statementId the statement identifier want to execute.
-     * @param bindings    the data of bindings.
+     * @param client       the {@link Client} to exchange messages with.
+     * @param sql          the original statement for exception tracing.
+     * @param statementId  the statement identifier want to execute.
+     * @param deprecateEof EOF has been deprecated.
+     * @param fetchSize    the size of fetching, if it less than or equal to {@literal 0} means fetch all rows.
+     * @param bindings     the data of bindings.
      * @return the messages received in response to this exchange, and will be completed
      * by {@link CompleteMessage} when it is last result for each binding.
      */
-    static Flux<Flux<ServerMessage>> execute(Client client, String sql, int statementId, List<Binding> bindings) {
+    static Flux<Flux<ServerMessage>> execute(Client client, String sql, int statementId, boolean deprecateEof, int fetchSize, List<Binding> bindings) {
         if (bindings.isEmpty()) {
             return Flux.empty();
         }
 
         Handler handler = new Handler(sql);
 
-        return OperatorUtils.discardOnCancel(Flux.fromIterable(bindings))
-            .doOnDiscard(Binding.class, CLEAR)
-            .concatMap(binding -> OperatorUtils.discardOnCancel(client.exchange(binding.toMessage(statementId), EXECUTE_DONE))
-                .doOnDiscard(ReferenceCounted.class, RELEASE)
-                .handle(handler))
+        return selfEmitter(bindings, binding -> execute0(client, statementId, deprecateEof, binding, fetchSize, handler), CLEAR)
             .windowUntil(RESULT_DONE);
     }
 
@@ -149,7 +159,7 @@ final class QueryFlow {
      * completed by {@link CompleteMessage} for each statement.
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
-        return Flux.fromArray(statements).concatMap(sql -> execute0(client, sql)).doOnNext(SAFE_RELEASE).then();
+        return selfEmitter(Arrays.asList(statements), sql -> execute0(client, sql), null).doOnNext(SAFE_RELEASE).then();
     }
 
     /**
@@ -183,7 +193,7 @@ final class QueryFlow {
                 case 1:
                     return execute0(client, statements.get(0)).windowUntil(RESULT_DONE);
                 default:
-                    return Flux.fromIterable(statements).concatMap(sql -> execute0(client, sql)).windowUntil(RESULT_DONE);
+                    return selfEmitter(statements, sql -> execute0(client, sql), null).windowUntil(RESULT_DONE);
             }
         });
     }
@@ -197,9 +207,85 @@ final class QueryFlow {
      * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
      */
     private static Flux<ServerMessage> execute0(Client client, String sql) {
-        return OperatorUtils.discardOnCancel(client.exchange(new SimpleQueryMessage(sql), EXECUTE_DONE))
+        return OperatorUtils.discardOnCancel(client.exchange(new SimpleQueryMessage(sql), FETCH_DONE))
             .doOnDiscard(ReferenceCounted.class, RELEASE)
             .handle(new Handler(sql));
+    }
+
+    /**
+     * Execute a prepared query. Query execution terminates with the last {@link CompleteMessage} or
+     * a {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception.
+     *
+     * @param client       the {@link Client} to exchange messages with.
+     * @param statementId  the statement identifier want to execute.
+     * @param deprecateEof EOF has been deprecated.
+     * @param binding      the data of binding.
+     * @param fetchSize    the size of fetching, if it less than or equal to {@literal 0} means fetch all rows.
+     * @param handler      error message handler.
+     * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
+     */
+    private static Flux<ServerMessage> execute0(Client client, int statementId, boolean deprecateEof, Binding binding, int fetchSize, Handler handler) {
+        if (fetchSize > 0) {
+            PreparedExecuteMessage message = binding.toMessage(statementId, false);
+            // If EOF has been deprecated, it will end by OK message (same as fetch), otherwise it will end by Metadata EOF message.
+            // So do not take the last response message (i.e. OK message) for execute if EOF has been deprecated.
+            Exchangeable execute = new Exchangeable(message, deprecateEof ? FETCH_DONE : METADATA_DONE, !deprecateEof);
+            Exchangeable fetch = new Exchangeable(new PreparedFetchMessage(statementId, fetchSize), FETCH_DONE, true);
+
+            return OperatorUtils.discardOnCancel(client.exchange(message, execute, fetch))
+                .doOnDiscard(ReferenceCounted.class, RELEASE)
+                .handle(handler);
+        } else {
+            return OperatorUtils.discardOnCancel(client.exchange(binding.toMessage(statementId, true), FETCH_DONE))
+                .doOnDiscard(ReferenceCounted.class, RELEASE)
+                .handle(handler);
+        }
+    }
+
+    private static <T> Flux<ServerMessage> selfEmitter(Collection<? extends T> sources, Function<T, Flux<ServerMessage>> convert, @Nullable Consumer<? super T> discard) {
+        if (sources.isEmpty()) {
+            return Flux.empty();
+        }
+
+        Iterator<? extends T> iterator = sources.iterator();
+        EmitterProcessor<T> processor = EmitterProcessor.create(1, true);
+
+        try {
+            Flux<ServerMessage> results = processor.concatMap(it -> {
+                Flux<ServerMessage> responses = convert.apply(it);
+
+                return responses.doOnComplete(() -> {
+                    if (processor.isCancelled() || processor.isTerminated()) {
+                        return;
+                    }
+
+                    try {
+                        if (iterator.hasNext()) {
+                            processor.onNext(iterator.next());
+                        } else {
+                            processor.onComplete();
+                        }
+                    } catch (Throwable e) {
+                        processor.onError(e);
+                    }
+                });
+            });
+
+            if (discard == null) {
+                return results;
+            }
+
+            return results.doOnCancel(() -> discardSubsequence(iterator, discard))
+                .doOnError(ignored -> discardSubsequence(iterator, discard));
+        } finally {
+            processor.onNext(iterator.next());
+        }
+    }
+
+    private static <T> void discardSubsequence(Iterator<? extends T> iterator, Consumer<? super T> discard) {
+        while (iterator.hasNext()) {
+            discard.accept(iterator.next());
+        }
     }
 
     private static final class Handler implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>> {

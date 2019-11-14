@@ -16,13 +16,8 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import dev.miku.r2dbc.mysql.message.client.ClientMessage;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.IllegalReferenceCountException;
 import org.junit.jupiter.api.Test;
-import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -35,7 +30,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit tests for {@link RequestQueue}.
@@ -120,18 +114,13 @@ class RequestQueueTest {
         assertEquals(queue.keeping(-1), -1L);
     }
 
-    private static final class IntegerData extends AtomicInteger implements ClientMessage, Disposable {
+    private static final class IntegerData extends AtomicInteger implements Disposable {
 
         private final int data;
 
         IntegerData(int data) {
             super(1);
             this.data = data;
-        }
-
-        @Override
-        public Publisher<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
-            return Mono.empty();
         }
 
         int consumeData() {

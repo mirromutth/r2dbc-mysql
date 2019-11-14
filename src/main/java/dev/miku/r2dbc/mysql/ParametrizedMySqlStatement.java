@@ -30,6 +30,7 @@ import java.util.Spliterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -50,13 +51,18 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
     private final Bindings bindings;
 
+    private final boolean deprecateEof;
+
     private final AtomicBoolean executed = new AtomicBoolean();
 
-    ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, Query query) {
+    private int fetchSize = 0;
+
+    ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, Query query, boolean deprecateEof) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.context = requireNonNull(context, "context must not be null");
         this.query = requireNonNull(query, "sql must not be null");
+        this.deprecateEof = deprecateEof;
         this.bindings = new Bindings(this.query.getParameters());
     }
 
@@ -130,16 +136,25 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
                 return Flux.error(new IllegalStateException("Statement was already executed"));
             }
 
+            int fetchSize = this.fetchSize;
             String sql = query.getSql();
 
             return QueryFlow.prepare(client, sql)
                 .doOnCancel(bindings::clear)
-                .flatMapMany(id -> QueryFlow.execute(client, sql, id, bindings.bindings)
+                .flatMapMany(it -> QueryFlow.execute(client, sql, it.getId(), deprecateEof, fetchSize, bindings.bindings)
                     .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages))
-                    .onErrorResume(e -> QueryFlow.close(client, id).then(Mono.error(e)))
-                    .concatWith(QueryFlow.close(client, id).then(Mono.empty()))
-                    .doOnCancel(() -> QueryFlow.close(client, id).subscribe()));
+                    .onErrorResume(e -> it.close().then(Mono.error(e)))
+                    .concatWith(it.close().then(Mono.empty()))
+                    .doOnCancel(() -> it.close().subscribe()));
         });
+    }
+
+    @Override
+    public MySqlStatement fetchSize(int rows) {
+        require(rows >= 0, "Fetch size must be greater or equal to zero");
+
+        this.fetchSize = rows;
+        return this;
     }
 
     private void addBinding(int index, ParameterValue value) {

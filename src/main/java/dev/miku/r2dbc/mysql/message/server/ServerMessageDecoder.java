@@ -70,6 +70,9 @@ public final class ServerMessageDecoder {
         if (decodeContext instanceof ResultDecodeContext) {
             // Maybe very large.
             return decodeResult(buffers, context, (ResultDecodeContext) decodeContext);
+        } else if (decodeContext instanceof FetchDecodeContext) {
+            // Maybe very large.
+            return decodeFetch(buffers, context);
         }
 
         ByteBuf joined = JOINER.join(buffers);
@@ -109,21 +112,26 @@ public final class ServerMessageDecoder {
         throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on prepared metadata phase", header, buf.readableBytes()));
     }
 
+    private static ServerMessage decodeFetch(List<ByteBuf> buffers, ConnectionContext context) {
+        ByteBuf firstBuf = buffers.get(0);
+        short header = firstBuf.getUnsignedByte(firstBuf.readerIndex());
+        ErrorMessage error = decodeCheckError(buffers, header);
+
+        if (error != null) {
+            return error;
+        }
+
+        return decodeRow(buffers, firstBuf, header, context, "fetch");
+    }
+
     @Nullable
     private static ServerMessage decodeResult(List<ByteBuf> buffers, ConnectionContext context, ResultDecodeContext decodeContext) {
         ByteBuf firstBuf = buffers.get(0);
         short header = firstBuf.getUnsignedByte(firstBuf.readerIndex());
+        ErrorMessage error = decodeCheckError(buffers, header);
 
-        if (Headers.ERROR == header) {
-            // 0xFF is not header of var integer,
-            // not header of text result null (0xFB) and
-            // not header of column metadata (0x03 + "def")
-            ByteBuf joined = JOINER.join(buffers);
-            try {
-                return ErrorMessage.decode(joined);
-            } finally {
-                joined.release();
-            }
+        if (error != null) {
+            return error;
         }
 
         if (decodeContext.isInMetadata()) {
@@ -136,41 +144,7 @@ public final class ServerMessageDecoder {
             // Should not has other messages when metadata reading.
         }
 
-        if (isRow(buffers, firstBuf, header)) {
-            return new RowMessage(FieldReader.of(JOINER, buffers));
-        } else if (header == Headers.EOF) {
-            int byteSize = firstBuf.readableBytes();
-
-            if (OkMessage.isValidSize(byteSize)) {
-                ByteBuf joined = JOINER.join(buffers);
-
-                try {
-                    return OkMessage.decode(joined, context);
-                } finally {
-                    joined.release();
-                }
-            } else if (EofMessage.isValidSize(byteSize)) {
-                ByteBuf joined = JOINER.join(buffers);
-
-                try {
-                    return EofMessage.decode(joined);
-                } finally {
-                    joined.release();
-                }
-            }
-        }
-
-        long totalBytes = 0;
-        try {
-            for (ByteBuf buffer : buffers) {
-                totalBytes += buffer.readableBytes();
-                ReferenceCountUtil.safeRelease(buffer);
-            }
-        } finally {
-            buffers.clear();
-        }
-
-        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on result phase", header, totalBytes));
+        return decodeRow(buffers, firstBuf, header, context, "result");
     }
 
     private static ServerMessage decodePrepareQuery(ByteBuf buf) {
@@ -301,6 +275,61 @@ public final class ServerMessageDecoder {
             // Now, it is not OK message, not be error message, it must be row.
             return true;
         }
+    }
+
+    @Nullable
+    private static ErrorMessage decodeCheckError(List<ByteBuf> buffers, short header) {
+        if (Headers.ERROR == header) {
+            // 0xFF is not header of var integer,
+            // not header of text result null (0xFB) and
+            // not header of column metadata (0x03 + "def")
+            ByteBuf joined = JOINER.join(buffers);
+            try {
+                return ErrorMessage.decode(joined);
+            } finally {
+                joined.release();
+            }
+        }
+
+        return null;
+    }
+
+    private static ServerMessage decodeRow(List<ByteBuf> buffers, ByteBuf firstBuf, short header, ConnectionContext context, String phase) {
+        if (isRow(buffers, firstBuf, header)) {
+            return new RowMessage(FieldReader.of(JOINER, buffers));
+        } else if (header == Headers.EOF) {
+            int byteSize = firstBuf.readableBytes();
+
+            if (OkMessage.isValidSize(byteSize)) {
+                ByteBuf joined = JOINER.join(buffers);
+
+                try {
+                    return OkMessage.decode(joined, context);
+                } finally {
+                    joined.release();
+                }
+            } else if (EofMessage.isValidSize(byteSize)) {
+                ByteBuf joined = JOINER.join(buffers);
+
+                try {
+                    return EofMessage.decode(joined);
+                } finally {
+                    joined.release();
+                }
+            }
+        }
+
+        long totalBytes = 0;
+        try {
+            for (ByteBuf buffer : buffers) {
+                totalBytes += buffer.readableBytes();
+                ReferenceCountUtil.safeRelease(buffer);
+            }
+        } finally {
+            buffers.clear();
+        }
+
+        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on %s phase", header, totalBytes, phase));
     }
 
     @Nullable
