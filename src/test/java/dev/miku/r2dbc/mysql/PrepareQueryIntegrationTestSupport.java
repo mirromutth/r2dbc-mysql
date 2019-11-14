@@ -188,7 +188,11 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
                 .flatMap(IntegrationTestSupport::extractRowsUpdated)
                 .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
                 .flatMap(IntegrationTestSupport::extractRowsUpdated)
-                .thenMany(connection.createStatement("SELECT value FROM test WHERE id > ?").bind(0, 0).execute())
+                .thenMany(Flux.merge(
+                    Mono.from(Flux.from(connection.createStatement("SELECT value FROM test WHERE id > ?").bind(0, 0).execute())
+                        .flatMap(r -> r.map((row, meta) -> row.get(0)))),
+                    connection.createStatement("BAD GRAMMAR").execute()
+                ).onErrorResume(ignored -> Flux.empty()))
                 .thenMany(connection.createStatement("SELECT value FROM test ORDER BY id DESC LIMIT ?,?")
                     .bind(0, 2)
                     .bind(1, 5)

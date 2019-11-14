@@ -39,6 +39,6 @@ final class FluxDiscardOnCancelFuseable<T> extends FluxOperator<T, T> implements
 
     @Override
     public void subscribe(CoreSubscriber<? super T> actual) {
-        this.source.subscribe(FluxDiscardOnCancel.createSubscriber(actual, true));
+        this.source.subscribe(DiscardOnCancelSubscriber.create(actual, true));
     }
 }

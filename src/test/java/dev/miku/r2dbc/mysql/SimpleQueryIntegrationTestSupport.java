@@ -208,7 +208,11 @@ abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSup
                 .flatMap(IntegrationTestSupport::extractRowsUpdated)
                 .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
                 .flatMap(IntegrationTestSupport::extractRowsUpdated)
-                .then(Mono.from(connection.createStatement("SELECT value FROM test").execute()))
+                .thenMany(Flux.merge(
+                    Mono.from(Flux.from(connection.createStatement("SELECT value FROM test").execute())
+                        .flatMap(r -> r.map((row, meta) -> row.get(0)))),
+                    connection.createStatement("BAD GRAMMAR").execute()
+                ).onErrorResume(ignored -> Flux.empty()))
                 .then(Mono.from(connection.createStatement("SELECT value FROM test ORDER BY id DESC LIMIT 2,5").execute()))
                 .flatMapMany(r -> r.map((row, metadata) -> row.get(0, Integer.TYPE)))
                 .concatWith(close(connection))

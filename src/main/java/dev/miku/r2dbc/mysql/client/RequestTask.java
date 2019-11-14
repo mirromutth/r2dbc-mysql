@@ -50,7 +50,7 @@ final class RequestTask<T> {
     /**
      * Cancel task and release resources.
      *
-     * @param e canceled by which error
+     * @param e cancelled by which error
      */
     void cancel(Throwable e) {
         if (disposable != null) {

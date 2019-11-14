@@ -67,7 +67,8 @@ final class QueryFlow {
      * @return prepared statement identifier.
      */
     static Mono<Integer> prepare(Client client, String sql) {
-        return client.exchange(new PrepareQueryMessage(sql), PREPARE_DONE)
+        return OperatorUtils.discardOnCancel(client.exchange(new PrepareQueryMessage(sql), PREPARE_DONE))
+            .doOnDiscard(PreparedOkMessage.class, prepared -> close(client, prepared.getStatementId()).subscribe())
             .<Integer>handle((message, sink) -> {
                 if (message instanceof ErrorMessage) {
                     sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
