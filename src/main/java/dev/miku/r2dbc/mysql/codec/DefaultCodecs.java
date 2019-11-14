@@ -49,8 +49,8 @@ final class DefaultCodecs implements Codecs {
 
         LocalDateTimeCodec.INSTANCE,
         LocalDateCodec.INSTANCE,
-        DurationCodec.INSTANCE,
         LocalTimeCodec.INSTANCE,
+        DurationCodec.INSTANCE,
         YearCodec.INSTANCE,
 
         StringCodec.INSTANCE,

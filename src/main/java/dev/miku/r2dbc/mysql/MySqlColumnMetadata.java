@@ -21,8 +21,6 @@ import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.server.DefinitionMetadataMessage;
-import io.r2dbc.spi.Blob;
-import io.r2dbc.spi.Clob;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import reactor.util.annotation.NonNull;
@@ -30,9 +28,9 @@ import reactor.util.annotation.NonNull;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Objects;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
@@ -154,8 +152,7 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
             case DataTypes.DATE:
                 return LocalDate.class;
             case DataTypes.TIME:
-                // TIME in MySQL is most like Duration rather than LocalTime.
-                return Duration.class;
+                return LocalTime.class;
             case DataTypes.YEAR:
                 // MySQL return 2-bytes in binary result for type YEAR.
                 return Short.class;
@@ -164,6 +161,10 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
             case DataTypes.ENUMERABLE:
             case DataTypes.VARBINARY:
             case DataTypes.STRING:
+            case DataTypes.TINY_BLOB:
+            case DataTypes.MEDIUM_BLOB:
+            case DataTypes.LONG_BLOB:
+            case DataTypes.BLOB:
                 if (collationId == CharCollation.BINARY_ID) {
                     return ByteBuffer.class;
                 } else {
@@ -178,15 +179,6 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
                 return byte[].class;
             case DataTypes.SET:
                 return String[].class;
-            case DataTypes.TINY_BLOB:
-            case DataTypes.MEDIUM_BLOB:
-            case DataTypes.LONG_BLOB:
-            case DataTypes.BLOB:
-                if (collationId == CharCollation.BINARY_ID) {
-                    return Blob.class;
-                } else {
-                    return Clob.class;
-                }
             default:
                 return null;
         }
