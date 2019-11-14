@@ -38,19 +38,23 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
     private static final int NO_PARAM_SIZE = Byte.BYTES + Integer.BYTES + Byte.BYTES + Integer.BYTES;
 
-    private static final byte EXECUTE_FLAG = 0x17;
-
-    private static final byte CURSOR_TYPE = CursorTypes.NO_CURSOR;
-
     private static final int TIMES = 1;
+
+    private static final byte EXECUTE_FLAG = 0x17;
 
     private final int statementId;
 
+    /**
+     * Immediate execute once instead of fetch.
+     */
+    private final boolean immediate;
+
     private final ParameterValue[] values;
 
-    public PreparedExecuteMessage(int statementId, ParameterValue[] values) {
-        this.statementId = statementId;
+    public PreparedExecuteMessage(int statementId, boolean immediate, ParameterValue[] values) {
         this.values = requireNonNull(values, "values must not be null");
+        this.statementId = statementId;
+        this.immediate = immediate;
     }
 
     @Override
@@ -63,7 +67,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
     @Override
     public String toString() {
-        return String.format("PreparedExecuteMessage{statementId=%d, has %d parameters}", statementId, values.length);
+        return String.format("PreparedExecuteMessage{statementId=%d, immediate=%b, has %d parameters}", statementId, immediate, values.length);
     }
 
     @Override
@@ -80,7 +84,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
         try {
             buf.writeByte(EXECUTE_FLAG)
                 .writeIntLE(statementId)
-                .writeByte(CURSOR_TYPE)
+                .writeByte(immediate ? CursorTypes.NO_CURSOR : CursorTypes.READ_ONLY)
                 .writeIntLE(TIMES);
 
             if (size == 0) {

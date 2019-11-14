@@ -205,6 +205,26 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
             .verifyComplete();
     }
 
+    @Test
+    void fetchSize() {
+        connectionFactory.create()
+            .flatMapMany(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
+                .execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .thenMany(connection.createStatement("SELECT value FROM test WHERE id > ?")
+                    .bind(0, 0)
+                    .fetchSize(3)
+                    .execute())
+                .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.TYPE)))
+                .concatWith(close(connection))
+            )
+            .as(StepVerifier::create)
+            .expectNext(1, 2, 3)
+            .verifyComplete();
+    }
+
     @SafeVarargs
     @SuppressWarnings("varargs")
     @Override

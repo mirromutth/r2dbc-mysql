@@ -49,13 +49,13 @@ final class Binding {
         this.values[index] = value;
     }
 
-    PreparedExecuteMessage toMessage(int statementId) {
+    PreparedExecuteMessage toMessage(int statementId, boolean immediate) {
         ParameterValue[] values = new ParameterValue[this.values.length];
 
         System.arraycopy(this.values, 0, values, 0, this.values.length);
         Arrays.fill(this.values, null);
 
-        return new PreparedExecuteMessage(statementId, values);
+        return new PreparedExecuteMessage(statementId, immediate, values);
     }
 
     /**

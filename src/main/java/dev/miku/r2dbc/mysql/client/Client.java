@@ -18,10 +18,13 @@ package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
+import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.channel.ChannelOption;
+import reactor.core.CorePublisher;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.tcp.TcpClient;
@@ -39,7 +42,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 public interface Client {
 
     /**
-     * Perform an exchange of messages. Calling this method while a previous exchange is active will
+     * Perform an exchange of message. Calling this method while a previous exchange is active will
      * return a deferred handle and queue the request until the previous exchange terminates.
      *
      * @param request  one request for get server responses
@@ -49,6 +52,21 @@ public interface Client {
      * @return A {@link Flux} of incoming messages that ends with the end of the frame
      */
     Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete);
+
+    /**
+     * Perform multi-exchanges of messages one-by-one. Execute each exchanges while a previous
+     * exchange is active will return a deferred handle and queue the request until the previous
+     * exchange terminates. Responses streams will be concat to a single stream. If the request
+     * stops due to an error on the way, it will call {@link Exchangeable#dispose()} to discard
+     * subsequent {@link Exchangeable}s instead of {@code disposable.dispose()}.
+     *
+     * @param disposable resources discarding when entire request cancelled.
+     * @param exchanges  each {@link Exchangeable} contains an {@link ExchangeableMessage},
+     *                   complete {@link Predicate} and a boolean that response take
+     *                   complete frame or not.
+     * @return A {@link Flux} of incoming messages that ends with the end of the frame
+     */
+    Flux<ServerMessage> exchange(Disposable disposable, Exchangeable... exchanges);
 
     Mono<Void> sendOnly(SendOnlyMessage message);
 

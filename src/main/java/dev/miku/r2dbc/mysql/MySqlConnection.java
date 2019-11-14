@@ -99,6 +99,8 @@ public final class MySqlConnection implements Connection {
 
     private final IsolationLevel sessionLevel;
 
+    private final boolean deprecateEof;
+
     /**
      * Current isolation level inferred by past statements.
      * <p>
@@ -114,6 +116,7 @@ public final class MySqlConnection implements Connection {
     private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, InitData data) {
         this.client = client;
         this.context = context;
+        this.deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
         this.sessionLevel = data.level;
         this.currentLevel = data.level;
         this.codecs = codecs;
@@ -227,7 +230,7 @@ public final class MySqlConnection implements Connection {
 
         if (query.isPrepared()) {
             logger.debug("Create a statement provided by prepare query");
-            return new ParametrizedMySqlStatement(client, codecs, context, query);
+            return new ParametrizedMySqlStatement(client, codecs, context, query, deprecateEof);
         } else {
             logger.debug("Create a statement provided by simple query");
             return new SimpleMySqlStatement(client, codecs, context, sql);

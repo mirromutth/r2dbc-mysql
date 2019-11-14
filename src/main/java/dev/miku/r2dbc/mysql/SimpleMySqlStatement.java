@@ -21,6 +21,7 @@ import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import reactor.core.publisher.Flux;
 
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -72,6 +73,18 @@ final class SimpleMySqlStatement extends MySqlStatementSupport {
     public Flux<MySqlResult> execute() {
         return QueryFlow.execute(client, sql)
             .map(messages -> new MySqlResult(false, codecs, context, generatedKeyName, messages));
+    }
+
+    /**
+     * MySQL unsupported fetch with simple statements, but we still check size validation.
+     *
+     * @param rows fetch size.
+     * @return {@link this} self.
+     */
+    @Override
+    public MySqlStatement fetchSize(int rows) {
+        require(rows >= 0, "Fetch size must be greater or equal to zero");
+        return this;
     }
 
     @Override

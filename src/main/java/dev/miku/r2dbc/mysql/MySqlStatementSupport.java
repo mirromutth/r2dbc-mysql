@@ -48,9 +48,4 @@ abstract class MySqlStatementSupport implements MySqlStatement {
 
         return this;
     }
-
-    @Override
-    public final MySqlStatement fetchSize(int rows) {
-        return this;
-    }
 }

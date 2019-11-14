@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
+import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
@@ -113,6 +114,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
             if (msg instanceof PrepareQueryMessage) {
                 setDecodeContext(DecodeContext.prepareQuery());
+            } else if (msg instanceof PreparedFetchMessage) {
+                setDecodeContext(DecodeContext.fetch());
             } else if (msg instanceof SslRequest) {
                 ctx.channel().pipeline().fireUserEventTriggered(SslState.BRIDGING);
             }
@@ -179,12 +182,6 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
                 setDecodeContext(DecodeContext.command());
             }
         } else if (msg instanceof ErrorMessage) {
-            ErrorMessage message = (ErrorMessage) msg;
-
-            if (logger.isWarnEnabled()) {
-                logger.warn("Error: error code {}, sql state: {}, message: {}", message.getErrorCode(), message.getSqlState(), message.getErrorMessage());
-            }
-
             setDecodeContext(DecodeContext.command());
         }
 

@@ -33,6 +33,10 @@ public interface DecodeContext {
         return PrepareQueryDecodeContext.INSTANCE;
     }
 
+    static DecodeContext fetch() {
+        return FetchDecodeContext.INSTANCE;
+    }
+
     static DecodeContext result(boolean deprecateEof, int totalColumns) {
         return new ResultDecodeContext(deprecateEof, totalColumns);
     }

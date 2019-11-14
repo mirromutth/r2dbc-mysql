@@ -67,6 +67,10 @@ final class RequestTask<T> {
         return new RequestTask<>(null, sink, supplier);
     }
 
+    static <T> RequestTask<T> wrap(Disposable disposable, MonoSink<T> sink, Supplier<T> supplier) {
+        return new RequestTask<>(disposable, sink, supplier);
+    }
+
     static <T> RequestTask<T> wrap(MonoSink<T> sink, Supplier<T> supplier) {
         return new RequestTask<>(null, sink, supplier);
     }
