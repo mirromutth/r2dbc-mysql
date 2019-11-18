@@ -28,6 +28,7 @@ import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.PreparedOkMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
+import dev.miku.r2dbc.mysql.util.InternalArrays;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
@@ -37,7 +38,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 import reactor.util.annotation.Nullable;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -113,7 +113,9 @@ final class QueryFlow {
      * @return the messages received in response to this exchange, and will be completed
      * by {@link CompleteMessage} when it is last result for each binding.
      */
-    static Flux<Flux<ServerMessage>> execute(Client client, String sql, int statementId, boolean deprecateEof, int fetchSize, List<Binding> bindings) {
+    static Flux<Flux<ServerMessage>> execute(
+        Client client, String sql, int statementId, boolean deprecateEof, int fetchSize, List<Binding> bindings
+    ) {
         if (bindings.isEmpty()) {
             return Flux.empty();
         }
@@ -159,7 +161,9 @@ final class QueryFlow {
      * completed by {@link CompleteMessage} for each statement.
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
-        return selfEmitter(Arrays.asList(statements), sql -> execute0(client, sql), null).doOnNext(SAFE_RELEASE).then();
+        return selfEmitter(InternalArrays.asReadOnlyList(statements), sql -> execute0(client, sql), null)
+            .doOnNext(SAFE_RELEASE)
+            .then();
     }
 
     /**
@@ -224,7 +228,9 @@ final class QueryFlow {
      * @param handler      error message handler.
      * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
      */
-    private static Flux<ServerMessage> execute0(Client client, int statementId, boolean deprecateEof, Binding binding, int fetchSize, Handler handler) {
+    private static Flux<ServerMessage> execute0(
+        Client client, int statementId, boolean deprecateEof, Binding binding, int fetchSize, Handler handler
+    ) {
         if (fetchSize > 0) {
             PreparedExecuteMessage message = binding.toMessage(statementId, false);
             // If EOF has been deprecated, it will end by OK message (same as fetch), otherwise it will end by Metadata EOF message.
@@ -242,7 +248,9 @@ final class QueryFlow {
         }
     }
 
-    private static <T> Flux<ServerMessage> selfEmitter(Collection<? extends T> sources, Function<T, Flux<ServerMessage>> convert, @Nullable Consumer<? super T> discard) {
+    private static <T> Flux<ServerMessage> selfEmitter(
+        Collection<? extends T> sources, Function<T, Flux<ServerMessage>> convert, @Nullable Consumer<? super T> discard
+    ) {
         if (sources.isEmpty()) {
             return Flux.empty();
         }

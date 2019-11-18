@@ -20,7 +20,7 @@ import dev.miku.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
 import static dev.miku.r2dbc.mysql.constant.AuthTypes.NO_AUTH_PROVIDER;
-import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
  * A special authentication provider when server capabilities does not set {@code Capabilities.PLUGIN_AUTH}.

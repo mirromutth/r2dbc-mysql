@@ -26,7 +26,7 @@ import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
 
-import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
  * Codec for {@link ByteBuffer}.

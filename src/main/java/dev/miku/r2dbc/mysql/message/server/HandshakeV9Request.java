@@ -22,7 +22,7 @@ import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
 
-import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**

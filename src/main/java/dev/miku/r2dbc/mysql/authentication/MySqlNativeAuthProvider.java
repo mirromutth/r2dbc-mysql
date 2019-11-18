@@ -20,7 +20,7 @@ import dev.miku.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
 import static dev.miku.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
-import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
