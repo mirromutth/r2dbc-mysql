@@ -21,7 +21,7 @@ import io.r2dbc.spi.Blob;
 
 import java.nio.ByteBuffer;
 
-import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_BYTES;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
  * An implementation of {@link Blob} for multi-{@link ByteBuf}s.

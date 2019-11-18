@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.message.server.DefinitionMetadataMessage;
+import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.r2dbc.spi.RowMetadata;
 
 import java.util.Arrays;
@@ -96,7 +97,7 @@ final class MySqlRowMetadata implements RowMetadata {
             case 1:
                 return Collections.singletonList(idSorted[0]);
             default:
-                return Collections.unmodifiableList(Arrays.asList(idSorted));
+                return InternalArrays.asReadOnlyList(idSorted);
         }
     }
 

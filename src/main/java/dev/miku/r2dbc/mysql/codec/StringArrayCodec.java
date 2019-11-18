@@ -22,13 +22,17 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-import static dev.miku.r2dbc.mysql.constant.EmptyArrays.EMPTY_STRINGS;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
 
 /**
  * Codec for {@link String[]}.
@@ -66,7 +70,15 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
 
     @Override
     public ParameterValue encode(Object value, ConnectionContext context) {
-        return new StringArrayValue((CharSequence[]) value, context);
+        CharSequence[] data = (CharSequence[]) value;
+        switch (data.length) {
+            case 0:
+                return new StringArrayValue(Collections.emptyList(), context);
+            case 1:
+                return new StringArrayValue(Collections.singletonList(data[0]), context);
+            default:
+                return new StringArrayValue(InternalArrays.toReadOnlyList(data), context);
+        }
     }
 
     @Override
@@ -76,18 +88,18 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
 
     private static final class StringArrayValue extends AbstractParameterValue {
 
-        private final CharSequence[] value;
+        private final List<CharSequence> value;
 
         private final ConnectionContext context;
 
-        private StringArrayValue(CharSequence[] value, ConnectionContext context) {
+        private StringArrayValue(List<CharSequence> value, ConnectionContext context) {
             this.value = value;
             this.context = context;
         }
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeSet(Arrays.asList(value), context.getCollation()));
+            return Mono.fromRunnable(() -> writer.writeSet(value, context.getCollation()));
         }
 
         @Override
@@ -106,12 +118,12 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
 
             StringArrayValue that = (StringArrayValue) o;
 
-            return Arrays.equals(this.value, that.value);
+            return this.value.equals(that.value);
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(value);
+            return value.hashCode();
         }
     }
 }

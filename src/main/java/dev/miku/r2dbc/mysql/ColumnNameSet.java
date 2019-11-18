@@ -16,6 +16,8 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.util.InternalArrays;
+
 import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Collection;
@@ -56,8 +58,7 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
 
     @Override
     public Iterator<String> iterator() {
-        // Why are there no Arrays.<T>iterator(T[]) in Java?
-        return new Itr(names);
+        return InternalArrays.asIterator(names);
     }
 
     @Override
@@ -171,26 +172,5 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
     @Override
     public String toString() {
         return Arrays.toString(names);
-    }
-
-    private static final class Itr implements Iterator<String> {
-
-        private final String[] names;
-
-        private int i = 0;
-
-        private Itr(String[] names) {
-            this.names = names;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return i < names.length;
-        }
-
-        @Override
-        public String next() {
-            return names[i++];
-        }
     }
 }
