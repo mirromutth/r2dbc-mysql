@@ -56,10 +56,10 @@
     </scm>
 
     <properties>
-        <assertj.version>3.13.2</assertj.version>
+        <assertj.version>3.14.0</assertj.version>
         <java.version>1.8</java.version>
         <mbr.version>0.2.0.RELEASE</mbr.version>
-        <jmh.version>1.21</jmh.version>
+        <jmh.version>1.22</jmh.version>
         <jsr305.version>3.0.2</jsr305.version>
         <junit.version>5.5.2</junit.version>
         <logback.version>1.2.3</logback.version>
@@ -68,11 +68,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <r2dbc-spi.version>0.8.0.RC2</r2dbc-spi.version>
-        <reactor.version>Dysprosium-RELEASE</reactor.version>
-        <slf4j.version>1.7.28</slf4j.version>
-        <testcontainers.version>1.12.2</testcontainers.version>
+        <reactor.version>Dysprosium-SR1</reactor.version>
+        <slf4j.version>1.7.29</slf4j.version>
+        <testcontainers.version>1.12.3</testcontainers.version>
         <hikari-cp.version>3.4.1</hikari-cp.version>
-        <spring-framework.version>5.2.0.RELEASE</spring-framework.version>
+        <spring-framework.version>5.2.1.RELEASE</spring-framework.version>
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
@@ -219,7 +219,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.1.2</version>
+                <version>3.2.0</version>
                 <configuration>
                     <archive>
                         <manifest>
@@ -259,7 +259,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>3.2.0</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
