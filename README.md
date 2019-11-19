@@ -191,7 +191,7 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 | password | Any printable string | Optional, default no password | The password of the MySQL database user |
 | database | A valid MySQL database name | Optional, default does not initialize database | Database used by the MySQL connection |
 | connectTimeout | A `Duration` which must be positive duration | Optional, default has no timeout | TCP connect timeout |
-| sslMode | Any value of `SslMode` | Optional, default is `PREFERRED` | SSL mode, see following notice |
+| sslMode | Any value of `SslMode` | Optional, default `PREFERRED` when using hosting connection, `DISABLED` when using Unix Domain Socket | SSL mode, see following notice |
 | sslCa | A path of local file which type is `PEM` | Required when `sslMode` is `VERIFY_CA` or `VERIFY_IDENTITY` | The CA cert of MySQL database server |
 | sslCert | A path of local file which type is `PEM` | Required when `sslKey` exists | The SSL cert of client |
 | sslKey | A path of local file which type is `PEM` | Required when `sslCert` exists | The SSL key of client |
