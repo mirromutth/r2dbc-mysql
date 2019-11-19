@@ -201,10 +201,10 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 
 - `SslMode`: Considers security level and verification for SSL, make sure the database server supports SSL before you want change SSL mode to `REQUIRED` or higher.
   - `DISABLED`: I don't care about security and don't want to pay the overhead for encryption
-  - `PREFERRED` (default level): I don't care about encryption but will pay the overhead of encryption if the server supports it
-  - `REQUIRED`: I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want
-  - `VERIFY_CA`: I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust
-  - `VERIFY_IDENTITY` (highest level, most like web browser): I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify
+  - `PREFERRED`: I don't care about encryption but will pay the overhead of encryption if the server supports it. **Unavailable on Unix Domain Socket**
+  - `REQUIRED`: I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want. **Unavailable on Unix Domain Socket**
+  - `VERIFY_CA`: I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust. **Unavailable on Unix Domain Socket**
+  - `VERIFY_IDENTITY` (highest level, most like web browser): I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify. **Unavailable on Unix Domain Socket**
 - `TlsVersions`: Considers TLS version names for SSL, can be **multi-values** in configuration, make sure the database server supports selected TLS versions
   - `TLS1` (i.e. "TLSv1"): Under generic circumstances, MySQL database supports it if database supports SSL
   - `TLS1_1` (i.e. "TLSv1.1"): Under generic circumstances, MySQL database supports it if database supports SSL
