@@ -19,6 +19,7 @@ package dev.miku.r2dbc.mysql.util;
 import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -56,7 +57,15 @@ public final class InternalArrays {
     @SafeVarargs
     public static <E> List<E> asReadOnlyList(E... a) {
         requireNonNull(a, "array must not be null");
-        return new ArrList<>(a);
+
+        switch (a.length) {
+            case 0:
+                return Collections.emptyList();
+            case 1:
+                return Collections.singletonList(a[0]);
+            default:
+                return new ArrList<>(a);
+        }
     }
 
     /**
@@ -71,7 +80,15 @@ public final class InternalArrays {
     @SafeVarargs
     public static <E> List<E> toReadOnlyList(E... a) {
         requireNonNull(a, "array must not be null");
-        return new ArrList<>(Arrays.copyOf(a, a.length));
+
+        switch (a.length) {
+            case 0:
+                return Collections.emptyList();
+            case 1:
+                return Collections.singletonList(a[0]);
+            default:
+                return new ArrList<>(Arrays.copyOf(a, a.length));
+        }
     }
 
     /**
@@ -87,6 +104,11 @@ public final class InternalArrays {
     @SafeVarargs
     public static <E> Iterator<E> asIterator(E... a) {
         requireNonNull(a, "array must not be null");
+
+        if (a.length == 0) {
+            return Collections.emptyIterator();
+        }
+
         return new ArrItr<>(0, a);
     }
 
@@ -139,6 +161,15 @@ final class ArrItr<E> implements ListIterator<E>, Iterator<E> {
 
     public int previousIndex() {
         return i - 1;
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super E> action) {
+        Objects.requireNonNull(action);
+
+        while (i < a.length) {
+            action.accept(a[i++]);
+        }
     }
 
     @Override

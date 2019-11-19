@@ -91,14 +91,7 @@ final class MySqlRowMetadata implements RowMetadata {
 
     @Override
     public List<MySqlColumnMetadata> getColumnMetadatas() {
-        switch (idSorted.length) {
-            case 0:
-                return Collections.emptyList();
-            case 1:
-                return Collections.singletonList(idSorted[0]);
-            default:
-                return InternalArrays.asReadOnlyList(idSorted);
-        }
+        return InternalArrays.asReadOnlyList(idSorted);
     }
 
     @Override

@@ -70,15 +70,7 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
 
     @Override
     public ParameterValue encode(Object value, ConnectionContext context) {
-        CharSequence[] data = (CharSequence[]) value;
-        switch (data.length) {
-            case 0:
-                return new StringArrayValue(Collections.emptyList(), context);
-            case 1:
-                return new StringArrayValue(Collections.singletonList(data[0]), context);
-            default:
-                return new StringArrayValue(InternalArrays.toReadOnlyList(data), context);
-        }
+        return new StringArrayValue(InternalArrays.toReadOnlyList((CharSequence[]) value), context);
     }
 
     @Override
