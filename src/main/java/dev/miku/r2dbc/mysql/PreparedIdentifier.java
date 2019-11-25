@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 /**
- * An identifier considers about a prepared statement should close only once.
+ * An identifier considers about a prepared statement should close only once, and closed status.
  */
 final class PreparedIdentifier extends AtomicBoolean {
 
@@ -44,6 +44,10 @@ final class PreparedIdentifier extends AtomicBoolean {
 
     int getId() {
         return id;
+    }
+
+    boolean isClosed() {
+        return get();
     }
 
     Mono<Void> close() {

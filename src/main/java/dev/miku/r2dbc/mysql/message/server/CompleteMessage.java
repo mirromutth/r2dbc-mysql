@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.message.server;
 /**
  * A message indicates result completion signal of a command which maybe a query.
  */
-public interface CompleteMessage extends ServerMessage {
+public interface CompleteMessage extends ServerStatusMessage {
 
     boolean isDone();
 }

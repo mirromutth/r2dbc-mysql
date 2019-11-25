@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.ExitMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
-import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.WarningMessage;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
@@ -45,7 +44,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -145,79 +143,6 @@ final class ReactorNettyClient implements Client {
                     })
                     .doOnTerminate(requestQueue)
                     .doOnCancel(() -> exchangeCancel(completed));
-            }));
-        }).flatMapMany(identity());
-    }
-
-    @Override
-    public Flux<ServerMessage> exchange(Disposable disposable, Exchangeable... exchanges) {
-        requireNonNull(exchanges, "exchanges must not be null");
-        require(exchanges.length > 0, "exchanges must not be empty");
-
-        return Mono.<Flux<ServerMessage>>create(sink -> {
-            if (!isConnected()) {
-                disposable.dispose();
-                sink.error(new IllegalStateException("Cannot send messages because the connection is closed"));
-                return;
-            }
-
-            requestQueue.submit(RequestTask.wrap(disposable, sink, () -> {
-                boolean[] completed = new boolean[]{false};
-
-                EmitterProcessor<Exchangeable> processor = EmitterProcessor.create(1, true);
-                int[] i = new int[]{0};
-
-                try {
-                    return processor.concatMap(it -> {
-                        Flux<ServerMessage> exchange = send(it.request)
-                            .thenMany(responseProcessor)
-                            .handle((message, response) -> {
-                                if (message instanceof ErrorMessage) {
-                                    response.next(message);
-                                    // Stop subsequent requests.
-                                    processor.onComplete();
-                                    response.complete();
-                                    return;
-                                }
-
-                                if (it.complete.test(message)) {
-                                    if (it.takeComplete) {
-                                        response.next(message);
-                                    }
-                                    response.complete();
-                                } else {
-                                    response.next(message);
-                                }
-                            });
-
-                        return exchange.doOnComplete(() -> {
-                            if (processor.isCancelled() || processor.isTerminated()) {
-                                return;
-                            }
-
-                            try {
-                                if (i[0] < exchanges.length) {
-                                    processor.onNext(exchanges[i[0]++]);
-                                } else {
-                                    processor.onComplete();
-                                }
-                            } catch (Throwable e) {
-                                processor.onError(e);
-                            }
-                        });
-                    })
-                        .doOnTerminate(() -> {
-                            completed[0] = true;
-                            clearExchanges(i[0], exchanges);
-                            requestQueue.run();
-                        })
-                        .doOnCancel(() -> {
-                            clearExchanges(i[0], exchanges);
-                            exchangeCancel(completed);
-                        });
-                } finally {
-                    processor.onNext(exchanges[i[0]++]);
-                }
             }));
         }).flatMapMany(identity());
     }
@@ -330,12 +255,6 @@ final class ReactorNettyClient implements Client {
             if (warnings != 0) {
                 logger.info("MySQL reports {} warning(s)", warnings);
             }
-        }
-    }
-
-    private static void clearExchanges(int index, Exchangeable[] exchanges) {
-        for (int i = index; i < exchanges.length; ++i) {
-            exchanges[i].dispose();
         }
     }
 

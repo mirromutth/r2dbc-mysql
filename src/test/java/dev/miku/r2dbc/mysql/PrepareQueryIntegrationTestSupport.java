@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 import io.r2dbc.spi.Connection;
+import io.r2dbc.spi.R2dbcBadGrammarException;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import reactor.core.publisher.Flux;
@@ -40,6 +41,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -206,6 +210,21 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
     }
 
     @Test
+    void notSupportCompound() {
+        connectionFactory.create()
+            .flatMapMany(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
+                .execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .thenMany(connection.createStatement("INSERT INTO test(`value`) VALUES (?); INSERT INTO test(`value`) VALUES (?)")
+                    .bind(0, 1)
+                    .bind(1, 2)
+                    .execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated))
+            .as(StepVerifier::create)
+            .verifyError(R2dbcBadGrammarException.class);
+    }
+
+    @Test
     void fetchSize() {
         connectionFactory.create()
             .flatMapMany(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
@@ -215,13 +234,17 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
                 .flatMap(IntegrationTestSupport::extractRowsUpdated)
                 .thenMany(connection.createStatement("SELECT value FROM test WHERE id > ?")
                     .bind(0, 0)
-                    .fetchSize(3)
+                    .add()
+                    .bind(0, 3)
+                    .add()
+                    .bind(0, 0)
+                    .fetchSize(2)
                     .execute())
                 .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.TYPE)))
                 .concatWith(close(connection))
             )
             .as(StepVerifier::create)
-            .expectNext(1, 2, 3)
+            .expectNext(1, 2, 3, 4, 5, 4, 5, 1, 2, 3, 4, 5)
             .verifyComplete();
     }
 
