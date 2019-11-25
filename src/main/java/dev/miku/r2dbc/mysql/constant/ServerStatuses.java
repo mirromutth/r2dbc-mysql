@@ -30,7 +30,12 @@ public final class ServerStatuses {
 //    public static final short QUERY_NO_GOOD_INDEX_USED = 16;
 //    public static final short QUERY_NO_INDEX_USED = 32;
 //    public static final short CURSOR_EXISTS = 64;
-//    public static final short LAST_ROW_SENT = 128;
+
+    /**
+     * All data rows is exhausted by cursor.
+     */
+    public static final short LAST_ROW_SENT = 128;
+
 //    public static final short DB_DROPPED = 256;
 //    public static final short NO_BACKSLASH_ESCAPES = 512;
 //    public static final short METADATA_CHANGED = 1024;

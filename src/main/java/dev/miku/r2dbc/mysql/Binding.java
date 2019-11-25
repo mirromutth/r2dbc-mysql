@@ -49,6 +49,13 @@ final class Binding {
         this.values[index] = value;
     }
 
+    /**
+     * Convert binding to a request message.
+     *
+     * @param statementId prepared statement identifier
+     * @param immediate   use {@code true} if should be execute immediate, otherwise return a open cursor message
+     * @return an execute message or open cursor message
+     */
     PreparedExecuteMessage toMessage(int statementId, boolean immediate) {
         ParameterValue[] values = new ParameterValue[this.values.length];
 

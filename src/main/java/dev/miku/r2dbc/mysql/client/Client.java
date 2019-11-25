@@ -53,21 +53,6 @@ public interface Client {
      */
     Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete);
 
-    /**
-     * Perform multi-exchanges of messages one-by-one. Execute each exchanges while a previous
-     * exchange is active will return a deferred handle and queue the request until the previous
-     * exchange terminates. Responses streams will be concat to a single stream. If the request
-     * stops due to an error on the way, it will call {@link Exchangeable#dispose()} to discard
-     * subsequent {@link Exchangeable}s instead of {@code disposable.dispose()}.
-     *
-     * @param disposable resources discarding when entire request cancelled.
-     * @param exchanges  each {@link Exchangeable} contains an {@link ExchangeableMessage},
-     *                   complete {@link Predicate} and a boolean that response take
-     *                   complete frame or not.
-     * @return A {@link Flux} of incoming messages that ends with the end of the frame
-     */
-    Flux<ServerMessage> exchange(Disposable disposable, Exchangeable... exchanges);
-
     Mono<Void> sendOnly(SendOnlyMessage message);
 
     Mono<ServerMessage> receiveOnly();
