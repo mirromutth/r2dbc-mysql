@@ -28,6 +28,7 @@ import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.PreparedOkMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.util.ReferenceCountUtil;
@@ -60,8 +61,6 @@ final class QueryFlow {
 
     private static final Predicate<ServerMessage> METADATA_DONE = message ->
         message instanceof ErrorMessage || message instanceof SyntheticMetadataMessage;
-
-    private static final Predicate<ServerMessage> IS_METADATA = message -> message instanceof SyntheticMetadataMessage;
 
     private static final Predicate<ServerMessage> FETCH_DONE = message ->
         message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
@@ -104,6 +103,7 @@ final class QueryFlow {
      * It will not close this prepared statement.
      *
      * @param client       the {@link Client} to exchange messages with.
+     * @param context      the connection context.
      * @param sql          the original statement for exception tracing.
      * @param identifier   the statement identifier want to execute.
      * @param deprecateEof EOF has been deprecated.
@@ -113,13 +113,12 @@ final class QueryFlow {
      * by {@link CompleteMessage} when it is last result for each binding.
      */
     static Flux<Flux<ServerMessage>> execute(
-        Client client, String sql, PreparedIdentifier identifier, boolean deprecateEof, int fetchSize, List<Binding> bindings
+        Client client, ConnectionContext context, String sql, PreparedIdentifier identifier, boolean deprecateEof, int fetchSize, List<Binding> bindings
     ) {
         if (bindings.isEmpty()) {
             return Flux.empty();
         }
 
-        Handler handler = new Handler(sql);
         Iterator<Binding> iterator = bindings.iterator();
         EmitterProcessor<Binding> processor = EmitterProcessor.create(1, true);
 
@@ -127,7 +126,7 @@ final class QueryFlow {
 
         // One binding may be leak when a emitted Result has been ignored, but Result should never be ignored.
         // Subsequent bindings will auto-clear if subscribing has been cancelled.
-        return processor.concatMap(it -> execute0(client, identifier, deprecateEof, it, fetchSize, handler).doOnComplete(() -> {
+        return processor.concatMap(it -> execute0(client, context, sql, identifier, deprecateEof, it, fetchSize).doOnComplete(() -> {
             if (processor.isCancelled() || processor.isTerminated()) {
                 return;
             }
@@ -248,15 +247,16 @@ final class QueryFlow {
      * a {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception.
      *
      * @param client       the {@link Client} to exchange messages with.
+     * @param context      the connection context, for cursor status.
+     * @param sql          the original statement for exception tracing.
      * @param identifier   the statement identifier want to execute.
      * @param deprecateEof EOF has been deprecated.
      * @param binding      the data of binding.
      * @param fetchSize    the size of fetching, if it less than or equal to {@literal 0} means fetch all rows.
-     * @param handler      error message handler.
      * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
      */
     private static Flux<ServerMessage> execute0(
-        Client client, PreparedIdentifier identifier, boolean deprecateEof, Binding binding, int fetchSize, Handler handler
+        Client client, ConnectionContext context, String sql, PreparedIdentifier identifier, boolean deprecateEof, Binding binding, int fetchSize
     ) {
         if (fetchSize > 0) {
             int statementId = identifier.getId();
@@ -265,17 +265,23 @@ final class QueryFlow {
             // So do not take the last response message (i.e. OK message) for execute if EOF has been deprecated.
             return OperatorUtils.discardOnCancel(client.exchange(cursor, deprecateEof ? FETCH_DONE : METADATA_DONE))
                 .doOnDiscard(ReferenceCounted.class, RELEASE)
-                .handle(handler)
-                .filter(IS_METADATA)
-                .concatWith(Flux.defer(() -> fetch(client, identifier, new PreparedFetchMessage(statementId, fetchSize), handler.sql)));
+                .handle(new TakeOne(sql)) // Should wait to complete, then concat fetches.
+                .concatWith(Flux.defer(() -> fetch(client, context, identifier, new PreparedFetchMessage(statementId, fetchSize), sql)));
         } else {
             return OperatorUtils.discardOnCancel(client.exchange(binding.toMessage(identifier.getId(), true), FETCH_DONE))
                 .doOnDiscard(ReferenceCounted.class, RELEASE)
-                .handle(handler);
+                .handle(new Handler(sql));
         }
     }
 
-    private static Flux<ServerMessage> fetch(Client client, PreparedIdentifier identifier, PreparedFetchMessage fetch, String sql) {
+    private static Flux<ServerMessage> fetch(
+        Client client, ConnectionContext context, PreparedIdentifier identifier, PreparedFetchMessage fetch, String sql
+    ) {
+        if ((context.getServerStatuses() & ServerStatuses.CURSOR_EXISTS) == 0) {
+            // No opened cursor, means current statement is update query.
+            return Flux.empty();
+        }
+
         EmitterProcessor<ExchangeableMessage> processor = EmitterProcessor.create(1, false);
 
         processor.onNext(fetch);
@@ -347,6 +353,31 @@ final class QueryFlow {
     private static void discardBindings(Iterator<Binding> iterator) {
         while (iterator.hasNext()) {
             iterator.next().clear();
+        }
+    }
+
+    private static final class TakeOne implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>> {
+
+        private final String sql;
+
+        private boolean next;
+
+        private TakeOne(String sql) {
+            this.sql = sql;
+        }
+
+        @Override
+        public void accept(ServerMessage message, SynchronousSink<ServerMessage> sink) {
+            if (next) {
+                return;
+            }
+            next = true;
+
+            if (message instanceof ErrorMessage) {
+                sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+            } else {
+                sink.next(message);
+            }
         }
     }
 

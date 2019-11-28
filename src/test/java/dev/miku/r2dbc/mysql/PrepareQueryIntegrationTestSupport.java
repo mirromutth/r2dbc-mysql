@@ -41,9 +41,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -245,6 +242,28 @@ abstract class PrepareQueryIntegrationTestSupport extends QueryIntegrationTestSu
             )
             .as(StepVerifier::create)
             .expectNext(1, 2, 3, 4, 5, 4, 5, 1, 2, 3, 4, 5)
+            .verifyComplete();
+    }
+
+    @Test
+    void updateFetch() {
+        connectionFactory.create()
+            .flatMapMany(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
+                .execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .thenMany(connection.createStatement("INSERT INTO test(`value`) VALUES (?),(?),(?),(?),(?)")
+                    .bind(0, 1)
+                    .bind(1, 2)
+                    .bind(2, 3)
+                    .bind(3, 4)
+                    .bind(4, 5)
+                    .fetchSize(2)
+                    .execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .concatWith(close(connection))
+            )
+            .as(StepVerifier::create)
+            .expectNext(5)
             .verifyComplete();
     }
 

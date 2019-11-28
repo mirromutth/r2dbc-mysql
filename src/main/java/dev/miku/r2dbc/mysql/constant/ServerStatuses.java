@@ -29,7 +29,11 @@ public final class ServerStatuses {
 
 //    public static final short QUERY_NO_GOOD_INDEX_USED = 16;
 //    public static final short QUERY_NO_INDEX_USED = 32;
-//    public static final short CURSOR_EXISTS = 64;
+
+    /**
+     * The connection has an unclosed cursor.
+     */
+    public static final short CURSOR_EXISTS = 64;
 
     /**
      * All data rows is exhausted by cursor.
