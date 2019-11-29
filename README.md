@@ -199,13 +199,13 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 | tlsVersion | Any value list of `TlsVersions` | Optional, default is auto-selected by the server | The TLS version for SSL, see following notice |
 | zeroDateOption | Any value of `ZeroDateOption` | Optional, default `USE_NULL` | The option indicates "zero date" handling, see following notice |
 
-- `SslMode`: Considers security level and verification for SSL, make sure the database server supports SSL before you want change SSL mode to `REQUIRED` or higher.
+- `SslMode`: Considers security level and verification for SSL, make sure the database server supports SSL before you want change SSL mode to `REQUIRED` or higher. **The Unix Domain Socket only offers "DISABLED" available**
   - `DISABLED`: I don't care about security and don't want to pay the overhead for encryption
   - `PREFERRED`: I don't care about encryption but will pay the overhead of encryption if the server supports it. **Unavailable on Unix Domain Socket**
   - `REQUIRED`: I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want. **Unavailable on Unix Domain Socket**
   - `VERIFY_CA`: I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust. **Unavailable on Unix Domain Socket**
   - `VERIFY_IDENTITY` (highest level, most like web browser): I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify. **Unavailable on Unix Domain Socket**
-- `TlsVersions`: Considers TLS version names for SSL, can be **multi-values** in configuration, make sure the database server supports selected TLS versions
+- `TlsVersions`: Considers TLS version names for SSL, can be **multi-values** in configuration, make sure the database server supports selected TLS versions. **Unavailable on Unix Domain Socket**
   - `TLS1` (i.e. "TLSv1"): Under generic circumstances, MySQL database supports it if database supports SSL
   - `TLS1_1` (i.e. "TLSv1.1"): Under generic circumstances, MySQL database supports it if database supports SSL
   - `TLS1_2` (i.e. "TLSv1.2"): Supported only in Community Edition `8.0.4` or higher, otherwise in Enterprise Edition `5.6.0` or higher
@@ -288,7 +288,7 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 | SMALLINT | UNSIGNED | [**`Integer`**][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
 | SMALLINT | SIGNED | [**`Short`**][java-Short-ref], [`Integer`][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
 | MEDIUMINT | SIGNED/UNSIGNED | [**`Integer`**][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
-| BIGINT | UNSIGNED | [**`BigInteger`**][java-BigInteger-ref], [`Long`][java-Long-ref] (Not check overflow for ID column) |
+| BIGINT | UNSIGNED | [**`BigInteger`**][java-BigInteger-ref], [`Long`][java-Long-ref] (Not check overflow) |
 | BIGINT | SIGNED | [**`Long`**][java-Long-ref], [`BigInteger`][java-BigInteger-ref] |
 | FLOAT | SIGNED/UNSIGNED | [**`Float`**][java-Float-ref], [`BigDecimal`][java-BigDecimal-ref] |
 | DOUBLE | SIGNED/UNSIGNED | [**`Double`**][java-Double-ref], [`BigDecimal`][java-BigDecimal-ref]  |
@@ -296,15 +296,15 @@ This reference table shows the type mapping between [MySQL][m] and Java data typ
 | BIT | - | [**`ByteBuffer`**][java-ByteBuffer-ref], [`BitSet`][java-BitSet-ref], [`Boolean`][java-Boolean-ref] (Size is 1), `byte[]` |
 | DATETIME/TIMESTAMP | - | [**`LocalDateTime`**][java-LocalDateTime-ref] |
 | DATE | - | [**`LocalDate`**][java-LocalDate-ref] |
-| TIME | - | [**`Duration`**][java-Duration-ref], [`LocalTime`][java-LocalTime-ref] |
+| TIME | - | [**`LocalTime`**][java-LocalTime-ref], [`Duration`][java-Duration-ref] |
 | YEAR | - | [**`Short`**][java-Short-ref], [`Integer`][java-Integer-ref], [`Long`][java-Long-ref], [`BigInteger`][java-BigInteger-ref], [`Year`][java-Year-ref] |
 | VARCHAR/NVARCHAR | - | [**`String`**][java-String-ref] |
 | VARBINARY | - | [**`ByteBuffer`**][java-ByteBuffer-ref], `Blob`, `byte[]` |
 | CHAR/NCHAR | - | [**`String`**][java-String-ref] |
 | ENUM | - | [**`String`**][java-String-ref], [`Enum<?>`][java-Enum-ref] |
 | SET | - | **`String[]`**, [`String`][java-String-ref], [`Set<String>`][java-Set-ref] and [`Set<Enum<?>>`][java-Set-ref] ([`Set<T>`][java-Set-ref] need use [`ParameterizedType`][java-ParameterizedType-ref]) |
-| BLOB (LONGBLOB, etc.) | - | **`Blob`**, `byte[]` (Not check overflow) |
-| TEXT (LONGTEXT, etc.) | - | **`Clob`**, [`String`][java-String-ref] (Not check overflow) |
+| BLOB (LONGBLOB, etc.) | - | [**`ByteBuffer`**][java-ByteBuffer-ref], `Blob`, `byte[]` |
+| TEXT (LONGTEXT, etc.) | - | [**`String`**][java-String-ref], `Clob` |
 | JSON | - | [**`String`**][java-String-ref], `Clob` |
 | GEOMETRY | - | **`byte[]`**, `Blob` |
 
@@ -321,14 +321,14 @@ If you want to raise an issue, please follow the recommendations below:
 
 ## Before use
 
-- MySQL database does **NOT** support **table definition** in prepare statement, please use simple statement if want to execute table definitions.
-- Native MySQL data fields encoded by index-based, get fields by index will have **better** performance than get by column name.
-- Every `Result` should be used (call `getRowsUpdated` or `map`, even table definition), can **NOT** just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
+- MySQL database does **NOT** support **table definition** in a prepared statement, please use simple statement if want to execute table definitions.
+- The MySQL data fields encoded by index-based natively, get fields by index will have **better** performance than get by column name.
+- Each `Result` should be used (call `getRowsUpdated` or `map`, even table definition), can **NOT** just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
 - The MySQL return microseconds when only in prepared statement result (and maybe has not microsecond even in prepared statement result). Therefore this driver does not guarantee time accuracy to microseconds.
 - The MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
-- Do not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
+- Should not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
 - If `Statement` bound `returnGeneratedValues`, the `Result` of the `Statement` can be called both: `getRowsUpdated` to get affected rows, and `map` to get last inserted ID.
-- Try not search some rows by binary field, like `BIT` or `BLOB`, MySQL supports such queries is not good (but `VARBINARY` is OK).
+- The MySQL may be not support search rows by binary field, like `BIT` or `BLOB`, because those data fields maybe just an address of reference in MySQL server, or maybe need strict bit-aligned. (but `VARBINARY` is OK)
 
 ## License
 
