@@ -56,7 +56,7 @@ abstract class MetadataDecodeContext implements DecodeContext {
             }
         } else if (message instanceof EofMessage) {
             if (deprecateEof) {
-                throw new IllegalStateException("Unexpected EOF message because server has deprecated EOF");
+                throw new IllegalStateException(String.format("Unexpected %s because server has deprecated EOF", message));
             }
 
             // Current columns index is also last index of metadata after put, see `putMetadata`.
@@ -65,10 +65,10 @@ abstract class MetadataDecodeContext implements DecodeContext {
 
             if (bundle == null) {
                 if (logger.isErrorEnabled()) {
-                    logger.error("Unexpected EOF message when metadata unfilled, fill index: {}, checkpoint(s): {}", currentIndex, loggingPoints());
+                    logger.error("Unexpected {} when metadata unfilled, fill index: {}, checkpoint(s): {}", message, currentIndex, loggingPoints());
                 }
             } else {
-                logger.debug("Respond a metadata bundle by EOF");
+                logger.debug("Respond a metadata bundle by {}", message);
             }
 
             return bundle;

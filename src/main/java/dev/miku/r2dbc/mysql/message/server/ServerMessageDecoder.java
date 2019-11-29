@@ -342,6 +342,10 @@ public final class ServerMessageDecoder {
             message = DefinitionMetadataMessage.decode(buf, context);
         }
 
+        if (message instanceof ServerStatusMessage) {
+            context.setServerStatuses(((ServerStatusMessage) message).getServerStatuses());
+        }
+
         return decodeContext.putPart(message);
     }
 }

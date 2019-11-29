@@ -27,6 +27,7 @@ import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.PreparedOkMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
+import dev.miku.r2dbc.mysql.message.server.ServerStatusMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
@@ -56,14 +57,14 @@ final class QueryFlow {
     // Metadata EOF message will be not receive in here.
     private static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof CompleteMessage;
 
-    private static final Predicate<ServerMessage> PREPARE_DONE = message ->
-        message instanceof ErrorMessage || (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted());
+    private static final Predicate<ServerMessage> PREPARE_DONE = message -> message instanceof ErrorMessage ||
+        (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted());
 
-    private static final Predicate<ServerMessage> METADATA_DONE = message ->
-        message instanceof ErrorMessage || message instanceof SyntheticMetadataMessage;
+    private static final Predicate<ServerMessage> METADATA_DONE = message -> message instanceof ErrorMessage ||
+        message instanceof SyntheticMetadataMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
 
-    private static final Predicate<ServerMessage> FETCH_DONE = message ->
-        message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
+    private static final Predicate<ServerMessage> FETCH_DONE = message -> message instanceof ErrorMessage ||
+        (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
 
     private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
 
@@ -292,9 +293,9 @@ final class QueryFlow {
                 if (message instanceof ErrorMessage) {
                     sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
                     processor.onComplete();
-                } else if (message instanceof CompleteMessage) {
+                } else if (message instanceof ServerStatusMessage) {
                     // It is also can be read from Connection Context.
-                    short statuses = ((CompleteMessage) message).getServerStatuses();
+                    short statuses = ((ServerStatusMessage) message).getServerStatuses();
 
                     if ((statuses & ServerStatuses.LAST_ROW_SENT) == 0) {
                         // This exchange does not contains last row, so drop the complete frame of this exchange.

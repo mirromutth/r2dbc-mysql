@@ -31,12 +31,6 @@ final class Eof320Message implements EofMessage {
     }
 
     @Override
-    public short getServerStatuses() {
-        // If server use protocol 3.20, it should not supports multi-results and fetch.
-        return 0;
-    }
-
-    @Override
     public boolean isDone() {
         // If server use protocol 3.20, it should not supports multi-results.
         return true;
