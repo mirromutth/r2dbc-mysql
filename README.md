@@ -30,7 +30,7 @@ This driver provides the following features:
 <dependency>
     <groupId>dev.miku</groupId>
     <artifactId>r2dbc-mysql</artifactId>
-    <version>0.8.0.RC2</version>
+    <version>0.8.0.RELEASE</version>
 </dependency>
 ```
 
@@ -59,7 +59,7 @@ If you'd rather like the latest snapshots of the upcoming major version, use Son
 
 ```groovy
 dependencies {
-    implementation 'dev.miku:r2dbc-mysql:0.8.0.RC2'
+    implementation 'dev.miku:r2dbc-mysql:0.8.0.RELEASE'
 }
 ```
 
@@ -68,7 +68,7 @@ dependencies {
 ```kotlin
 dependencies {
     // Maybe should to use `compile` instead of `implementation` on the lower version of Gradle.
-    implementation("dev.miku:r2dbc-mysql:0.8.0.RC2")
+    implementation("dev.miku:r2dbc-mysql:0.8.0.RELEASE")
 }
 ```
 

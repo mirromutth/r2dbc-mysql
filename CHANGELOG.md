@@ -4,16 +4,16 @@
 
 ### New features
 
-- Support fetch size for prepared statements.
+- Added support fetch size for prepared statements.
 
 ### Features change
 
-- Default type mappings was changed, like `Blob` to `ByteBuffer`, `Clob` to `String`, etc.
+- Changed default type mappings, like `Blob` to `ByteBuffer`, `Clob` to `String`, etc.
 
 ### Fixed bugs
 
-- Fix memory leak when user consumes only a portion of the rows
-- Propagate connection closed/killed and emit an exception to subsequent exchanges instead of being hanged.
+- Fixed memory leak when user consumes only a portion of the rows
+- Propagated connection closed/killed and emit an exception to subsequent exchanges instead of being hanged.
 
 ## 0.8.0.RC2
 
