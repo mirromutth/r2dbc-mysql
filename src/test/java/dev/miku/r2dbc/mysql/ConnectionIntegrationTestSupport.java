@@ -100,6 +100,23 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
     }
 
     @Test
+    void foundRows() {
+        connectionFactory.create()
+            .flatMapMany(connection -> Flux.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
+                .execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .thenMany(connection.createStatement("INSERT INTO test VALUES(DEFAULT,10)").execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .thenMany(connection.createStatement("UPDATE test SET value=10 WHERE id=1").execute())
+                .flatMap(IntegrationTestSupport::extractRowsUpdated)
+                .concatWith(close(connection))
+            )
+            .as(StepVerifier::create)
+            .expectNext(1)
+            .verifyComplete();
+    }
+
+    @Test
     void batchCrud() {
         String isEven = "id % 2 = 0";
         String isOdd = "id % 2 = 1";

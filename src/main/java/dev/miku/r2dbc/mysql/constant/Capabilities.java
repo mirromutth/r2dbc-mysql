@@ -26,7 +26,10 @@ public final class Capabilities {
      */
     private static final int LONG_PASSWORD = 1;
 
-//    public static final int FOUND_ROWS = 2; // Return found rows instead of affected rows, should not enable this.
+    /**
+     * Use found/touched rows instead of changed rows for affected rows, should enable this.
+     */
+    private static final int FOUND_ROWS = 2;
 
     /**
      * Get all column.
@@ -92,12 +95,10 @@ public final class Capabilities {
 
 //    public static final int REMEMBER_OPTIONS = 1 << 31;
 
-    public static final int ALL_SUPPORTED = Capabilities.LONG_PASSWORD | Capabilities.LONG_FLAG |
-        Capabilities.CONNECT_WITH_DB | Capabilities.PROTOCOL_41 | Capabilities.SSL | Capabilities.IGNORE_SIGPIPE |
-        Capabilities.TRANSACTIONS | Capabilities.RESERVED | Capabilities.SECURE_CONNECTION |
-        Capabilities.MULTI_STATEMENTS | Capabilities.MULTI_RESULTS | Capabilities.PREPARED_MULTI_RESULTS |
-        Capabilities.PLUGIN_AUTH | Capabilities.CONNECT_ATTRS | Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA |
-        Capabilities.DEPRECATE_EOF | Capabilities.SSL_VERIFY_SERVER_CERT;
+    public static final int ALL_SUPPORTED = LONG_PASSWORD | FOUND_ROWS | LONG_FLAG | CONNECT_WITH_DB |
+        PROTOCOL_41 | SSL | IGNORE_SIGPIPE | TRANSACTIONS | RESERVED | SECURE_CONNECTION |
+        MULTI_STATEMENTS | MULTI_RESULTS | PREPARED_MULTI_RESULTS | PLUGIN_AUTH | CONNECT_ATTRS |
+        PLUGIN_AUTH_VAR_INT_SIZED_DATA | DEPRECATE_EOF | SSL_VERIFY_SERVER_CERT;
 
     private Capabilities() {
     }
