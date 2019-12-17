@@ -217,7 +217,7 @@ public final class ServerMessageDecoder {
                 if (EofMessage.isValidSize(buf.readableBytes())) {
                     return EofMessage.decode(buf);
                 } else {
-                    return AuthChangeMessage.decode(buf);
+                    return ChangeAuthMessage.decode(buf);
                 }
         }
 

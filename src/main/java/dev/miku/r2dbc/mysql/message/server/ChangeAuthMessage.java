@@ -28,13 +28,13 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * Change authentication plugin type and salt message.
  */
-public final class AuthChangeMessage implements ServerMessage {
+public final class ChangeAuthMessage implements ServerMessage {
 
     private final String authType;
 
     private final byte[] salt;
 
-    private AuthChangeMessage(String authType, byte[] salt) {
+    private ChangeAuthMessage(String authType, byte[] salt) {
         this.authType = requireNonNull(authType, "authType must not be null");
         this.salt = requireNonNull(salt, "salt must not be null");
     }
@@ -52,11 +52,11 @@ public final class AuthChangeMessage implements ServerMessage {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof AuthChangeMessage)) {
+        if (!(o instanceof ChangeAuthMessage)) {
             return false;
         }
 
-        AuthChangeMessage that = (AuthChangeMessage) o;
+        ChangeAuthMessage that = (ChangeAuthMessage) o;
 
         if (!authType.equals(that.authType)) {
             return false;
@@ -73,18 +73,20 @@ public final class AuthChangeMessage implements ServerMessage {
 
     @Override
     public String toString() {
-        return String.format("AuthChangeMessage{authType=%s, salt=%s}", authType, Arrays.toString(salt));
+        return String.format("ChangeAuthMessage{authType=%s, salt=REDACTED}", authType);
     }
 
-    static AuthChangeMessage decode(ByteBuf buf) {
+    static ChangeAuthMessage decode(ByteBuf buf) {
+        buf.skipBytes(1); // skip generic header 0xFE of change authentication messages
+
         String authType = CodecUtils.readCString(buf, StandardCharsets.US_ASCII);
         int bytes = buf.readableBytes();
 
         if (bytes > 0 && buf.getByte(buf.writerIndex() - 1) == 0) {
             // Remove last 0.
-            return new AuthChangeMessage(authType, ByteBufUtil.getBytes(buf, buf.readerIndex(), bytes - 1));
+            return new ChangeAuthMessage(authType, ByteBufUtil.getBytes(buf, buf.readerIndex(), bytes - 1));
         } else {
-            return new AuthChangeMessage(authType, ByteBufUtil.getBytes(buf));
+            return new ChangeAuthMessage(authType, ByteBufUtil.getBytes(buf));
         }
     }
 }

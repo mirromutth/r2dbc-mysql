@@ -24,7 +24,7 @@ import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
  * A special authentication provider when server capabilities does not set {@code Capabilities.PLUGIN_AUTH}.
- * And {@code AuthChangeMessage} will be send by server after handshake response.
+ * And {@code ChangeAuthMessage} will be sent by server after handshake response.
  */
 final class NoAuthProvider implements MySqlAuthProvider {
 

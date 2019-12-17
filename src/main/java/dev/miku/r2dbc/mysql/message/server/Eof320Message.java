@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.message.server;
 /**
  * A EOF message for current context in protocol 3.20.
  * <p>
- * Note: It is also Old Authentication Change Request.
+ * Note: It is also Old Change Authentication Request.
  */
 final class Eof320Message implements EofMessage {
 

@@ -23,11 +23,11 @@ import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.constant.SqlStates;
 import dev.miku.r2dbc.mysql.constant.SslMode;
+import dev.miku.r2dbc.mysql.message.client.AuthResponse;
+import dev.miku.r2dbc.mysql.message.server.ChangeAuthMessage;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
-import dev.miku.r2dbc.mysql.message.client.FullAuthResponse;
 import dev.miku.r2dbc.mysql.message.client.HandshakeResponse;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
-import dev.miku.r2dbc.mysql.message.server.AuthChangeMessage;
 import dev.miku.r2dbc.mysql.message.server.AuthMoreDataMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.HandshakeHeader;
@@ -40,11 +40,13 @@ import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -115,7 +117,7 @@ final class LoginFlow {
         return (this.context.getCapabilities() & Capabilities.SSL) != 0;
     }
 
-    private void changeAuth(AuthChangeMessage message) {
+    private void changeAuth(ChangeAuthMessage message) {
         this.authProvider = MySqlAuthProvider.build(message.getAuthType());
         this.salt = message.getSalt();
     }
@@ -135,7 +137,7 @@ final class LoginFlow {
             MySqlAuthProvider authProvider = getAndNextProvider();
 
             if (authProvider.isSslNecessary() && !sslCompleted) {
-                throw new R2dbcPermissionDeniedException(String.format("Authentication type '%s' must require SSL in fast authentication phase", authProvider.getType()), SqlStates.CLI_SPECIFIC_CONDITION);
+                throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), "handshake"), SqlStates.CLI_SPECIFIC_CONDITION);
             }
 
             String username = this.username;
@@ -148,7 +150,7 @@ final class LoginFlow {
 
             if (AuthTypes.NO_AUTH_PROVIDER.equals(authType)) {
                 // Authentication type is not matter because of it has no authentication type.
-                // Server need send a Authentication Change Request after handshake response.
+                // Server need send a Change Authentication Message after handshake response.
                 authType = AuthTypes.CACHING_SHA2_PASSWORD;
             }
 
@@ -164,15 +166,15 @@ final class LoginFlow {
         });
     }
 
-    private Mono<FullAuthResponse> createFullAuthResponse() {
+    private Mono<AuthResponse> createAuthResponse(String phase) {
         return Mono.fromSupplier(() -> {
             MySqlAuthProvider authProvider = getAndNextProvider();
 
             if (authProvider.isSslNecessary() && !sslCompleted) {
-                throw new R2dbcPermissionDeniedException(String.format("Authentication type '%s' must require SSL in full authentication phase", authProvider.getType()), SqlStates.CLI_SPECIFIC_CONDITION);
+                throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase), SqlStates.CLI_SPECIFIC_CONDITION);
             }
 
-            return new FullAuthResponse(authProvider.authentication(password, salt, context.getCollation()));
+            return new AuthResponse(authProvider.authentication(password, salt, context.getCollation()));
         });
     }
 
@@ -183,7 +185,8 @@ final class LoginFlow {
         if ((clientCapabilities & Capabilities.SSL) == 0) {
             // Server unsupported SSL.
             if (sslMode.requireSsl()) {
-                throw new R2dbcPermissionDeniedException(String.format("Server version %s unsupported SSL but SSL required by mode %s", context.getServerVersion(), sslMode), SqlStates.CLI_SPECIFIC_CONDITION);
+                String message = String.format("Server version '%s' does not support SSL but mode '%s' requires SSL", context.getServerVersion(), sslMode);
+                throw new R2dbcPermissionDeniedException(message, SqlStates.CLI_SPECIFIC_CONDITION);
             }
 
             if (sslMode.startSsl()) {
@@ -226,31 +229,45 @@ final class LoginFlow {
 
     static Mono<Client> login(Client client, SslMode sslMode, String database, ConnectionContext context, String username, @Nullable CharSequence password) {
         LoginFlow flow = new LoginFlow(client, sslMode, database, context, username, password);
-        EmitterProcessor<State> stateMachine = EmitterProcessor.create(true);
+        EmitterProcessor<State> stateMachine = EmitterProcessor.create(1, true);
 
-        return stateMachine.startWith(State.INIT)
-            .<Void>handle((state, sink) -> {
-                if (State.COMPLETED == state) {
-                    sink.complete();
-                } else {
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("Login state {} handling", state);
-                    }
-                    state.handle(flow).subscribe(stateMachine::onNext, stateMachine::onError);
-                }
-            })
-            .doOnComplete(() -> {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Login succeed, cleanup intermediate variables");
-                }
-                flow.clearAuthentication();
-                flow.client.loginSuccess();
-            })
+        stateMachine.onNext(State.INIT);
+
+        Consumer<State> onStateNext = next -> {
+            if (next == State.COMPLETED) {
+                stateMachine.onComplete();
+            } else {
+                stateMachine.onNext(next);
+            }
+        };
+        Consumer<Throwable> onStateError = stateMachine::onError;
+        Flux<State> states;
+
+        if (logger.isDebugEnabled()) {
+            states = stateMachine.doOnNext(state -> {
+                logger.debug("Login state {} handling", state);
+                state.handle(flow).subscribe(onStateNext, onStateError);
+            });
+        } else {
+            states = stateMachine.doOnNext(state -> state.handle(flow).subscribe(onStateNext, onStateError));
+        }
+
+        return states.doOnComplete(() -> {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Login succeed, cleanup intermediate variables");
+            }
+            flow.clearAuthentication();
+            flow.client.loginSuccess();
+        })
             .doOnError(e -> {
                 flow.clearAuthentication();
                 flow.client.forceClose().subscribe();
             })
             .then(Mono.just(client));
+    }
+
+    private static String formatAuthFails(String authType, String phase) {
+        return String.format("Authentication type '%s' must require SSL in %s phase", authType, phase);
     }
 
     private enum State {
@@ -280,11 +297,11 @@ final class LoginFlow {
         },
         SSL {
 
-            private final Predicate<ServerMessage> sslComplete = message -> message instanceof ErrorMessage || message instanceof SyntheticSslResponseMessage;
+            private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof SyntheticSslResponseMessage;
 
             @Override
             Mono<State> handle(LoginFlow flow) {
-                return flow.client.exchange(flow.createSslRequest(), sslComplete)
+                return flow.client.exchange(flow.createSslRequest(), complete)
                     .<State>handle((message, sink) -> {
                         if (message instanceof ErrorMessage) {
                             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
@@ -300,15 +317,14 @@ final class LoginFlow {
         },
         HANDSHAKE {
 
-            private final Predicate<ServerMessage> handshakeComplete = message ->
-                message instanceof ErrorMessage || message instanceof OkMessage ||
-                    (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) ||
-                    message instanceof AuthChangeMessage;
+            private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof OkMessage ||
+                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) ||
+                message instanceof ChangeAuthMessage;
 
             @Override
             Mono<State> handle(LoginFlow flow) {
                 return flow.createHandshakeResponse()
-                    .flatMapMany(message -> flow.client.exchange(message, handshakeComplete))
+                    .flatMapMany(message -> flow.client.exchange(message, complete))
                     .<State>handle((message, sink) -> {
                         if (message instanceof ErrorMessage) {
                             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
@@ -322,9 +338,9 @@ final class LoginFlow {
                                 sink.next(FULL_AUTH);
                             }
                             // Otherwise success, wait until OK message or Error message.
-                        } else if (message instanceof AuthChangeMessage) {
-                            flow.changeAuth((AuthChangeMessage) message);
-                            sink.next(FULL_AUTH);
+                        } else if (message instanceof ChangeAuthMessage) {
+                            flow.changeAuth((ChangeAuthMessage) message);
+                            sink.next(CHANGE_AUTH);
                         } else {
                             sink.error(new IllegalStateException(String.format("Unexpected message type '%s' in handshake response phase", message.getClass().getSimpleName())));
                         }
@@ -332,18 +348,45 @@ final class LoginFlow {
                     .last();
             }
         },
-        /**
-         * FULL_AUTH is also authentication change response phase.
-         */
-        FULL_AUTH {
 
-            private final Predicate<ServerMessage> fullAuthComplete = message ->
-                message instanceof ErrorMessage || message instanceof OkMessage;
+        CHANGE_AUTH {
+
+            private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof OkMessage ||
+                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED);
 
             @Override
             Mono<State> handle(LoginFlow flow) {
-                return flow.createFullAuthResponse()
-                    .flatMapMany(response -> flow.client.exchange(response, fullAuthComplete))
+                return flow.createAuthResponse("change authentication")
+                    .flatMapMany(response -> flow.client.exchange(response, complete))
+                    .<State>handle((message, sink) -> {
+                        if (message instanceof ErrorMessage) {
+                            sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
+                        } else if (message instanceof OkMessage) {
+                            sink.next(COMPLETED);
+                        } else if (message instanceof AuthMoreDataMessage) {
+                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) {
+                                if (logger.isDebugEnabled()) {
+                                    logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
+                                }
+                                sink.next(FULL_AUTH);
+                            }
+                            // Otherwise success, wait until OK message or Error message.
+                        } else {
+                            sink.error(new IllegalStateException(String.format("Unexpected message type '%s' in full authentication phase", message.getClass().getSimpleName())));
+                        }
+                    })
+                    .last();
+            }
+        },
+
+        FULL_AUTH {
+
+            private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof OkMessage;
+
+            @Override
+            Mono<State> handle(LoginFlow flow) {
+                return flow.createAuthResponse("full authentication")
+                    .flatMapMany(response -> flow.client.exchange(response, complete))
                     .<State>handle((message, sink) -> {
                         if (message instanceof ErrorMessage) {
                             sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
