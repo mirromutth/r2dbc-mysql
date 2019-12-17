@@ -24,13 +24,13 @@ import java.util.Arrays;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * Full authentication response, i.e. authentication change response.
+ * A message that contains only an authentication, used by full authentication or change authentication response.
  */
-public final class FullAuthResponse extends EnvelopeClientMessage implements ExchangeableMessage {
+public final class AuthResponse extends EnvelopeClientMessage implements ExchangeableMessage {
 
     private final byte[] authentication;
 
-    public FullAuthResponse(byte[] authentication) {
+    public AuthResponse(byte[] authentication) {
         this.authentication = requireNonNull(authentication, "authentication must not be null");
     }
 
@@ -39,11 +39,11 @@ public final class FullAuthResponse extends EnvelopeClientMessage implements Exc
         if (this == o) {
             return true;
         }
-        if (!(o instanceof FullAuthResponse)) {
+        if (!(o instanceof AuthResponse)) {
             return false;
         }
 
-        FullAuthResponse that = (FullAuthResponse) o;
+        AuthResponse that = (AuthResponse) o;
 
         return Arrays.equals(authentication, that.authentication);
     }
@@ -55,7 +55,7 @@ public final class FullAuthResponse extends EnvelopeClientMessage implements Exc
 
     @Override
     public String toString() {
-        return "FullAuthResponse{authentication=REDACTED}";
+        return "AuthResponse{authentication=REDACTED}";
     }
 
     @Override
