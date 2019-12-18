@@ -227,42 +227,37 @@ final class LoginFlow {
         this.authProvider = null;
     }
 
+    private void loginSuccess() {
+        clearAuthentication();
+        client.loginSuccess();
+    }
+
+    private void loginFailed() {
+        clearAuthentication();
+        client.forceClose().subscribe();
+    }
+
     static Mono<Client> login(Client client, SslMode sslMode, String database, ConnectionContext context, String username, @Nullable CharSequence password) {
         LoginFlow flow = new LoginFlow(client, sslMode, database, context, username, password);
         EmitterProcessor<State> stateMachine = EmitterProcessor.create(1, true);
 
         stateMachine.onNext(State.INIT);
 
-        Consumer<State> onStateNext = next -> {
-            if (next == State.COMPLETED) {
+        Consumer<State> onStateNext = state -> {
+            if (state == State.COMPLETED) {
+                logger.debug("Login succeed, cleanup intermediate variables");
+                flow.loginSuccess();
                 stateMachine.onComplete();
             } else {
-                stateMachine.onNext(next);
+                stateMachine.onNext(state);
             }
         };
         Consumer<Throwable> onStateError = stateMachine::onError;
-        Flux<State> states;
 
-        if (logger.isDebugEnabled()) {
-            states = stateMachine.doOnNext(state -> {
-                logger.debug("Login state {} handling", state);
-                state.handle(flow).subscribe(onStateNext, onStateError);
-            });
-        } else {
-            states = stateMachine.doOnNext(state -> state.handle(flow).subscribe(onStateNext, onStateError));
-        }
-
-        return states.doOnComplete(() -> {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Login succeed, cleanup intermediate variables");
-            }
-            flow.clearAuthentication();
-            flow.client.loginSuccess();
-        })
-            .doOnError(e -> {
-                flow.clearAuthentication();
-                flow.client.forceClose().subscribe();
-            })
+        return stateMachine.doOnNext(state -> {
+            logger.debug("Login state {} handling", state);
+            state.handle(flow).subscribe(onStateNext, onStateError);
+        }).doOnError(ignored -> flow.loginFailed())
             .then(Mono.just(client));
     }
 
