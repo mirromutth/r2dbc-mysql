@@ -18,18 +18,15 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;

@@ -18,13 +18,10 @@ package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
-import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.channel.ChannelOption;
-import reactor.core.CorePublisher;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.tcp.TcpClient;

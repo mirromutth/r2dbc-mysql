@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.r2dbc.spi.RowMetadata;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
