@@ -407,10 +407,14 @@ public final class CodecUtils {
         }
     }
 
-    public static void appendHex(StringBuilder builder, byte[] bytes) {
+    public static void appendHex(StringBuilder builder, byte[] bytes, boolean isBit) {
         // MySQL 5.5 Community Edition does not support Base64.
         if (bytes.length == 0) {
-            builder.append('0').append('0');
+            if (isBit) {
+                // Must filled by 00 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer on type BIT (i.e. unsafe allocate).
+                // So if we do not fill the buffer, it will use last content which is an undefined behavior. A classic bug, right?
+                builder.append('0').append('0');
+            }
         } else {
             for (byte b : bytes) {
                 builder.append(HEX[(b & 0xF0) >>> 4]).append(HEX[b & 0xF]);
@@ -421,17 +425,10 @@ public final class CodecUtils {
     public static void appendHex(StringBuilder builder, ByteBuffer buffer) {
         // MySQL 5.5 Community Edition does not support Base64.
         int limit = buffer.limit();
-        int i = buffer.position();
 
-        if (i >= limit) {
-            // Must filled by 00 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer (i.e. unsafe buffer allocate).
-            // So if we do not fill the buffer, it will use last content which is an undefined behavior. A classic bug, right?
-            builder.append('0').append('0');
-        } else {
-            for (; i < limit; ++i) {
-                byte b = buffer.get(i);
-                builder.append(HEX[(b & 0xF0) >>> 4]).append(HEX[b & 0xF]);
-            }
+        for (int i = buffer.position(); i < limit; ++i) {
+            byte b = buffer.get(i);
+            builder.append(HEX[(b & 0xF0) >>> 4]).append(HEX[b & 0xF]);
         }
     }
 
