@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql;
 
 import reactor.util.annotation.Nullable;
 
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireValidName;
 
@@ -46,6 +47,12 @@ abstract class MySqlStatementSupport implements MySqlStatement {
                 throw new IllegalArgumentException("MySQL only supports single generated value");
         }
 
+        return this;
+    }
+
+    @Override
+    public MySqlStatement fetchSize(int rows) {
+        require(rows >= 0, "Fetch size must be greater or equal to zero");
         return this;
     }
 }

@@ -22,6 +22,7 @@ import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
@@ -36,6 +37,8 @@ public final class MySqlConnectionConfiguration {
      * Default MySQL port.
      */
     private static final int DEFAULT_PORT = 3306;
+
+    private static final Predicate<String> DEFAULT_SERVER_PREPARE = sql -> false;
 
     /**
      * {@code true} if {@link #domain} is hostname, otherwise {@link #domain} is unix domain socket path.
@@ -63,10 +66,14 @@ public final class MySqlConnectionConfiguration {
 
     private final String database;
 
+    @Nullable
+    private final Predicate<String> preferPrepareStatement;
+
     private MySqlConnectionConfiguration(
         boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
         @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption,
-        String username, @Nullable CharSequence password, @Nullable String database
+        String username, @Nullable CharSequence password, @Nullable String database,
+        @Nullable Predicate<String> preferPrepareStatement
     ) {
         this.isHost = isHost;
         this.domain = domain;
@@ -77,6 +84,7 @@ public final class MySqlConnectionConfiguration {
         this.username = requireNonNull(username, "username must not be null");
         this.password = password;
         this.database = database == null || database.isEmpty() ? "" : database;
+        this.preferPrepareStatement = preferPrepareStatement;
     }
 
     public static Builder builder() {
@@ -121,6 +129,11 @@ public final class MySqlConnectionConfiguration {
         return database;
     }
 
+    @Nullable
+    Predicate<String> getPreferPrepareStatement() {
+        return preferPrepareStatement;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -138,22 +151,23 @@ public final class MySqlConnectionConfiguration {
             zeroDateOption == that.zeroDateOption &&
             username.equals(that.username) &&
             Objects.equals(password, that.password) &&
-            database.equals(that.database);
+            database.equals(that.database) &&
+            Objects.equals(preferPrepareStatement, that.preferPrepareStatement);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database);
+        return Objects.hash(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database, preferPrepareStatement);
     }
 
     @Override
     public String toString() {
         if (isHost) {
-            return String.format("MySqlConnectionConfiguration{host=%s, port=%d, ssl=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s'}",
-                domain, port, ssl, connectTimeout, zeroDateOption, username, database);
+            return String.format("MySqlConnectionConfiguration{host=%s, port=%d, ssl=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s', preferPrepareStatement=%s}",
+                domain, port, ssl, connectTimeout, zeroDateOption, username, database, preferPrepareStatement);
         } else {
-            return String.format("MySqlConnectionConfiguration{unixSocket=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s'}",
-                domain, connectTimeout, zeroDateOption, username, database);
+            return String.format("MySqlConnectionConfiguration{unixSocket=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s', preferPrepareStatement=%s}",
+                domain, connectTimeout, zeroDateOption, username, database, preferPrepareStatement);
         }
     }
 
@@ -195,6 +209,9 @@ public final class MySqlConnectionConfiguration {
         @Nullable
         private String sslCert;
 
+        @Nullable
+        private Predicate<String> preferPrepareStatement;
+
         private Builder() {
         }
 
@@ -210,7 +227,7 @@ public final class MySqlConnectionConfiguration {
             }
 
             MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert);
-            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database);
+            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database, preferPrepareStatement);
         }
 
         public Builder database(@Nullable String database) {
@@ -292,6 +309,22 @@ public final class MySqlConnectionConfiguration {
             this.sslCert = sslCert;
             this.sslKey = sslKey;
             this.sslKeyPassword = sslKeyPassword;
+            return this;
+        }
+
+        public Builder useClientPrepareStatement() {
+            this.preferPrepareStatement = null;
+            return this;
+        }
+
+        public Builder useServerPrepareStatement() {
+            return useServerPrepareStatement(DEFAULT_SERVER_PREPARE);
+        }
+
+        public Builder useServerPrepareStatement(Predicate<String> preferPrepareStatement) {
+            requireNonNull(preferPrepareStatement, "preferPrepareStatement must not be null");
+
+            this.preferPrepareStatement = preferPrepareStatement;
             return this;
         }
 

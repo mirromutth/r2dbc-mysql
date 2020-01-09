@@ -26,6 +26,7 @@ import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -61,6 +62,42 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     @Override
     protected boolean doCanDecode(FieldInformation info) {
         return DataTypes.TIME == info.getType();
+    }
+
+    static void encodeTime(StringBuilder builder, boolean isNegative, int hours, int minutes, int seconds, int micros) {
+        if (isNegative) {
+            builder.append('-');
+        }
+
+        builder.append(hours).append(':');
+
+        if (minutes < 10) {
+            builder.append('0');
+        }
+
+        builder.append(minutes).append(':');
+
+        if (seconds < 10) {
+            builder.append('0');
+        }
+
+        builder.append(seconds);
+
+        if (micros != 0) {
+            builder.append('.');
+            String microStr = Integer.toString(micros);
+
+            if (microStr.length() > 6) {
+                microStr = microStr.substring(0, 6);
+            } else {
+                int zeros = 6 - microStr.length();
+                while (zeros-- > 0) {
+                    builder.append('0');
+                }
+            }
+
+            builder.append(microStr);
+        }
     }
 
     private static Duration decodeText(ByteBuf buf) {
@@ -114,6 +151,11 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         }
 
         @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> encodeTo(builder));
+        }
+
+        @Override
         public short getType() {
             return DataTypes.TIME;
         }
@@ -135,6 +177,24 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         @Override
         public int hashCode() {
             return value.hashCode();
+        }
+
+        private void encodeTo(StringBuilder builder) {
+            boolean isNegative = this.value.isNegative();
+            Duration abs = this.value.abs();
+            long totalSeconds = abs.getSeconds();
+            int hours = (int) (totalSeconds / 3600);
+            int minutes = (int) ((totalSeconds / 60) % 60);
+            int seconds = (int) (totalSeconds % 60);
+            int micros = (int) TimeUnit.NANOSECONDS.toMicros(abs.getNano());
+
+            if (hours < 0 || minutes < 0 || seconds < 0 || micros < 0) {
+                throw new IllegalStateException(String.format("Too large duration %s, abs value overflowing to %d:%02d:%02d.%06d", value, hours, minutes, seconds, micros));
+            }
+
+            builder.append('\'');
+            encodeTime(builder, isNegative, hours, minutes, seconds, micros);
+            builder.append('\'');
         }
     }
 }

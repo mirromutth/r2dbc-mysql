@@ -133,6 +133,11 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         }
     }
 
+    static void encodeTime(StringBuilder builder, LocalTime time) {
+        int micros = (int) TimeUnit.NANOSECONDS.toMicros(time.getNano());
+        DurationCodec.encodeTime(builder, false, time.getHour(), time.getMinute(), time.getSecond(), micros);
+    }
+
     private static final class LocalTimeValue extends AbstractParameterValue {
 
         private final LocalTime time;
@@ -144,6 +149,15 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeTime(time));
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('\'');
+                encodeTime(builder, time);
+                builder.append('\'');
+            });
         }
 
         @Override

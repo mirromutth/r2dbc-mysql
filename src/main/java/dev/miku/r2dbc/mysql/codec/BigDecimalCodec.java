@@ -94,7 +94,12 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeStringifyNumber(decimal));
+            return Mono.fromRunnable(() -> writer.writeAsciiString(decimal.toString()));
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> builder.append(decimal.toString()));
         }
 
         @Override

@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql.util;
 
 import io.netty.buffer.ByteBuf;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
@@ -27,8 +28,7 @@ import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
  */
 public final class CodecUtils {
 
-    private CodecUtils() {
-    }
+    private static char[] HEX = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
     private static final int VAR_INT_1_BYTE_LIMIT = 0xFA;
 
@@ -405,5 +405,74 @@ public final class CodecUtils {
         } else {
             buf.writeByte(0);
         }
+    }
+
+    public static void appendHex(StringBuilder builder, byte[] bytes) {
+        // MySQL 5.5 Community Edition does not support Base64.
+        if (bytes.length == 0) {
+            builder.append('0').append('0');
+        } else {
+            for (byte b : bytes) {
+                builder.append(HEX[(b & 0xF0) >>> 4]).append(HEX[b & 0xF]);
+            }
+        }
+    }
+
+    public static void appendHex(StringBuilder builder, ByteBuffer buffer) {
+        // MySQL 5.5 Community Edition does not support Base64.
+        int limit = buffer.limit();
+        int i = buffer.position();
+
+        if (i >= limit) {
+            // Must filled by 00 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer (i.e. unsafe buffer allocate).
+            // So if we do not fill the buffer, it will use last content which is an undefined behavior. A classic bug, right?
+            builder.append('0').append('0');
+        } else {
+            for (; i < limit; ++i) {
+                byte b = buffer.get(i);
+                builder.append(HEX[(b & 0xF0) >>> 4]).append(HEX[b & 0xF]);
+            }
+        }
+    }
+
+    public static void appendEscape(StringBuilder buf, CharSequence value) {
+        int length = value.length();
+        for (int i = 0; i < length; ++i) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\':
+                    buf.append('\\').append('\\');
+                    break;
+                case '\'':
+                    // MySQL will auto-combine consecutive strings, like '1''2' -> '12'.
+                    // Sure, there can use "\\'", but this will be better. (For some logging systems)
+                    buf.append('\'').append('\'');
+                    break;
+                // case '"': buf.append('"'); break; // Maybe useful in the future, keep it here.
+                case 0:
+                    // MySQL is based on C/C++, must escape '\0' which is an end flag in C style string.
+                    buf.append('\\').append('0');
+                    break;
+                case '\032':
+                    // It seems like a problem on Windows 32, maybe check current OS here?
+                    buf.append('\\').append('Z');
+                    break;
+                case '\n':
+                    // Should escape it for some logging such as Relational Database Service (RDS) Logging System, etc.
+                    // Sure, it is not necessary, but this will be better.
+                    buf.append('\\').append('n');
+                    break;
+                case '\r':
+                    // Should escape it for some logging such as RDS Logging System, etc.
+                    buf.append('\\').append('r');
+                    break;
+                default:
+                    buf.append(c);
+                    break;
+            }
+        }
+    }
+
+    private CodecUtils() {
     }
 }

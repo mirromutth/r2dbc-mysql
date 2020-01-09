@@ -47,7 +47,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
     private SetCodec() {
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public Set<?> decode(NormalFieldValue value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context) {
         ByteBuf buf = value.getBufferSlice();
@@ -123,9 +123,17 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         return new SetValue((Set<?>) value, context);
     }
 
+    private static String convert(Object o) {
+        if (o.getClass().isEnum()) {
+            return ((Enum<?>) o).name();
+        } else {
+            return o.toString();
+        }
+    }
+
     private static Set<?> buildSet(Class<?> subClass) {
         if (subClass.isEnum()) {
-            @SuppressWarnings("unchecked")
+            @SuppressWarnings({"unchecked", "rawtypes"})
             EnumSet<?> s = EnumSet.noneOf((Class<Enum>) subClass);
             return s;
         }
@@ -219,15 +227,28 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         }
     }
 
+    private static final class ConvertedIterator implements Iterator<String> {
+
+        private final Iterator<?> origin;
+
+        private ConvertedIterator(Iterator<?> origin) {
+            this.origin = origin;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return origin.hasNext();
+        }
+
+        @Override
+        public String next() {
+            return convert(origin.next());
+        }
+    }
+
     private static final class SetValue extends AbstractParameterValue {
 
-        private static final Function<Object, CharSequence> ELEMENT_CONVERT = element -> {
-            if (element.getClass().isEnum()) {
-                return ((Enum<?>) element).name();
-            } else {
-                return element.toString();
-            }
-        };
+        private static final Function<Object, CharSequence> ELEMENT_CONVERT = SetCodec::convert;
 
         private final Set<?> set;
 
@@ -245,6 +266,15 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
                 .collectList()
                 .doOnNext(strings -> writer.writeSet(strings, context.getCollation()))
                 .then();
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('\'');
+                StringArrayCodec.encodeIterator(builder, new ConvertedIterator(set.iterator()));
+                builder.append('\'');
+            });
         }
 
         @Override

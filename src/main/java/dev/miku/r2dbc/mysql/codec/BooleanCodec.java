@@ -72,6 +72,11 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
         }
 
         @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> builder.append(value ? "b'1'" : "b'0'"));
+        }
+
+        @Override
         public short getType() {
             // Note: BIT will least 2-bytes in binary parameter (var integer size and content),
             // so use TINYINT will encode to buffer faster and shorter.

@@ -29,5 +29,7 @@ public interface ParameterValue extends Disposable {
 
     Mono<Void> writeTo(ParameterWriter writer);
 
+    Mono<Void> writeTo(StringBuilder builder);
+
     short getType();
 }

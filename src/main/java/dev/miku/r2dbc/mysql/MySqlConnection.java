@@ -101,6 +101,9 @@ public final class MySqlConnection implements Connection {
 
     private final boolean deprecateEof;
 
+    @Nullable
+    private final Predicate<String> prepare;
+
     /**
      * Current isolation level inferred by past statements.
      * <p>
@@ -113,7 +116,7 @@ public final class MySqlConnection implements Connection {
      */
     private volatile IsolationLevel currentLevel;
 
-    private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, InitData data) {
+    private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, InitData data, @Nullable Predicate<String> prepare) {
         this.client = client;
         this.context = context;
         this.deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
@@ -122,6 +125,7 @@ public final class MySqlConnection implements Connection {
         this.codecs = codecs;
         this.metadata = new MySqlConnectionMetadata(context.getServerVersion().toString(), data.product);
         this.batchSupported = (context.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
+        this.prepare = prepare;
 
         if (this.batchSupported) {
             logger.debug("Batch is supported by server");
@@ -226,14 +230,22 @@ public final class MySqlConnection implements Connection {
     public MySqlStatement createStatement(String sql) {
         requireNonNull(sql, "sql must not be null");
 
-        Query query = Query.parse(sql);
+        Query query = Query.parse(sql, prepare != null);
 
-        if (query.isPrepared()) {
-            logger.debug("Create a statement provided by prepare query");
-            return new ParametrizedMySqlStatement(client, codecs, context, query, deprecateEof);
+        if (query instanceof SimpleQuery) {
+            if (prepare != null && prepare.test(sql)) {
+                logger.debug("Create a simple statement provided by prepare query");
+                return new PrepareSimpleStatement(client, codecs, context, sql, deprecateEof);
+            } else {
+                logger.debug("Create a simple statement provided by text query");
+                return new TextSimpleStatement(client, codecs, context, sql);
+            }
+        } else if (query instanceof TextQuery) {
+            logger.debug("Create a parametrized statement provided by text query");
+            return new TextParametrizedStatement(client, codecs, context, (TextQuery) query);
         } else {
-            logger.debug("Create a statement provided by simple query");
-            return new SimpleMySqlStatement(client, codecs, context, sql);
+            logger.debug("Create a parametrized statement provided by prepare query");
+            return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) query, deprecateEof);
         }
     }
 
@@ -356,8 +368,9 @@ public final class MySqlConnection implements Connection {
     /**
      * @param client  must be logged-in
      * @param context capabilities must be initialized
+     * @param prepare judging for prefer use prepare statement to execute simple query
      */
-    static Mono<MySqlConnection> create(Client client, ConnectionContext context) {
+    static Mono<MySqlConnection> create(Client client, ConnectionContext context, @Nullable Predicate<String> prepare) {
         requireNonNull(client, "client must not be null");
         requireNonNull(context, "context must not be null");
 
@@ -372,11 +385,11 @@ public final class MySqlConnection implements Connection {
             query = "SELECT @@tx_isolation AS i, @@version_comment AS v";
         }
 
-        return new SimpleMySqlStatement(client, codecs, context, query)
+        return new TextSimpleStatement(client, codecs, context, query)
             .execute()
             .flatMap(INIT_HANDLER)
             .last()
-            .map(data -> new MySqlConnection(client, context, codecs, data));
+            .map(data -> new MySqlConnection(client, context, codecs, data, prepare));
     }
 
     private static IsolationLevel convertIsolationLevel(@Nullable String name) {

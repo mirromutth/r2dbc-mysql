@@ -26,6 +26,7 @@ import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -69,11 +70,12 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             String username = configuration.getUsername();
             CharSequence password = configuration.getPassword();
             SslMode sslMode = ssl.getSslMode();
+            Predicate<String> prepare = configuration.getPreferPrepareStatement();
             ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption());
 
             return Client.connect(address, ssl, context, configuration.getConnectTimeout())
                 .flatMap(client -> LoginFlow.login(client, sslMode, database, context, username, password))
-                .flatMap(client -> MySqlConnection.create(client, context));
+                .flatMap(client -> MySqlConnection.create(client, context, prepare));
         }));
     }
 }

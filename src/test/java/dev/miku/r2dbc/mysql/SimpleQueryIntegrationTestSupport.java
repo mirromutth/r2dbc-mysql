@@ -53,6 +53,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Base class considers data integration unit tests in simple query for implementations of {@link QueryIntegrationTestSupport}.
+ * <p>
+ * TODO: Should use client-preparing parametrized queries instead.
  */
 abstract class SimpleQueryIntegrationTestSupport extends QueryIntegrationTestSupport {
 

@@ -23,6 +23,7 @@ import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.r2dbc.spi.Blob;
 import org.reactivestreams.Publisher;
@@ -95,9 +96,27 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
                     return Mono.error(new IllegalStateException("Blob has written, can not write twice"));
                 }
 
+                // Need count entire length, so can not streaming here.
                 return Flux.from(blob.stream())
                     .collectList()
                     .doOnNext(writer::writeByteBuffers)
+                    .then();
+            });
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.defer(() -> {
+                Blob blob = this.blob.getAndSet(null);
+
+                if (blob == null) {
+                    return Mono.error(new IllegalStateException("Blob has written, can not write twice"));
+                }
+
+                return Flux.from(blob.stream())
+                    .doOnSubscribe(ignored -> builder.append('x').append('\''))
+                    .doOnNext(it -> CodecUtils.appendHex(builder, it))
+                    .doOnComplete(() -> builder.append('\''))
                     .then();
             });
         }
