@@ -97,7 +97,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         public Mono<Void> writeTo(StringBuilder builder) {
             return Mono.fromRunnable(() -> {
                 builder.append('x').append('\'');
-                CodecUtils.appendHex(builder, reverse(set.toByteArray()));
+                CodecUtils.appendHex(builder, reverse(set.toByteArray()), true);
                 builder.append('\'');
             });
         }
