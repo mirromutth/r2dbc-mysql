@@ -22,6 +22,7 @@ import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import reactor.core.publisher.Mono;
 
@@ -79,6 +80,17 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeCharSequence(value.name(), context.getCollation()));
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('\'');
+                // Java will be not including special character in enum names,
+                // but other JVM languages may be that, so must escape string here.
+                CodecUtils.appendEscape(builder, value.name());
+                builder.append('\'');
+            });
         }
 
         @Override

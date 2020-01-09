@@ -26,9 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 /**
- * Unit tests for {@link ParametrizedMySqlStatement}.
+ * Unit tests for {@link TextSimpleStatement}
  */
-class ParametrizedMySqlStatementTest {
+class TextSimpleStatementTest {
 
     private final Client client = mock(Client.class);
 
@@ -38,7 +38,7 @@ class ParametrizedMySqlStatementTest {
 
     @Test
     void badFetchSize() {
-        MySqlStatement statement = new ParametrizedMySqlStatement(client, codecs, context, Query.parse("SELECT * FROM test WHERE id = ?"), true);
+        MySqlStatement statement = new TextSimpleStatement(client, codecs, context, "");
 
         assertThrows(IllegalArgumentException.class, () -> statement.fetchSize(-1));
         assertThrows(IllegalArgumentException.class, () -> statement.fetchSize(-10));

@@ -21,6 +21,7 @@ import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
@@ -78,6 +79,15 @@ final class StringCodec extends AbstractClassedCodec<String> {
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeCharSequence(value, context.getCollation()));
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('\'');
+                CodecUtils.appendEscape(builder, value);
+                builder.append('\'');
+            });
         }
 
         @Override

@@ -28,6 +28,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class SyntheticMetadataMessage implements ServerMessage {
 
+    static final DefinitionMetadataMessage[] EMPTY_METADATA = {};
+
     private final boolean completed;
 
     private final DefinitionMetadataMessage[] messages;
@@ -77,5 +79,9 @@ public final class SyntheticMetadataMessage implements ServerMessage {
 
         // MySQL support 4096 columns for pre-table, no need print large bundle of messages in here.
         return String.format("SyntheticMetadataMessage{completed=%b, messages=[%s, %s, ...more %d messages]}", completed, messages[0], messages[1], messages.length - 2);
+    }
+
+    public static SyntheticMetadataMessage completedEmpty() {
+        return new SyntheticMetadataMessage(true, EMPTY_METADATA);
     }
 }

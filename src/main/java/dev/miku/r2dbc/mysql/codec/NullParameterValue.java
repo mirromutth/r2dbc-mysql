@@ -45,6 +45,11 @@ final class NullParameterValue implements ParameterValue {
     }
 
     @Override
+    public Mono<Void> writeTo(StringBuilder builder) {
+        return Mono.fromRunnable(() -> builder.append("NULL"));
+    }
+
+    @Override
     public short getType() {
         return DataTypes.NULL;
     }

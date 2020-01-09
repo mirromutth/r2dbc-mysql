@@ -24,6 +24,7 @@ import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.r2dbc.spi.Clob;
 import org.reactivestreams.Publisher;
@@ -102,6 +103,23 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
                 return Flux.from(clob.stream())
                     .collectList()
                     .doOnNext(sequences -> writer.writeCharSequences(sequences, context.getCollation()))
+                    .then();
+            });
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.defer(() -> {
+                Clob clob = this.clob.getAndSet(null);
+
+                if (clob == null) {
+                    return Mono.error(new IllegalStateException("Clob has written, can not write twice"));
+                }
+
+                return Flux.from(clob.stream())
+                    .doOnSubscribe(ignored -> builder.append('\''))
+                    .doOnNext(it -> CodecUtils.appendEscape(builder, it))
+                    .doOnComplete(() -> builder.append('\''))
                     .then();
             });
         }

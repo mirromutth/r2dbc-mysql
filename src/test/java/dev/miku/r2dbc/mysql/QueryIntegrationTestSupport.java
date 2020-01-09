@@ -189,6 +189,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
 
     @Test
     void varchar() {
+        // TODO: Should test some texts like "1' \\ OR\r\n \"1\" = '1" for client-preparing queries.
         testType(String.class, "VARCHAR(50)", true, "", null, "data");
         testType(String.class, "CHAR(50)", true, "", null, "data");
     }

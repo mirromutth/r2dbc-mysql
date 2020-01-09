@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
@@ -90,6 +91,15 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeByteArray(reverse(set.toByteArray())));
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('x').append('\'');
+                CodecUtils.appendHex(builder, reverse(set.toByteArray()));
+                builder.append('\'');
+            });
         }
 
         @Override

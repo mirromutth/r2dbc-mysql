@@ -23,8 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
 
-    private static final DefinitionMetadataMessage[] EMPTY_METADATA = {};
-
     /**
      * First part of metadata which is parameters metadata.
      */
@@ -104,10 +102,6 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
     }
 
     private static DefinitionMetadataMessage[] createArray(int size) {
-        if (size > 0) {
-            return new DefinitionMetadataMessage[size];
-        } else {
-            return EMPTY_METADATA;
-        }
+        return size == 0 ? SyntheticMetadataMessage.EMPTY_METADATA : new DefinitionMetadataMessage[size];
     }
 }

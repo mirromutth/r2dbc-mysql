@@ -92,9 +92,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             ServerMessage message = decoder.decode((ByteBuf) msg, this.context, context, this.linkableIdProvider);
 
             if (message != null) {
-                if (decodeFilter(message)) {
-                    ctx.fireChannelRead(message);
-                }
+                handleDecoded(ctx, message);
             }
         } else if (msg instanceof ServerMessage) {
             ctx.fireChannelRead(msg);
@@ -151,15 +149,9 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         this.linkableIdProvider = null;
     }
 
-    private boolean decodeFilter(ServerMessage msg) {
+    private void handleDecoded(ChannelHandlerContext ctx, ServerMessage msg) {
         if (msg instanceof ServerStatusMessage) {
             this.context.setServerStatuses(((ServerStatusMessage) msg).getServerStatuses());
-        }
-
-        if (msg instanceof ColumnCountMessage) {
-            boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
-            setDecodeContext(DecodeContext.result(deprecateEof, ((ColumnCountMessage) msg).getTotalColumns()));
-            return false;
         }
 
         if (msg instanceof CompleteMessage) {
@@ -169,23 +161,37 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             if (((SyntheticMetadataMessage) msg).isCompleted()) {
                 setDecodeContext(DecodeContext.command());
             }
+        } else if (msg instanceof ColumnCountMessage) {
+            boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
+            setDecodeContext(DecodeContext.result(deprecateEof, ((ColumnCountMessage) msg).getTotalColumns()));
+            return; // Done, no need use generic handle.
         } else if (msg instanceof PreparedOkMessage) {
             PreparedOkMessage message = (PreparedOkMessage) msg;
             int columns = message.getTotalColumns();
             int parameters = message.getTotalParameters();
+            boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
 
+            // For supports use server-preparing query for simple statements. The count of columns and
+            // parameters may all be 0, then EOF message following when EOF does not be deprecated.
             // columns + parameters > 0
-            if (columns > -parameters) {
-                boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
+            if (columns > -parameters || !deprecateEof) {
                 setDecodeContext(DecodeContext.preparedMetadata(deprecateEof, columns, parameters));
             } else {
                 setDecodeContext(DecodeContext.command());
+
+                // Prepared OK first, this is also generic handle.
+                ctx.fireChannelRead(msg);
+                // Metadata second, append a synthetic message following Prepare OK.
+                ctx.fireChannelRead(SyntheticMetadataMessage.completedEmpty());
+
+                return; // Done, no need use generic handle.
             }
         } else if (msg instanceof ErrorMessage) {
             setDecodeContext(DecodeContext.command());
         }
 
-        return true;
+        // Generic handle.
+        ctx.fireChannelRead(msg);
     }
 
     private void setDecodeContext(DecodeContext context) {

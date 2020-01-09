@@ -18,28 +18,37 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.function.Consumer;
+
+import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
  * A collection of {@link ParameterValue} for one bind invocation of a prepared statement.
  * Bindings for MySQL are index-based.
  *
- * @see ParametrizedMySqlStatement
+ * @see PrepareParametrizedStatement
  */
 final class Binding {
+
+    private static final ParameterValue[] EMPTY_VALUES = {};
 
     private final ParameterValue[] values;
 
     Binding(int length) {
-        this.values = new ParameterValue[length];
+        this.values = length == 0 ? EMPTY_VALUES : new ParameterValue[length];
     }
 
     /**
      * Add a {@link ParameterValue} to the binding.
      *
      * @param index the index of the {@link ParameterValue}
-     * @param value the {@link ParameterValue} from {@link ParametrizedMySqlStatement}
+     * @param value the {@link ParameterValue} from {@link PrepareParametrizedStatement}
      */
     void add(int index, ParameterValue value) {
         if (index < 0 || index >= this.values.length) {
@@ -57,12 +66,36 @@ final class Binding {
      * @return an execute message or open cursor message
      */
     PreparedExecuteMessage toMessage(int statementId, boolean immediate) {
+        if (this.values.length == 0) {
+            return new PreparedExecuteMessage(statementId, immediate, EMPTY_VALUES);
+        }
+
         ParameterValue[] values = new ParameterValue[this.values.length];
 
         System.arraycopy(this.values, 0, values, 0, this.values.length);
         Arrays.fill(this.values, null);
 
         return new PreparedExecuteMessage(statementId, immediate, values);
+    }
+
+    Mono<String> toSql(List<String> sqlParts) {
+        return Mono.defer(() -> {
+            int size = sqlParts.size() - 1;
+
+            if (values.length != size) {
+                clear();
+                return Mono.error(new IllegalArgumentException(String.format("The number of parameter should be %d, but was %d", size, values.length)));
+            }
+
+            StringBuilder builder = new StringBuilder();
+            Iterator<String> iter = sqlParts.iterator();
+            Consumer<Object> step = ignored -> builder.append(iter.next());
+
+            return Flux.fromArray(values)
+                .doOnSubscribe(step)
+                .concatMap(it -> it.writeTo(builder).doOnSuccess(step))
+                .then(Mono.fromSupplier(builder::toString));
+        });
     }
 
     /**

@@ -73,6 +73,11 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
         }
 
         @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> builder.append(value));
+        }
+
+        @Override
         public short getType() {
             return DataTypes.TINYINT;
         }

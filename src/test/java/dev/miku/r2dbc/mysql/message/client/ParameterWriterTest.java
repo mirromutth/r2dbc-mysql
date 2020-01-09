@@ -42,10 +42,10 @@ class ParameterWriterTest {
     @Test
     void publishSuccess() {
         ByteBuf buf = Unpooled.buffer();
-        MockParameterValue[] values = new MockParameterValue[SIZE];
+        MockValue[] values = new MockValue[SIZE];
 
         for (int i = 0; i < SIZE; ++i) {
-            values[i] = new MockParameterValue(true);
+            values[i] = new MockValue(true);
         }
 
         Flux.from(ParameterWriter.publish(buf, values))
@@ -57,22 +57,22 @@ class ParameterWriterTest {
             .verifyComplete();
 
         assertEquals(buf.refCnt(), 0);
-        assertThat(values).extracting(MockParameterValue::refCnt).containsOnly(0);
+        assertThat(values).extracting(MockValue::refCnt).containsOnly(0);
     }
 
     @Test
     void publishPartially() {
         ByteBuf buf = Unpooled.buffer();
-        MockParameterValue[] values = new MockParameterValue[SIZE];
+        MockValue[] values = new MockValue[SIZE];
 
         int i = 0;
 
         for (; i < SIZE >>> 1; ++i) {
-            values[i] = new MockParameterValue(true);
+            values[i] = new MockValue(true);
         }
 
         for (; i < SIZE; ++i) {
-            values[i] = new MockParameterValue(false);
+            values[i] = new MockValue(false);
         }
 
         Flux.from(ParameterWriter.publish(buf, values))
@@ -80,16 +80,16 @@ class ParameterWriterTest {
             .verifyError(MockException.class);
 
         assertEquals(buf.refCnt(), 0);
-        assertThat(values).extracting(MockParameterValue::refCnt).containsOnly(0);
+        assertThat(values).extracting(MockValue::refCnt).containsOnly(0);
     }
 
     @Test
     void publishNothing() {
         ByteBuf buf = Unpooled.buffer();
-        MockParameterValue[] values = new MockParameterValue[SIZE];
+        MockValue[] values = new MockValue[SIZE];
 
         for (int i = 0; i < SIZE; ++i) {
-            values[i] = new MockParameterValue(false);
+            values[i] = new MockValue(false);
         }
 
         Flux.from(ParameterWriter.publish(buf, values))
@@ -97,7 +97,7 @@ class ParameterWriterTest {
             .verifyError(MockException.class);
 
         assertEquals(buf.refCnt(), 0);
-        assertThat(values).extracting(MockParameterValue::refCnt).containsOnly(0);
+        assertThat(values).extracting(MockValue::refCnt).containsOnly(0);
     }
 
     private static final class MockException extends RuntimeException {
@@ -109,11 +109,11 @@ class ParameterWriterTest {
         }
     }
 
-    private static final class MockParameterValue extends AtomicInteger implements ParameterValue {
+    private static final class MockValue extends AtomicInteger implements ParameterValue {
 
         private final boolean success;
 
-        MockParameterValue(boolean success) {
+        MockValue(boolean success) {
             super(1);
             this.success = success;
         }
@@ -125,6 +125,18 @@ class ParameterWriterTest {
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
+            if (success) {
+                return Mono.fromRunnable(this::dispose);
+            } else {
+                return Mono.error(() -> {
+                    dispose();
+                    return MockException.INSTANCE;
+                });
+            }
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
             if (success) {
                 return Mono.fromRunnable(this::dispose);
             } else {

@@ -44,13 +44,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
  * A message flow considers both of parametrized and simple (direct) queries
- * for {@link ParametrizedMySqlStatement}, {@link MySqlBatch}
- * and {@link SimpleMySqlStatement}.
+ * for {@link PrepareParametrizedStatement}, {@link MySqlBatch}
+ * and {@link SimpleStatementSupport}.
  */
 final class QueryFlow {
 
@@ -116,41 +115,46 @@ final class QueryFlow {
     static Flux<Flux<ServerMessage>> execute(
         Client client, ConnectionContext context, String sql, PreparedIdentifier identifier, boolean deprecateEof, int fetchSize, List<Binding> bindings
     ) {
-        if (bindings.isEmpty()) {
-            return Flux.empty();
+        switch (bindings.size()) {
+            case 1: // Most case.
+                return Flux.defer(() -> execute0(client, context, sql, identifier, deprecateEof, bindings.get(0), fetchSize)
+                    .windowUntil(RESULT_DONE));
+            case 0:
+                return Flux.empty();
+            default:
+                Iterator<Binding> iterator = bindings.iterator();
+                EmitterProcessor<Binding> processor = EmitterProcessor.create(1, true);
+
+                processor.onNext(iterator.next());
+
+                // One binding may be leak when a emitted Result has been ignored, but Result should never be ignored.
+                // Subsequent bindings will auto-clear if subscribing has been cancelled.
+                return processor.concatMap(it -> execute0(client, context, sql, identifier, deprecateEof, it, fetchSize)
+                    .doOnComplete(() -> {
+                        if (processor.isCancelled() || processor.isTerminated()) {
+                            return;
+                        }
+
+                        try {
+                            if (iterator.hasNext()) {
+                                if (identifier.isClosed()) {
+                                    // User cancelled fetching, discard subsequent bindings.
+                                    discardBindings(iterator);
+                                    processor.onComplete();
+                                } else {
+                                    processor.onNext(iterator.next());
+                                }
+                            } else {
+                                processor.onComplete();
+                            }
+                        } catch (Throwable e) {
+                            processor.onError(e);
+                        }
+                    }))
+                    .doOnCancel(() -> discardBindings(iterator))
+                    .doOnError(ignored -> discardBindings(iterator))
+                    .windowUntil(RESULT_DONE);
         }
-
-        Iterator<Binding> iterator = bindings.iterator();
-        EmitterProcessor<Binding> processor = EmitterProcessor.create(1, true);
-
-        processor.onNext(iterator.next());
-
-        // One binding may be leak when a emitted Result has been ignored, but Result should never be ignored.
-        // Subsequent bindings will auto-clear if subscribing has been cancelled.
-        return processor.concatMap(it -> execute0(client, context, sql, identifier, deprecateEof, it, fetchSize).doOnComplete(() -> {
-            if (processor.isCancelled() || processor.isTerminated()) {
-                return;
-            }
-
-            try {
-                if (iterator.hasNext()) {
-                    if (identifier.isClosed()) {
-                        // User cancelled fetching, discard subsequent bindings.
-                        discardBindings(iterator);
-                        processor.onComplete();
-                    } else {
-                        processor.onNext(iterator.next());
-                    }
-                } else {
-                    processor.onComplete();
-                }
-            } catch (Throwable e) {
-                processor.onError(e);
-            }
-        }))
-            .doOnCancel(() -> discardBindings(iterator))
-            .doOnError(ignored -> discardBindings(iterator))
-            .windowUntil(RESULT_DONE);
     }
 
     /**
@@ -188,7 +192,7 @@ final class QueryFlow {
      * completed by {@link CompleteMessage} for each statement.
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
-        return selfEmitter(InternalArrays.asReadOnlyList(statements), sql -> execute0(client, sql))
+        return selfEmitter(InternalArrays.asReadOnlyList(statements), client)
             .doOnNext(SAFE_RELEASE)
             .then();
     }
@@ -224,7 +228,7 @@ final class QueryFlow {
                 case 1:
                     return execute0(client, statements.get(0)).windowUntil(RESULT_DONE);
                 default:
-                    return selfEmitter(statements, sql -> execute0(client, sql)).windowUntil(RESULT_DONE);
+                    return selfEmitter(statements, client).windowUntil(RESULT_DONE);
             }
         });
     }
@@ -320,18 +324,18 @@ final class QueryFlow {
             }));
     }
 
-    private static <T> Flux<ServerMessage> selfEmitter(Collection<? extends T> sources, Function<T, Flux<ServerMessage>> convert) {
-        if (sources.isEmpty()) {
+    private static Flux<ServerMessage> selfEmitter(Collection<String> statements, Client client) {
+        if (statements.isEmpty()) {
             return Flux.empty();
         }
 
-        Iterator<? extends T> iterator = sources.iterator();
-        EmitterProcessor<T> processor = EmitterProcessor.create(1, true);
+        Iterator<String> iter = statements.iterator();
+        EmitterProcessor<String> processor = EmitterProcessor.create(1, true);
 
-        processor.onNext(iterator.next());
+        processor.onNext(iter.next());
 
         return processor.concatMap(it -> {
-            Flux<ServerMessage> responses = convert.apply(it);
+            Flux<ServerMessage> responses = execute0(client, it);
 
             return responses.doOnComplete(() -> {
                 if (processor.isCancelled() || processor.isTerminated()) {
@@ -339,8 +343,8 @@ final class QueryFlow {
                 }
 
                 try {
-                    if (iterator.hasNext()) {
-                        processor.onNext(iterator.next());
+                    if (iter.hasNext()) {
+                        processor.onNext(iter.next());
                     } else {
                         processor.onComplete();
                     }

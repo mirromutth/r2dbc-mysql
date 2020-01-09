@@ -111,6 +111,24 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         return LocalDate.of(year, month, day);
     }
 
+    static void encodeDate(StringBuilder builder, LocalDate date) {
+        builder.append(date.getYear())
+            .append('-');
+
+        int month = date.getMonthValue();
+        if (month < 10) {
+            builder.append('0');
+        }
+        builder.append(month)
+            .append('-');
+
+        int day = date.getDayOfMonth();
+        if (day < 10) {
+            builder.append('0');
+        }
+        builder.append(day);
+    }
+
     private static final class LocalDateValue extends AbstractParameterValue {
 
         private final LocalDate date;
@@ -122,6 +140,15 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeDate(date));
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('\'');
+                encodeDate(builder, date);
+                builder.append('\'');
+            });
         }
 
         @Override

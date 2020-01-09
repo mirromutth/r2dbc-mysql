@@ -21,12 +21,14 @@ import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
+import java.util.Iterator;
 import java.util.List;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
@@ -75,6 +77,17 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
         return DataTypes.SET == info.getType();
     }
 
+    static void encodeIterator(StringBuilder builder, Iterator<? extends CharSequence> iter) {
+        if (iter.hasNext()) {
+            CodecUtils.appendEscape(builder, iter.next());
+
+            while (iter.hasNext()) {
+                builder.append(',');
+                CodecUtils.appendEscape(builder, iter.next());
+            }
+        }
+    }
+
     private static final class StringArrayValue extends AbstractParameterValue {
 
         private final List<CharSequence> value;
@@ -89,6 +102,15 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeSet(value, context.getCollation()));
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('\'');
+                encodeIterator(builder, value.iterator());
+                builder.append('\'');
+            });
         }
 
         @Override

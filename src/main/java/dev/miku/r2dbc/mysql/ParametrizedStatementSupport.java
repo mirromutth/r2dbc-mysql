@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -34,40 +33,34 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * Parametrized {@link MySqlStatement} with parameter markers executed against a Microsoft SQL Server database.
+ * Base class considers parametrized {@link MySqlStatement} with parameter markers.
  * <p>
- * MySQL uses indexed parameters which are marked by {@literal ?} without naming. This implementation uses
- * {@link Query} to implement named parameters, and different indexes can have the same name.
+ * MySQL uses indexed parameters which are marked by {@literal ?} without naming.
+ * Implementations should uses {@link Query} to supports named parameters.
  */
-final class ParametrizedMySqlStatement extends MySqlStatementSupport {
+abstract class ParametrizedStatementSupport extends MySqlStatementSupport {
 
-    private final Client client;
+    protected final Client client;
 
-    private final Codecs codecs;
+    protected final Codecs codecs;
 
-    private final ConnectionContext context;
-
-    private final Query query;
+    protected final ConnectionContext context;
 
     private final Bindings bindings;
 
-    private final boolean deprecateEof;
-
     private final AtomicBoolean executed = new AtomicBoolean();
 
-    private int fetchSize = 0;
+    ParametrizedStatementSupport(Client client, Codecs codecs, ConnectionContext context, int parameters) {
+        require(parameters > 0, "parameters must be a positive integer");
 
-    ParametrizedMySqlStatement(Client client, Codecs codecs, ConnectionContext context, Query query, boolean deprecateEof) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.context = requireNonNull(context, "context must not be null");
-        this.query = requireNonNull(query, "sql must not be null");
-        this.deprecateEof = deprecateEof;
-        this.bindings = new Bindings(this.query.getParameters());
+        this.bindings = new Bindings(parameters);
     }
 
     @Override
-    public MySqlStatement add() {
+    public final MySqlStatement add() {
         assertNotExecuted();
 
         this.bindings.validatedFinish();
@@ -75,7 +68,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     }
 
     @Override
-    public MySqlStatement bind(int index, Object value) {
+    public final MySqlStatement bind(int index, Object value) {
         requireNonNull(value, "value must not be null");
 
         addBinding(index, codecs.encode(value, context));
@@ -83,23 +76,16 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     }
 
     @Override
-    public MySqlStatement bind(String name, Object value) {
+    public final MySqlStatement bind(String name, Object value) {
         requireNonNull(name, "name must not be null");
         requireNonNull(value, "value must not be null");
 
-        Object indexes = query.getIndexes(name);
-
-        if (indexes instanceof Integer) {
-            addBinding((Integer) indexes, codecs.encode(value, context));
-        } else {
-            addBinding((Query.Indexes) indexes, codecs.encode(value, context));
-        }
-
+        addBinding(getIndexes(name), codecs.encode(value, context));
         return this;
     }
 
     @Override
-    public MySqlStatement bindNull(int index, Class<?> type) {
+    public final MySqlStatement bindNull(int index, Class<?> type) {
         // Useless, but should be checked in here, for programming robustness
         requireNonNull(type, "type must not be null");
 
@@ -108,24 +94,17 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
     }
 
     @Override
-    public MySqlStatement bindNull(String name, Class<?> type) {
+    public final MySqlStatement bindNull(String name, Class<?> type) {
         requireNonNull(name, "name must not be null");
         // Useless, but should be checked in here, for programming robustness
         requireNonNull(type, "type must not be null");
 
-        Object indexes = query.getIndexes(name);
-
-        if (indexes instanceof Integer) {
-            addBinding((Integer) indexes, codecs.encodeNull());
-        } else {
-            addBinding((Query.Indexes) indexes, codecs.encodeNull());
-        }
-
+        addBinding(getIndexes(name), codecs.encodeNull());
         return this;
     }
 
     @Override
-    public Flux<MySqlResult> execute() {
+    public final Flux<MySqlResult> execute() {
         if (bindings.bindings.isEmpty()) {
             throw new IllegalStateException("No parameters bound for current statement");
         }
@@ -133,29 +112,23 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
         return Flux.defer(() -> {
             if (!executed.compareAndSet(false, true)) {
-                return Flux.error(new IllegalStateException("Statement was already executed"));
+                return Flux.error(new IllegalStateException("Parametrized statement was already executed"));
             }
 
-            int fetchSize = this.fetchSize;
-            String sql = query.getSql();
-
-            return QueryFlow.prepare(client, sql)
-                .doOnCancel(bindings::clear)
-                .flatMapMany(it -> QueryFlow.execute(client, context, sql, it, deprecateEof, fetchSize, bindings.bindings)
-                    .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages))
-                    .onErrorResume(e -> it.close().then(Mono.error(e)))
-                    .concatWith(it.close().then(Mono.empty()))
-                    .doOnCancel(() -> it.close().subscribe()));
+            return execute(bindings.bindings);
         });
     }
 
-    @Override
-    public MySqlStatement fetchSize(int rows) {
-        require(rows >= 0, "Fetch size must be greater or equal to zero");
+    abstract protected Flux<MySqlResult> execute(List<Binding> bindings);
 
-        this.fetchSize = rows;
-        return this;
-    }
+    /**
+     * Get parameter index(es) by parameter name.
+     *
+     * @param name the parameter name
+     * @return the {@link ParameterIndex} including an index or multi-indexes
+     * @throws IllegalArgumentException if parameter {@code name} not found
+     */
+    abstract protected ParameterIndex getIndexes(String name);
 
     private void addBinding(int index, ParameterValue value) {
         assertNotExecuted();
@@ -163,7 +136,7 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
         this.bindings.getCurrent().add(index, value);
     }
 
-    private void addBinding(Query.Indexes indexes, ParameterValue value) {
+    private void addBinding(ParameterIndex indexes, ParameterValue value) {
         assertNotExecuted();
 
         indexes.bind(this.bindings.getCurrent(), value);
@@ -185,14 +158,6 @@ final class ParametrizedMySqlStatement extends MySqlStatementSupport {
 
         private Bindings(int paramCount) {
             this.paramCount = paramCount;
-        }
-
-        private void clear() {
-            for (Binding binding : bindings) {
-                binding.clear();
-            }
-
-            bindings.clear();
         }
 
         @Override

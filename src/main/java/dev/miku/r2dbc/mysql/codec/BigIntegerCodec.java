@@ -178,6 +178,11 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         }
 
         @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> builder.append(value.toString()));
+        }
+
+        @Override
         public short getType() {
             return DataTypes.VARCHAR;
         }

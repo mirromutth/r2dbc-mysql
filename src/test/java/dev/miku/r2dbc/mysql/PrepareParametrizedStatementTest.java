@@ -22,13 +22,15 @@ import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 /**
- * Unit tests for {@link SimpleMySqlStatement}
+ * Unit tests for {@link PrepareParametrizedStatement}.
  */
-class SimpleMySqlStatementTest {
+class PrepareParametrizedStatementTest {
 
     private final Client client = mock(Client.class);
 
@@ -38,7 +40,9 @@ class SimpleMySqlStatementTest {
 
     @Test
     void badFetchSize() {
-        MySqlStatement statement = new SimpleMySqlStatement(client, codecs, context, "");
+        MySqlStatement statement = new PrepareParametrizedStatement(
+            client, codecs, context, new PrepareQuery("SELECT * FROM test WHERE id = ?", Collections.emptyMap(), 1), true
+        );
 
         assertThrows(IllegalArgumentException.class, () -> statement.fetchSize(-1));
         assertThrows(IllegalArgumentException.class, () -> statement.fetchSize(-10));

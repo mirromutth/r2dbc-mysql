@@ -96,15 +96,6 @@ public final class ParameterWriter {
         writableBuffer(Double.BYTES).writeDoubleLE(value);
     }
 
-    public void writeStringifyNumber(Number value) {
-        String valueStr = value.toString();
-        int size = valueStr.length();
-        ByteBuf buf = writableBuffer(CodecUtils.varIntBytes(size) + size);
-
-        CodecUtils.writeVarInt(buf, size);
-        buf.writeCharSequence(valueStr, StandardCharsets.US_ASCII);
-    }
-
     public void writeDate(LocalDate date) {
         writableBuffer(Byte.BYTES + BinaryDateTimes.DATE_SIZE)
             .writeByte(BinaryDateTimes.DATE_SIZE)

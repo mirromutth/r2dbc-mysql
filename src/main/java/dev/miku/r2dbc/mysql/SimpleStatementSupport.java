@@ -25,19 +25,19 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link MySqlStatement} representing the simple statement that has no parameter.
+ * Base class of {@link MySqlStatement} considers the simple statement that has no parameter.
  */
-final class SimpleMySqlStatement extends MySqlStatementSupport {
+abstract class SimpleStatementSupport extends MySqlStatementSupport {
 
-    private final Client client;
+    protected final Client client;
 
-    private final Codecs codecs;
+    protected final Codecs codecs;
 
-    private final ConnectionContext context;
+    protected final ConnectionContext context;
 
-    private final String sql;
+    protected final String sql;
 
-    SimpleMySqlStatement(Client client, Codecs codecs, ConnectionContext context, String sql) {
+    SimpleStatementSupport(Client client, Codecs codecs, ConnectionContext context, String sql) {
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.context = requireNonNull(context, "context must not be null");
@@ -45,50 +45,27 @@ final class SimpleMySqlStatement extends MySqlStatementSupport {
     }
 
     @Override
-    public MySqlStatement add() {
+    public final MySqlStatement add() {
         return this;
     }
 
     @Override
-    public MySqlStatement bind(int index, Object value) {
+    public final MySqlStatement bind(int index, Object value) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
-    public MySqlStatement bind(String name, Object value) {
+    public final MySqlStatement bind(String name, Object value) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
-    public MySqlStatement bindNull(int index, Class<?> type) {
+    public final MySqlStatement bindNull(int index, Class<?> type) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
     }
 
     @Override
-    public MySqlStatement bindNull(String name, Class<?> type) {
+    public final MySqlStatement bindNull(String name, Class<?> type) {
         throw new UnsupportedOperationException("Binding parameters is not supported for simple statement");
-    }
-
-    @Override
-    public Flux<MySqlResult> execute() {
-        return QueryFlow.execute(client, sql)
-            .map(messages -> new MySqlResult(false, codecs, context, generatedKeyName, messages));
-    }
-
-    /**
-     * MySQL unsupported fetch with simple statements, but we still check size validation.
-     *
-     * @param rows fetch size.
-     * @return {@link this} self.
-     */
-    @Override
-    public MySqlStatement fetchSize(int rows) {
-        require(rows >= 0, "Fetch size must be greater or equal to zero");
-        return this;
-    }
-
-    @Override
-    public String toString() {
-        return "SimpleMySqlStatement{sql=REDACTED}";
     }
 }

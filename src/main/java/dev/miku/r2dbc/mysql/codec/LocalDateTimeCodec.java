@@ -136,6 +136,17 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
         }
 
         @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('\'');
+                LocalDateCodec.encodeDate(builder, value.toLocalDate());
+                builder.append(' ');
+                LocalTimeCodec.encodeTime(builder, value.toLocalTime());
+                builder.append('\'');
+            });
+        }
+
+        @Override
         public short getType() {
             return DataTypes.DATETIME;
         }
