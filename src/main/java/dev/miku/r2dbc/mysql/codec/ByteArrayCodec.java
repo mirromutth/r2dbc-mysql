@@ -83,7 +83,7 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
         public Mono<Void> writeTo(StringBuilder builder) {
             return Mono.fromRunnable(() -> {
                 builder.append('x').append('\'');
-                CodecUtils.appendHex(builder, bytes, false);
+                CodecUtils.appendHex(builder, bytes);
                 builder.append('\'');
             });
         }

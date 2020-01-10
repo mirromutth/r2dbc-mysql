@@ -407,18 +407,10 @@ public final class CodecUtils {
         }
     }
 
-    public static void appendHex(StringBuilder builder, byte[] bytes, boolean isBit) {
+    public static void appendHex(StringBuilder builder, byte[] bytes) {
         // MySQL 5.5 Community Edition does not support Base64.
-        if (bytes.length == 0) {
-            if (isBit) {
-                // Must filled by 00 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer on type BIT (i.e. unsafe allocate).
-                // So if we do not fill the buffer, it will use last content which is an undefined behavior. A classic bug, right?
-                builder.append('0').append('0');
-            }
-        } else {
-            for (byte b : bytes) {
-                builder.append(HEX[(b & 0xF0) >>> 4]).append(HEX[b & 0xF]);
-            }
+        for (byte b : bytes) {
+            builder.append(HEX[(b & 0xF0) >>> 4]).append(HEX[b & 0xF]);
         }
     }
 

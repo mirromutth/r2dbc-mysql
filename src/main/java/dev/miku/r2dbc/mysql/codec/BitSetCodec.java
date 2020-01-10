@@ -96,9 +96,15 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         @Override
         public Mono<Void> writeTo(StringBuilder builder) {
             return Mono.fromRunnable(() -> {
-                builder.append('x').append('\'');
-                CodecUtils.appendHex(builder, reverse(set.toByteArray()), true);
-                builder.append('\'');
+                if (set.isEmpty()) {
+                    // Must filled by 0 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer on type BIT (i.e. unsafe allocate).
+                    // So if we do not fill the buffer, it will use last content which is an undefined behavior. A classic bug, right?
+                    builder.append("b'0'");
+                } else {
+                    builder.append('x').append('\'');
+                    CodecUtils.appendHex(builder, reverse(set.toByteArray()));
+                    builder.append('\'');
+                }
             });
         }
 
