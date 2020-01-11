@@ -42,7 +42,7 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
     @Override
     public Enum<?> decode(NormalFieldValue value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         Enum<?> e = Enum.valueOf((Class<Enum>) target, value.getBufferSlice().toString(charset));
         return e;
     }
