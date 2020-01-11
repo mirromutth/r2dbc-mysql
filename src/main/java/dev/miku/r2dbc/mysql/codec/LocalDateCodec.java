@@ -112,7 +112,32 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     static void encodeDate(StringBuilder builder, LocalDate date) {
-        builder.append(date.getYear())
+        boolean isNegative;
+        int year = date.getYear();
+
+        if (year < 0) {
+            year = -year;
+            isNegative = true;
+        } else {
+            isNegative = false;
+        }
+
+        if (isNegative) {
+            builder.append('-');
+        }
+
+        // Note: year is the abs value of origin year.
+        if (year < 1000) {
+            builder.append('0');
+            if (year < 100) {
+                builder.append('0');
+                if (year < 10) {
+                    builder.append('0');
+                }
+            }
+        }
+
+        builder.append(year)
             .append('-');
 
         int month = date.getMonthValue();

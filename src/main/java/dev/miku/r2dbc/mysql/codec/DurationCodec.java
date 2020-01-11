@@ -69,6 +69,10 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             builder.append('-');
         }
 
+        if (hours < 10) {
+            builder.append('0');
+        }
+
         builder.append(hours).append(':');
 
         if (minutes < 10) {
@@ -83,20 +87,23 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
 
         builder.append(seconds);
 
-        if (micros != 0) {
+        // Must be greater than 0, can NOT use "micros != 0" here.
+        // Sure, micros will never less than 0, but need to check for avoid inf loop.
+        if (micros > 0) {
             builder.append('.');
-            String microStr = Integer.toString(micros);
-
-            if (microStr.length() > 6) {
-                microStr = microStr.substring(0, 6);
-            } else {
-                int zeros = 6 - microStr.length();
-                while (zeros-- > 0) {
-                    builder.append('0');
-                }
+            // WATCH OUT for inf loop: i from 100000 to 1, micros is greater than 0,
+            // 0 < micros < 1 is impossible, so micros < 1 will be false finally,
+            // then loop done. Safe.
+            for (int i = 100000; micros < i; i /= 10) {
+                builder.append('0');
             }
-
-            builder.append(microStr);
+            // WATCH OUT for inf loop: micros is greater than 0, that means it least
+            // contains one digit which is not 0, so micros % 10 == 0 will be false
+            // finally, then loop done. Safe.
+            while (micros % 10 == 0) {
+                micros /= 10;
+            }
+            builder.append(micros);
         }
     }
 
@@ -189,7 +196,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             int micros = (int) TimeUnit.NANOSECONDS.toMicros(abs.getNano());
 
             if (hours < 0 || minutes < 0 || seconds < 0 || micros < 0) {
-                throw new IllegalStateException(String.format("Too large duration %s, abs value overflowing to %d:%02d:%02d.%06d", value, hours, minutes, seconds, micros));
+                throw new IllegalStateException(String.format("Too large duration %s, abs value overflowing to %02d:%02d:%02d.%06d", value, hours, minutes, seconds, micros));
             }
 
             builder.append('\'');
