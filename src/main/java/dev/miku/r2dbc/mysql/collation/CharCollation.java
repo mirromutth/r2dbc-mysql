@@ -49,6 +49,11 @@ public interface CharCollation {
      * @return client character collation.
      */
     static CharCollation clientCharCollation() {
+        // SHIFT-JIS, WINDOWS-932, EUC-JP and eucJP-OPEN will encode '\u00a5' (the sign of
+        // Japanese Yen or Chinese Yuan) to '\' (ASCII 92). X-IBM949, X-IBM949C will encode
+        // '\u20a9' (the sign of Korean Won) to '\'. They maybe make confuse for text-based
+        // parameters. See also escape string in CodecUtils.
+        // So, keep it as UTF-8, until some users need some special features.
         return CharCollations.UTF8MB4_GENERAL_CI;
     }
 }
