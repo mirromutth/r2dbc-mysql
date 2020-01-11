@@ -58,7 +58,7 @@ final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
 
     @Override
     public boolean canEncode(Object value) {
-        return value instanceof Enum<?> && value.getClass().isEnum();
+        return value instanceof Enum<?>;
     }
 
     @Override

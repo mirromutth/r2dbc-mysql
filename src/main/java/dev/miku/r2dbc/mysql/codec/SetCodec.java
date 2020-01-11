@@ -59,9 +59,10 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
         Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
         int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
+        boolean isEnum = subClass.isEnum();
 
         if (firstComma < 0) {
-            if (subClass.isEnum()) {
+            if (isEnum) {
                 return Collections.singleton(Enum.valueOf((Class<Enum>) subClass, buf.toString(charset)));
             } else {
                 return Collections.singleton(buf.toString(charset));
@@ -69,9 +70,9 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         }
 
         Iterable<String> elements = new SplitIterable(buf, charset, firstComma);
-        Set<?> result = buildSet(subClass);
+        Set<?> result = buildSet(subClass, isEnum);
 
-        if (subClass.isEnum()) {
+        if (isEnum) {
             Class<Enum> enumClass = (Class<Enum>) subClass;
             Set<Enum<?>> enumSet = (Set<Enum<?>>) result;
             for (String element : elements) {
@@ -109,8 +110,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         Class<?> rawClass = (Class<?>) rawType;
         Class<?> subClass = (Class<?>) subType;
 
-        return rawClass.isAssignableFrom(Set.class) &&
-            (subClass.isEnum() || subClass.isAssignableFrom(String.class));
+        return rawClass.isAssignableFrom(Set.class) && (subClass.isEnum() || subClass.isAssignableFrom(String.class));
     }
 
     @Override
@@ -124,15 +124,15 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
     }
 
     private static String convert(Object o) {
-        if (o.getClass().isEnum()) {
+        if (o instanceof Enum<?>) {
             return ((Enum<?>) o).name();
         } else {
             return o.toString();
         }
     }
 
-    private static Set<?> buildSet(Class<?> subClass) {
-        if (subClass.isEnum()) {
+    private static Set<?> buildSet(Class<?> subClass, boolean isEnum) {
+        if (isEnum) {
             @SuppressWarnings({"unchecked", "rawtypes"})
             EnumSet<?> s = EnumSet.noneOf((Class<Enum>) subClass);
             return s;
@@ -143,7 +143,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
 
     private static boolean isValidSet(Set<?> value) {
         for (Object element : value) {
-            if (element == null || (!(element instanceof CharSequence) && !element.getClass().isEnum())) {
+            if (!(element instanceof CharSequence) && !(element instanceof Enum<?>)) {
                 return false;
             }
         }
