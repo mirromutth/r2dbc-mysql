@@ -23,9 +23,6 @@ import java.nio.charset.StandardCharsets;
  */
 final class CharsetTargets {
 
-    private CharsetTargets() {
-    }
-
     static final CharsetTarget ASCII = new CachedCharsetTarget(1, StandardCharsets.US_ASCII);
 
     // Windows-1252 is a superset of ISO 8859-1 (also real Latin 1), which by standards should be considered the same encoding
@@ -138,4 +135,7 @@ final class CharsetTargets {
     static final CharsetTarget MAC_ROMAN = new NamedCharsetTarget(1, "MacRoman");
 
     static final CharsetTarget MAC_CE = new NamedCharsetTarget(1, "MacCentralEurope");
+
+    private CharsetTargets() {
+    }
 }

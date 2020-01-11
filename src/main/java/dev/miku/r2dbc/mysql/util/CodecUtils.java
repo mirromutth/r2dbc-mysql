@@ -437,7 +437,13 @@ public final class CodecUtils {
                     // Sure, there can use "\\'", but this will be better. (For some logging systems)
                     buf.append('\'').append('\'');
                     break;
-                // case '"': buf.append('"'); break; // Maybe useful in the future, keep it here.
+                // Maybe useful in the future, keep '"' here.
+                // case '"': buf.append('\\').append('"'); break;
+                // SHIFT-JIS, WINDOWS-932, EUC-JP and eucJP-OPEN will encode '\u00a5' (the sign of Japanese Yen
+                // or Chinese Yuan) to '\' (ASCII 92). X-IBM949, X-IBM949C will encode '\u20a9' (the sign of
+                // Korean Won) to '\'. It is nothing because driver is using UTF-8. See also CharCollation.
+                // case '\u00a5': do something; break;
+                // case '\u20a9': do something; break;
                 case 0:
                     // MySQL is based on C/C++, must escape '\0' which is an end flag in C style string.
                     buf.append('\\').append('0');
