@@ -123,7 +123,7 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
         return new SetValue((Set<?>) value, context);
     }
 
-    private static String convert(Object o) {
+    static String convert(Object o) {
         if (o instanceof Enum<?>) {
             return ((Enum<?>) o).name();
         } else {
