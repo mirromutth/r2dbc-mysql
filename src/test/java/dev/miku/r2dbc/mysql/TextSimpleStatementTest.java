@@ -26,9 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 /**
- * Unit tests for {@link TextSimpleStatement}
+ * Unit tests for {@link TextSimpleStatement}.
  */
-class TextSimpleStatementTest {
+class TextSimpleStatementTest implements StatementTestSupport<TextSimpleStatement> {
 
     private final Client client = mock(Client.class);
 
@@ -36,12 +36,33 @@ class TextSimpleStatementTest {
 
     private final Codecs codecs = mock(Codecs.class);
 
-    @Test
-    void badFetchSize() {
-        MySqlStatement statement = new TextSimpleStatement(client, codecs, context, "");
+    @Override
+    public void badAdd() {
+        // No-op
+    }
 
-        assertThrows(IllegalArgumentException.class, () -> statement.fetchSize(-1));
-        assertThrows(IllegalArgumentException.class, () -> statement.fetchSize(-10));
-        assertThrows(IllegalArgumentException.class, () -> statement.fetchSize(Integer.MIN_VALUE));
+    @Override
+    public void bind() {
+        // No-op
+    }
+
+    @Override
+    public void bindNull() {
+        // No-op
+    }
+
+    @Override
+    public void fetchSize() {
+        // No-op
+    }
+
+    @Override
+    public TextSimpleStatement makeInstance(String parametrizedSql, String simpleSql) {
+        return new TextSimpleStatement(client, codecs, context, simpleSql);
+    }
+
+    @Override
+    public boolean supportsBinding() {
+        return false;
     }
 }

@@ -26,34 +26,49 @@ import java.lang.reflect.Field;
 import static org.mockito.Mockito.mock;
 
 /**
- * Unit tests for {@link PrepareParametrizedStatement}.
+ * Unit tests for {@link PrepareSimpleStatement}.
  */
-class PrepareParametrizedStatementTest implements StatementTestSupport<PrepareParametrizedStatement> {
+class PrepareSimpleStatementTest implements StatementTestSupport<PrepareSimpleStatement> {
 
     private final Client client = mock(Client.class);
 
     private final ConnectionContext context = new ConnectionContext(ZeroDateOption.USE_NULL);
 
-    private final Codecs codecs = Codecs.getInstance();
+    private final Codecs codecs = mock(Codecs.class);
 
-    private final Field fetchSize = PrepareParametrizedStatement.class.getDeclaredField("fetchSize");
+    private final Field fetchSize = PrepareSimpleStatement.class.getDeclaredField("fetchSize");
 
-    PrepareParametrizedStatementTest() throws NoSuchFieldException {
+    PrepareSimpleStatementTest() throws NoSuchFieldException {
         fetchSize.setAccessible(true);
     }
 
     @Override
-    public int getFetchSize(PrepareParametrizedStatement statement) throws IllegalAccessException {
+    public void badAdd() {
+        // No-op
+    }
+
+    @Override
+    public void bind() {
+        // No-op
+    }
+
+    @Override
+    public void bindNull() {
+        // No-op
+    }
+
+    @Override
+    public int getFetchSize(PrepareSimpleStatement statement) throws IllegalAccessException {
         return fetchSize.getInt(statement);
     }
 
     @Override
-    public PrepareParametrizedStatement makeInstance(String parametrizedSql, String simpleSql) {
-        return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) Query.parse(parametrizedSql, true), true);
+    public PrepareSimpleStatement makeInstance(String parametrizedSql, String simpleSql) {
+        return new PrepareSimpleStatement(client, codecs, context, simpleSql, true);
     }
 
     @Override
     public boolean supportsBinding() {
-        return true;
+        return false;
     }
 }
