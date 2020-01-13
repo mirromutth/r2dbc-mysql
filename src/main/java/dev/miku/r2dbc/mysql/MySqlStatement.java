@@ -45,62 +45,6 @@ public interface MySqlStatement extends Statement {
     /**
      * {@inheritDoc}
      */
-    default MySqlStatement bind(int index, boolean value) {
-        return bind(index, (Boolean) value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    default MySqlStatement bind(int index, byte value) {
-        return bind(index, (Byte) value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    default MySqlStatement bind(int index, char value) {
-        return bind(index, (Character) value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    default MySqlStatement bind(int index, double value) {
-        return bind(index, (Double) value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    default MySqlStatement bind(int index, float value) {
-        return bind(index, (Float) value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    default MySqlStatement bind(int index, int value) {
-        return bind(index, (Integer) value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    default MySqlStatement bind(int index, long value) {
-        return bind(index, (Long) value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    default MySqlStatement bind(int index, short value) {
-        return bind(index, (Short) value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     MySqlStatement bindNull(int index, Class<?> type);
 
