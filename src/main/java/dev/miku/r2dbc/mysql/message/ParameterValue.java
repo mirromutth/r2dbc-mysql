@@ -20,10 +20,14 @@ import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
+import java.util.function.Consumer;
+
 /**
  * A parameter value includes encode logic.
  */
 public interface ParameterValue extends Disposable {
+
+    Consumer<ParameterValue> DISPOSE = ParameterValue::dispose;
 
     boolean isNull();
 

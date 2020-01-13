@@ -39,7 +39,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -47,9 +46,10 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * A message flow considers both of parametrized and simple (direct) queries
- * for {@link PrepareParametrizedStatement}, {@link MySqlBatch}
- * and {@link SimpleStatementSupport}.
+ * A message flow considers both of parametrized and text queries, such as
+ * {@link TextParametrizedStatement}, {@link PrepareParametrizedStatement},
+ * {@link TextSimpleStatement}, {@link PrepareSimpleStatement} and
+ * {@link MySqlBatch}.
  */
 final class QueryFlow {
 
@@ -124,35 +124,35 @@ final class QueryFlow {
             default:
                 Iterator<Binding> iterator = bindings.iterator();
                 EmitterProcessor<Binding> processor = EmitterProcessor.create(1, true);
+                Runnable complete = () -> {
+                    if (processor.isCancelled() || processor.isTerminated()) {
+                        return;
+                    }
+
+                    try {
+                        if (iterator.hasNext()) {
+                            if (identifier.isClosed()) {
+                                // User cancelled fetching, discard subsequent bindings.
+                                Binding.clearSubsequent(iterator);
+                                processor.onComplete();
+                            } else {
+                                processor.onNext(iterator.next());
+                            }
+                        } else {
+                            processor.onComplete();
+                        }
+                    } catch (Throwable e) {
+                        processor.onError(e);
+                    }
+                };
 
                 processor.onNext(iterator.next());
 
                 // One binding may be leak when a emitted Result has been ignored, but Result should never be ignored.
                 // Subsequent bindings will auto-clear if subscribing has been cancelled.
-                return processor.concatMap(it -> execute0(client, context, sql, identifier, deprecateEof, it, fetchSize)
-                    .doOnComplete(() -> {
-                        if (processor.isCancelled() || processor.isTerminated()) {
-                            return;
-                        }
-
-                        try {
-                            if (iterator.hasNext()) {
-                                if (identifier.isClosed()) {
-                                    // User cancelled fetching, discard subsequent bindings.
-                                    discardBindings(iterator);
-                                    processor.onComplete();
-                                } else {
-                                    processor.onNext(iterator.next());
-                                }
-                            } else {
-                                processor.onComplete();
-                            }
-                        } catch (Throwable e) {
-                            processor.onError(e);
-                        }
-                    }))
-                    .doOnCancel(() -> discardBindings(iterator))
-                    .doOnError(ignored -> discardBindings(iterator))
+                return processor.concatMap(it -> execute0(client, context, sql, identifier, deprecateEof, it, fetchSize).doOnComplete(complete))
+                    .doOnCancel(() -> Binding.clearSubsequent(iterator))
+                    .doOnError(ignored -> Binding.clearSubsequent(iterator))
                     .windowUntil(RESULT_DONE);
         }
     }
@@ -324,41 +324,18 @@ final class QueryFlow {
             }));
     }
 
-    private static Flux<ServerMessage> selfEmitter(Collection<String> statements, Client client) {
+    private static Flux<ServerMessage> selfEmitter(List<String> statements, Client client) {
         if (statements.isEmpty()) {
             return Flux.empty();
         }
 
         Iterator<String> iter = statements.iterator();
         EmitterProcessor<String> processor = EmitterProcessor.create(1, true);
+        Runnable complete = () -> OperatorUtils.emitIterator(processor, iter);
 
         processor.onNext(iter.next());
 
-        return processor.concatMap(it -> {
-            Flux<ServerMessage> responses = execute0(client, it);
-
-            return responses.doOnComplete(() -> {
-                if (processor.isCancelled() || processor.isTerminated()) {
-                    return;
-                }
-
-                try {
-                    if (iter.hasNext()) {
-                        processor.onNext(iter.next());
-                    } else {
-                        processor.onComplete();
-                    }
-                } catch (Throwable e) {
-                    processor.onError(e);
-                }
-            });
-        });
-    }
-
-    private static void discardBindings(Iterator<Binding> iterator) {
-        while (iterator.hasNext()) {
-            iterator.next().clear();
-        }
+        return processor.concatMap(it -> execute0(client, it).doOnComplete(complete));
     }
 
     private static final class TakeOne implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>> {

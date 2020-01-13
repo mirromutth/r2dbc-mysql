@@ -150,7 +150,7 @@ abstract class Query {
      * @param offset the offset to start searching.
      * @return the offset or a negative integer if not found.
      */
-    static int findParamMark(CharSequence sql, int offset) {
+    private static int findParamMark(CharSequence sql, int offset) {
         int length = sql.length();
         char ch;
 

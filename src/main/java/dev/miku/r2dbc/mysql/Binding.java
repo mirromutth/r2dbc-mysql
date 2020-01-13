@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
+import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -29,10 +30,9 @@ import java.util.function.Consumer;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * A collection of {@link ParameterValue} for one bind invocation of a prepared statement.
- * Bindings for MySQL are index-based.
+ * A collection of {@link ParameterValue} for one bind invocation of a parametrized statement.
  *
- * @see PrepareParametrizedStatement
+ * @see ParametrizedStatementSupport
  */
 final class Binding {
 
@@ -66,36 +66,45 @@ final class Binding {
      * @return an execute message or open cursor message
      */
     PreparedExecuteMessage toMessage(int statementId, boolean immediate) {
-        if (this.values.length == 0) {
+        if (values.length == 0) {
             return new PreparedExecuteMessage(statementId, immediate, EMPTY_VALUES);
         }
 
-        ParameterValue[] values = new ParameterValue[this.values.length];
+        if (values[0] == null) {
+            throw new IllegalStateException("Parameters has been used");
+        }
 
-        System.arraycopy(this.values, 0, values, 0, this.values.length);
-        Arrays.fill(this.values, null);
-
-        return new PreparedExecuteMessage(statementId, immediate, values);
+        return new PreparedExecuteMessage(statementId, immediate, drainValues());
     }
 
     Mono<String> toSql(List<String> sqlParts) {
-        return Mono.defer(() -> {
-            int size = sqlParts.size() - 1;
+        // No need defer, because it must be called by inner of Publisher processing.
+        int size = sqlParts.size() - 1;
 
-            if (values.length != size) {
-                clear();
-                return Mono.error(new IllegalArgumentException(String.format("The number of parameter should be %d, but was %d", size, values.length)));
-            }
+        if (values.length != size || size == 0) {
+            clear();
+            return Mono.error(new IllegalArgumentException("The number of parameter should be " + size + ", but was " + values.length));
+        }
 
+        if (values[0] == null) {
+            return Mono.error(new IllegalStateException("Parameters has been used"));
+        }
+
+        try {
             StringBuilder builder = new StringBuilder();
             Iterator<String> iter = sqlParts.iterator();
             Consumer<Object> step = ignored -> builder.append(iter.next());
 
-            return Flux.fromArray(values)
-                .doOnSubscribe(step)
+            builder.append(iter.next());
+
+            return OperatorUtils.discardOnCancel(Flux.fromArray(drainValues()))
+                .doOnDiscard(ParameterValue.class, ParameterValue.DISPOSE)
                 .concatMap(it -> it.writeTo(builder).doOnSuccess(step))
                 .then(Mono.fromSupplier(builder::toString));
-        });
+        } catch (Throwable e) {
+            clear();
+            throw e;
+        }
     }
 
     /**
@@ -104,9 +113,11 @@ final class Binding {
     void clear() {
         int size = this.values.length;
         for (int i = 0; i < size; ++i) {
-            if (this.values[i] != null) {
-                this.values[i].dispose();
-                this.values[i] = null;
+            ParameterValue value = this.values[i];
+            this.values[i] = null;
+
+            if (value != null) {
+                value.dispose();
             }
         }
     }
@@ -145,5 +156,20 @@ final class Binding {
     @Override
     public String toString() {
         return String.format("Binding{values=%s}", Arrays.toString(values));
+    }
+
+    private ParameterValue[] drainValues() {
+        ParameterValue[] results = new ParameterValue[this.values.length];
+
+        System.arraycopy(this.values, 0, results, 0, this.values.length);
+        Arrays.fill(this.values, null);
+
+        return results;
+    }
+
+    static void clearSubsequent(Iterator<Binding> iterator) {
+        while (iterator.hasNext()) {
+            iterator.next().clear();
+        }
     }
 }

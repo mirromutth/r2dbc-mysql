@@ -587,7 +587,7 @@ public final class ParameterWriter {
     static Publisher<ByteBuf> publish(ByteBuf prefix, ParameterValue[] values) {
         ParameterWriter writer = new ParameterWriter(prefix);
         return OperatorUtils.discardOnCancel(Flux.fromArray(values))
-            .doOnDiscard(ParameterValue.class, ParameterValue::dispose)
+            .doOnDiscard(ParameterValue.class, ParameterValue.DISPOSE)
             .concatMap(param -> param.writeTo(writer))
             .doOnError(ignored -> writer.dispose())
             .thenMany(writer.allBuffers());
