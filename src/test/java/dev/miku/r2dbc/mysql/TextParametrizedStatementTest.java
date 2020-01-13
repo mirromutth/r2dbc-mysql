@@ -21,14 +21,12 @@ import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 
-import java.lang.reflect.Field;
-
 import static org.mockito.Mockito.mock;
 
 /**
- * Unit tests for {@link PrepareParametrizedStatement}.
+ * Unit tests for {@link TextParametrizedStatement}.
  */
-class PrepareParametrizedStatementTest implements StatementTestSupport<PrepareParametrizedStatement> {
+class TextParametrizedStatementTest implements StatementTestSupport<TextParametrizedStatement> {
 
     private final Client client = mock(Client.class);
 
@@ -36,20 +34,14 @@ class PrepareParametrizedStatementTest implements StatementTestSupport<PreparePa
 
     private final Codecs codecs = Codecs.getInstance();
 
-    private final Field fetchSize = PrepareParametrizedStatement.class.getDeclaredField("fetchSize");
-
-    PrepareParametrizedStatementTest() throws NoSuchFieldException {
-        fetchSize.setAccessible(true);
+    @Override
+    public void fetchSize() {
+        // No-op
     }
 
     @Override
-    public int getFetchSize(PrepareParametrizedStatement statement) throws IllegalAccessException {
-        return fetchSize.getInt(statement);
-    }
-
-    @Override
-    public PrepareParametrizedStatement makeInstance(String parametrizedSql, String simpleSql) {
-        return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) Query.parse(parametrizedSql, true), true);
+    public TextParametrizedStatement makeInstance(String parametrizedSql, String simpleSql) {
+        return new TextParametrizedStatement(client, codecs, context, (TextQuery) Query.parse(parametrizedSql, false));
     }
 
     @Override
