@@ -63,16 +63,16 @@
         <jsr305.version>3.0.2</jsr305.version>
         <junit.version>5.5.2</junit.version>
         <logback.version>1.2.3</logback.version>
-        <mockito.version>3.1.0</mockito.version>
-        <mysql.version>8.0.18</mysql.version>
+        <mockito.version>3.2.4</mockito.version>
+        <mysql.version>8.0.19</mysql.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <r2dbc-spi.version>0.8.0.RELEASE</r2dbc-spi.version>
-        <reactor.version>Dysprosium-SR2</reactor.version>
-        <slf4j.version>1.7.29</slf4j.version>
-        <testcontainers.version>1.12.3</testcontainers.version>
-        <hikari-cp.version>3.4.1</hikari-cp.version>
-        <spring-framework.version>5.2.1.RELEASE</spring-framework.version>
+        <reactor.version>Dysprosium-SR3</reactor.version>
+        <slf4j.version>1.7.30</slf4j.version>
+        <testcontainers.version>1.12.4</testcontainers.version>
+        <hikari-cp.version>3.4.2</hikari-cp.version>
+        <spring-framework.version>5.2.2.RELEASE</spring-framework.version>
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
