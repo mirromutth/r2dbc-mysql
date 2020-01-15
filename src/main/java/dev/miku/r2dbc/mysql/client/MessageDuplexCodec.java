@@ -169,12 +169,12 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             PreparedOkMessage message = (PreparedOkMessage) msg;
             int columns = message.getTotalColumns();
             int parameters = message.getTotalParameters();
-            boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
 
             // For supports use server-preparing query for simple statements. The count of columns and
-            // parameters may all be 0, then EOF message following when EOF does not be deprecated.
+            // parameters may all be 0. All is 0 means no EOF message following.
             // columns + parameters > 0
-            if (columns > -parameters || !deprecateEof) {
+            if (columns > -parameters) {
+                boolean deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
                 setDecodeContext(DecodeContext.preparedMetadata(deprecateEof, columns, parameters));
             } else {
                 setDecodeContext(DecodeContext.command());

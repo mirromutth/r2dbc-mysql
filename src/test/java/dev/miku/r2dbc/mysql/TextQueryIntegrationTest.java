@@ -17,13 +17,11 @@
 package dev.miku.r2dbc.mysql;
 
 /**
- * An implementation of {@link MySqlTestKitSupport} for MySQL 5.7.
+ * Integration tests for {@link SimpleQuery}, {@link TextSimpleStatement} and {@link TextParametrizedStatement}.
  */
-final class MySql57TestKit extends MySqlTestKitSupport {
+class TextQueryIntegrationTest extends QueryIntegrationTestSupport {
 
-    static final MySqlConnectionConfiguration CONFIGURATION = getConfiguration(3570);
-
-    MySql57TestKit() {
-        super(CONFIGURATION);
+    TextQueryIntegrationTest() {
+        super(configuration(null));
     }
 }

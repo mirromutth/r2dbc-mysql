@@ -56,20 +56,12 @@ class EnumCodecTest implements CodecTestSupport<Enum<?>, NormalFieldValue, Class
 
     private enum SomeElement {
 
-        $$$$ {
+        $$$$,
+        A1B2;
 
-            @Override
-            public String toString() {
-                throw new IllegalStateException("Special enum class, can not to string");
-            }
-        },
-
-        A1B2 {
-
-            @Override
-            public String toString() {
-                throw new IllegalStateException("Special enum class, can not to string");
-            }
-        },
+        @Override
+        public final String toString() {
+            throw new IllegalStateException("Special enum class, can not to string");
+        }
     }
 }
