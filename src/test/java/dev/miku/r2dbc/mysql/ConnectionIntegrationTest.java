@@ -28,7 +28,6 @@ import static io.r2dbc.spi.IsolationLevel.REPEATABLE_READ;
 import static io.r2dbc.spi.IsolationLevel.SERIALIZABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -83,16 +82,6 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
     @Test
     void rollbackTransactionWithoutBegin() {
         complete(MySqlConnection::rollbackTransaction);
-    }
-
-    @Test
-    void rejectInvalidSavepoint() {
-        // TODO: rewrite it to MySqlConnectionTest
-        complete(connection -> {
-            assertThrows(IllegalArgumentException.class, () -> connection.createSavepoint(""));
-            assertThrows(IllegalArgumentException.class, () -> connection.createSavepoint("`"));
-            return Mono.empty();
-        });
     }
 
     @Test

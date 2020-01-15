@@ -116,14 +116,20 @@ public final class MySqlConnection implements Connection {
      */
     private volatile IsolationLevel currentLevel;
 
-    private MySqlConnection(Client client, ConnectionContext context, Codecs codecs, InitData data, @Nullable Predicate<String> prepare) {
+    /**
+     * Visible for unit tests.
+     */
+    MySqlConnection(
+        Client client, ConnectionContext context, Codecs codecs, IsolationLevel level,
+        @Nullable String product, @Nullable Predicate<String> prepare
+    ) {
         this.client = client;
         this.context = context;
         this.deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
-        this.sessionLevel = data.level;
-        this.currentLevel = data.level;
+        this.sessionLevel = level;
+        this.currentLevel = level;
         this.codecs = codecs;
-        this.metadata = new MySqlConnectionMetadata(context.getServerVersion().toString(), data.product);
+        this.metadata = new MySqlConnectionMetadata(context.getServerVersion().toString(), product);
         this.batchSupported = (context.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
         this.prepare = prepare;
 
@@ -389,7 +395,7 @@ public final class MySqlConnection implements Connection {
             .execute()
             .flatMap(INIT_HANDLER)
             .last()
-            .map(data -> new MySqlConnection(client, context, codecs, data, prepare));
+            .map(data -> new MySqlConnection(client, context, codecs, data.level, data.product, prepare));
     }
 
     private static IsolationLevel convertIsolationLevel(@Nullable String name) {
