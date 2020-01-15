@@ -48,7 +48,7 @@ final class MySqlSyntheticBatch extends MySqlBatch {
 
     @Override
     public MySqlBatch add(String sql) {
-        statements.add(sql);
+        statements.add(requireNonNull(sql, "sql must not be null"));
         return this;
     }
 
