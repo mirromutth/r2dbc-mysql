@@ -33,17 +33,17 @@ import java.util.stream.Collectors;
 class SetCodecTest implements CodecTestSupport<Set<?>, NormalFieldValue, ParameterizedType> {
 
     private final Set<?>[] sets = {
-        EnumSet.allOf(ToStr.class),
-        EnumSet.noneOf(ToStr.class),
+        EnumSet.allOf(SomeElement.class),
+        EnumSet.noneOf(SomeElement.class),
         EnumSet.allOf(CaseFormat.class),
         EnumSet.of(CaseFormat.LOWER_UNDERSCORE, CaseFormat.LOWER_HYPHEN),
         Collections.emptySet(),
         Collections.singleton(""),
-        Collections.singleton(ToStr.GOOD),
+        Collections.singleton(SomeElement.GOOD),
         Collections.singleton("\r\n\0\032\\'\"\u00a5\u20a9"),
         new HashSet<>(Arrays.asList("Hello", "world!")),
         new HashSet<>(Arrays.asList("", "")),
-        new HashSet<>(Arrays.asList(ToStr.GOOD, ToStr.NICE)),
+        new HashSet<>(Arrays.asList(SomeElement.GOOD, SomeElement.NICE)),
         new HashSet<>(Arrays.asList("Hello", "R2DBC", "MySQL")),
     };
 
@@ -70,22 +70,14 @@ class SetCodecTest implements CodecTestSupport<Set<?>, NormalFieldValue, Paramet
         return results;
     }
 
-    private enum ToStr {
+    private enum SomeElement {
 
-        GOOD {
+        GOOD,
+        NICE;
 
-            @Override
-            public String toString() {
-                throw new IllegalStateException("Special enum class, can not to string");
-            }
-        },
-
-        NICE {
-
-            @Override
-            public String toString() {
-                throw new IllegalStateException("Special enum class, can not to string");
-            }
-        },
+        @Override
+        public final String toString() {
+            throw new IllegalStateException("Special enum class, can not to string");
+        }
     }
 }

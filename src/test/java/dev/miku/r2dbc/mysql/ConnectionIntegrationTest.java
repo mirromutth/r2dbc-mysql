@@ -16,37 +16,28 @@
 
 package dev.miku.r2dbc.mysql;
 
-import io.r2dbc.spi.IsolationLevel;
 import org.junit.jupiter.api.Test;
-import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 import java.util.Arrays;
-import java.util.function.Function;
 
+import static io.r2dbc.spi.IsolationLevel.READ_COMMITTED;
+import static io.r2dbc.spi.IsolationLevel.READ_UNCOMMITTED;
+import static io.r2dbc.spi.IsolationLevel.REPEATABLE_READ;
+import static io.r2dbc.spi.IsolationLevel.SERIALIZABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Base class considers integration unit tests for {@link MySqlConnection}.
+ * Integration tests for {@link MySqlConnection}.
  */
-abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
+class ConnectionIntegrationTest extends IntegrationTestSupport {
 
-    ConnectionIntegrationTestSupport(MySqlConnectionConfiguration configuration) {
-        super(configuration);
-    }
-
-    /**
-     * See https://github.com/mirromutth/r2dbc-mysql/issues/45 .
-     */
-    @Test
-    void selectFromOtherDatabase() {
-        complete(connection -> Flux.from(connection.createStatement("SELECT * FROM `information_schema`.`innodb_trx`").execute())
-            .flatMap(result -> result.map((row, metadata) -> row.get(0))));
+    ConnectionIntegrationTest() {
+        super(configuration(null));
     }
 
     @Test
@@ -63,7 +54,7 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
     }
 
     @Test
-    void isAutoCommit() {
+    void transactionIsAutoCommit() {
         complete(connection -> Mono.<Void>fromRunnable(() -> assertTrue(connection.isAutoCommit()))
             .then(connection.beginTransaction())
             .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
@@ -72,6 +63,15 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
             .then(connection.beginTransaction())
             .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
             .then(connection.rollbackTransaction())
+            .doOnSuccess(ignored -> assertTrue(connection.isAutoCommit())));
+    }
+
+    @Test
+    void setAutoCommit() {
+        complete(connection -> Mono.<Void>fromRunnable(() -> assertTrue(connection.isAutoCommit()))
+            .then(connection.setAutoCommit(false))
+            .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
+            .then(connection.setAutoCommit(true))
             .doOnSuccess(ignored -> assertTrue(connection.isAutoCommit())));
     }
 
@@ -87,6 +87,7 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
 
     @Test
     void rejectInvalidSavepoint() {
+        // TODO: rewrite it to MySqlConnectionTest
         complete(connection -> {
             assertThrows(IllegalArgumentException.class, () -> connection.createSavepoint(""));
             assertThrows(IllegalArgumentException.class, () -> connection.createSavepoint("`"));
@@ -96,28 +97,14 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
 
     @Test
     void setTransactionIsolationLevel() {
-        complete(connection -> connection.setTransactionIsolationLevel(IsolationLevel.READ_COMMITTED));
-    }
-
-    @Test
-    void foundRows() {
-        connectionFactory.create()
-            .flatMapMany(connection -> Flux.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
-                .execute())
-                .flatMap(IntegrationTestSupport::extractRowsUpdated)
-                .thenMany(connection.createStatement("INSERT INTO test VALUES(DEFAULT,10)").execute())
-                .flatMap(IntegrationTestSupport::extractRowsUpdated)
-                .thenMany(connection.createStatement("UPDATE test SET value=10 WHERE id=1").execute())
-                .flatMap(IntegrationTestSupport::extractRowsUpdated)
-                .concatWith(close(connection))
-            )
-            .as(StepVerifier::create)
-            .expectNext(1)
-            .verifyComplete();
+        complete(connection -> Flux.just(READ_UNCOMMITTED, READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE)
+            .concatMap(level -> connection.setTransactionIsolationLevel(level)
+                .doOnSuccess(ignored -> assertEquals(connection.getTransactionIsolationLevel(), level))));
     }
 
     @Test
     void batchCrud() {
+        // TODO: spilt it to multiple test cases and move it to BatchIntegrationTest
         String isEven = "id % 2 = 0";
         String isOdd = "id % 2 = 1";
         String firstData = "first-data";
@@ -179,16 +166,6 @@ abstract class ConnectionIntegrationTestSupport extends IntegrationTestSupport {
                 .doOnNext(deleted -> assertEquals(deleted, Arrays.asList(3, 2)))
                 .then();
         });
-    }
-
-    private void complete(Function<? super MySqlConnection, Publisher<?>> runner) {
-        connectionFactory.create()
-            .flatMap(connection -> Flux.from(runner.apply(connection))
-                .onErrorResume(e -> close(connection).then(Mono.error(e)))
-                .concatWith(close(connection))
-                .then())
-            .as(StepVerifier::create)
-            .verifyComplete();
     }
 
     private static String formattedSelect(String condition) {

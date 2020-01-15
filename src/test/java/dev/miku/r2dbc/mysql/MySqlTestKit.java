@@ -24,17 +24,19 @@ import java.time.Duration;
 import java.util.Optional;
 
 /**
- * Base class considers implementations of {@link TestKit}.
+ * An implementation of {@link TestKit}.
  */
-abstract class MySqlTestKitSupport implements TestKit<String> {
+class MySqlTestKit implements TestKit<String> {
 
     private final MySqlConnectionFactory connectionFactory;
 
     private final JdbcTemplate jdbcOperations;
 
-    MySqlTestKitSupport(MySqlConnectionConfiguration configuration) {
+    MySqlTestKit() {
+        MySqlConnectionConfiguration configuration = IntegrationTestSupport.configuration(null);
+
         this.connectionFactory = MySqlConnectionFactory.from(configuration);
-        this.jdbcOperations = getJdbc(configuration);
+        this.jdbcOperations = jdbc(configuration);
     }
 
     @Override
@@ -72,24 +74,7 @@ abstract class MySqlTestKitSupport implements TestKit<String> {
         return "TEXT";
     }
 
-    static MySqlConnectionConfiguration getConfiguration(int port) {
-        String password = System.getProperty("mysql.root.password");
-
-        if (password == null) {
-            throw new IllegalStateException("Password not found");
-        }
-
-        return MySqlConnectionConfiguration.builder()
-            .host("127.0.0.1")
-            .port(port)
-            .connectTimeout(Duration.ofSeconds(3))
-            .username("root")
-            .password(password)
-            .database("r2dbc")
-            .build();
-    }
-
-    private static JdbcTemplate getJdbc(MySqlConnectionConfiguration configuration) {
+    private static JdbcTemplate jdbc(MySqlConnectionConfiguration configuration) {
         HikariDataSource source = new HikariDataSource();
 
         source.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s", configuration.getDomain(), configuration.getPort(), configuration.getDatabase()));
