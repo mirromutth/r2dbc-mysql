@@ -18,4 +18,4 @@ jobs:
         with:
           java-version: 1.8
       - name: Unit test with Maven
-        run: mvn test -B -Dgpg.skip=true -Dmaven.javadoc.skip=true
+        run: mvn test -B -Dgpg.skip=true -Dmaven.javadoc.skip=true -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN
