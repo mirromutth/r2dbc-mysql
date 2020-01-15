@@ -1,4 +1,4 @@
-name: Integrate MySQL 5.6
+name: MySQL 5.7
 
 on:
   pull_request:
@@ -16,11 +16,11 @@ jobs:
           java-version: 1.8
       - name: Shutdown the Default MySQL
         run: sudo service mysql stop
-      - name: Set up MySQL 5.6
+      - name: Set up MySQL 5.7
         uses: mirromutth/mysql-action@v1.1
         with:
-          mysql version: 5.6
+          mysql version: 5.7
           mysql database: r2dbc
           mysql root password: ${{ secrets.DatabasePassword }}
-      - name: Integration test with MySQL 5.6
-        run: mvn verify -B -Dgpg.skip=true -Dmaven.javadoc.skip=true -Dmaven.surefire.skip=true -Dtest.mysql.password=${{ secrets.DatabasePassword }} -Dtest.mysql.version=5.6 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN
+      - name: Integration test with MySQL 5.7
+        run: mvn verify -B -Dgpg.skip=true -Dmaven.javadoc.skip=true -Dmaven.surefire.skip=true -Dtest.mysql.password=${{ secrets.DatabasePassword }} -Dtest.mysql.version=5.7 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN

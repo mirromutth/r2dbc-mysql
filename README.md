@@ -3,10 +3,6 @@
 [![Maven Central](https://img.shields.io/maven-central/v/dev.miku/r2dbc-mysql?color=green&label=Maven%20Central)](https://search.maven.org/search?q=g:%22dev.miku%22%20AND%20a:%22r2dbc-mysql%22)
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Unit tests status](https://github.com/mirromutth/r2dbc-mysql/workflows/Unit%20tests/badge.svg)][actions]
-[![Integration MySQL 5.5 status](https://github.com/mirromutth/r2dbc-mysql/workflows/Integrate%20MySQL%205.5/badge.svg)][actions]
-[![Integration MySQL 5.6 status](https://github.com/mirromutth/r2dbc-mysql/workflows/Integrate%20MySQL%205.6/badge.svg)][actions]
-[![Integration MySQL 5.7 status](https://github.com/mirromutth/r2dbc-mysql/workflows/Integrate%20MySQL%205.7/badge.svg)][actions]
-[![Integration MySQL 8.0 status](https://github.com/mirromutth/r2dbc-mysql/workflows/Integrate%20MySQL%208.0/badge.svg)][actions]
 
 This project contains the [MySQL][m] implementation of the [R2DBC SPI](https://github.com/r2dbc/r2dbc-spi).
 This implementation is not intended to be used directly, but rather to be
@@ -15,11 +11,9 @@ delegate to. See [R2DBC Homepage](https://r2dbc.io).
 
 This driver provides the following features:
 
-- [x] Support MySQL database server versions between 5.5 to 8.x.
 - [x] Unix domain socket.
-- [x] Login with username/password (or no password)
-- [x] Execution of simple or batch statements without bindings (MySQL use text result for simple or batch statements).
-- [x] Execution of prepared statements with bindings (MySQL use binary result for prepared statements).
+- [x] Execution of simple or batch statements without bindings.
+- [x] Execution of prepared statements with bindings.
 - [x] Reactive LOB types (e.g. BLOB, CLOB)
 - [x] All charsets from MySQL, like `utf8mb4_0900_ai_ci`, `latin1_general_ci`, `utf32_unicode_520_ci`, etc.
 - [x] All authentication types for MySQL, like `caching_sha2_password`, `mysql_native_password`, etc.
@@ -29,6 +23,17 @@ This driver provides the following features:
 - [x] Native ping command that can be verifying when argument is `ValidationDepth.REMOTE`
 - [ ] Prepared statements cache.
 - [ ] Statement parser cache.
+
+## Version compatibility / Integration tests states
+
+[![MySQL 5.5 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.5/badge.svg)][actions]
+[![MySQL 5.6 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.6/badge.svg)][actions]
+[![MySQL 5.7 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.7/badge.svg)][actions]
+[![MySQL 8.0 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%208.0/badge.svg)][actions]
+
+In fact, it supports lower versions, in the theory, such as 4.1, 4.0, etc.
+
+But, Docker-certified images do not have these versions lower than 5.5.0, so tests are not integrated on these versions.
 
 ## Maven
 
