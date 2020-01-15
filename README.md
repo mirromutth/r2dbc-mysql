@@ -2,7 +2,7 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.miku/r2dbc-mysql?color=green&label=Maven%20Central)](https://search.maven.org/search?q=g:%22dev.miku%22%20AND%20a:%22r2dbc-mysql%22)
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Unit tests status](https://github.com/mirromutth/r2dbc-mysql/workflows/Unit%20tests/badge.svg)][actions]
+[![Unit tests status](https://github.com/mirromutth/r2dbc-mysql/workflows/Unit%20tests/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22Unit+tests%22)
 
 This project contains the [MySQL][m] implementation of the [R2DBC SPI](https://github.com/r2dbc/r2dbc-spi).
 This implementation is not intended to be used directly, but rather to be
@@ -26,10 +26,10 @@ This driver provides the following features:
 
 ## Version compatibility / Integration tests states
 
-[![MySQL 5.5 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.5/badge.svg)][actions]
-[![MySQL 5.6 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.6/badge.svg)][actions]
-[![MySQL 5.7 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.7/badge.svg)][actions]
-[![MySQL 8.0 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%208.0/badge.svg)][actions]
+[![MySQL 5.5 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.5/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.5%22)
+[![MySQL 5.6 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.6/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.6%22)
+[![MySQL 5.7 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.7/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.7%22)
+[![MySQL 8.0 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%208.0/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22MySQL+8.0%22)
 
 In fact, it supports lower versions, in the theory, such as 4.1, 4.0, etc.
 
@@ -346,7 +346,6 @@ If you want to raise an issue, please follow the recommendations below:
 This project is released under version 2.0 of the [Apache License](https://www.apache.org/licenses/LICENSE-2.0).
 
 [m]: https://www.mysql.com
-[actions]: https://github.com/mirromutth/r2dbc-mysql/actions
 [java-BigDecimal-ref]: https://docs.oracle.com/javase/8/docs/api/java/math/BigDecimal.html
 [java-BigInteger-ref]: https://docs.oracle.com/javase/8/docs/api/java/math/BigInteger.html
 [java-BitSet-ref]: https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html
