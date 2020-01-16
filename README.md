@@ -332,14 +332,13 @@ If you want to raise an issue, please follow the recommendations below:
 
 ## Before use
 
-- MySQL database does **NOT** support **table definition** in a prepared statement, please use simple statement if want to execute table definitions.
 - The MySQL data fields encoded by index-based natively, get fields by index will have **better** performance than get by column name.
 - Each `Result` should be used (call `getRowsUpdated` or `map`, even table definition), can **NOT** just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
-- The MySQL returns microseconds &amp; milliseconds when only in prepared statement result (and maybe contains not microsecond &amp; milliseconds even in prepared statement results). Therefore this driver does not guarantee decoded `LocalDateTime`s precisions contain milliseconds.
+- The MySQL returns microseconds &amp; milliseconds when only in prepared queries' result (and maybe contains not even in these results). Therefore this driver does not guarantee decoded `LocalDateTime`s contain more precision than seconds.
 - The MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
 - Should not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
 - If `Statement` bound `returnGeneratedValues`, the `Result` of the `Statement` can be called both: `getRowsUpdated` to get affected rows, and `map` to get last inserted ID.
-- The MySQL may be not support search rows by binary field, like `BIT` or `BLOB`, because those data fields maybe just an address of reference in MySQL server, or maybe need strict bit-aligned. (but `VARBINARY` is OK)
+- The MySQL may be not support search rows by binary field, like `BIT`, `BLOB` and `JSON`, because those data fields maybe just an address of reference in MySQL server, or maybe need strict bit-aligned. (but `VARBINARY` is OK)
 
 ## License
 
