@@ -25,7 +25,9 @@ import org.junit.jupiter.api.Test;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.time.Duration;
+import java.util.function.Predicate;
 
+import static dev.miku.r2dbc.mysql.MySqlConnectionFactoryProvider.USE_SERVER_PREPARE_STATEMENT;
 import static io.r2dbc.spi.ConnectionFactoryOptions.CONNECT_TIMEOUT;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
 import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
@@ -57,6 +59,7 @@ class MySqlConnectionFactoryProviderTest {
             "r2dbcs:mysql://root:123456@127.0.0.1:3306/r2dbc?" +
                 "zeroDate=use_round&" +
                 "sslMode=verify_identity&" +
+                "serverPreparing=true" +
                 String.format("tlsVersion=%s&", URLEncoder.encode("TLSv1.1,TLSv1.2,TLSv1.3", "UTF-8")) +
                 String.format("sslCa=%s&", URLEncoder.encode("/path/to/ca.pem", "UTF-8")) +
                 String.format("sslKey=%s&", URLEncoder.encode("/path/to/client-key.pem", "UTF-8")) +
@@ -184,5 +187,96 @@ class MySqlConnectionFactoryProviderTest {
                     .contains("sslMode");
             }
         }
+    }
+
+    @Test
+    void serverPreparing() {
+        ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(USE_SERVER_PREPARE_STATEMENT, AllTruePredicate.class.getTypeName())
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(USE_SERVER_PREPARE_STATEMENT, "true")
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(USE_SERVER_PREPARE_STATEMENT, "false")
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(USE_SERVER_PREPARE_STATEMENT, AllTruePredicate.INSTANCE)
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(USE_SERVER_PREPARE_STATEMENT, true)
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+
+        options = ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(USE_SERVER_PREPARE_STATEMENT, false)
+            .build();
+
+        assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
+    }
+
+    @Test
+    void invalidServerPreparing() {
+        assertThrows(IllegalArgumentException.class, () -> ConnectionFactories.get(ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(USE_SERVER_PREPARE_STATEMENT, NotPredicate.class.getTypeName())
+            .build()));
+
+        assertThrows(IllegalArgumentException.class, () -> ConnectionFactories.get(ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(USER, "root")
+            .option(USE_SERVER_PREPARE_STATEMENT, NotPredicate.class.getPackage() + "NonePredicate")
+            .build()));
+    }
+}
+
+final class AllTruePredicate implements Predicate<String> {
+
+    static final Predicate<String> INSTANCE = new AllTruePredicate();
+
+    @Override
+    public boolean test(String s) {
+        return true;
+    }
+}
+
+final class NotPredicate {
+
+    public boolean test(String s) {
+        return s.length() > 0;
     }
 }

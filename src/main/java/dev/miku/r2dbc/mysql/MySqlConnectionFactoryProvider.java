@@ -23,6 +23,8 @@ import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
 
+import java.util.function.Predicate;
+
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static io.r2dbc.spi.ConnectionFactoryOptions.CONNECT_TIMEOUT;
@@ -60,6 +62,9 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
 
     public static final Option<String> SSL_CERT = Option.valueOf("sslCert");
 
+    public static final Option<Object> USE_SERVER_PREPARE_STATEMENT = Option.valueOf("useServerPrepareStatement");
+
+    @SuppressWarnings("unchecked")
     @Override
     public ConnectionFactory create(ConnectionFactoryOptions options) {
         requireNonNull(options, "connectionFactoryOptions must not be null");
@@ -110,6 +115,31 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.unixSocket(unixSocket);
         }
 
+        Object serverPreparing = options.getValue(USE_SERVER_PREPARE_STATEMENT);
+
+        if (serverPreparing != null) {
+            // Convert stringify option.
+            if (serverPreparing instanceof String) {
+                String value = (String) serverPreparing;
+
+                if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+                    serverPreparing = Boolean.parseBoolean(value);
+                } else {
+                    serverPreparing = convertPredicate(value);
+                }
+            }
+
+            if (serverPreparing instanceof Boolean) {
+                if ((Boolean) serverPreparing) {
+                    builder.useServerPrepareStatement();
+                } else {
+                    builder.useClientPrepareStatement();
+                }
+            } else if (serverPreparing instanceof Predicate<?>) {
+                builder.useServerPrepareStatement((Predicate<String>) serverPreparing);
+            }
+        }
+
         MySqlConnectionConfiguration configuration = builder.username(options.getRequiredValue(USER))
             .password(options.getValue(PASSWORD))
             .connectTimeout(options.getValue(CONNECT_TIMEOUT))
@@ -129,5 +159,20 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     @Override
     public String getDriver() {
         return MYSQL_DRIVER;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Predicate<String> convertPredicate(String className) {
+        try {
+            Class<?> type = Class.forName(className);
+
+            if (Predicate.class.isAssignableFrom(type)) {
+                return (Predicate<String>) type.newInstance();
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Cannot instantiate '" + className + "'", e);
+        }
+
+        throw new IllegalArgumentException("Value '" + className + "' must be an instance of Predicate");
     }
 }
