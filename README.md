@@ -41,7 +41,7 @@ But, Docker-certified images do not have these versions lower than 5.5.0, so tes
 <dependency>
     <groupId>dev.miku</groupId>
     <artifactId>r2dbc-mysql</artifactId>
-    <version>0.8.0.RELEASE</version>
+    <version>0.8.1.RELEASE</version>
 </dependency>
 ```
 
@@ -70,7 +70,7 @@ If you'd rather like the latest snapshots of the upcoming major version, use Son
 
 ```groovy
 dependencies {
-    implementation 'dev.miku:r2dbc-mysql:0.8.0.RELEASE'
+    implementation 'dev.miku:r2dbc-mysql:0.8.1.RELEASE'
 }
 ```
 
@@ -79,7 +79,7 @@ dependencies {
 ```kotlin
 dependencies {
     // Maybe should to use `compile` instead of `implementation` on the lower version of Gradle.
-    implementation("dev.miku:r2dbc-mysql:0.8.0.RELEASE")
+    implementation("dev.miku:r2dbc-mysql:0.8.1.RELEASE")
 }
 ```
 
@@ -95,6 +95,7 @@ ConnectionFactory connectionFactory = ConnectionFactories.get(
     "r2dbcs:mysql://root:database-password-in-here@127.0.0.1:3306/r2dbc?" +
     "zeroDate=use_round&" +
     "sslMode=verify_identity&" +
+    "useServerPrepareStatement=true&" +
     "tlsVersion=TLSv1.1%2CTLSv1.2%2CTLSv1.3&" +
     "sslCa=%2Fpath%2Fto%2Fmysql%2Fca.pem&" +
     "sslKey=%2Fpath%2Fto%2Fmysql%2Fclient-key.pem&" +
@@ -134,6 +135,7 @@ ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
     .option(Option.valueOf("sslKeyPassword"), "key-pem-password-in-here") // optional, default null, null means has no password for client key (i.e. "sslKey")
     .option(Option.valueOf("tlsVersion"), "TLSv1.1,TLSv1.2,TLSv1.3") // optional, default is auto-selected by the server
     .option(Option.valueOf("zeroDate"), "use_null") // optional, default "use_null"
+    .option(Option.valueOf("useServerPrepareStatement"), true) // optional, default false
     .build();
 ConnectionFactory connectionFactory = ConnectionFactories.get(options);
 
@@ -170,6 +172,7 @@ MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builde
     .sslKeyAndCert("/path/to/mysql/client-cert.pem", "/path/to/mysql/client-key.pem", "key-pem-password-in-here") // optional, default has no client key and cert
     .tlsVersion(TlsVersions.TLS1_1, TlsVersions.TLS1_2, TlsVersions.TLS1_3) // optional, default is auto-selected by the server
     .zeroDateOption(ZeroDateOption.USE_NULL) // optional, default ZeroDateOption.USE_NULL
+    .useServerPrepareStatement() // Use server-preparing statements, default use client-preparing statements
     .build();
 ConnectionFactory connectionFactory = MySqlConnectionFactory.from(configuration);
 
@@ -222,9 +225,13 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
   - `TLS1_2` (i.e. "TLSv1.2"): Supported only in Community Edition `8.0.4` or higher, otherwise in Enterprise Edition `5.6.0` or higher
   - `TLS1_3` (i.e. "TLSv1.3"): Supported only available as of MySQL `8.0.16` or higher, and requires compiling MySQL using OpenSSL `1.1.1` or higher
 - `ZeroDateOption`: Considers special handling when MySQL database server returning "zero date" (i.e. `0000-00-00 00:00:00`)
-  - `EXCEPTION`: Just throw a exception when MySQL database server return "zero date".
-  - `USE_NULL`: Use `null` when MySQL database server return "zero date".
-  - `USE_ROUND`: **NOT** RECOMMENDED, only for compatibility. Use "round" date (i.e. `0001-01-01 00:00:00`) when MySQL database server return "zero date".
+  - `EXCEPTION`: Just throw a exception when MySQL database server return "zero date"
+  - `USE_NULL`: Use `null` when MySQL database server return "zero date"
+  - `USE_ROUND`: **NOT** RECOMMENDED, only for compatibility. Use "round" date (i.e. `0001-01-01 00:00:00`) when MySQL database server return "zero date"
+- Prepare Statement: Considers based on server-preparing or client-preparing, some database server maybe not support server-preparing binary-query, such as Vitess
+  - `useClientPrepareStatement()`: default preparing mode, use client-preparing text-query for parametrized statements
+  - `useServerPrepareStatement()`: use server-preparing binary-query for parametrized statements
+  - `useServerPrepareStatement(Predicate<String>)`: use server-preparing binary-query for parametrized statements, and enforce server-preparing usage for simple query (not parametrized statements). The usage is judged by `Predicate`, it's parameter is the simple SQL statement, enforce server-preparing if return `true`
 
 Should use `enum` in [Programmatic](#programmatic-configuration) configuration that not like discovery configurations, except `TlsVersions` (All elements of `TlsVersions` will be always `String` which is case sensitive).
 
@@ -334,7 +341,7 @@ If you want to raise an issue, please follow the recommendations below:
 
 - The MySQL data fields encoded by index-based natively, get fields by index will have **better** performance than get by column name.
 - Each `Result` should be used (call `getRowsUpdated` or `map`, even table definition), can **NOT** just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
-- The MySQL returns microseconds &amp; milliseconds when only in prepared queries' result (and maybe contains not even in these results). Therefore this driver does not guarantee decoded `LocalDateTime`s contain more precision than seconds.
+- The MySQL returns microseconds &amp; milliseconds when only in server-preparing queries' result (and maybe contains not even in these results). Therefore this driver does not guarantee decoded `LocalDateTime`s contain more precision than seconds.
 - The MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
 - Should not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
 - If `Statement` bound `returnGeneratedValues`, the `Result` of the `Statement` can be called both: `getRowsUpdated` to get affected rows, and `map` to get last inserted ID.

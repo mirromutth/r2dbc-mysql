@@ -1,5 +1,21 @@
 # R2DBC MySQL Changelog
 
+## 0.8.1.RELEASE
+
+### New features
+
+- Added client-preparing parametrized statements supporting.
+- Added server-preparing simple statements supporting.
+
+### Features change
+
+- Changed parametrized statements to client-preparing.
+
+### Fixed bugs
+
+- Fixed decoding of `AuthChangeMessage`.
+- Fixed capabilities for affect rows. Now the count of affect rows is found/touched rows instead of changed rows.
+
 ## 0.8.0.RELEASE
 
 ### New features
