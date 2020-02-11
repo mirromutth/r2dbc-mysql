@@ -56,23 +56,23 @@
     </scm>
 
     <properties>
-        <assertj.version>3.14.0</assertj.version>
+        <assertj.version>3.15.0</assertj.version>
         <java.version>1.8</java.version>
         <mbr.version>0.2.0.RELEASE</mbr.version>
-        <jmh.version>1.22</jmh.version>
+        <jmh.version>1.23</jmh.version>
         <jsr305.version>3.0.2</jsr305.version>
-        <junit.version>5.5.2</junit.version>
+        <junit.version>5.6.0</junit.version>
         <logback.version>1.2.3</logback.version>
         <mockito.version>3.2.4</mockito.version>
         <mysql.version>8.0.19</mysql.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <r2dbc-spi.version>0.8.0.RELEASE</r2dbc-spi.version>
-        <reactor.version>Dysprosium-SR3</reactor.version>
+        <r2dbc-spi.version>0.8.1.RELEASE</r2dbc-spi.version>
+        <reactor.version>Dysprosium-SR4</reactor.version>
         <slf4j.version>1.7.30</slf4j.version>
-        <testcontainers.version>1.12.4</testcontainers.version>
+        <testcontainers.version>1.12.5</testcontainers.version>
         <hikari-cp.version>3.4.2</hikari-cp.version>
-        <spring-framework.version>5.2.2.RELEASE</spring-framework.version>
+        <spring-framework.version>5.2.3.RELEASE</spring-framework.version>
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.surefire.skip>false</maven.surefire.skip>
     </properties>
