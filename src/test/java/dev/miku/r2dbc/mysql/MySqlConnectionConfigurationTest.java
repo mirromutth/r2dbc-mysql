@@ -19,15 +19,19 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.TlsVersions;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import io.netty.handler.ssl.SslContextBuilder;
 import org.assertj.core.api.ObjectAssert;
+import org.assertj.core.api.ThrowableTypeAssert;
 import org.junit.jupiter.api.Test;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * Unit tests for {@link MySqlConnectionConfiguration}.
@@ -44,17 +48,20 @@ class MySqlConnectionConfigurationTest {
 
     @Test
     void invalid() {
-        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().build());
-        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().host(HOST).build());
-        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().unixSocket(UNIX_SOCKET).build());
-        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().username(USERNAME).build());
+        ThrowableTypeAssert<?> asserted = assertThatIllegalArgumentException();
+
+        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().build());
+        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().build());
+        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().host(HOST).build());
+        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().unixSocket(UNIX_SOCKET).build());
+        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().username(USERNAME).build());
     }
 
     @Test
     void unixSocket() {
         for (SslMode mode : SslMode.values()) {
             if (mode.startSsl()) {
-                assertThat(assertThrows(IllegalArgumentException.class, () -> unixSocketSslMode(mode)).getMessage()).contains("sslMode");
+                assertThatIllegalArgumentException().isThrownBy(() -> unixSocketSslMode(mode)).withMessageContaining("sslMode");
             } else {
                 assertThat(unixSocketSslMode(SslMode.DISABLED)).isNotNull();
             }
@@ -74,8 +81,7 @@ class MySqlConnectionConfigurationTest {
     void hosted() {
         for (SslMode mode : SslMode.values()) {
             if (mode.verifyCertificate()) {
-                assertThat(assertThrows(IllegalArgumentException.class, () -> hostedSslMode(mode, null)).getMessage())
-                    .contains("sslCa");
+                assertThatIllegalArgumentException().isThrownBy(() -> hostedSslMode(mode, null)).withMessageContaining("sslCa");
                 assertThat(hostedSslMode(mode, SSL_CA)).isNotNull();
             } else {
                 assertThat(hostedSslMode(mode, null)).isNotNull();
@@ -93,9 +99,11 @@ class MySqlConnectionConfigurationTest {
     }
 
     @Test
-    void outOfPortRange() {
-        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().port(-1));
-        assertThrows(IllegalArgumentException.class, () -> MySqlConnectionConfiguration.builder().port(65536));
+    void invalidPort() {
+        ThrowableTypeAssert<?> asserted = assertThatIllegalArgumentException();
+
+        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().port(-1));
+        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().port(65536));
     }
 
     @Test
@@ -106,6 +114,32 @@ class MySqlConnectionConfigurationTest {
     @Test
     void isEquals() {
         assertThat(filledUp()).isEqualTo(filledUp()).extracting(Objects::hashCode).isEqualTo(filledUp().hashCode());
+    }
+
+    @Test
+    void sslContextBuilderCustomizer() {
+        String message = "Worked!";
+        Function<SslContextBuilder, SslContextBuilder> customizer = ignored -> {
+            throw new IllegalStateException(message);
+        };
+        MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builder()
+            .host(HOST)
+            .username(USERNAME)
+            .sslMode(SslMode.REQUIRED)
+            .sslContextBuilderCustomizer(customizer)
+            .build();
+
+        assertThatIllegalStateException()
+            .isThrownBy(() -> configuration.getSsl().customizeSslContext(SslContextBuilder.forClient()))
+            .withMessage(message);
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    @Test
+    void invalidSslContextBuilderCustomizer() {
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> MySqlConnectionConfiguration.builder().sslContextBuilderCustomizer(null))
+            .withMessageContaining("sslContextBuilderCustomizer");
     }
 
     private static MySqlConnectionConfiguration unixSocketSslMode(SslMode sslMode) {

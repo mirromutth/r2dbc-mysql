@@ -18,11 +18,13 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import io.netty.handler.ssl.SslContextBuilder;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
 
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
@@ -61,6 +63,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public static final Option<CharSequence> SSL_KEY_PASSWORD = Option.sensitiveValueOf("sslKeyPassword");
 
     public static final Option<String> SSL_CERT = Option.valueOf("sslCert");
+
+    public static final Option<Object> SSL_CONTEXT_BUILDER_CUSTOMIZER = Option.valueOf("sslContextBuilderCustomizer");
 
     public static final Option<Object> USE_SERVER_PREPARE_STATEMENT = Option.valueOf("useServerPrepareStatement");
 
@@ -105,6 +109,17 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.sslKeyAndCert(sslCert, sslKey, sslKeyPassword);
         }
 
+        Object sslContextBuilderCustomizer = options.getValue(SSL_CONTEXT_BUILDER_CUSTOMIZER);
+        if (sslContextBuilderCustomizer != null) {
+            if (sslContextBuilderCustomizer instanceof String) {
+                sslContextBuilderCustomizer = newInstance((String) sslContextBuilderCustomizer, Function.class);
+            }
+
+            require(sslContextBuilderCustomizer instanceof Function<?, ?>, "sslContextBuilderCustomizer must be Function");
+
+            builder.sslContextBuilderCustomizer((Function<SslContextBuilder, SslContextBuilder>) sslContextBuilderCustomizer);
+        }
+
         String unixSocket = options.getValue(UNIX_SOCKET);
         String host = options.getValue(HOST);
         if (unixSocket == null) {
@@ -125,7 +140,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
                 if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
                     serverPreparing = Boolean.parseBoolean(value);
                 } else {
-                    serverPreparing = convertPredicate(value);
+                    serverPreparing = newInstance(value, Predicate.class);
                 }
             }
 
@@ -137,6 +152,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
                 }
             } else if (serverPreparing instanceof Predicate<?>) {
                 builder.useServerPrepareStatement((Predicate<String>) serverPreparing);
+            } else {
+                throw new IllegalArgumentException("useServerPrepareStatement must be boolean or Predicate");
             }
         }
 
@@ -162,17 +179,17 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     }
 
     @SuppressWarnings("unchecked")
-    private static Predicate<String> convertPredicate(String className) {
+    private static <T> T newInstance(String className, Class<T> target) {
         try {
             Class<?> type = Class.forName(className);
 
-            if (Predicate.class.isAssignableFrom(type)) {
-                return (Predicate<String>) type.newInstance();
+            if (target.isAssignableFrom(type)) {
+                return (T) type.newInstance();
             }
         } catch (ReflectiveOperationException e) {
             throw new IllegalArgumentException("Cannot instantiate '" + className + "'", e);
         }
 
-        throw new IllegalArgumentException("Value '" + className + "' must be an instance of Predicate");
+        throw new IllegalArgumentException("Value '" + className + "' must be an instance of " + target.getSimpleName());
     }
 }

@@ -18,10 +18,12 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import io.netty.handler.ssl.SslContextBuilder;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
@@ -210,6 +212,9 @@ public final class MySqlConnectionConfiguration {
         private String sslCert;
 
         @Nullable
+        private Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer;
+
+        @Nullable
         private Predicate<String> preferPrepareStatement;
 
         private Builder() {
@@ -226,7 +231,7 @@ public final class MySqlConnectionConfiguration {
                 require(!sslMode.startSsl(), "sslMode must be disabled when using unix domain socket");
             }
 
-            MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert);
+            MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
             return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database, preferPrepareStatement);
         }
 
@@ -309,6 +314,13 @@ public final class MySqlConnectionConfiguration {
             this.sslCert = sslCert;
             this.sslKey = sslKey;
             this.sslKeyPassword = sslKeyPassword;
+            return this;
+        }
+
+        public Builder sslContextBuilderCustomizer(Function<SslContextBuilder, SslContextBuilder> customizer) {
+            requireNonNull(customizer, "sslContextBuilderCustomizer must not be null");
+
+            this.sslContextBuilderCustomizer = customizer;
             return this;
         }
 

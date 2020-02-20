@@ -27,8 +27,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
-
 /**
  * A collection of {@link ParameterValue} for one bind invocation of a parametrized statement.
  *
