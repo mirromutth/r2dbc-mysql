@@ -17,10 +17,12 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.constant.SslMode;
+import io.netty.handler.ssl.SslContextBuilder;
 import reactor.util.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.Function;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
@@ -31,7 +33,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlSslConfiguration {
 
-    private static final MySqlSslConfiguration DISABLED = new MySqlSslConfiguration(SslMode.DISABLED, EMPTY_STRINGS, null, null, null, null);
+    private static final MySqlSslConfiguration DISABLED = new MySqlSslConfiguration(SslMode.DISABLED, EMPTY_STRINGS, null, null, null, null, null);
 
     private final SslMode sslMode;
 
@@ -49,13 +51,21 @@ public final class MySqlSslConfiguration {
     @Nullable
     private final String sslCert;
 
-    private MySqlSslConfiguration(SslMode sslMode, String[] tlsVersion, @Nullable String sslCa, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert) {
+    @Nullable
+    private final Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer;
+
+    private MySqlSslConfiguration(
+        SslMode sslMode, String[] tlsVersion, @Nullable String sslCa,
+        @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert,
+        @Nullable Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer
+    ) {
         this.sslMode = sslMode;
         this.tlsVersion = tlsVersion;
         this.sslCa = sslCa;
         this.sslKey = sslKey;
         this.sslKeyPassword = sslKeyPassword;
         this.sslCert = sslCert;
+        this.sslContextBuilderCustomizer = sslContextBuilderCustomizer;
     }
 
     public SslMode getSslMode() {
@@ -86,6 +96,14 @@ public final class MySqlSslConfiguration {
         return sslCert;
     }
 
+    public SslContextBuilder customizeSslContext(SslContextBuilder builder) {
+        if (sslContextBuilderCustomizer == null) {
+            return builder;
+        }
+
+        return sslContextBuilderCustomizer.apply(builder);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -100,12 +118,13 @@ public final class MySqlSslConfiguration {
             Objects.equals(sslCa, that.sslCa) &&
             Objects.equals(sslKey, that.sslKey) &&
             Objects.equals(sslKeyPassword, that.sslKeyPassword) &&
-            Objects.equals(sslCert, that.sslCert);
+            Objects.equals(sslCert, that.sslCert) &&
+            Objects.equals(sslContextBuilderCustomizer, that.sslContextBuilderCustomizer);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(sslMode, sslCa, sslKey, sslKeyPassword, sslCert);
+        int result = Objects.hash(sslMode, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
         result = 31 * result + Arrays.hashCode(tlsVersion);
         return result;
     }
@@ -113,8 +132,8 @@ public final class MySqlSslConfiguration {
     @Override
     public String toString() {
         if (sslMode.startSsl()) {
-            return String.format("MySqlSslConfiguration{sslMode=%s, tlsVersion=%s, sslCa='%s', sslKey='%s', sslKeyPassword=REDACTED, sslCert='%s'}",
-                sslMode, Arrays.toString(tlsVersion), sslCa, sslKey, sslCert);
+            return String.format("MySqlSslConfiguration{sslMode=%s, tlsVersion=%s, sslCa='%s', sslKey='%s', sslKeyPassword=REDACTED, sslCert='%s', sslContextBuilderCustomizer=%s}",
+                sslMode, Arrays.toString(tlsVersion), sslCa, sslKey, sslCert, sslContextBuilderCustomizer);
         }
 
         return "DISABLED";
@@ -124,7 +143,11 @@ public final class MySqlSslConfiguration {
         return DISABLED;
     }
 
-    static MySqlSslConfiguration create(SslMode sslMode, String[] tlsVersion, @Nullable String sslCa, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert) {
+    static MySqlSslConfiguration create(
+        SslMode sslMode, String[] tlsVersion, @Nullable String sslCa,
+        @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert,
+        @Nullable Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer
+    ) {
         requireNonNull(sslMode, "sslMode must not be null");
 
         if (!sslMode.startSsl()) {
@@ -135,6 +158,6 @@ public final class MySqlSslConfiguration {
         require(!sslMode.verifyCertificate() || sslCa != null, "sslCa must not be null when verifying mode has set");
         require((sslKey == null && sslCert == null) || (sslKey != null && sslCert != null), "sslKey and cert must be both null or both non-null");
 
-        return new MySqlSslConfiguration(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert);
+        return new MySqlSslConfiguration(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
     }
 }

@@ -179,7 +179,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }
 
-        return builder;
+        return ssl.customizeSslContext(builder);
     }
 
     private static SslContextBuilder withTlsVersion(SslContextBuilder builder, MySqlSslConfiguration ssl, ServerVersion version) {
