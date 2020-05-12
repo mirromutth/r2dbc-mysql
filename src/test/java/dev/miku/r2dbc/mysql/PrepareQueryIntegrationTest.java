@@ -16,10 +16,14 @@
 
 package dev.miku.r2dbc.mysql;
 
+import com.mysql.cj.MysqlConnection;
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -42,6 +46,8 @@ class PrepareQueryIntegrationTest extends QueryIntegrationTestSupport {
                 .bind(1, 2)
                 .execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated));
+
+        Function<? super MySqlConnection, Flux<MySqlResult>> runner= connection ->  (connection.createStatement(tdl).execute());
     }
 
     @Test
