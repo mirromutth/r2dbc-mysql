@@ -20,6 +20,7 @@ import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
@@ -28,7 +29,7 @@ import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
  */
 final class MultiBlob extends MultiLob<ByteBuffer> implements Blob {
 
-    MultiBlob(ByteBuf[] buffers) {
+    MultiBlob(List<ByteBuf> buffers) {
         super(buffers);
     }
 

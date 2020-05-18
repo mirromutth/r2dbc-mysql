@@ -18,11 +18,13 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
+
+import java.lang.reflect.Type;
 
 /**
  * Codec for {@link byte}.
@@ -36,11 +38,11 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    public Byte decode(NormalFieldValue value, FieldInformation info, Class<? super Byte> target, boolean binary, ConnectionContext context) {
+    public Byte decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         if (binary) {
-            return value.getBufferSlice().readByte();
+            return value.readByte();
         } else {
-            return (byte) IntegerCodec.parse(value.getBufferSlice());
+            return (byte) IntegerCodec.parse(value);
         }
     }
 

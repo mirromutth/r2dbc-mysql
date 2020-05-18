@@ -14,26 +14,11 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.codec;
-
-import reactor.util.annotation.Nullable;
-
 /**
- * A field information considers column metadata necessary by decode.
+ * The header of envelopes (MySQL packets).
  */
-public interface FieldInformation {
 
-    /**
-     * @return the id of MySQL data types, see {@code DataTypes}.
-     */
-    short getType();
+@NonNullApi
+package dev.miku.r2dbc.mysql.message.header;
 
-    short getDefinitions();
-
-    int getCollationId();
-
-    long getSize();
-
-    @Nullable
-    Class<?> getJavaType();
-}
+import reactor.util.annotation.NonNullApi;

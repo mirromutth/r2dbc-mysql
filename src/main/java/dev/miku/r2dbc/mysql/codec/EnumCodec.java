@@ -18,12 +18,11 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.Type;
@@ -32,24 +31,23 @@ import java.nio.charset.Charset;
 /**
  * Codec for {@code enum class}.
  */
-final class EnumCodec implements Codec<Enum<?>, NormalFieldValue, Class<?>> {
+final class EnumCodec implements Codec<Enum<?>> {
 
     static final EnumCodec INSTANCE = new EnumCodec();
 
     private EnumCodec() {
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public Enum<?> decode(NormalFieldValue value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Enum<?> decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        Enum<?> e = Enum.valueOf((Class<Enum>) target, value.getBufferSlice().toString(charset));
-        return e;
+        return Enum.valueOf((Class<Enum>) target, value.toString(charset));
     }
 
     @Override
-    public boolean canDecode(FieldValue value, FieldInformation info, Type target) {
-        if (DataTypes.ENUMERABLE == info.getType() && target instanceof Class<?> && value instanceof NormalFieldValue) {
+    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
+        if (DataTypes.ENUMERABLE == info.getType() && target instanceof Class<?> && !massive) {
             return ((Class<?>) target).isEnum();
         }
 

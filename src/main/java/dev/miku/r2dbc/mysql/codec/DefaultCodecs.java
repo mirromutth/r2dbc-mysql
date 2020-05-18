@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
@@ -33,49 +34,16 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class DefaultCodecs implements Codecs {
 
-    static final DefaultCodecs INSTANCE = new DefaultCodecs(
-        ByteCodec.INSTANCE,
-        ShortCodec.INSTANCE,
-        IntegerCodec.INSTANCE,
-        LongCodec.INSTANCE,
-        BigIntegerCodec.INSTANCE,
+    private final Codec<?>[] codecs;
 
-        BigDecimalCodec.INSTANCE, // Only all decimals
-        FloatCodec.INSTANCE, // Decimal (precision < 7) or float
-        DoubleCodec.INSTANCE, // Decimal (precision < 16) or double or float
+    private final Map<Type, PrimitiveCodec<?>> primitiveCodecs;
 
-        BooleanCodec.INSTANCE,
-        BitSetCodec.INSTANCE,
-
-        LocalDateTimeCodec.INSTANCE,
-        LocalDateCodec.INSTANCE,
-        LocalTimeCodec.INSTANCE,
-        DurationCodec.INSTANCE,
-        YearCodec.INSTANCE,
-
-        StringCodec.INSTANCE,
-
-        EnumCodec.INSTANCE,
-        SetCodec.INSTANCE,
-        StringArrayCodec.INSTANCE,
-
-        ClobCodec.INSTANCE,
-        BlobCodec.INSTANCE,
-
-        ByteBufferCodec.INSTANCE,
-        ByteArrayCodec.INSTANCE
-    );
-
-    private final Codec<?, ?, ?>[] codecs;
-
-    private final Map<Class<?>, PrimitiveCodec<?>> primitiveCodecs;
-
-    private DefaultCodecs(Codec<?, ?, ?>... codecs) {
+    private DefaultCodecs(Codec<?>... codecs) {
         this.codecs = requireNonNull(codecs, "codecs must not be null");
 
-        Map<Class<?>, PrimitiveCodec<?>> primitiveCodecs = new HashMap<>();
+        Map<Type, PrimitiveCodec<?>> primitiveCodecs = new HashMap<>();
 
-        for (Codec<?, ?, ?> codec : codecs) {
+        for (Codec<?> codec : codecs) {
             if (codec instanceof PrimitiveCodec<?>) {
                 PrimitiveCodec<?> c = (PrimitiveCodec<?>) codec;
                 primitiveCodecs.put(c.getPrimitiveClass(), c);
@@ -105,15 +73,13 @@ final class DefaultCodecs implements Codecs {
             }
 
             @SuppressWarnings("unchecked")
-            Class<T> targetClass = (Class<T>) target;
-            @SuppressWarnings("unchecked")
-            PrimitiveCodec<T> codec = (PrimitiveCodec<T>) this.primitiveCodecs.get(targetClass);
+            PrimitiveCodec<T> codec = (PrimitiveCodec<T>) this.primitiveCodecs.get(target);
 
             if (codec != null && value instanceof NormalFieldValue && codec.canPrimitiveDecode(info)) {
-                return codec.decode((NormalFieldValue) value, info, targetClass, binary, context);
+                return codec.decode(((NormalFieldValue) value).getBufferSlice(), info, target, binary, context);
             } else {
-                // Primitive mismatch, no `Codec` support this primitive class.
-                throw new IllegalArgumentException(String.format("Cannot decode value of type %s for type %d", targetClass, info.getType()));
+                // Mismatch, no one else can support this primitive class.
+                throw new IllegalArgumentException(String.format("Cannot decode %s of %s for type %d", value.getClass().getSimpleName(), target, info.getType()));
             }
         }
 
@@ -121,15 +87,26 @@ final class DefaultCodecs implements Codecs {
             return null;
         }
 
-        for (Codec<?, ?, ?> codec : codecs) {
-            if (codec.canDecode(value, info, target)) {
+        boolean massive = value instanceof LargeFieldValue;
+
+        if (!massive && !(value instanceof NormalFieldValue)) {
+            throw new IllegalArgumentException("Unknown value " + value.getClass().getSimpleName());
+        }
+
+        for (Codec<?> codec : codecs) {
+            if (codec.canDecode(massive, info, target)) {
                 @SuppressWarnings("unchecked")
-                Codec<T, ? super FieldValue, ? super Type> c = (Codec<T, ? super FieldValue, ? super Type>) codec;
-                return c.decode(value, info, target, binary, context);
+                Codec<T> c = (Codec<T>) codec;
+
+                if (massive) {
+                    return c.decodeMassive(((LargeFieldValue) value).getBufferSlices(), info, target, binary, context);
+                } else {
+                    return c.decode(((NormalFieldValue) value).getBufferSlice(), info, target, binary, context);
+                }
             }
         }
 
-        throw new IllegalArgumentException(String.format("Cannot decode value of type %s for type %d with collation %d", target, info.getType(), info.getCollationId()));
+        throw new IllegalArgumentException(String.format("Cannot decode %s of type %s for type %d with collation %d", value.getClass().getSimpleName(), target, info.getType(), info.getCollationId()));
     }
 
     @SuppressWarnings("unchecked")
@@ -173,7 +150,7 @@ final class DefaultCodecs implements Codecs {
         requireNonNull(value, "value must not be null");
         requireNonNull(context, "context must not be null");
 
-        for (Codec<?, ?, ?> codec : codecs) {
+        for (Codec<?> codec : codecs) {
             if (codec.canEncode(value)) {
                 return codec.encode(value, context);
             }
@@ -185,6 +162,41 @@ final class DefaultCodecs implements Codecs {
     @Override
     public ParameterValue encodeNull() {
         return NullParameterValue.INSTANCE;
+    }
+
+    static Codecs getDefault() {
+        return new DefaultCodecs(
+            ByteCodec.INSTANCE,
+            ShortCodec.INSTANCE,
+            IntegerCodec.INSTANCE,
+            LongCodec.INSTANCE,
+            BigIntegerCodec.INSTANCE,
+
+            BigDecimalCodec.INSTANCE, // Only all decimals
+            FloatCodec.INSTANCE, // Decimal (precision < 7) or float
+            DoubleCodec.INSTANCE, // Decimal (precision < 16) or double or float
+
+            BooleanCodec.INSTANCE,
+            BitSetCodec.INSTANCE,
+
+            LocalDateTimeCodec.INSTANCE,
+            LocalDateCodec.INSTANCE,
+            LocalTimeCodec.INSTANCE,
+            DurationCodec.INSTANCE,
+            YearCodec.INSTANCE,
+
+            StringCodec.INSTANCE,
+
+            EnumCodec.INSTANCE,
+            SetCodec.INSTANCE,
+            StringArrayCodec.INSTANCE,
+
+            ClobCodec.INSTANCE,
+            BlobCodec.INSTANCE,
+
+            ByteBufferCodec.INSTANCE,
+            ByteArrayCodec.INSTANCE
+        );
     }
 
     private static Type chooseTarget(FieldInformation info, Type target) {

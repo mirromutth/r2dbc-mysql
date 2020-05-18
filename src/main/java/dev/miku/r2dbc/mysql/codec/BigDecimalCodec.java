@@ -17,13 +17,13 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 
@@ -39,22 +39,20 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    public BigDecimal decode(NormalFieldValue value, FieldInformation info, Class<? super BigDecimal> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-
+    public BigDecimal decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         if (binary) {
             short type = info.getType();
 
             switch (type) {
                 case DataTypes.FLOAT:
-                    return BigDecimal.valueOf(buf.readFloatLE());
+                    return BigDecimal.valueOf(value.readFloatLE());
                 case DataTypes.DOUBLE:
-                    return BigDecimal.valueOf(buf.readDoubleLE());
+                    return BigDecimal.valueOf(value.readDoubleLE());
             }
             // Not float or double, is text-encoded yet.
         }
 
-        BigDecimal decimal = new BigDecimal(buf.toString(StandardCharsets.US_ASCII));
+        BigDecimal decimal = new BigDecimal(value.toString(StandardCharsets.US_ASCII));
 
         // Why Java has not BigDecimal.parseBigDecimal(String)?
         if (BigDecimal.ZERO.equals(decimal)) {

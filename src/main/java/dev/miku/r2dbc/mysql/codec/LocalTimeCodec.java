@@ -18,13 +18,13 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Type;
 import java.time.LocalTime;
 import java.util.concurrent.TimeUnit;
 
@@ -46,11 +46,11 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     @Override
-    public LocalTime decode(NormalFieldValue value, FieldInformation info, Class<? super LocalTime> target, boolean binary, ConnectionContext context) {
+    public LocalTime decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         if (binary) {
-            return decodeBinary(value.getBufferSlice());
+            return decodeBinary(value);
         } else {
-            return readTimeText(value.getBufferSlice());
+            return readTimeText(value);
         }
     }
 

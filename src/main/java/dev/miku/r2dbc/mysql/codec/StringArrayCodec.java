@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
@@ -27,6 +26,7 @@ import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.util.Iterator;
 import java.util.List;
@@ -45,21 +45,19 @@ final class StringArrayCodec extends AbstractClassedCodec<String[]> {
     }
 
     @Override
-    public String[] decode(NormalFieldValue value, FieldInformation info, Class<? super String[]> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-
-        if (!buf.isReadable()) {
+    public String[] decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        if (!value.isReadable()) {
             return EMPTY_STRINGS;
         }
 
-        int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
+        int firstComma = value.indexOf(value.readerIndex(), value.writerIndex(), (byte) ',');
         Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
 
         if (firstComma < 0) {
-            return new String[] { buf.toString(charset) };
+            return new String[] { value.toString(charset) };
         }
 
-        return buf.toString(charset).split(",");
+        return value.toString(charset).split(",");
     }
 
     @Override

@@ -18,8 +18,6 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
@@ -39,23 +37,21 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public Long decode(NormalFieldValue value, FieldInformation info, Class<? super Long> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-
+    public Long decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         if (binary) {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
-            return decodeBinary(buf, info.getType(), isUnsigned);
+            return decodeBinary(value, info.getType(), isUnsigned);
         } else {
             // Note: no check overflow for BIGINT UNSIGNED
-            return parse(buf);
+            return parse(value);
         }
     }
 
     @Override
-    public boolean canDecode(FieldValue value, FieldInformation info, Type target) {
+    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
         short type = info.getType();
 
-        if (!TypePredicates.isInt(type) || !(value instanceof NormalFieldValue) || !(target instanceof Class<?>)) {
+        if (!TypePredicates.isInt(type) || massive || !(target instanceof Class<?>)) {
             return false;
         }
 

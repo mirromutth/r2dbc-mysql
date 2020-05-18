@@ -16,12 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 /**
  * Base class considers primitive class for {@link Codec} implementations.
  */
-interface PrimitiveCodec<T> extends Codec<T, NormalFieldValue, Class<? super T>> {
+interface PrimitiveCodec<T> extends Codec<T> {
 
     boolean canPrimitiveDecode(FieldInformation info);
 

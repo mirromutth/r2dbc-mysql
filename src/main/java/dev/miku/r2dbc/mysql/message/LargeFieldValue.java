@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message;
 
+import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCountUtil;
@@ -40,7 +41,7 @@ public final class LargeFieldValue extends AbstractReferenceCounted implements F
         this.buffers = requireNonNull(buffers, "buffers must not be null");
     }
 
-    public ByteBuf[] getBufferSlices() {
+    public List<ByteBuf> getBufferSlices() {
         int size = this.buffers.size();
         ByteBuf[] buffers = new ByteBuf[size];
 
@@ -48,7 +49,7 @@ public final class LargeFieldValue extends AbstractReferenceCounted implements F
             buffers[i] = this.buffers.get(i).slice();
         }
 
-        return buffers;
+        return InternalArrays.asReadOnlyList(buffers);
     }
 
     @Override

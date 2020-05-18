@@ -19,19 +19,18 @@ package dev.miku.r2dbc.mysql.codec;
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.message.LargeFieldValue;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.Type;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -40,7 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>
  * Note: {@link Clob} will be written by {@code ParameterWriter} rather than {@link #encode}.
  */
-final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
+final class ClobCodec implements Codec<Clob> {
 
     static final ClobCodec INSTANCE = new ClobCodec();
 
@@ -48,22 +47,23 @@ final class ClobCodec implements Codec<Clob, FieldValue, Class<? super Clob>> {
     }
 
     @Override
-    public Clob decode(FieldValue value, FieldInformation info, Class<? super Clob> target, boolean binary, ConnectionContext context) {
+    public Clob decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
     }
 
     @Override
-    public boolean canDecode(FieldValue value, FieldInformation info, Type target) {
+    public Clob decodeMassive(List<ByteBuf> value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
+    }
+
+    @Override
+    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
         if (info.getCollationId() == CharCollation.BINARY_ID || !(target instanceof Class<?>)) {
             return false;
         }
 
         short type = info.getType();
         if (!TypePredicates.isLob(type) && DataTypes.JSON != type) {
-            return false;
-        }
-
-        if (!(value instanceof NormalFieldValue) && !(value instanceof LargeFieldValue)) {
             return false;
         }
 

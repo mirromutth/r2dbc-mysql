@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
@@ -26,6 +25,7 @@ import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
+import java.lang.reflect.Type;
 import java.time.LocalDate;
 
 /**
@@ -42,24 +42,23 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public LocalDate decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDate> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-        int index = buf.readerIndex();
-        int bytes = buf.readableBytes();
+    public LocalDate decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        int index = value.readerIndex();
+        int bytes = value.readableBytes();
 
         if (binary) {
-            LocalDate date = readDateBinary(buf, bytes);
+            LocalDate date = readDateBinary(value, bytes);
 
             if (date == null) {
-                return CodecDateUtils.handle(context.getZeroDateOption(), true, buf, index, bytes, ROUND);
+                return CodecDateUtils.handle(context.getZeroDateOption(), true, value, index, bytes, ROUND);
             } else {
                 return date;
             }
         } else {
-            LocalDate date = readDateText(buf);
+            LocalDate date = readDateText(value);
 
             if (date == null) {
-                return CodecDateUtils.handle(context.getZeroDateOption(), false, buf, index, bytes, ROUND);
+                return CodecDateUtils.handle(context.getZeroDateOption(), false, value, index, bytes, ROUND);
             }
 
             return date;
