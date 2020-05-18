@@ -18,19 +18,18 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.message.LargeFieldValue;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.Type;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -39,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>
  * Note: {@link Blob} will be written by {@code ParameterWriter} rather than {@link #encode}.
  */
-final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
+final class BlobCodec implements Codec<Blob> {
 
     static final BlobCodec INSTANCE = new BlobCodec();
 
@@ -47,22 +46,23 @@ final class BlobCodec implements Codec<Blob, FieldValue, Class<? super Blob>> {
     }
 
     @Override
-    public Blob decode(FieldValue value, FieldInformation info, Class<? super Blob> target, boolean binary, ConnectionContext context) {
+    public Blob decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         return LobUtils.createBlob(value);
     }
 
     @Override
-    public boolean canDecode(FieldValue value, FieldInformation info, Type target) {
+    public Blob decodeMassive(List<ByteBuf> value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        return LobUtils.createBlob(value);
+    }
+
+    @Override
+    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
         if (!(target instanceof Class<?>)) {
             return false;
         }
 
         short type = info.getType();
         if (!TypePredicates.isLob(type) && DataTypes.GEOMETRY != type) {
-            return false;
-        }
-
-        if (!(value instanceof NormalFieldValue) && !(value instanceof LargeFieldValue)) {
             return false;
         }
 

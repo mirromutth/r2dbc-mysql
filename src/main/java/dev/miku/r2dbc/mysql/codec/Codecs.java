@@ -38,6 +38,6 @@ public interface Codecs {
     ParameterValue encodeNull();
 
     static Codecs getInstance() {
-        return DefaultCodecs.INSTANCE;
+        return DefaultCodecs.getDefault();
     }
 }

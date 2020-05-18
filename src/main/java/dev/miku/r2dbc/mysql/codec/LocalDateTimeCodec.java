@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
@@ -26,6 +25,7 @@ import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
+import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -45,24 +45,23 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
     }
 
     @Override
-    public LocalDateTime decode(NormalFieldValue value, FieldInformation info, Class<? super LocalDateTime> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-        int index = buf.readerIndex();
-        int bytes = buf.readableBytes();
+    public LocalDateTime decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        int index = value.readerIndex();
+        int bytes = value.readableBytes();
 
         if (binary) {
-            LocalDateTime dateTime = decodeBinary(buf, bytes);
+            LocalDateTime dateTime = decodeBinary(value, bytes);
 
             if (dateTime == null) {
-                return CodecDateUtils.handle(context.getZeroDateOption(), true, buf, index, bytes, ROUND);
+                return CodecDateUtils.handle(context.getZeroDateOption(), true, value, index, bytes, ROUND);
             } else {
                 return dateTime;
             }
         } else {
-            LocalDateTime dateTime = decodeText(buf);
+            LocalDateTime dateTime = decodeText(value);
 
             if (dateTime == null) {
-                return CodecDateUtils.handle(context.getZeroDateOption(), false, buf, index, bytes, ROUND);
+                return CodecDateUtils.handle(context.getZeroDateOption(), false, value, index, bytes, ROUND);
             }
 
             return dateTime;

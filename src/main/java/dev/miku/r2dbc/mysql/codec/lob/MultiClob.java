@@ -21,6 +21,8 @@ import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
 
+import java.util.List;
+
 /**
  * An implementation of {@link Clob} for multi-{@link ByteBuf}s.
  */
@@ -30,7 +32,7 @@ final class MultiClob extends MultiLob<CharSequence> implements Clob {
 
     private final ServerVersion version;
 
-    MultiClob(ByteBuf[] buffers, int collationId, ServerVersion version) {
+    MultiClob(List<ByteBuf> buffers, int collationId, ServerVersion version) {
         super(buffers);
 
         this.collationId = collationId;

@@ -61,7 +61,7 @@ interface CodecTestSupport<R, V extends FieldValue, T extends Type> {
         }
     }
 
-    Codec<R, V, T> getCodec();
+    Codec<R> getCodec();
 
     R[] originParameters();
 

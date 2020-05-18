@@ -17,15 +17,15 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Type;
 import java.util.Arrays;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
@@ -42,13 +42,12 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    public byte[] decode(NormalFieldValue value, FieldInformation info, Class<? super byte[]> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-
-        if (!buf.isReadable()) {
+    public byte[] decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        if (!value.isReadable()) {
             return EMPTY_BYTES;
         }
-        return ByteBufUtil.getBytes(buf);
+
+        return ByteBufUtil.getBytes(value);
     }
 
     @Override

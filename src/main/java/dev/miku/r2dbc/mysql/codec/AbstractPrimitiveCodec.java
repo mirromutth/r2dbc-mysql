@@ -16,9 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 import java.lang.reflect.Type;
 
 /**
@@ -40,8 +37,8 @@ abstract class AbstractPrimitiveCodec<T> implements PrimitiveCodec<T> {
     }
 
     @Override
-    public final boolean canDecode(FieldValue value, FieldInformation info, Type target) {
-        if (!(target instanceof Class<?>) || !(value instanceof NormalFieldValue)) {
+    public final boolean canDecode(boolean massive, FieldInformation info, Type target) {
+        if (!(target instanceof Class<?>) || massive) {
             return false;
         }
 

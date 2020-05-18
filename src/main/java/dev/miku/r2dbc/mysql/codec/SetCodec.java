@@ -18,8 +18,6 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
@@ -40,7 +38,7 @@ import java.util.function.Function;
 /**
  * Codec for {@link Set<String>} or {@link Set<Enum>}.
  */
-final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedType> {
+final class SetCodec implements Codec<Set<?>> {
 
     static final SetCodec INSTANCE = new SetCodec();
 
@@ -49,27 +47,25 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public Set<?> decode(NormalFieldValue value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-
-        if (!buf.isReadable()) {
+    public Set<?> decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        if (!value.isReadable()) {
             return Collections.emptySet();
         }
 
-        Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
+        Class<?> subClass = (Class<?>) ((ParameterizedType) target).getActualTypeArguments()[0];
         Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
-        int firstComma = buf.indexOf(buf.readerIndex(), buf.writerIndex(), (byte) ',');
+        int firstComma = value.indexOf(value.readerIndex(), value.writerIndex(), (byte) ',');
         boolean isEnum = subClass.isEnum();
 
         if (firstComma < 0) {
             if (isEnum) {
-                return Collections.singleton(Enum.valueOf((Class<Enum>) subClass, buf.toString(charset)));
+                return Collections.singleton(Enum.valueOf((Class<Enum>) subClass, value.toString(charset)));
             } else {
-                return Collections.singleton(buf.toString(charset));
+                return Collections.singleton(value.toString(charset));
             }
         }
 
-        Iterable<String> elements = new SplitIterable(buf, charset, firstComma);
+        Iterable<String> elements = new SplitIterable(value, charset, firstComma);
         Set<?> result = buildSet(subClass, isEnum);
 
         if (isEnum) {
@@ -88,8 +84,8 @@ final class SetCodec implements Codec<Set<?>, NormalFieldValue, ParameterizedTyp
     }
 
     @Override
-    public boolean canDecode(FieldValue value, FieldInformation info, Type target) {
-        if (DataTypes.SET != info.getType() || !(target instanceof ParameterizedType) || !(value instanceof NormalFieldValue)) {
+    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
+        if (DataTypes.SET != info.getType() || !(target instanceof ParameterizedType) || massive) {
             return false;
         }
 

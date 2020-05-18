@@ -18,13 +18,13 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
@@ -40,11 +40,11 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     }
 
     @Override
-    public Duration decode(NormalFieldValue value, FieldInformation info, Class<? super Duration> target, boolean binary, ConnectionContext context) {
+    public Duration decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         if (binary) {
-            return decodeBinary(value.getBufferSlice());
+            return decodeBinary(value);
         } else {
-            return decodeText(value.getBufferSlice());
+            return decodeText(value);
         }
     }
 

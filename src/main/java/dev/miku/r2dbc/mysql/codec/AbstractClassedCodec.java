@@ -24,7 +24,7 @@ import java.lang.reflect.Type;
 /**
  * Codec for classed type when field bytes less or equals than {@link Integer#MAX_VALUE}.
  */
-abstract class AbstractClassedCodec<T> implements Codec<T, NormalFieldValue, Class<? super T>> {
+abstract class AbstractClassedCodec<T> implements Codec<T> {
 
     private final Class<? extends T> clazz;
 
@@ -33,8 +33,8 @@ abstract class AbstractClassedCodec<T> implements Codec<T, NormalFieldValue, Cla
     }
 
     @Override
-    public final boolean canDecode(FieldValue value, FieldInformation info, Type target) {
-        if (!(target instanceof Class<?>) || !(value instanceof NormalFieldValue)) {
+    public final boolean canDecode(boolean massive, FieldInformation info, Type target) {
+        if (!(target instanceof Class<?>) || massive) {
             return false;
         }
 

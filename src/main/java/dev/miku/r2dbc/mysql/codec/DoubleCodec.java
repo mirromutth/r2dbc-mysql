@@ -17,13 +17,13 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -38,19 +38,17 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    public Double decode(NormalFieldValue value, FieldInformation info, Class<? super Double> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-
+    public Double decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         if (binary) {
             switch (info.getType()) {
                 case DataTypes.DOUBLE:
-                    return buf.readDoubleLE();
+                    return value.readDoubleLE();
                 case DataTypes.FLOAT:
-                    return (double) buf.readFloatLE();
+                    return (double) value.readFloatLE();
             }
             // DECIMAL and size less than 16, encoded by text.
         }
-        return Double.parseDouble(buf.toString(StandardCharsets.US_ASCII));
+        return Double.parseDouble(value.toString(StandardCharsets.US_ASCII));
     }
 
     @Override

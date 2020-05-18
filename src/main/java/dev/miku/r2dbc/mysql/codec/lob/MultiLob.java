@@ -22,6 +22,7 @@ import io.netty.util.ReferenceCountUtil;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -32,21 +33,21 @@ abstract class MultiLob<T> {
 
     private static final Consumer<ByteBuf> RELEASE = ByteBuf::release;
 
-    private final AtomicReference<ByteBuf[]> buffers;
+    private final AtomicReference<List<ByteBuf>> buffers;
 
-    MultiLob(ByteBuf[] buffers) {
+    MultiLob(List<ByteBuf> buffers) {
         this.buffers = new AtomicReference<>(buffers);
     }
 
     public final Flux<T> stream() {
         return Flux.defer(() -> {
-            ByteBuf[] buffers = this.buffers.getAndSet(null);
+            List<ByteBuf> buffers = this.buffers.getAndSet(null);
 
             if (buffers == null) {
                 return Flux.error(new IllegalStateException("Source has been released"));
             }
 
-            return OperatorUtils.discardOnCancel(Flux.fromArray(buffers))
+            return OperatorUtils.discardOnCancel(Flux.fromIterable(buffers))
                 .doOnDiscard(ByteBuf.class, RELEASE)
                 .map(this::consume);
         });
@@ -54,7 +55,7 @@ abstract class MultiLob<T> {
 
     public final Mono<Void> discard() {
         return Mono.fromRunnable(() -> {
-            ByteBuf[] buffers = this.buffers.getAndSet(null);
+            List<ByteBuf> buffers = this.buffers.getAndSet(null);
 
             if (buffers != null) {
                 for (ByteBuf buf : buffers) {

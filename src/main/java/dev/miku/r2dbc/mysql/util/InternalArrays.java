@@ -45,7 +45,7 @@ public final class InternalArrays {
     public static final String[] EMPTY_STRINGS = {};
 
     /**
-     * Wrap an array to a read only {@link List} without deep copy.
+     * Wrap an array to an immutable {@link List} without deep copy.
      * <p>
      * WARNING: make sure {@code a} will not be changed by other one.
      *

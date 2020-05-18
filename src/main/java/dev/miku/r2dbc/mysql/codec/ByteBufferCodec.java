@@ -17,14 +17,14 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
+import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
@@ -41,16 +41,14 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
     }
 
     @Override
-    public ByteBuffer decode(NormalFieldValue value, FieldInformation info, Class<? super ByteBuffer> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-
-        if (!buf.isReadable()) {
+    public ByteBuffer decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        if (!value.isReadable()) {
             return ByteBuffer.wrap(EMPTY_BYTES);
         }
 
-        ByteBuffer result = ByteBuffer.allocate(buf.readableBytes());
+        ByteBuffer result = ByteBuffer.allocate(value.readableBytes());
 
-        buf.readBytes(result);
+        value.readBytes(result);
         result.flip();
 
         return result;

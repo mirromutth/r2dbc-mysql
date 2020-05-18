@@ -18,12 +18,13 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
+
+import java.lang.reflect.Type;
 
 /**
  * Codec for {@link short}.
@@ -37,24 +38,23 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public Short decode(NormalFieldValue value, FieldInformation info, Class<? super Short> target, boolean binary, ConnectionContext context) {
+    public Short decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
         if (binary) {
-            ByteBuf buf = value.getBufferSlice();
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
             switch (info.getType()) {
                 case DataTypes.SMALLINT: // Already check overflow in `doCanDecode`
                 case DataTypes.YEAR:
-                    return buf.readShortLE();
+                    return value.readShortLE();
                 default: // TINYINT
                     if (isUnsigned) {
-                        return buf.readUnsignedByte();
+                        return value.readUnsignedByte();
                     } else {
-                        return (short) buf.readByte();
+                        return (short) value.readByte();
                     }
             }
         } else {
-            return (short) IntegerCodec.parse(value.getBufferSlice());
+            return (short) IntegerCodec.parse(value);
         }
     }
 

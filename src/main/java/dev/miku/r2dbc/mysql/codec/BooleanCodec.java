@@ -17,11 +17,13 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
+
+import java.lang.reflect.Type;
 
 /**
  * Codec for BIT, can convert to {@link boolean} if precision is 1.
@@ -35,8 +37,8 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public Boolean decode(NormalFieldValue value, FieldInformation info, Class<? super Boolean> target, boolean binary, ConnectionContext context) {
-        return value.getBufferSlice().readBoolean();
+    public Boolean decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        return value.readBoolean();
     }
 
     @Override

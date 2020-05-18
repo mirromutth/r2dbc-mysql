@@ -16,8 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
-import dev.miku.r2dbc.mysql.message.LargeFieldValue;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
@@ -45,7 +43,7 @@ class LobUtilsTest {
     void normalFieldValue() {
         ByteBuf buf = createSingle();
 
-        Flux.from(LobUtils.createBlob(new NormalFieldValue(buf)).stream())
+        Flux.from(LobUtils.createBlob(buf).stream())
             .as(StepVerifier::create)
             .expectNext(ByteBuffer.wrap(SINGLE.getBytes()))
             .verifyComplete();
@@ -60,7 +58,7 @@ class LobUtilsTest {
     void largeFieldValue() {
         List<ByteBuf> buffers = createMulti();
 
-        Flux.from(LobUtils.createBlob(new LargeFieldValue(buffers)).stream())
+        Flux.from(LobUtils.createBlob(buffers).stream())
             .as(StepVerifier::create)
             .expectNext(ByteBuffer.wrap(MULTI[0].getBytes()), ByteBuffer.wrap(MULTI[1].getBytes()), ByteBuffer.wrap(MULTI[2].getBytes()))
             .verifyComplete();
@@ -77,7 +75,7 @@ class LobUtilsTest {
     void consumePortion() {
         List<ByteBuf> buffers = createMulti();
 
-        Flux.from(LobUtils.createBlob(new LargeFieldValue(buffers)).stream())
+        Flux.from(LobUtils.createBlob(buffers).stream())
             .as(it -> StepVerifier.create(it, 2))
             .expectNext(ByteBuffer.wrap(MULTI[0].getBytes()), ByteBuffer.wrap(MULTI[1].getBytes()))
             .thenCancel()

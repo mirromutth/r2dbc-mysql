@@ -18,13 +18,14 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
+
+import java.lang.reflect.Type;
 
 /**
  * Codec for {@link String}.
@@ -38,14 +39,12 @@ final class StringCodec extends AbstractClassedCodec<String> {
     }
 
     @Override
-    public String decode(NormalFieldValue value, FieldInformation info, Class<? super String> target, boolean binary, ConnectionContext context) {
-        ByteBuf buf = value.getBufferSlice();
-
-        if (!buf.isReadable()) {
+    public String decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+        if (!value.isReadable()) {
             return "";
         }
 
-        return buf.toString(CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset());
+        return value.toString(CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset());
     }
 
     @Override
