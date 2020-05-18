@@ -16,8 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import java.lang.reflect.Type;
-
 /**
  * Codec for primitive types, like {@link int} or {@link double}.
  */
@@ -37,12 +35,12 @@ abstract class AbstractPrimitiveCodec<T> implements PrimitiveCodec<T> {
     }
 
     @Override
-    public final boolean canDecode(boolean massive, FieldInformation info, Type target) {
-        if (!(target instanceof Class<?>) || massive) {
+    public final boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
+        if (massive) {
             return false;
         }
 
-        return ((Class<?>) target).isAssignableFrom(boxedClass) && doCanDecode(info);
+        return target.isAssignableFrom(boxedClass) && doCanDecode(info);
     }
 
     @Override

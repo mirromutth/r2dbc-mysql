@@ -43,10 +43,9 @@ final class LazyInitCharCollation extends AbstractCharCollation {
                 if (cached == null) {
                     cached = target.getCharset();
                     this.cached = cached;
-                    return cached;
-                } else {
-                    return cached;
                 }
+
+                return cached;
             }
         }
 

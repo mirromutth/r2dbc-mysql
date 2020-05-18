@@ -23,8 +23,6 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
-
 /**
  * Codec for BIT, can convert to {@link boolean} if precision is 1.
  */
@@ -37,7 +35,7 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public Boolean decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Boolean decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         return value.readBoolean();
     }
 

@@ -17,13 +17,12 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.FieldValue;
+import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.r2dbc.spi.Row;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -55,12 +54,18 @@ public final class MySqlRow implements Row {
 
     @Override
     public <T> T get(int index, Class<T> type) {
-        return get0(index, type);
+        requireNonNull(type, "type must not be null");
+
+        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(index);
+        return codecs.decode(fields[index], info, type, binary, context);
     }
 
     @Override
     public <T> T get(String name, Class<T> type) {
-        return get0(name, type);
+        requireNonNull(type, "type must not be null");
+
+        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(name);
+        return codecs.decode(fields[info.getIndex()], info, type, binary, context);
     }
 
     /**
@@ -71,16 +76,6 @@ public final class MySqlRow implements Row {
      */
     @Nullable
     public <T> T get(int index, ParameterizedType type) {
-        return get0(index, type);
-    }
-
-    @Nullable
-    public <T> T get(String name, ParameterizedType type) {
-        return get0(name, type);
-    }
-
-    @Nullable
-    private <T> T get0(int index, Type type) {
         requireNonNull(type, "type must not be null");
 
         MySqlColumnMetadata info = rowMetadata.getColumnMetadata(index);
@@ -88,7 +83,7 @@ public final class MySqlRow implements Row {
     }
 
     @Nullable
-    private <T> T get0(String name, Type type) {
+    public <T> T get(String name, ParameterizedType type) {
         requireNonNull(type, "type must not be null");
 
         MySqlColumnMetadata info = rowMetadata.getColumnMetadata(name);

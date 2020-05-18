@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
-import java.lang.reflect.Type;
 import java.time.Year;
 
 /**
@@ -38,7 +37,7 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     }
 
     @Override
-    public Year decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Year decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         if (binary) {
             return Year.of(value.readShortLE());
         } else {

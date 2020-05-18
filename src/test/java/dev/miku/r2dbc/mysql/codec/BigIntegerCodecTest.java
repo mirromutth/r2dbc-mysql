@@ -16,14 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 import java.math.BigInteger;
 
 /**
  * Unit tests for {@link BigIntegerCodec}.
  */
-class BigIntegerCodecTest implements CodecTestSupport<BigInteger, NormalFieldValue, Class<? super BigInteger>> {
+class BigIntegerCodecTest implements CodecTestSupport<BigInteger> {
 
     private final BigInteger[] integers = {
         BigInteger.ZERO,

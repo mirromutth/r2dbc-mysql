@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 import org.testcontainers.shaded.org.apache.commons.lang.ArrayUtils;
 
@@ -25,7 +24,7 @@ import java.util.BitSet;
 /**
  * Unit tests for {@link BitSetCodec}.
  */
-class BitSetCodecTest implements CodecTestSupport<BitSet, NormalFieldValue, Class<? super BitSet>> {
+class BitSetCodecTest implements CodecTestSupport<BitSet> {
 
     private final BitSet[] sets = {
         BitSet.valueOf(new byte[0]),

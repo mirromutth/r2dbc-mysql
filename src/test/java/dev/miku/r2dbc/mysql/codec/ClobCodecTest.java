@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.r2dbc.spi.Clob;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -24,7 +23,7 @@ import reactor.core.publisher.Mono;
 /**
  * Unit tests for {@link ClobCodec}.
  */
-class ClobCodecTest implements CodecTestSupport<Clob, FieldValue, Class<? super Clob>> {
+class ClobCodecTest implements CodecTestSupport<Clob> {
 
     private final MockClob[] clob = {
         new MockClob(""),

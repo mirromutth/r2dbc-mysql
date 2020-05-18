@@ -28,7 +28,6 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,27 +45,23 @@ final class BlobCodec implements Codec<Blob> {
     }
 
     @Override
-    public Blob decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Blob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         return LobUtils.createBlob(value);
     }
 
     @Override
-    public Blob decodeMassive(List<ByteBuf> value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Blob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         return LobUtils.createBlob(value);
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
-        if (!(target instanceof Class<?>)) {
-            return false;
-        }
-
+    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
         short type = info.getType();
         if (!TypePredicates.isLob(type) && DataTypes.GEOMETRY != type) {
             return false;
         }
 
-        return ((Class<?>) target).isAssignableFrom(Blob.class);
+        return target.isAssignableFrom(Blob.class);
     }
 
     @Override

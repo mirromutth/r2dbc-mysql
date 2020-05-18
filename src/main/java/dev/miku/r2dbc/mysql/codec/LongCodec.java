@@ -24,8 +24,6 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
-
 /**
  * Codec for {@link long}.
  */
@@ -37,7 +35,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public Long decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Long decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         if (binary) {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
             return decodeBinary(value, info.getType(), isUnsigned);
@@ -48,10 +46,10 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
+    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
         short type = info.getType();
 
-        if (!TypePredicates.isInt(type) || massive || !(target instanceof Class<?>)) {
+        if (!TypePredicates.isInt(type) || massive) {
             return false;
         }
 
@@ -62,7 +60,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
         if (DataTypes.BIGINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
             return Long.class == target;
         } else {
-            return ((Class<?>) target).isAssignableFrom(Long.class);
+            return target.isAssignableFrom(Long.class);
         }
     }
 

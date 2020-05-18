@@ -16,11 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
-import java.lang.reflect.Type;
-
 /**
  * Codec for classed type when field bytes less or equals than {@link Integer#MAX_VALUE}.
  */
@@ -33,12 +28,12 @@ abstract class AbstractClassedCodec<T> implements Codec<T> {
     }
 
     @Override
-    public final boolean canDecode(boolean massive, FieldInformation info, Type target) {
-        if (!(target instanceof Class<?>) || massive) {
+    public final boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
+        if (massive) {
             return false;
         }
 
-        return ((Class<?>) target).isAssignableFrom(clazz) && doCanDecode(info);
+        return target.isAssignableFrom(this.clazz) && doCanDecode(info);
     }
 
     abstract protected boolean doCanDecode(FieldInformation info);

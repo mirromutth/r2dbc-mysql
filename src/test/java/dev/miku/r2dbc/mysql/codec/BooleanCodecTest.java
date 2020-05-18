@@ -16,12 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 /**
  * Unit tests for {@link BooleanCodec}.
  */
-class BooleanCodecTest implements CodecTestSupport<Boolean, NormalFieldValue, Class<? super Boolean>> {
+class BooleanCodecTest implements CodecTestSupport<Boolean> {
 
     private final Boolean[] booleans = {
         Boolean.TRUE,

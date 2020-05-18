@@ -68,12 +68,11 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
                 return target.getCharset();
             } catch (IllegalArgumentException e) {
                 // UnsupportedCharsetException is subclass of IllegalArgumentException
-                if (err == null) {
-                    err = e;
-                } else {
+                if (err != null) {
                     e.addSuppressed(err);
-                    err = e;
                 }
+
+                err = e;
             }
         }
 

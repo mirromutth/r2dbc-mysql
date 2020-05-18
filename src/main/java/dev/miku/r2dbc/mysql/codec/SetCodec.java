@@ -20,7 +20,9 @@ import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -32,27 +34,46 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
+
 /**
- * Codec for {@link Set<String>} or {@link Set<Enum>}.
+ * Codec for {@link Set<String>}, {@link Set<Enum>} and {@link String[]}.
  */
-final class SetCodec implements Codec<Set<?>> {
+final class SetCodec implements ParametrizedCodec<String[]> {
 
     static final SetCodec INSTANCE = new SetCodec();
 
     private SetCodec() {
     }
 
+    @Override
+    public String[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+        if (!value.isReadable()) {
+            return EMPTY_STRINGS;
+        }
+
+        int firstComma = value.indexOf(value.readerIndex(), value.writerIndex(), (byte) ',');
+        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
+
+        if (firstComma < 0) {
+            return new String[] { value.toString(charset) };
+        }
+
+        return value.toString(charset).split(",");
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public Set<?> decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Set<?> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context) {
         if (!value.isReadable()) {
             return Collections.emptySet();
         }
 
-        Class<?> subClass = (Class<?>) ((ParameterizedType) target).getActualTypeArguments()[0];
+        Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
         Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
         int firstComma = value.indexOf(value.readerIndex(), value.writerIndex(), (byte) ',');
         boolean isEnum = subClass.isEnum();
@@ -84,19 +105,27 @@ final class SetCodec implements Codec<Set<?>> {
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
-        if (DataTypes.SET != info.getType() || !(target instanceof ParameterizedType) || massive) {
+    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
+        if (DataTypes.SET != info.getType() || massive) {
             return false;
         }
 
-        ParameterizedType parameterizedType = (ParameterizedType) target;
-        Type[] typeArguments = parameterizedType.getActualTypeArguments();
+        return target.isAssignableFrom(String[].class);
+    }
+
+    @Override
+    public boolean canDecode(boolean massive, FieldInformation info, ParameterizedType target) {
+        if (DataTypes.SET != info.getType() || massive) {
+            return false;
+        }
+
+        Type[] typeArguments = target.getActualTypeArguments();
 
         if (typeArguments.length != 1) {
             return false;
         }
 
-        Type rawType = parameterizedType.getRawType();
+        Type rawType = target.getRawType();
         Type subType = typeArguments[0];
 
         if (!(rawType instanceof Class<?>) || !(subType instanceof Class<?>)) {
@@ -111,12 +140,16 @@ final class SetCodec implements Codec<Set<?>> {
 
     @Override
     public boolean canEncode(Object value) {
-        return value instanceof Set<?> && isValidSet((Set<?>) value);
+        return (value instanceof CharSequence[]) || (value instanceof Set<?> && isValidSet((Set<?>) value));
     }
 
     @Override
     public ParameterValue encode(Object value, ConnectionContext context) {
-        return new SetValue((Set<?>) value, context);
+        if (value instanceof CharSequence[]) {
+            return new StringArrayValue(InternalArrays.toReadOnlyList((CharSequence[]) value), context);
+        } else {
+            return new SetValue((Set<?>) value, context);
+        }
     }
 
     static String convert(Object o) {
@@ -145,6 +178,17 @@ final class SetCodec implements Codec<Set<?>> {
         }
 
         return true;
+    }
+
+    private static void encodeIterator(StringBuilder builder, Iterator<? extends CharSequence> iter) {
+        if (iter.hasNext()) {
+            CodecUtils.appendEscape(builder, iter.next());
+
+            while (iter.hasNext()) {
+                builder.append(',');
+                CodecUtils.appendEscape(builder, iter.next());
+            }
+        }
     }
 
     private static final class SplitIterable implements Iterable<String> {
@@ -268,7 +312,7 @@ final class SetCodec implements Codec<Set<?>> {
         public Mono<Void> writeTo(StringBuilder builder) {
             return Mono.fromRunnable(() -> {
                 builder.append('\'');
-                StringArrayCodec.encodeIterator(builder, new ConvertedIterator(set.iterator()));
+                encodeIterator(builder, new ConvertedIterator(set.iterator()));
                 builder.append('\'');
             });
         }
@@ -295,6 +339,56 @@ final class SetCodec implements Codec<Set<?>> {
         @Override
         public int hashCode() {
             return set.hashCode();
+        }
+    }
+
+    private static final class StringArrayValue extends AbstractParameterValue {
+
+        private final List<CharSequence> value;
+
+        private final ConnectionContext context;
+
+        private StringArrayValue(List<CharSequence> value, ConnectionContext context) {
+            this.value = value;
+            this.context = context;
+        }
+
+        @Override
+        public Mono<Void> writeTo(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeSet(value, context.getCollation()));
+        }
+
+        @Override
+        public Mono<Void> writeTo(StringBuilder builder) {
+            return Mono.fromRunnable(() -> {
+                builder.append('\'');
+                encodeIterator(builder, value.iterator());
+                builder.append('\'');
+            });
+        }
+
+        @Override
+        public short getType() {
+            return DataTypes.VARCHAR;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof StringArrayValue)) {
+                return false;
+            }
+
+            StringArrayValue that = (StringArrayValue) o;
+
+            return this.value.equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return value.hashCode();
         }
     }
 }

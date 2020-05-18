@@ -16,8 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -31,7 +29,7 @@ import static java.time.temporal.ChronoField.YEAR;
 /**
  * Unit tests for {@link LocalDateCodec}.
  */
-class LocalDateCodecTest implements CodecTestSupport<LocalDate, NormalFieldValue, Class<? super LocalDate>> {
+class LocalDateCodecTest implements CodecTestSupport<LocalDate> {
 
     static final LocalDate[] DATES = {
         LocalDate.of(0, 1, 1),

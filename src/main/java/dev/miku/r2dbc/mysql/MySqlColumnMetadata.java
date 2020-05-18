@@ -110,7 +110,6 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     @Override
     public Class<?> getJavaType() {
-        // Note: must not be primitive type because it may be null.
         switch (type) {
             case DataTypes.DECIMAL:
             case DataTypes.NEW_DECIMAL:

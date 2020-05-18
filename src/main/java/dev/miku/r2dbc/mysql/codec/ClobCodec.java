@@ -29,7 +29,6 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -47,18 +46,18 @@ final class ClobCodec implements Codec<Clob> {
     }
 
     @Override
-    public Clob decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Clob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
     }
 
     @Override
-    public Clob decodeMassive(List<ByteBuf> value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Clob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
-        if (info.getCollationId() == CharCollation.BINARY_ID || !(target instanceof Class<?>)) {
+    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
+        if (info.getCollationId() == CharCollation.BINARY_ID) {
             return false;
         }
 
@@ -67,7 +66,7 @@ final class ClobCodec implements Codec<Clob> {
             return false;
         }
 
-        return ((Class<?>) target).isAssignableFrom(Clob.class);
+        return target.isAssignableFrom(Clob.class);
     }
 
     @Override

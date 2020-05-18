@@ -16,14 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 import java.math.BigDecimal;
 
 /**
  * Unit tests for {@link BigDecimalCodec}.
  */
-class BigDecimalCodecTest implements CodecTestSupport<BigDecimal, NormalFieldValue, Class<? super BigDecimal>> {
+class BigDecimalCodecTest implements CodecTestSupport<BigDecimal> {
 
     private final BigDecimal[] decimals = {
         BigDecimal.ZERO,

@@ -16,15 +16,13 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Unit tests for {@link DurationCodec}.
  */
-class DurationCodecTest implements CodecTestSupport<Duration, NormalFieldValue, Class<? super Duration>> {
+class DurationCodecTest implements CodecTestSupport<Duration> {
 
     private static final long MAX_SECONDS = TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 59;
 

@@ -23,7 +23,6 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -38,7 +37,7 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    public Double decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Double decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         if (binary) {
             switch (info.getType()) {
                 case DataTypes.DOUBLE:

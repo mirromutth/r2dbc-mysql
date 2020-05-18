@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.r2dbc.spi.Blob;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 import reactor.core.publisher.Flux;
@@ -30,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * Unit tests for {@link BlobCodec}.
  */
-class BlobCodecTest implements CodecTestSupport<Blob, FieldValue, Class<? super Blob>> {
+class BlobCodecTest implements CodecTestSupport<Blob> {
 
     private final MockBlob[] blob = {
         new MockBlob(new byte[0]),

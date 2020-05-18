@@ -24,8 +24,6 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
-
 /**
  * Codec for {@link byte}.
  */
@@ -38,7 +36,7 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    public Byte decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Byte decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         if (binary) {
             return value.readByte();
         } else {
