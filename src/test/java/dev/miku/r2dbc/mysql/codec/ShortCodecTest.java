@@ -16,12 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 /**
  * Unit tests for {@link ShortCodec}.
  */
-class ShortCodecTest implements CodecTestSupport<Short, NormalFieldValue, Class<? super Short>> {
+class ShortCodecTest implements CodecTestSupport<Short> {
 
     private final Short[] shorts = {
         0,

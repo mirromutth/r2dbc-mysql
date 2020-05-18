@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 
 import java.nio.charset.StandardCharsets;
@@ -24,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * Unit tests for {@link ByteArrayCodec}.
  */
-class ByteArrayCodecTest implements CodecTestSupport<byte[], NormalFieldValue, Class<? super byte[]>> {
+class ByteArrayCodecTest implements CodecTestSupport<byte[]> {
 
     private final byte[][] bytes = {
         new byte[0],

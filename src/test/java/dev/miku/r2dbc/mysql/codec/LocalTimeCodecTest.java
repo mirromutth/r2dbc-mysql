@@ -16,8 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -31,7 +29,7 @@ import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 /**
  * Unit tests for {@link LocalTimeCodec}.
  */
-class LocalTimeCodecTest implements CodecTestSupport<LocalTime, NormalFieldValue, Class<? super LocalTime>> {
+class LocalTimeCodecTest implements CodecTestSupport<LocalTime> {
 
     static final LocalTime[] TIMES = {
         LocalTime.MIDNIGHT,

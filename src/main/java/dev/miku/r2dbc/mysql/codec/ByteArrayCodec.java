@@ -25,7 +25,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
 import java.util.Arrays;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
@@ -42,7 +41,7 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    public byte[] decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public byte[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         if (!value.isReadable()) {
             return EMPTY_BYTES;
         }

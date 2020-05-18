@@ -25,7 +25,6 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 
 /**
@@ -40,15 +39,15 @@ final class EnumCodec implements Codec<Enum<?>> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public Enum<?> decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public Enum<?> decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
         return Enum.valueOf((Class<Enum>) target, value.toString(charset));
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Type target) {
-        if (DataTypes.ENUMERABLE == info.getType() && target instanceof Class<?> && !massive) {
-            return ((Class<?>) target).isEnum();
+    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
+        if (DataTypes.ENUMERABLE == info.getType() && !massive) {
+            return target.isEnum();
         }
 
         return false;

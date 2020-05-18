@@ -16,34 +16,30 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import reactor.util.annotation.Nullable;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.List;
 
 /**
- * Codec to encode and decode values based on MySQL data binary/text protocol.
+ * Special codec for decode values with parameterized types.
  * <p>
- * Use {@link ParametrizedCodec} for support {@code ParameterizedType} encoding/decoding.
+ * It also can encode and decode values without parameter.
  *
- * @param <T> the type that is handled by this codec.
+ * @param <T> the type without parameter that is handled by this codec.
  */
-interface Codec<T> {
+public interface ParametrizedCodec<T> extends Codec<T> {
 
     @Nullable
-    T decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context);
+    Object decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context);
 
-    boolean canDecode(boolean massive, FieldInformation info, Class<?> target);
-
-    boolean canEncode(Object value);
-
-    ParameterValue encode(Object value, ConnectionContext context);
+    boolean canDecode(boolean massive, FieldInformation info, ParameterizedType target);
 
     @Nullable
-    default T decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    default Object decodeMassive(List<ByteBuf> value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context) {
         throw new R2dbcNonTransientResourceException(getClass().getSimpleName() + " decode SQL type " + info.getType() + " failed, it does not support massive data");
     }
 }

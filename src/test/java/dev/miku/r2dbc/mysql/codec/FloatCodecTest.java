@@ -16,12 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 /**
  * Unit tests for {@link FloatCodec}.
  */
-class FloatCodecTest implements CodecTestSupport<Float, NormalFieldValue, Class<? super Float>> {
+class FloatCodecTest implements CodecTestSupport<Float> {
 
     private final Float[] floats = {
         0.0f,

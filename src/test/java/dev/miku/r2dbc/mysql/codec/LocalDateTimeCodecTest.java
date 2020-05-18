@@ -16,26 +16,18 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
 import java.util.Locale;
 
-import static java.time.temporal.ChronoField.DAY_OF_MONTH;
-import static java.time.temporal.ChronoField.HOUR_OF_DAY;
-import static java.time.temporal.ChronoField.MICRO_OF_SECOND;
-import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
-import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
-import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
-import static java.time.temporal.ChronoField.YEAR;
+import static java.time.temporal.ChronoField.*;
 
 /**
  * Unit tests for {@link LocalDateTimeCodec}.
  */
-class LocalDateTimeCodecTest implements CodecTestSupport<LocalDateTime, NormalFieldValue, Class<? super LocalDateTime>> {
+class LocalDateTimeCodecTest implements CodecTestSupport<LocalDateTime> {
 
     private final DateTimeFormatter formatter = new DateTimeFormatterBuilder()
         .appendLiteral('\'')

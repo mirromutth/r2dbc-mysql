@@ -16,12 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 /**
  * Unit tests for {@link ByteCodec}.
  */
-class ByteCodecTest implements CodecTestSupport<Byte, NormalFieldValue, Class<? super Byte>> {
+class ByteCodecTest implements CodecTestSupport<Byte> {
 
     private final Byte[] bytes = {
         0,

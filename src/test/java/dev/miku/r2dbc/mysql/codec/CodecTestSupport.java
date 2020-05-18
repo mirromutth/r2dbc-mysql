@@ -17,21 +17,18 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.google.common.escape.Escaper;
 import org.testcontainers.shaded.com.google.common.escape.Escapers;
 import reactor.test.StepVerifier;
 
-import java.lang.reflect.Type;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Base class considers unit tests for implementations of {@link Codec}.
  */
-interface CodecTestSupport<R, V extends FieldValue, T extends Type> {
+interface CodecTestSupport<T> {
 
     ConnectionContext CONTEXT = new ConnectionContext(ZeroDateOption.USE_NULL);
 
@@ -46,14 +43,15 @@ interface CodecTestSupport<R, V extends FieldValue, T extends Type> {
 
     @Test
     default void stringify() {
-        R[] origin = originParameters();
+        Codec<T> codec = getCodec();
+        T[] origin = originParameters();
         Object[] strings = stringifyParameters();
 
         assertEquals(origin.length, strings.length);
 
         for (int i = 0; i < origin.length; ++i) {
             StringBuilder builder = new StringBuilder();
-            getCodec().encode(origin[i], CONTEXT)
+            codec.encode(origin[i], CONTEXT)
                 .writeTo(builder)
                 .as(StepVerifier::create)
                 .verifyComplete();
@@ -61,9 +59,9 @@ interface CodecTestSupport<R, V extends FieldValue, T extends Type> {
         }
     }
 
-    Codec<R> getCodec();
+    Codec<T> getCodec();
 
-    R[] originParameters();
+    T[] originParameters();
 
     Object[] stringifyParameters();
 }

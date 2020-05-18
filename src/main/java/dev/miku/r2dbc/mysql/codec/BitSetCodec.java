@@ -25,7 +25,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
 import java.util.BitSet;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
@@ -42,7 +41,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
     }
 
     @Override
-    public BitSet decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public BitSet decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         if (!value.isReadable()) {
             return BitSet.valueOf(EMPTY_BYTES);
         }

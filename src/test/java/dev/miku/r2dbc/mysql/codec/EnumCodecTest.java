@@ -16,14 +16,13 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import org.testcontainers.shaded.com.google.common.base.CaseFormat;
 import org.testcontainers.shaded.com.google.common.collect.BoundType;
 
 /**
  * Unit tests for {@link EnumCodec}.
  */
-class EnumCodecTest implements CodecTestSupport<Enum<?>, NormalFieldValue, Class<?>> {
+class EnumCodecTest implements CodecTestSupport<Enum<?>> {
 
     private final Enum<?>[] enums = {
         // Java has no way to create an element of enum with special character.

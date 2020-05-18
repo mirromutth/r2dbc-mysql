@@ -91,7 +91,7 @@ interface FieldReader extends ReferenceCounted {
             }
         } else {
             try {
-                return new LargeFieldReader(buffers.toArray(new ByteBuf[size]));
+                return new LargeFieldReader(buffers.toArray(new ByteBuf[0]));
             } catch (Throwable e) {
                 for (int i = 0; i < size; ++i) {
                     ReferenceCountUtil.safeRelease(buffers.get(i));

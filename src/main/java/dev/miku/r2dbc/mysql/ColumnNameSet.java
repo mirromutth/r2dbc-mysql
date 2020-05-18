@@ -90,21 +90,23 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
         return Arrays.copyOf(names, names.length);
     }
 
+    @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
     @Override
-    public <T> T[] toArray(T[] ts) {
-        Objects.requireNonNull(ts);
+    public <T> T[] toArray(T[] a) {
+        Objects.requireNonNull(a);
 
-        @SuppressWarnings("unchecked")
-        T[] names = (T[]) this.names;
+        int size = names.length;
 
-        if (ts.length < names.length) {
-            return Arrays.copyOf(names, names.length);
+        if (a.length < size) {
+            return (T[]) Arrays.copyOf(names, size, a.getClass());
         } else {
-            System.arraycopy(names, 0, ts, 0, names.length);
-            if (ts.length > names.length) {
-                ts[names.length] = null;
+            System.arraycopy(names, 0, a, 0, size);
+
+            if (a.length > size) {
+                a[size] = null;
             }
-            return ts;
+
+            return a;
         }
     }
 

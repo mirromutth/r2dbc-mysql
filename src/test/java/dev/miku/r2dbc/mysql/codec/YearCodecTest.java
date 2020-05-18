@@ -16,14 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 import java.time.Year;
 
 /**
  * Unit tests for {@link YearCodec}.
  */
-class YearCodecTest implements CodecTestSupport<Year, NormalFieldValue, Class<? super Year>> {
+class YearCodecTest implements CodecTestSupport<Year> {
 
     private final Year[] years = {
         Year.of(0),

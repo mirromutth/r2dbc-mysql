@@ -25,8 +25,6 @@ import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
-import java.lang.reflect.Type;
-
 /**
  * Codec for {@link String}.
  */
@@ -39,7 +37,7 @@ final class StringCodec extends AbstractClassedCodec<String> {
     }
 
     @Override
-    public String decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public String decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         if (!value.isReadable()) {
             return "";
         }

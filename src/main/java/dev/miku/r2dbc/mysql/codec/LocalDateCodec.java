@@ -25,7 +25,6 @@ import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
-import java.lang.reflect.Type;
 import java.time.LocalDate;
 
 /**
@@ -42,7 +41,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public LocalDate decode(ByteBuf value, FieldInformation info, Type target, boolean binary, ConnectionContext context) {
+    public LocalDate decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
         int index = value.readerIndex();
         int bytes = value.readableBytes();
 

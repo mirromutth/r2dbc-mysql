@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.google.common.base.CaseFormat;
+import reactor.test.StepVerifier;
 
-import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -27,10 +27,21 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 /**
  * Unit tests for {@link SetCodec}.
  */
-class SetCodecTest implements CodecTestSupport<Set<?>, NormalFieldValue, ParameterizedType> {
+class SetCodecTest implements CodecTestSupport<String[]> {
+
+    private final String[][] strings = {
+        {},
+        {""},
+        {"\r\n\0\032\\'\"\u00a5\u20a9"},
+        {"Hello", "world!"},
+        {"", ""},
+        {"Hello", "R2DBC", "MySQL"},
+    };
 
     private final Set<?>[] sets = {
         EnumSet.allOf(SomeElement.class),
@@ -53,12 +64,40 @@ class SetCodecTest implements CodecTestSupport<Set<?>, NormalFieldValue, Paramet
     }
 
     @Override
-    public Set<?>[] originParameters() {
-        return sets;
+    public String[][] originParameters() {
+        return strings;
     }
 
     @Override
     public Object[] stringifyParameters() {
+        String[] results = new String[strings.length];
+        for (int i = 0; i < results.length; ++i) {
+            String value = Arrays.stream(strings[i])
+                .map(ESCAPER::escape)
+                .collect(Collectors.joining(","));
+            results[i] = String.format("'%s'", value);
+        }
+        return results;
+    }
+
+    @Test
+    void stringifySet() {
+        SetCodec codec = getCodec();
+        String[] strings = stringifySets();
+
+        assertEquals(sets.length, strings.length);
+
+        for (int i = 0; i < sets.length; ++i) {
+            StringBuilder builder = new StringBuilder();
+            codec.encode(sets[i], CONTEXT)
+                .writeTo(builder)
+                .as(StepVerifier::create)
+                .verifyComplete();
+            assertEquals(builder.toString(), strings[i]);
+        }
+    }
+
+    private String[] stringifySets() {
         String[] results = new String[sets.length];
         for (int i = 0; i < results.length; ++i) {
             String value = sets[i].stream()

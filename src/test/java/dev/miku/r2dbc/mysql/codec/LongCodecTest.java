@@ -16,12 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-
 /**
  * Unit tests for {@link LongCodec}.
  */
-class LongCodecTest implements CodecTestSupport<Long, NormalFieldValue, Class<? super Long>> {
+class LongCodecTest implements CodecTestSupport<Long> {
 
     private final Long[] longs = {
         0L,
