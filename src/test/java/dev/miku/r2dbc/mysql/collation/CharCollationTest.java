@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.collation;
 
-import dev.miku.r2dbc.mysql.util.ServerVersion;
+import dev.miku.r2dbc.mysql.ServerVersion;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;

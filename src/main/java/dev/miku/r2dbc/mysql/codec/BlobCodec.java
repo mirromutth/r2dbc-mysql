@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
 import org.reactivestreams.Publisher;
@@ -45,12 +44,12 @@ final class BlobCodec implements Codec<Blob> {
     }
 
     @Override
-    public Blob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Blob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         return LobUtils.createBlob(value);
     }
 
     @Override
-    public Blob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Blob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         return LobUtils.createBlob(value);
     }
 
@@ -70,7 +69,7 @@ final class BlobCodec implements Codec<Blob> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         return new BlobValue((Blob) value);
     }
 

@@ -19,7 +19,6 @@ package dev.miku.r2dbc.mysql.codec;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -35,7 +34,7 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public Boolean decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Boolean decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         return value.readBoolean();
     }
 
@@ -45,7 +44,7 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         return (Boolean) value ? BooleanValue.TRUE : BooleanValue.FALSE;
     }
 

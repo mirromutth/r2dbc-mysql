@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.util;
+package dev.miku.r2dbc.mysql;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;

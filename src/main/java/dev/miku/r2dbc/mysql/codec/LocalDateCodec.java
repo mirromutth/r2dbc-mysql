@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
@@ -41,7 +40,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public LocalDate decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public LocalDate decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         int index = value.readerIndex();
         int bytes = value.readableBytes();
 
@@ -70,7 +69,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         return new LocalDateValue((LocalDate) value);
     }
 

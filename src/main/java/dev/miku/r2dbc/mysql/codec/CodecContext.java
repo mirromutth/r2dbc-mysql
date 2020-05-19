@@ -14,26 +14,29 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql;
+package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.client.Client;
-import dev.miku.r2dbc.mysql.codec.Codecs;
+import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
+import dev.miku.r2dbc.mysql.ServerVersion;
 
 /**
- * Unit tests for {@link MySqlSyntheticBatch}.
+ * Codec variables context for encoding/decoding.
  */
-class MySqlSyntheticBatchTest {
+public interface CodecContext {
 
-    private final MySqlSyntheticBatch batch = new MySqlSyntheticBatch(mock(Client.class), mock(Codecs.class), new ConnectionContext(ZeroDateOption.USE_NULL));
+    /**
+     * @return the option for zero date handling which is set by connection configuration.
+     */
+    ZeroDateOption getZeroDateOption();
 
-    @SuppressWarnings("ConstantConditions")
-    @Test
-    void badAdd() {
-        assertThrows(IllegalArgumentException.class, () -> batch.add(null));
-    }
+    /**
+     * @return the MySQL server version, which is available after database user logon.
+     */
+    ServerVersion getServerVersion();
+
+    /**
+     * @return the {@link CharCollation} that client now use.
+     */
+    CharCollation getClientCollation();
 }

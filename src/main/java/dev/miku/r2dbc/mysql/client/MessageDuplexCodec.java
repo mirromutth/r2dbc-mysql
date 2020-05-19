@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.client;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
 import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;

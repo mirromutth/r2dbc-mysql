@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.r2dbc.spi.Row;
 import reactor.util.annotation.Nullable;
 

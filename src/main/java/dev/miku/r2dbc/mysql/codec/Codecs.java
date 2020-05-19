@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
@@ -29,14 +28,14 @@ import java.lang.reflect.ParameterizedType;
 public interface Codecs {
 
     @Nullable
-    <T> T decode(FieldValue value, FieldInformation info, Class<?> type, boolean binary, ConnectionContext context);
+    <T> T decode(FieldValue value, FieldInformation info, Class<?> type, boolean binary, CodecContext context);
 
     @Nullable
-    <T> T decode(FieldValue value, FieldInformation info, ParameterizedType type, boolean binary, ConnectionContext context);
+    <T> T decode(FieldValue value, FieldInformation info, ParameterizedType type, boolean binary, CodecContext context);
 
     <T> T decodeLastInsertId(long value, Class<T> type);
 
-    ParameterValue encode(Object value, ConnectionContext context);
+    ParameterValue encode(Object value, CodecContext context);
 
     ParameterValue encodeNull();
 

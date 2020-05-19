@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.constant.SslMode;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;

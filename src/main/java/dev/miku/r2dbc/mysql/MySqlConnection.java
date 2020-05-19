@@ -24,8 +24,6 @@ import dev.miku.r2dbc.mysql.message.client.PingMessage;
 import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
-import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;

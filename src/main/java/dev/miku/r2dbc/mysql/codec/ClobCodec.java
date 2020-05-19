@@ -22,7 +22,6 @@ import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
 import org.reactivestreams.Publisher;
@@ -46,12 +45,12 @@ final class ClobCodec implements Codec<Clob> {
     }
 
     @Override
-    public Clob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Clob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
     }
 
     @Override
-    public Clob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Clob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
     }
 
@@ -75,7 +74,7 @@ final class ClobCodec implements Codec<Clob> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         return new ClobValue((Clob) value, context);
     }
 
@@ -83,9 +82,9 @@ final class ClobCodec implements Codec<Clob> {
 
         private final AtomicReference<Clob> clob;
 
-        private final ConnectionContext context;
+        private final CodecContext context;
 
-        private ClobValue(Clob clob, ConnectionContext context) {
+        private ClobValue(Clob clob, CodecContext context) {
             this.clob = new AtomicReference<>(clob);
             this.context = context;
         }
@@ -101,7 +100,7 @@ final class ClobCodec implements Codec<Clob> {
 
                 return Flux.from(clob.stream())
                     .collectList()
-                    .doOnNext(sequences -> writer.writeCharSequences(sequences, context.getCollation()))
+                    .doOnNext(sequences -> writer.writeCharSequences(sequences, context.getClientCollation()))
                     .then();
             });
         }

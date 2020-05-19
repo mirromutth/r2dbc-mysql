@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -37,7 +36,7 @@ final class StringCodec extends AbstractClassedCodec<String> {
     }
 
     @Override
-    public String decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public String decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         if (!value.isReadable()) {
             return "";
         }
@@ -51,7 +50,7 @@ final class StringCodec extends AbstractClassedCodec<String> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         return new StringValue((CharSequence) value, context);
     }
 
@@ -66,16 +65,16 @@ final class StringCodec extends AbstractClassedCodec<String> {
 
         private final CharSequence value;
 
-        private final ConnectionContext context;
+        private final CodecContext context;
 
-        private StringValue(CharSequence value, ConnectionContext context) {
+        private StringValue(CharSequence value, CodecContext context) {
             this.value = value;
             this.context = context;
         }
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeCharSequence(value, context.getCollation()));
+            return Mono.fromRunnable(() -> writer.writeCharSequence(value, context.getClientCollation()));
         }
 
         @Override

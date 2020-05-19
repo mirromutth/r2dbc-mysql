@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.r2dbc.spi.IsolationLevel;
 import org.junit.jupiter.api.Test;
 

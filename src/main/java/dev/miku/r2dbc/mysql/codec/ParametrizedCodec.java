@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import reactor.util.annotation.Nullable;
@@ -34,12 +33,12 @@ import java.util.List;
 public interface ParametrizedCodec<T> extends Codec<T> {
 
     @Nullable
-    Object decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context);
+    Object decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context);
 
     boolean canDecode(boolean massive, FieldInformation info, ParameterizedType target);
 
     @Nullable
-    default Object decodeMassive(List<ByteBuf> value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context) {
+    default Object decodeMassive(List<ByteBuf> value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
         throw new R2dbcNonTransientResourceException(getClass().getSimpleName() + " decode SQL type " + info.getType() + " failed, it does not support massive data");
     }
 }

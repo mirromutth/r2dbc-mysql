@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -36,7 +35,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public Short decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Short decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         if (binary) {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
@@ -62,7 +61,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         short v = (Short) value;
 
         if ((byte) v == v) {
