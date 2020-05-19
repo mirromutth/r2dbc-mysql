@@ -19,7 +19,6 @@ package dev.miku.r2dbc.mysql.codec;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -37,7 +36,7 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    public Float decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Float decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         if (binary && info.getType() == DataTypes.FLOAT) {
             return value.readFloatLE();
         }
@@ -51,7 +50,7 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         return new FloatValue((Float) value);
     }
 

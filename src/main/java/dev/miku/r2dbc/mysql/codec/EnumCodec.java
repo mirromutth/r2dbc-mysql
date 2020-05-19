@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -39,7 +38,7 @@ final class EnumCodec implements Codec<Enum<?>> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public Enum<?> decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public Enum<?> decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
         return Enum.valueOf((Class<Enum>) target, value.toString(charset));
     }
@@ -59,7 +58,7 @@ final class EnumCodec implements Codec<Enum<?>> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         return new EnumValue((Enum<?>) value, context);
     }
 
@@ -67,16 +66,16 @@ final class EnumCodec implements Codec<Enum<?>> {
 
         private final Enum<?> value;
 
-        private final ConnectionContext context;
+        private final CodecContext context;
 
-        private EnumValue(Enum<?> value, ConnectionContext context) {
+        private EnumValue(Enum<?> value, CodecContext context) {
             this.value = value;
             this.context = context;
         }
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeCharSequence(value.name(), context.getCollation()));
+            return Mono.fromRunnable(() -> writer.writeCharSequence(value.name(), context.getClientCollation()));
         }
 
         @Override

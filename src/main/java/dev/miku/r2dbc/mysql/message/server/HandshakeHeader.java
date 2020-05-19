@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.util.ServerVersion;
+import dev.miku.r2dbc.mysql.ServerVersion;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 

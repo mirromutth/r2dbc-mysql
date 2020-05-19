@@ -21,7 +21,7 @@ import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.Nullable;
 
@@ -144,7 +144,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
     }
 
     private static DefinitionMetadataMessage decode320(ByteBuf buf, ConnectionContext context) {
-        CharCollation collation = context.getCollation();
+        CharCollation collation = context.getClientCollation();
         Charset charset = collation.getCharset();
         String table = CodecUtils.readVarIntSizedString(buf, charset);
         String column = CodecUtils.readVarIntSizedString(buf, charset);
@@ -176,7 +176,7 @@ public final class DefinitionMetadataMessage implements ServerMessage {
     private static DefinitionMetadataMessage decode41(ByteBuf buf, ConnectionContext context) {
         buf.skipBytes(4); // "def" which sized by var integer
 
-        CharCollation collation = context.getCollation();
+        CharCollation collation = context.getClientCollation();
         Charset charset = collation.getCharset();
         String database = CodecUtils.readVarIntSizedString(buf, charset);
         String table = CodecUtils.readVarIntSizedString(buf, charset);

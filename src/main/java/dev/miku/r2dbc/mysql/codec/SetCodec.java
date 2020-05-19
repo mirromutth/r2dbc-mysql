@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Flux;
@@ -51,7 +50,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     }
 
     @Override
-    public String[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, ConnectionContext context) {
+    public String[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         if (!value.isReadable()) {
             return EMPTY_STRINGS;
         }
@@ -68,7 +67,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public Set<?> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, ConnectionContext context) {
+    public Set<?> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
         if (!value.isReadable()) {
             return Collections.emptySet();
         }
@@ -144,7 +143,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         if (value instanceof CharSequence[]) {
             return new StringArrayValue(InternalArrays.toReadOnlyList((CharSequence[]) value), context);
         } else {
@@ -292,9 +291,9 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
         private final Set<?> set;
 
-        private final ConnectionContext context;
+        private final CodecContext context;
 
-        private SetValue(Set<?> set, ConnectionContext context) {
+        private SetValue(Set<?> set, CodecContext context) {
             this.set = set;
             this.context = context;
         }
@@ -304,7 +303,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
             return Flux.fromIterable(set)
                 .map(ELEMENT_CONVERT)
                 .collectList()
-                .doOnNext(strings -> writer.writeSet(strings, context.getCollation()))
+                .doOnNext(strings -> writer.writeSet(strings, context.getClientCollation()))
                 .then();
         }
 
@@ -346,16 +345,16 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
         private final List<CharSequence> value;
 
-        private final ConnectionContext context;
+        private final CodecContext context;
 
-        private StringArrayValue(List<CharSequence> value, ConnectionContext context) {
+        private StringArrayValue(List<CharSequence> value, CodecContext context) {
             this.value = value;
             this.context = context;
         }
 
         @Override
         public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeSet(value, context.getCollation()));
+            return Mono.fromRunnable(() -> writer.writeSet(value, context.getClientCollation()));
         }
 
         @Override

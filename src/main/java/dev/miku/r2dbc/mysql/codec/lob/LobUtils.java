@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
-import dev.miku.r2dbc.mysql.util.ServerVersion;
+import dev.miku.r2dbc.mysql.ServerVersion;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Blob;

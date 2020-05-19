@@ -34,8 +34,6 @@ import dev.miku.r2dbc.mysql.message.server.HandshakeRequest;
 import dev.miku.r2dbc.mysql.message.server.OkMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
-import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,7 +120,7 @@ final class LoginFlow {
     }
 
     private SslRequest createSslRequest() {
-        return SslRequest.from(context.getCapabilities(), context.getCollation().getId());
+        return SslRequest.from(context.getCapabilities(), context.getClientCollation().getId());
     }
 
     private MySqlAuthProvider getAndNextProvider() {
@@ -144,7 +142,7 @@ final class LoginFlow {
                 throw new IllegalStateException("username must not be null when login");
             }
 
-            byte[] authorization = authProvider.authentication(password, salt, context.getCollation());
+            byte[] authorization = authProvider.authentication(password, salt, context.getClientCollation());
             String authType = authProvider.getType();
 
             if (AuthTypes.NO_AUTH_PROVIDER.equals(authType)) {
@@ -155,7 +153,7 @@ final class LoginFlow {
 
             return HandshakeResponse.from(
                 context.getCapabilities(),
-                context.getCollation().getId(),
+                context.getClientCollation().getId(),
                 username,
                 authorization,
                 authType,
@@ -173,7 +171,7 @@ final class LoginFlow {
                 throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase), SqlStates.CLI_SPECIFIC_CONDITION);
             }
 
-            return new AuthResponse(authProvider.authentication(password, salt, context.getCollation()));
+            return new AuthResponse(authProvider.authentication(password, salt, context.getClientCollation()));
         });
     }
 

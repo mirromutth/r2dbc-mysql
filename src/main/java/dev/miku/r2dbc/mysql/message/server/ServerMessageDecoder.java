@@ -20,7 +20,7 @@ import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
 import dev.miku.r2dbc.mysql.constant.Headers;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;

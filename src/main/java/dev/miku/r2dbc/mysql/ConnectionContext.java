@@ -14,20 +14,22 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.util;
+package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.codec.CodecContext;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import dev.miku.r2dbc.mysql.util.AssertUtils;
 
 /**
  * The MySQL connection context considers the behavior of server or client.
  * <p>
- * WARNING: It is internal data structure, do NOT use it outer than {@literal r2dbc-mysql},
- * try configure {@code ConnectionFactoryOptions} or {@code MySqlConnectionConfiguration}
+ * WARNING: Do NOT change any data outside of this project, try configure
+ * {@code ConnectionFactoryOptions} or {@code MySqlConnectionConfiguration}
  * to control connection context and client behavior.
  */
-public final class ConnectionContext {
+public final class ConnectionContext implements CodecContext {
 
     private static final ServerVersion NONE_VERSION = ServerVersion.create(0, 0, 0);
 
@@ -36,11 +38,6 @@ public final class ConnectionContext {
     private volatile ServerVersion serverVersion = NONE_VERSION;
 
     private final ZeroDateOption zeroDateOption;
-
-    /**
-     * Client character collation.
-     */
-    private final CharCollation collation = CharCollation.clientCharCollation();
 
     /**
      * Assume that the auto commit is always turned on, it will be set after handshake V10 request message,
@@ -62,6 +59,7 @@ public final class ConnectionContext {
         this.connectionId = connectionId;
     }
 
+    @Override
     public ServerVersion getServerVersion() {
         return serverVersion;
     }
@@ -70,10 +68,12 @@ public final class ConnectionContext {
         this.serverVersion = serverVersion;
     }
 
-    public CharCollation getCollation() {
-        return collation;
+    @Override
+    public CharCollation getClientCollation() {
+        return CharCollation.clientCharCollation();
     }
 
+    @Override
     public ZeroDateOption getZeroDateOption() {
         return zeroDateOption;
     }

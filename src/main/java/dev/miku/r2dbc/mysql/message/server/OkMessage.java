@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.message.server;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -150,7 +150,7 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
         }
 
         if (buf.isReadable()) {
-            Charset charset = context.getCollation().getCharset();
+            Charset charset = context.getClientCollation().getCharset();
             int sizeAfterVarInt = CodecUtils.checkNextVarInt(buf);
 
             if (sizeAfterVarInt < 0) {

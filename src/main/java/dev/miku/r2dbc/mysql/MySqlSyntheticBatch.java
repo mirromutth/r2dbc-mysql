@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;

@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -120,7 +120,7 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
         head.writeTo(buf);
 
         int capabilities = head.getCapabilities();
-        Charset charset = context.getCollation().getCharset();
+        Charset charset = context.getClientCollation().getCharset();
 
         CodecUtils.writeCString(buf, username, charset);
 

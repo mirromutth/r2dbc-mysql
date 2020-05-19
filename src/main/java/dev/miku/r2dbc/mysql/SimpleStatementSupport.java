@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 

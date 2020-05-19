@@ -16,9 +16,8 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.LargeFieldValue;
-import dev.miku.r2dbc.mysql.util.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.FieldValue;
+import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
 
@@ -67,7 +66,7 @@ final class DefaultCodecs implements Codecs {
      * it come from {@code MySqlRow} which will release this buffer.
      */
     @Override
-    public <T> T decode(FieldValue value, FieldInformation info, Class<?> type, boolean binary, ConnectionContext context) {
+    public <T> T decode(FieldValue value, FieldInformation info, Class<?> type, boolean binary, CodecContext context) {
         requireNonNull(value, "value must not be null");
         requireNonNull(info, "info must not be null");
         requireNonNull(context, "context must not be null");
@@ -115,7 +114,7 @@ final class DefaultCodecs implements Codecs {
     }
 
     @Override
-    public <T> T decode(FieldValue value, FieldInformation info, ParameterizedType type, boolean binary, ConnectionContext context) {
+    public <T> T decode(FieldValue value, FieldInformation info, ParameterizedType type, boolean binary, CodecContext context) {
         requireNonNull(value, "value must not be null");
         requireNonNull(info, "info must not be null");
         requireNonNull(context, "context must not be null");
@@ -181,7 +180,7 @@ final class DefaultCodecs implements Codecs {
     }
 
     @Override
-    public ParameterValue encode(Object value, ConnectionContext context) {
+    public ParameterValue encode(Object value, CodecContext context) {
         requireNonNull(value, "value must not be null");
         requireNonNull(context, "context must not be null");
 
