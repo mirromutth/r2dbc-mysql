@@ -31,7 +31,7 @@ class TextParametrizedStatementTest implements StatementTestSupport<TextParametr
 
     private final ConnectionContext context = new ConnectionContext(ZeroDateOption.USE_NULL);
 
-    private final Codecs codecs = Codecs.getInstance();
+    private final Codecs codecs = Codecs.builder().build();
 
     @Override
     public void fetchSize() {

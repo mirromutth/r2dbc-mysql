@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConnectionIntegrationTest extends IntegrationTestSupport {
 
     ConnectionIntegrationTest() {
-        super(configuration(null));
+        super(configuration(false, null));
     }
 
     @Test

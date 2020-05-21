@@ -24,6 +24,7 @@ import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.WarningMessage;
 import dev.miku.r2dbc.mysql.ConnectionContext;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCounted;
@@ -204,6 +205,11 @@ final class ReactorNettyClient implements Client {
     @Override
     public Mono<Void> forceClose() {
         return FutureMono.deferFuture(() -> connection.channel().close());
+    }
+
+    @Override
+    public ByteBufAllocator getByteBufAllocator() {
+        return connection.outbound().alloc();
     }
 
     @Override

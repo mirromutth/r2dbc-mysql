@@ -172,6 +172,7 @@ class MySqlConnectionConfigurationTest {
             .sslKeyAndCert("/path/to/mysql/client-cert.pem", "/path/to/mysql/client-key.pem", "pem-password-in-here")
             .tlsVersion(TlsVersions.TLS1_1, TlsVersions.TLS1_2, TlsVersions.TLS1_3)
             .zeroDateOption(ZeroDateOption.USE_NULL)
+            .autodetectExtensions(false)
             .build();
     }
 }

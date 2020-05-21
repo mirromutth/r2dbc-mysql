@@ -33,7 +33,7 @@ class MySqlTestKit implements TestKit<String> {
     private final JdbcTemplate jdbcOperations;
 
     MySqlTestKit() {
-        MySqlConnectionConfiguration configuration = IntegrationTestSupport.configuration(null);
+        MySqlConnectionConfiguration configuration = IntegrationTestSupport.configuration(false, null);
 
         this.connectionFactory = MySqlConnectionFactory.from(configuration);
         this.jdbcOperations = jdbc(configuration);

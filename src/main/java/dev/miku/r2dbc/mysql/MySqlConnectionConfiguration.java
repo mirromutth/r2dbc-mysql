@@ -18,11 +18,15 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import dev.miku.r2dbc.mysql.extension.Extension;
 import io.netty.handler.ssl.SslContextBuilder;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -71,11 +75,13 @@ public final class MySqlConnectionConfiguration {
     @Nullable
     private final Predicate<String> preferPrepareStatement;
 
+    private final Extensions extensions;
+
     private MySqlConnectionConfiguration(
         boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
         @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption,
         String username, @Nullable CharSequence password, @Nullable String database,
-        @Nullable Predicate<String> preferPrepareStatement
+        @Nullable Predicate<String> preferPrepareStatement, Extensions extensions
     ) {
         this.isHost = isHost;
         this.domain = domain;
@@ -87,6 +93,7 @@ public final class MySqlConnectionConfiguration {
         this.password = password;
         this.database = database == null || database.isEmpty() ? "" : database;
         this.preferPrepareStatement = preferPrepareStatement;
+        this.extensions = requireNonNull(extensions, "extensions must not be null");
     }
 
     public static Builder builder() {
@@ -136,6 +143,10 @@ public final class MySqlConnectionConfiguration {
         return preferPrepareStatement;
     }
 
+    Extensions getExtensions() {
+        return extensions;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -154,22 +165,23 @@ public final class MySqlConnectionConfiguration {
             username.equals(that.username) &&
             Objects.equals(password, that.password) &&
             database.equals(that.database) &&
-            Objects.equals(preferPrepareStatement, that.preferPrepareStatement);
+            Objects.equals(preferPrepareStatement, that.preferPrepareStatement) &&
+            extensions.equals(that.extensions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database, preferPrepareStatement);
+        return Objects.hash(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database, preferPrepareStatement, extensions);
     }
 
     @Override
     public String toString() {
         if (isHost) {
-            return String.format("MySqlConnectionConfiguration{host=%s, port=%d, ssl=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s', preferPrepareStatement=%s}",
-                domain, port, ssl, connectTimeout, zeroDateOption, username, database, preferPrepareStatement);
+            return String.format("MySqlConnectionConfiguration{host=%s, port=%d, ssl=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s', preferPrepareStatement=%s, extensions=%s}",
+                domain, port, ssl, connectTimeout, zeroDateOption, username, database, preferPrepareStatement, extensions);
         } else {
-            return String.format("MySqlConnectionConfiguration{unixSocket=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s', preferPrepareStatement=%s}",
-                domain, connectTimeout, zeroDateOption, username, database, preferPrepareStatement);
+            return String.format("MySqlConnectionConfiguration{unixSocket=%s, connectTimeout=%s, zeroDateOption=%s, username='%s', password=REDACTED, database='%s', preferPrepareStatement=%s, extensions=%s}",
+                domain, connectTimeout, zeroDateOption, username, database, preferPrepareStatement, extensions);
         }
     }
 
@@ -217,6 +229,10 @@ public final class MySqlConnectionConfiguration {
         @Nullable
         private Predicate<String> preferPrepareStatement;
 
+        private boolean autodetectExtensions = true;
+
+        private final List<Extension> extensions = new ArrayList<>();
+
         private Builder() {
         }
 
@@ -232,7 +248,7 @@ public final class MySqlConnectionConfiguration {
             }
 
             MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
-            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database, preferPrepareStatement);
+            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, username, password, database, preferPrepareStatement, Extensions.from(extensions, autodetectExtensions));
         }
 
         public Builder database(@Nullable String database) {
@@ -337,6 +353,28 @@ public final class MySqlConnectionConfiguration {
             requireNonNull(preferPrepareStatement, "preferPrepareStatement must not be null");
 
             this.preferPrepareStatement = preferPrepareStatement;
+            return this;
+        }
+
+        /**
+         * Configures whether to use {@link ServiceLoader} to discover and register extensions. Defaults to true.
+         *
+         * @param autodetectExtensions to discover and register extensions
+         * @return this {@link Builder}
+         */
+        public Builder autodetectExtensions(boolean autodetectExtensions) {
+            this.autodetectExtensions = autodetectExtensions;
+            return this;
+        }
+
+        /**
+         * Registers a {@link Extension} to extend driver functionality.
+         *
+         * @param extension extension to extend driver functionality
+         * @return this {@link Builder}
+         */
+        public Builder extendWith(Extension extension) {
+            this.extensions.add(requireNonNull(extension, "extension must not be null"));
             return this;
         }
 

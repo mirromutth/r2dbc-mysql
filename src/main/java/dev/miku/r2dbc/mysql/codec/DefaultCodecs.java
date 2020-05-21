@@ -20,6 +20,7 @@ import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.message.ParameterValue;
+import dev.miku.r2dbc.mysql.util.InternalArrays;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -42,7 +44,7 @@ final class DefaultCodecs implements Codecs {
 
     private final Map<Type, PrimitiveCodec<?>> primitiveCodecs;
 
-    private DefaultCodecs(Codec<?>... codecs) {
+    private DefaultCodecs(Codec<?>[] codecs) {
         this.codecs = requireNonNull(codecs, "codecs must not be null");
 
         Map<Type, PrimitiveCodec<?>> primitiveCodecs = new HashMap<>();
@@ -198,8 +200,23 @@ final class DefaultCodecs implements Codecs {
         return NullParameterValue.INSTANCE;
     }
 
-    static Codecs getDefault() {
-        return new DefaultCodecs(
+    private static Class<?> chooseClass(FieldInformation info, Class<?> type) {
+        // Object.class means could return any thing
+        if (Object.class == type) {
+            Class<?> mainType = info.getJavaType();
+
+            if (mainType != null) {
+                // use main type if main type exists
+                return mainType;
+            }
+            // otherwise no main type, just use Object.class
+        }
+
+        return type;
+    }
+
+    private static Codec<?>[] defaultCodecs() {
+        return new Codec<?>[]{
             ByteCodec.INSTANCE,
             ShortCodec.INSTANCE,
             IntegerCodec.INSTANCE,
@@ -229,21 +246,54 @@ final class DefaultCodecs implements Codecs {
 
             ByteBufferCodec.INSTANCE,
             ByteArrayCodec.INSTANCE
-        );
+        };
     }
 
-    private static Class<?> chooseClass(FieldInformation info, Class<?> type) {
-        // Object.class means could return any thing
-        if (Object.class == type) {
-            Class<?> mainType = info.getJavaType();
+    static final class Holder implements Supplier<Codecs> {
 
-            if (mainType != null) {
-                // use main type if main type exists
-                return mainType;
-            }
-            // otherwise no main type, just use Object.class
+        static final DefaultCodecs CODECS = new DefaultCodecs(defaultCodecs());
+
+        private Holder() {
         }
 
-        return type;
+        @Override
+        public Codecs get() {
+            return CODECS;
+        }
+    }
+
+    static final class Builder extends ArrayList<Codec<?>> implements CodecsBuilder {
+
+        @Override
+        public CodecsBuilder addFirst(Codec<?> codec) {
+            synchronized (this) {
+                if (isEmpty()) {
+                    addAll(InternalArrays.asReadOnlyList(defaultCodecs()));
+                }
+                add(0, codec);
+            }
+            return this;
+        }
+
+        @Override
+        public CodecsBuilder addLast(Codec<?> codec) {
+            synchronized (this) {
+                if (isEmpty()) {
+                    addAll(InternalArrays.asReadOnlyList(defaultCodecs()));
+                }
+                add(codec);
+            }
+            return this;
+        }
+
+        @Override
+        public Codecs build() {
+            synchronized (this) {
+                if (isEmpty()) {
+                    return Holder.CODECS;
+                }
+                return new DefaultCodecs(toArray(new Codec<?>[0]));
+            }
+        }
     }
 }
