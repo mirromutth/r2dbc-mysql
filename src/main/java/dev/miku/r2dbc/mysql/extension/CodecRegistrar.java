@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql;
+package dev.miku.r2dbc.mysql.extension;
+
+import dev.miku.r2dbc.mysql.codec.CodecRegistry;
+import io.netty.buffer.ByteBufAllocator;
 
 /**
- * Integration tests for {@link SimpleQuery}, {@link TextSimpleStatement} and {@link TextParametrizedStatement}.
+ * Registrar interface that is used to register {@code Codec}s as extension to built-in codecs.
+ * <p>
+ * This will be registered before the connection is established.
  */
-class TextQueryIntegrationTest extends QueryIntegrationTestSupport {
+@FunctionalInterface
+public interface CodecRegistrar extends Extension {
 
-    TextQueryIntegrationTest() {
-        super(configuration(false, null));
-    }
+    void register(ByteBufAllocator allocator, CodecRegistry registry);
 }

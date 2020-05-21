@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql;
-
 /**
- * Integration tests for {@link SimpleQuery}, {@link TextSimpleStatement} and {@link TextParametrizedStatement}.
+ * Extensions for the MySQL driver.
  */
-class TextQueryIntegrationTest extends QueryIntegrationTestSupport {
 
-    TextQueryIntegrationTest() {
-        super(configuration(false, null));
-    }
-}
+@NonNullApi
+package dev.miku.r2dbc.mysql.extension;
+
+import reactor.util.annotation.NonNullApi;

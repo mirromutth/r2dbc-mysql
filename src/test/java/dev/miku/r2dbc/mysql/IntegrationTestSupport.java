@@ -53,7 +53,7 @@ abstract class IntegrationTestSupport {
         return Mono.from(result.getRowsUpdated());
     }
 
-    static MySqlConnectionConfiguration configuration(@Nullable Predicate<String> preferPrepared) {
+    static MySqlConnectionConfiguration configuration(boolean autodetectExtensions, @Nullable Predicate<String> preferPrepared) {
         String password = System.getProperty("test.mysql.password");
 
         assertThat(password).withFailMessage("Property test.mysql.password must exists and not be empty")
@@ -65,7 +65,8 @@ abstract class IntegrationTestSupport {
             .connectTimeout(Duration.ofSeconds(3))
             .username("root")
             .password(password)
-            .database("r2dbc");
+            .database("r2dbc")
+            .autodetectExtensions(autodetectExtensions);
 
         if (preferPrepared == null) {
             builder.useClientPrepareStatement();

@@ -33,7 +33,7 @@ class PrepareParametrizedStatementTest implements StatementTestSupport<PreparePa
 
     private final ConnectionContext context = new ConnectionContext(ZeroDateOption.USE_NULL);
 
-    private final Codecs codecs = Codecs.getInstance();
+    private final Codecs codecs = Codecs.builder().build();
 
     private final Field fetchSize = PrepareParametrizedStatement.class.getDeclaredField("fetchSize");
 

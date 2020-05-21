@@ -39,7 +39,7 @@ public interface Codecs {
 
     ParameterValue encodeNull();
 
-    static Codecs getInstance() {
-        return DefaultCodecs.getDefault();
+    static CodecsBuilder builder() {
+        return new DefaultCodecs.Builder();
     }
 }

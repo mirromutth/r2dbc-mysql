@@ -68,6 +68,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
 
     public static final Option<Object> USE_SERVER_PREPARE_STATEMENT = Option.valueOf("useServerPrepareStatement");
 
+    public static final Option<Boolean> AUTODETECT_EXTENSIONS = Option.valueOf("autodetectExtensions");
+
     @SuppressWarnings("unchecked")
     @Override
     public ConnectionFactory create(ConnectionFactoryOptions options) {
@@ -155,6 +157,12 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             } else {
                 throw new IllegalArgumentException("useServerPrepareStatement must be boolean or Predicate");
             }
+        }
+
+        Boolean autodetectExtensions = options.getValue(AUTODETECT_EXTENSIONS);
+
+        if (autodetectExtensions != null) {
+            builder.autodetectExtensions(autodetectExtensions);
         }
 
         MySqlConnectionConfiguration configuration = builder.username(options.getRequiredValue(USER))

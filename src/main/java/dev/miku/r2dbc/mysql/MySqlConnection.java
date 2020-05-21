@@ -371,14 +371,15 @@ public final class MySqlConnection implements Connection {
 
     /**
      * @param client  must be logged-in
+     * @param codecs  built-in {@link Codecs}
      * @param context capabilities must be initialized
      * @param prepare judging for prefer use prepare statement to execute simple query
      */
-    static Mono<MySqlConnection> create(Client client, ConnectionContext context, @Nullable Predicate<String> prepare) {
+    static Mono<MySqlConnection> create(Client client, Codecs codecs, ConnectionContext context, @Nullable Predicate<String> prepare) {
         requireNonNull(client, "client must not be null");
+        requireNonNull(codecs, "codecs must not be null");
         requireNonNull(context, "context must not be null");
 
-        Codecs codecs = Codecs.getInstance();
         ServerVersion version = context.getServerVersion();
         String query;
 

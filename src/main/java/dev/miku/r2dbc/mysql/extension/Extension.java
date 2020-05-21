@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql;
+package dev.miku.r2dbc.mysql.extension;
 
 /**
- * Integration tests for {@link SimpleQuery}, {@link TextSimpleStatement} and {@link TextParametrizedStatement}.
+ * Marker interface for all extensions.
  */
-class TextQueryIntegrationTest extends QueryIntegrationTestSupport {
+public interface Extension {
 
-    TextQueryIntegrationTest() {
-        super(configuration(false, null));
-    }
 }

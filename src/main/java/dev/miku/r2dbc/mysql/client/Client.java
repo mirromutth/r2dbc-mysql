@@ -21,6 +21,7 @@ import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.ConnectionContext;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelOption;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -57,6 +58,13 @@ public interface Client {
     Mono<Void> close();
 
     Mono<Void> forceClose();
+
+    /**
+     * Returns the {@link ByteBufAllocator}.
+     *
+     * @return the {@link ByteBufAllocator}
+     */
+    ByteBufAllocator getByteBufAllocator();
 
     boolean isConnected();
 

@@ -1,0 +1,38 @@
+/*
+ * Copyright 2018-2020 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package dev.miku.r2dbc.mysql.codec;
+
+/**
+ * The builder for {@link Codecs}.
+ * <p>
+ * It will return default singleton {@link Codecs} when codec has been never added.
+ * But if user added any {@link Codec} by calling {@link #addFirst} or {@link #addLast},
+ * it will generate a new {@link Codecs} every time {@link #build()}.
+ * <p>
+ * Note: user should not remove/change any built-in {@link Codec} because it will
+ * cause the driver to not work, so now this interface has only functions of "add".
+ */
+public interface CodecsBuilder extends CodecRegistry {
+
+    @Override
+    CodecsBuilder addFirst(Codec<?> codec);
+
+    @Override
+    CodecsBuilder addLast(Codec<?> codec);
+
+    Codecs build();
+}

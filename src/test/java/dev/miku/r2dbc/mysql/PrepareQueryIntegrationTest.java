@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class PrepareQueryIntegrationTest extends QueryIntegrationTestSupport {
 
     PrepareQueryIntegrationTest() {
-        super(configuration(sql -> true));
+        super(configuration(false, sql -> true));
     }
 
     @Test

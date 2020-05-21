@@ -14,14 +14,25 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql;
+package dev.miku.r2dbc.mysql.extension;
+
+import dev.miku.r2dbc.mysql.codec.CodecRegistry;
+import io.netty.buffer.ByteBufAllocator;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Integration tests for {@link SimpleQuery}, {@link TextSimpleStatement} and {@link TextParametrizedStatement}.
+ * The JSON {@link CodecRegistrar} based on jackson.
+ * <p>
+ * TODO: implement this class.
  */
-class TextQueryIntegrationTest extends QueryIntegrationTestSupport {
+public final class JacksonCodecRegistrar implements CodecRegistrar {
 
-    TextQueryIntegrationTest() {
-        super(configuration(false, null));
+    @Override
+    public void register(ByteBufAllocator allocator, CodecRegistry registry) {
+    }
+
+    @Override
+    public String toString() {
+        return "JacksonCodecRegistrar{}";
     }
 }
