@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
+import dev.miku.r2dbc.mysql.Parameter;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
@@ -35,9 +35,9 @@ public interface Codecs {
 
     <T> T decodeLastInsertId(long value, Class<T> type);
 
-    ParameterValue encode(Object value, CodecContext context);
+    Parameter encode(Object value, CodecContext context);
 
-    ParameterValue encodeNull();
+    Parameter encodeNull();
 
     static CodecsBuilder builder() {
         return new DefaultCodecs.Builder();

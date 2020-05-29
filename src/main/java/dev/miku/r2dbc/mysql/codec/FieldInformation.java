@@ -30,10 +30,20 @@ public interface FieldInformation {
 
     short getDefinitions();
 
+    /**
+     * @return the id of {@code CharCollation}.
+     */
     int getCollationId();
 
+    /**
+     * @return the field max size that is defined by the table, unsigned int32.
+     */
     long getSize();
 
+    /**
+     * @return default java type, {@code null} if this data type is unknown
+     * for the driver, never be primitive types or {@code Object.class}.
+     */
     @Nullable
     Class<?> getJavaType();
 }

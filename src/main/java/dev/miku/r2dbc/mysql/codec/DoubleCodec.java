@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -55,8 +56,8 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new DoubleValue((Double) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new DoubleParameter((Double) value);
     }
 
     @Override
@@ -65,22 +66,22 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
         return DataTypes.DOUBLE == type || DataTypes.FLOAT == type || (info.getSize() < 16 && TypePredicates.isDecimal(type));
     }
 
-    private static final class DoubleValue extends AbstractParameterValue {
+    private static final class DoubleParameter extends AbstractParameter {
 
         private final double value;
 
-        private DoubleValue(double value) {
+        private DoubleParameter(double value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeDouble(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeDouble(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(value));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeDouble(value));
         }
 
         @Override
@@ -93,11 +94,11 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof DoubleValue)) {
+            if (!(o instanceof DoubleParameter)) {
                 return false;
             }
 
-            DoubleValue that = (DoubleValue) o;
+            DoubleParameter that = (DoubleParameter) o;
 
             return Double.compare(that.value, value) == 0;
         }

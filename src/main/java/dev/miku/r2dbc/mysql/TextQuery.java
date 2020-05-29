@@ -16,15 +16,9 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.util.OperatorUtils;
-import reactor.core.publisher.EmitterProcessor;
-import reactor.core.publisher.Flux;
-
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -61,25 +55,6 @@ final class TextQuery extends Query {
         }
 
         return index;
-    }
-
-    Flux<String> formatSql(List<Binding> bindings) {
-        requireNonNull(bindings, "bindings must not be null");
-
-        // No need defer because it must be called by inner of Flux.defer.
-        if (bindings.isEmpty()) {
-            return Flux.empty();
-        }
-
-        Iterator<Binding> iter = bindings.iterator();
-        EmitterProcessor<Binding> processor = EmitterProcessor.create(1, true);
-        Consumer<String> succeed = ignored -> OperatorUtils.emitIterator(processor, iter);
-
-        processor.onNext(iter.next());
-
-        return processor.concatMap(it -> it.toSql(sqlParts).doOnSuccess(succeed))
-            .doOnCancel(() -> Binding.clearSubsequent(iter))
-            .doOnError(ignored -> Binding.clearSubsequent(iter));
     }
 
     /**

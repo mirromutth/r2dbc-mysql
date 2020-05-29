@@ -16,11 +16,17 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+
+import java.nio.charset.Charset;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import static java.time.temporal.ChronoField.*;
 
@@ -62,11 +68,31 @@ class LocalDateTimeCodecTest implements CodecTestSupport<LocalDateTime> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[dateTimes.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = formatter.format(dateTimes[i]);
-        }
-        return results;
+        return Arrays.stream(dateTimes).map(formatter::format).toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(dateTimes)
+            .map(it -> {
+                ByteBuf buf = LocalDateCodecTest.encode(it.toLocalDate());
+                LocalTime time = it.toLocalTime();
+
+                if (LocalTime.MIDNIGHT.equals(time)) {
+                    return buf;
+                }
+
+                buf.writeByte(time.getHour())
+                    .writeByte(time.getMinute())
+                    .writeByte(time.getSecond());
+
+                if (time.getNano() != 0) {
+                    buf.writeIntLE((int) TimeUnit.NANOSECONDS.toMicros(time.getNano()));
+                }
+
+                return buf;
+            })
+            .toArray(ByteBuf[]::new);
     }
 
     private static LocalDateTime[] multiple() {

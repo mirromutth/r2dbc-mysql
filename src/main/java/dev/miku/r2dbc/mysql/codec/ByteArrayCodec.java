@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
@@ -54,8 +54,8 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new ByteArrayValue((byte[]) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new ByteArrayParameter((byte[]) value);
     }
 
     @Override
@@ -63,26 +63,22 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
         return TypePredicates.isBinary(info.getType());
     }
 
-    private static final class ByteArrayValue extends AbstractParameterValue {
+    private static final class ByteArrayParameter extends AbstractParameter {
 
         private final byte[] bytes;
 
-        private ByteArrayValue(byte[] bytes) {
+        private ByteArrayParameter(byte[] bytes) {
             this.bytes = bytes;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeByteArray(bytes));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeByteArray(bytes));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> {
-                builder.append('x').append('\'');
-                CodecUtils.appendHex(builder, bytes);
-                builder.append('\'');
-            });
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeHex(bytes));
         }
 
         @Override
@@ -95,11 +91,11 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ByteArrayValue)) {
+            if (!(o instanceof ByteArrayParameter)) {
                 return false;
             }
 
-            ByteArrayValue that = (ByteArrayValue) o;
+            ByteArrayParameter that = (ByteArrayParameter) o;
 
             return Arrays.equals(bytes, that.bytes);
         }

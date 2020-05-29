@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -61,14 +62,14 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
+    public Parameter encode(Object value, CodecContext context) {
         short v = (Short) value;
 
         if ((byte) v == v) {
-            return new ByteCodec.ByteValue((byte) v);
+            return new ByteCodec.ByteParameter((byte) v);
         }
 
-        return new ShortValue(v);
+        return new ShortParameter(v);
     }
 
     @Override
@@ -83,22 +84,22 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
         return DataTypes.SMALLINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
     }
 
-    static final class ShortValue extends AbstractParameterValue {
+    static final class ShortParameter extends AbstractParameter {
 
         private final short value;
 
-        ShortValue(short value) {
+        ShortParameter(short value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeShort(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeShort(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(value));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeInt(value));
         }
 
         @Override
@@ -111,11 +112,11 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ShortValue)) {
+            if (!(o instanceof ShortParameter)) {
                 return false;
             }
 
-            ShortValue that = (ShortValue) o;
+            ShortParameter that = (ShortParameter) o;
 
             return value == that.value;
         }

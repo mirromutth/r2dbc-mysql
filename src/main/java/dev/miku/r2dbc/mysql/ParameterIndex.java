@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.message.ParameterValue;
 import reactor.util.annotation.Nullable;
 
 import java.util.Arrays;
@@ -63,7 +62,7 @@ final class ParameterIndex {
         }
     }
 
-    void bind(Binding binding, ParameterValue value) {
+    void bind(Binding binding, Parameter value) {
         if (values == null) {
             binding.add(first, value);
         } else {

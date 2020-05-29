@@ -16,9 +16,14 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Clob;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
 
 /**
  * Unit tests for {@link ClobCodec}.
@@ -26,11 +31,17 @@ import reactor.core.publisher.Mono;
 class ClobCodecTest implements CodecTestSupport<Clob> {
 
     private final MockClob[] clob = {
+        new MockClob(),
         new MockClob(""),
         new MockClob("", ""),
         new MockClob("Hello, world!"),
         new MockClob("\r\n\0\032\\'\"\u00a5\u20a9"),
         new MockClob("Hello, ", "R2DBC", "!"),
+        new MockClob("Hello, ", "简体中文", "!"),
+        new MockClob("Hello, ", "正體中文", "!"),
+        new MockClob("Hello, ", "日本語（にほんご）", "!"),
+        new MockClob("Hello, ", "한국", "!"),
+        new MockClob("Hello, ", "русский", "!"),
         new MockClob("", "Hi, ", "MySQL"),
         new MockClob("Hi, ", "", "MySQL"),
         new MockClob("Hi, ", "MySQL", ""),
@@ -48,12 +59,18 @@ class ClobCodecTest implements CodecTestSupport<Clob> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[clob.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = String.format("'%s'", ESCAPER.escape(String.join("", clob[i].values)));
-        }
-        return results;
+        return Arrays.stream(clob)
+            .map(it -> String.format("'%s'", ESCAPER.escape(String.join("", it.values))))
+            .toArray();
     }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(clob)
+            .map(it -> Unpooled.wrappedBuffer(String.join("", it.values).getBytes(charset)))
+            .toArray(ByteBuf[]::new);
+    }
+
 
     private static final class MockClob implements Clob {
 

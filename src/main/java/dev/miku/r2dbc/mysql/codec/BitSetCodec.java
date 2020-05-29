@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
@@ -53,8 +53,8 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new BitSetValue((BitSet) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new BitSetParameter((BitSet) value);
     }
 
     @Override
@@ -76,30 +76,28 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         return bytes;
     }
 
-    private static final class BitSetValue extends AbstractParameterValue {
+    private static final class BitSetParameter extends AbstractParameter {
 
         private final BitSet set;
 
-        private BitSetValue(BitSet set) {
+        private BitSetParameter(BitSet set) {
             this.set = set;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeByteArray(reverse(set.toByteArray())));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeByteArray(reverse(set.toByteArray())));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
+        public Mono<Void> text(ParameterWriter writer) {
             return Mono.fromRunnable(() -> {
                 if (set.isEmpty()) {
                     // Must filled by 0 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer on type BIT (i.e. unsafe allocate).
                     // So if we do not fill the buffer, it will use last content which is an undefined behavior. A classic bug, right?
-                    builder.append("b'0'");
+                    writer.writeBinary(false);
                 } else {
-                    builder.append('x').append('\'');
-                    CodecUtils.appendHex(builder, reverse(set.toByteArray()));
-                    builder.append('\'');
+                    writer.writeHex(reverse(set.toByteArray()));
                 }
             });
         }
@@ -114,11 +112,11 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BitSetValue)) {
+            if (!(o instanceof BitSetParameter)) {
                 return false;
             }
 
-            BitSetValue that = (BitSetValue) o;
+            BitSetParameter that = (BitSetParameter) o;
 
             return set.equals(that.set);
         }

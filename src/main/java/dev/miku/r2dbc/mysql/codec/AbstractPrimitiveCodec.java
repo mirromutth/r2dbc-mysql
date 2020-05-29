@@ -35,11 +35,7 @@ abstract class AbstractPrimitiveCodec<T> implements PrimitiveCodec<T> {
     }
 
     @Override
-    public final boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
-        if (massive) {
-            return false;
-        }
-
+    public final boolean canDecode(FieldInformation info, Class<?> target) {
         return target.isAssignableFrom(boxedClass) && doCanDecode(info);
     }
 

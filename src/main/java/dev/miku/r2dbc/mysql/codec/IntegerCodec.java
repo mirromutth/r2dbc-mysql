@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -50,18 +51,18 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
+    public Parameter encode(Object value, CodecContext context) {
         int v = (Integer) value;
 
         if ((byte) v == v) {
-            return new ByteCodec.ByteValue((byte) v);
+            return new ByteCodec.ByteParameter((byte) v);
         }
 
         if ((short) v == v) {
-            return new ShortCodec.ShortValue((short) v);
+            return new ShortCodec.ShortParameter((short) v);
         }
 
-        return new IntValue(v);
+        return new IntParameter(v);
     }
 
     @Override
@@ -129,22 +130,22 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         }
     }
 
-    static final class IntValue extends AbstractParameterValue {
+    static final class IntParameter extends AbstractParameter {
 
         private final int value;
 
-        IntValue(int value) {
+        IntParameter(int value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeInt(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeInt(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(value));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeInt(value));
         }
 
         @Override
@@ -157,11 +158,11 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof IntValue)) {
+            if (!(o instanceof IntParameter)) {
                 return false;
             }
 
-            IntValue intValue = (IntValue) o;
+            IntParameter intValue = (IntParameter) o;
 
             return value == intValue.value;
         }

@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -49,8 +50,8 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new ByteValue((Byte) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new ByteParameter((Byte) value);
     }
 
     @Override
@@ -58,22 +59,22 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
         return DataTypes.TINYINT == info.getType() && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
     }
 
-    static final class ByteValue extends AbstractParameterValue {
+    static final class ByteParameter extends AbstractParameter {
 
         private final byte value;
 
-        ByteValue(byte value) {
+        ByteParameter(byte value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeByte(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeByte(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(value));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeInt(value));
         }
 
         @Override
@@ -86,11 +87,11 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ByteValue)) {
+            if (!(o instanceof ByteParameter)) {
                 return false;
             }
 
-            ByteValue byteValue = (ByteValue) o;
+            ByteParameter byteValue = (ByteParameter) o;
 
             return value == byteValue.value;
         }

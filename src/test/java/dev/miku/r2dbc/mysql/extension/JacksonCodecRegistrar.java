@@ -17,22 +17,35 @@
 package dev.miku.r2dbc.mysql.extension;
 
 import dev.miku.r2dbc.mysql.codec.CodecRegistry;
+import dev.miku.r2dbc.mysql.codec.JacksonCodec;
 import io.netty.buffer.ByteBufAllocator;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import reactor.core.publisher.Mono;
 
 /**
  * The JSON {@link CodecRegistrar} based on jackson.
- * <p>
- * TODO: implement this class.
  */
 public final class JacksonCodecRegistrar implements CodecRegistrar {
 
+    private static boolean setUp = false;
+
     @Override
     public void register(ByteBufAllocator allocator, CodecRegistry registry) {
+        if (setUp) {
+            registry.addFirst(JacksonCodec.DECODING)
+                .addLast(JacksonCodec.ENCODING);
+        }
     }
 
     @Override
     public String toString() {
         return "JacksonCodecRegistrar{}";
+    }
+
+    public static void setUp() {
+        setUp = true;
+    }
+
+    public static void tearDown() {
+        setUp = false;
     }
 }

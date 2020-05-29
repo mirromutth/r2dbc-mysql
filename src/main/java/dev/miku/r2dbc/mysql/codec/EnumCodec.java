@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -44,12 +44,8 @@ final class EnumCodec implements Codec<Enum<?>> {
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
-        if (DataTypes.ENUMERABLE == info.getType() && !massive) {
-            return target.isEnum();
-        }
-
-        return false;
+    public boolean canDecode(FieldInformation info, Class<?> target) {
+        return DataTypes.ENUMERABLE == info.getType() && target.isEnum();
     }
 
     @Override
@@ -58,35 +54,29 @@ final class EnumCodec implements Codec<Enum<?>> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new EnumValue((Enum<?>) value, context);
+    public Parameter encode(Object value, CodecContext context) {
+        return new EnumParameter((Enum<?>) value, context);
     }
 
-    private static final class EnumValue extends AbstractParameterValue {
+    private static final class EnumParameter extends AbstractParameter {
 
         private final Enum<?> value;
 
         private final CodecContext context;
 
-        private EnumValue(Enum<?> value, CodecContext context) {
+        private EnumParameter(Enum<?> value, CodecContext context) {
             this.value = value;
             this.context = context;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeCharSequence(value.name(), context.getClientCollation()));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeCharSequence(value.name(), context.getClientCollation()));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> {
-                builder.append('\'');
-                // Java will be not including special character in enum names,
-                // but other JVM languages may be that, so must escape string here.
-                CodecUtils.appendEscape(builder, value.name());
-                builder.append('\'');
-            });
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.write(value.name()));
         }
 
         @Override
@@ -99,11 +89,11 @@ final class EnumCodec implements Codec<Enum<?>> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof EnumValue)) {
+            if (!(o instanceof EnumParameter)) {
                 return false;
             }
 
-            EnumValue enumValue = (EnumValue) o;
+            EnumParameter enumValue = (EnumParameter) o;
 
             return value.equals(enumValue.value);
         }

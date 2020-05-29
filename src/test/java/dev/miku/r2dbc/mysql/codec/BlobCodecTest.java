@@ -16,12 +16,15 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Blob;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -32,6 +35,7 @@ import java.util.stream.Collectors;
 class BlobCodecTest implements CodecTestSupport<Blob> {
 
     private final MockBlob[] blob = {
+        new MockBlob(),
         new MockBlob(new byte[0]),
         new MockBlob(new byte[]{0}),
         new MockBlob(new byte[]{0x7F}),
@@ -75,21 +79,23 @@ class BlobCodecTest implements CodecTestSupport<Blob> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[blob.length];
-        for (int i = 0; i < results.length; ++i) {
-            String hex = Arrays.stream(blob[i].values)
-                .map(it -> it.length == 0 ? "" : Hex.encodeHexString(it, false))
-                .collect(Collectors.joining());
-            results[i] = String.format("x'%s'", hex);
-        }
-        return results;
+        return Arrays.stream(blob)
+            .map(it -> Arrays.stream(it.values)
+                .map(v -> v.length == 0 ? "" : Hex.encodeHexString(v, false))
+                .collect(Collectors.joining("", "x'", "'")))
+            .toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(blob).map(it -> Unpooled.wrappedBuffer(it.values)).toArray(ByteBuf[]::new);
     }
 
     private static final class MockBlob implements Blob {
 
         private final byte[][] values;
 
-        private MockBlob(byte[] ...values) {
+        private MockBlob(byte[]... values) {
             this.values = values;
         }
 
@@ -97,6 +103,10 @@ class BlobCodecTest implements CodecTestSupport<Blob> {
         public Flux<ByteBuffer> stream() {
             return Flux.create(sink -> {
                 for (byte[] value : values) {
+                    if (sink.isCancelled()) {
+                        return;
+                    }
+
                     ByteBuffer buffer = ByteBuffer.allocate(value.length);
                     buffer.put(value).flip();
                     sink.next(buffer);

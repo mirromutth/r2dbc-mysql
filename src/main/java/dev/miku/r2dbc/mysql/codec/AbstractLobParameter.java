@@ -25,11 +25,11 @@ import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
 /**
- * Base class considers LOB types (i.e. BLOB, CLOB) for {@link AbstractParameterValue} implementations.
+ * Base class considers LOB types (i.e. BLOB, CLOB) for {@link AbstractParameter} implementations.
  */
-abstract class AbstractLobValue extends AbstractParameterValue {
+abstract class AbstractLobParameter extends AbstractParameter {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractLobValue.class);
+    private static final Logger logger = LoggerFactory.getLogger(AbstractLobParameter.class);
 
     @Override
     public final short getType() {

@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 
 import java.time.Year;
@@ -50,19 +50,19 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
+    public Parameter encode(Object value, CodecContext context) {
         int year = ((Year) value).getValue();
 
         if ((byte) year == year) {
-            return new ByteCodec.ByteValue((byte) year);
+            return new ByteCodec.ByteParameter((byte) year);
         }
 
         if ((short) year == year) {
-            return new ShortCodec.ShortValue((short) year);
+            return new ShortCodec.ShortParameter((short) year);
         }
 
         // Unsupported, but should be considered here.
-        return new IntegerCodec.IntValue(year);
+        return new IntegerCodec.IntParameter(year);
     }
 
     @Override

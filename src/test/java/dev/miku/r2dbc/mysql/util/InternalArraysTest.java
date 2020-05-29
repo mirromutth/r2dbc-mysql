@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -33,13 +32,13 @@ final class InternalArraysTest {
 
     @Test
     void asReadOnlyList() {
-        assertThat(InternalArrays.asReadOnlyList(1, 2, 3, 4))
+        assertThat(InternalArrays.asImmutableList(1, 2, 3, 4))
             .isEqualTo(Arrays.asList(1, 2, 3, 4))
             .isNotInstanceOf(Arrays.asList(1, 2, 3, 4).getClass());
-        assertThat(InternalArrays.asReadOnlyList(1))
+        assertThat(InternalArrays.asImmutableList(1))
             .isEqualTo(Collections.singletonList(1))
             .isExactlyInstanceOf(Collections.singletonList(1).getClass());
-        assertThat(InternalArrays.asReadOnlyList())
+        assertThat(InternalArrays.asImmutableList())
             .isEqualTo(Collections.emptyList())
             .isExactlyInstanceOf(Collections.emptyList().getClass());
     }
@@ -48,7 +47,7 @@ final class InternalArraysTest {
     void toReadOnlyList() {
         Integer[] arr = new Integer[] { 1, 2, 3, 4 };
 
-        ListAssert<Integer> listAssert = assertThat(InternalArrays.toReadOnlyList(arr))
+        ListAssert<Integer> listAssert = assertThat(InternalArrays.toImmutableList(arr))
             .isEqualTo(Arrays.asList(1, 2, 3, 4))
             .isNotInstanceOf(Arrays.asList(1, 2, 3, 4).getClass());
 
@@ -56,10 +55,10 @@ final class InternalArraysTest {
 
         listAssert.isEqualTo(Arrays.asList(1, 2, 3, 4));
 
-        assertThat(InternalArrays.toReadOnlyList(1))
+        assertThat(InternalArrays.toImmutableList(1))
             .isEqualTo(Collections.singletonList(1))
             .isExactlyInstanceOf(Collections.singletonList(1).getClass());
-        assertThat(InternalArrays.toReadOnlyList())
+        assertThat(InternalArrays.toImmutableList())
             .isEqualTo(Collections.emptyList())
             .isExactlyInstanceOf(Collections.emptyList().getClass());
     }

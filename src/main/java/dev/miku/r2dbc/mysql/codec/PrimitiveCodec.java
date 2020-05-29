@@ -16,10 +16,18 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import reactor.util.annotation.NonNull;
+
 /**
  * Base class considers primitive class for {@link Codec} implementations.
+ * <p>
+ * Primitive types should never return {@code null} when decoding.
  */
 interface PrimitiveCodec<T> extends Codec<T> {
+
+    @NonNull
+    T decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context);
 
     boolean canPrimitiveDecode(FieldInformation info);
 

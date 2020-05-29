@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
@@ -129,13 +128,13 @@ abstract class ParametrizedStatementSupport extends MySqlStatementSupport {
      */
     abstract protected ParameterIndex getIndexes(String name);
 
-    private void addBinding(int index, ParameterValue value) {
+    private void addBinding(int index, Parameter value) {
         assertNotExecuted();
 
         this.bindings.getCurrent().add(index, value);
     }
 
-    private void addBinding(ParameterIndex indexes, ParameterValue value) {
+    private void addBinding(ParameterIndex indexes, Parameter value) {
         assertNotExecuted();
 
         indexes.bind(this.bindings.getCurrent(), value);

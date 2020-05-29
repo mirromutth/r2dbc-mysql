@@ -16,6 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
+
 /**
  * Unit tests for {@link LongCodec}.
  */
@@ -27,6 +33,10 @@ class LongCodecTest implements CodecTestSupport<Long> {
         -1L,
         10L,
         -10L,
+        (long) Byte.MIN_VALUE,
+        (long) Byte.MAX_VALUE,
+        (long) Short.MIN_VALUE,
+        (long) Short.MAX_VALUE,
         (long) Integer.MIN_VALUE,
         (long) Integer.MAX_VALUE,
         Long.MIN_VALUE,
@@ -46,5 +56,27 @@ class LongCodecTest implements CodecTestSupport<Long> {
     @Override
     public Object[] stringifyParameters() {
         return longs;
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(longs).map(LongCodecTest::encode).toArray(ByteBuf[]::new);
+    }
+
+    @Override
+    public ByteBuf sized(ByteBuf value) {
+        return value;
+    }
+
+    static ByteBuf encode(long value) {
+        if (value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE) {
+            return Unpooled.wrappedBuffer(new byte[]{(byte) value});
+        } else if (value >= Short.MIN_VALUE && value <= Short.MAX_VALUE) {
+            return Unpooled.buffer(Short.BYTES, Short.BYTES).writeShortLE((short) value);
+        } else if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+            return Unpooled.buffer(Integer.BYTES, Integer.BYTES).writeIntLE((int) value);
+        } else {
+            return Unpooled.buffer(Long.BYTES, Long.BYTES).writeLongLE(value);
+        }
     }
 }

@@ -16,10 +16,15 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
+import java.nio.charset.Charset;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
+import java.util.Arrays;
 import java.util.Locale;
 
 import static java.time.temporal.ChronoField.DAY_OF_MONTH;
@@ -64,10 +69,19 @@ class LocalDateCodecTest implements CodecTestSupport<LocalDate> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[DATES.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = formatter.format(DATES[i]);
-        }
-        return results;
+        return Arrays.stream(DATES).map(formatter::format).toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(DATES)
+            .map(LocalDateCodecTest::encode)
+            .toArray(ByteBuf[]::new);
+    }
+
+    static ByteBuf encode(LocalDate date) {
+        return Unpooled.buffer().writeShortLE(date.getYear())
+            .writeByte(date.getMonthValue())
+            .writeByte(date.getDayOfMonth());
     }
 }

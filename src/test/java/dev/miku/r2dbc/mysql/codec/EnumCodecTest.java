@@ -16,8 +16,13 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.testcontainers.shaded.com.google.common.base.CaseFormat;
 import org.testcontainers.shaded.com.google.common.collect.BoundType;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
 
 /**
  * Unit tests for {@link EnumCodec}.
@@ -46,11 +51,16 @@ class EnumCodecTest implements CodecTestSupport<Enum<?>> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[enums.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = String.format("'%s'", ESCAPER.escape(enums[i].name()));
-        }
-        return results;
+        return Arrays.stream(enums)
+            .map(it -> String.format("'%s'", ESCAPER.escape(it.name())))
+            .toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(enums)
+            .map(it -> Unpooled.wrappedBuffer(it.name().getBytes(charset)))
+            .toArray(ByteBuf[]::new);
     }
 
     private enum SomeElement {

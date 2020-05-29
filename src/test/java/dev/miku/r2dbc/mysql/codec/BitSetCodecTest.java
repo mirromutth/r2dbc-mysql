@@ -16,9 +16,13 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 import org.testcontainers.shaded.org.apache.commons.lang.ArrayUtils;
 
+import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.BitSet;
 
 /**
@@ -46,16 +50,23 @@ class BitSetCodecTest implements CodecTestSupport<BitSet> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[sets.length];
-        for (int i = 0; i < results.length; ++i) {
-            if (sets[i].isEmpty()) {
-                results[i] = "b'0'";
+        return Arrays.stream(sets).map(it -> {
+            if (it.isEmpty()) {
+                return "b'0'";
             } else {
-                byte[] bytes = sets[i].toByteArray();
+                byte[] bytes = it.toByteArray();
                 ArrayUtils.reverse(bytes);
-                results[i] = String.format("x'%s'", Hex.encodeHexString(bytes, false));
+                return String.format("x'%s'", Hex.encodeHexString(bytes, false));
             }
-        }
-        return results;
+        }).toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(sets).map(it -> {
+            byte[] bytes = it.toByteArray();
+            ArrayUtils.reverse(bytes);
+            return Unpooled.wrappedBuffer(bytes);
+        }).toArray(ByteBuf[]::new);
     }
 }

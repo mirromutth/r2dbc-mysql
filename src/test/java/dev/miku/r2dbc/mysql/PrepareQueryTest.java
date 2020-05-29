@@ -116,15 +116,15 @@ class PrepareQueryTest extends QueryTestSupport {
         Binding binding = new Binding(5);
         assertEquals(binding.findUnbind(), 0);
 
-        binding.add(0, MockValue.INSTANCE);
+        binding.add(0, MockParameter.INSTANCE);
         assertEquals(binding.findUnbind(), 1);
 
         assertEquals(2, query.getIndexes("name").toIntArray().length);
-        query.getIndexes("name").bind(binding, MockValue.INSTANCE);
+        query.getIndexes("name").bind(binding, MockParameter.INSTANCE);
         assertEquals(binding.findUnbind(), 2);
 
         assertEquals(2, query.getIndexes("age").toIntArray().length);
-        query.getIndexes("age").bind(binding, MockValue.INSTANCE);
+        query.getIndexes("age").bind(binding, MockParameter.INSTANCE);
         assertEquals(binding.findUnbind(), -1);
 
         query = Query.parse("INSERT INTO `user` (`id`, `nickname`, `real_name`) VALUE (?, ?initName, ?initName) ON DUPLICATE KEY UPDATE `nickname` = ?updateName, `real_name` = ?updateName", true);
@@ -132,15 +132,15 @@ class PrepareQueryTest extends QueryTestSupport {
         binding = new Binding(5);
         assertEquals(binding.findUnbind(), 0);
 
-        binding.add(0, MockValue.INSTANCE);
+        binding.add(0, MockParameter.INSTANCE);
         assertEquals(binding.findUnbind(), 1);
 
         assertEquals(2, query.getIndexes("initName").toIntArray().length);
-        query.getIndexes("initName").bind(binding, MockValue.INSTANCE);
+        query.getIndexes("initName").bind(binding, MockParameter.INSTANCE);
         assertEquals(binding.findUnbind(), 3);
 
         assertEquals(2, query.getIndexes("updateName").toIntArray().length);
-        query.getIndexes("updateName").bind(binding, MockValue.INSTANCE);
+        query.getIndexes("updateName").bind(binding, MockParameter.INSTANCE);
         assertEquals(binding.findUnbind(), -1);
     }
 

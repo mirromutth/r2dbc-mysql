@@ -1,0 +1,76 @@
+/*
+ * Copyright 2018-2020 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package dev.miku.r2dbc.mysql;
+
+import reactor.core.Disposable;
+import reactor.core.publisher.Mono;
+
+import java.util.function.Consumer;
+
+/**
+ * A parameter value includes encode logic.
+ */
+public interface Parameter extends Disposable {
+
+    Consumer<Parameter> DISPOSE = Parameter::dispose;
+
+    /**
+     * Note: the {@code null} is processed by built-in codecs.
+     *
+     * @return {@code true} if parameter is {@code null}. Codec extensions should always return {@code false}.
+     */
+    boolean isNull();
+
+    /**
+     * Binary protocol encoding.
+     * <p>
+     * TODO: refactor it to {@code Publisher<? extends ByteBuf> binary()}.
+     * <p>
+     * Note: not like the text protocol, it make a sense for state-less. Binary protocol
+     * maybe need to add a var-integer before each binaries of the parameter. So if it
+     * seems like {@code Mono<Void> binary(Xxx binaryWriter)}, and if we need to support
+     * multiple times writing like a {@code OutputStream} or {@code Writer} for each
+     * parameter, this make a hell of a complex state system. If we don't support multiple
+     * times writing, it will be hard to understand and maybe make a confuse to user.
+     *
+     * @param output the binary protocol output stream, extended from {@code OutputStream}.
+     * @return the encoding completion signal.
+     */
+    Mono<Void> binary(ParameterOutputStream output);
+
+    /**
+     * Text protocol encoding.
+     * <p>
+     * Note: not like the binary protocol, it make a sense for copy-less. If it seems
+     * like {@code Publisher<? extends CharSequence> text()}, then we need to always
+     * deep copy results (with escaping) into the string buffer of the synthesized SQL
+     * statement.
+     * <p>
+     * WARNING: the {@code output} requires state synchronization after
+     * this function called, so if the {@code writer} is buffered,
+     * please flush the buffer before receiving the completion signal.
+     *
+     * @param writer the text protocol writer, extended {@code Writer}, not thread-safety.
+     * @return the encoding completion signal.
+     */
+    Mono<Void> text(ParameterWriter writer);
+
+    /**
+     * @return the MySQL data type of this parameter data, see {@code DataTypes}.
+     */
+    short getType();
+}

@@ -14,23 +14,27 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.message.client;
+package dev.miku.r2dbc.mysql.codec;
+
+import dev.miku.r2dbc.mysql.Parameter;
 
 /**
- * A plain text SQL query message without any parameter, it could include multi-statements.
+ * Base class considers non null values for {@link Parameter} implementations.
  */
-public final class SimpleQueryMessage extends AbstractQueryMessage implements ExchangeableMessage {
+abstract class AbstractParameter implements Parameter {
 
-    static final byte QUERY_FLAG = 3;
+    @Override
+    public final boolean isNull() {
+        return false;
+    }
 
-    public SimpleQueryMessage(String sql) {
-        super(QUERY_FLAG, sql);
+    @Override
+    public void dispose() {
+        // Do nothing for default
     }
 
     @Override
     public String toString() {
-        // SQL should NOT be printed as this may contain security information.
-        // Of course, if user use trace level logs, SQL is still be printed by ByteBuf dump.
-        return "SimpleQueryMessage{sql=REDACTED}";
+        return getClass().getSimpleName() + "{ non-null, value is hidden }";
     }
 }

@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -58,8 +59,8 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new LocalTimeValue((LocalTime) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new LocalTimeParameter((LocalTime) value);
     }
 
     @Override
@@ -131,31 +132,27 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         }
     }
 
-    static void encodeTime(StringBuilder builder, LocalTime time) {
+    static void encodeTime(ParameterWriter writer, LocalTime time) {
         int micros = (int) TimeUnit.NANOSECONDS.toMicros(time.getNano());
-        DurationCodec.encodeTime(builder, false, time.getHour(), time.getMinute(), time.getSecond(), micros);
+        DurationCodec.encodeTime(writer, false, time.getHour(), time.getMinute(), time.getSecond(), micros);
     }
 
-    private static final class LocalTimeValue extends AbstractParameterValue {
+    private static final class LocalTimeParameter extends AbstractParameter {
 
         private final LocalTime time;
 
-        private LocalTimeValue(LocalTime time) {
+        private LocalTimeParameter(LocalTime time) {
             this.time = time;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeTime(time));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeTime(time));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> {
-                builder.append('\'');
-                encodeTime(builder, time);
-                builder.append('\'');
-            });
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> encodeTime(writer, time));
         }
 
         @Override
@@ -168,11 +165,11 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof LocalTimeValue)) {
+            if (!(o instanceof LocalTimeParameter)) {
                 return false;
             }
 
-            LocalTimeValue that = (LocalTimeValue) o;
+            LocalTimeParameter that = (LocalTimeParameter) o;
 
             return time.equals(that.time);
         }

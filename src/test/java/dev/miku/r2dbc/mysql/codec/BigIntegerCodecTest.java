@@ -16,7 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
 import java.math.BigInteger;
+import java.nio.charset.Charset;
+import java.util.Arrays;
 
 /**
  * Unit tests for {@link BigIntegerCodec}.
@@ -44,5 +49,12 @@ class BigIntegerCodecTest implements CodecTestSupport<BigInteger> {
     @Override
     public Object[] stringifyParameters() {
         return integers;
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(integers)
+            .map(it -> Unpooled.wrappedBuffer(it.toString().getBytes(charset)))
+            .toArray(ByteBuf[]::new);
     }
 }

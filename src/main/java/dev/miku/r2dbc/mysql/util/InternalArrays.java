@@ -55,7 +55,7 @@ public final class InternalArrays {
      */
     @SuppressWarnings("varargs")
     @SafeVarargs
-    public static <E> List<E> asReadOnlyList(E... a) {
+    public static <E> List<E> asImmutableList(E... a) {
         requireNonNull(a, "array must not be null");
 
         switch (a.length) {
@@ -69,7 +69,7 @@ public final class InternalArrays {
     }
 
     /**
-     * Convert an array to a read only {@link List} with array copy.
+     * Convert an array to an immutable {@link List} with array copy.
      * It will copy array but will not clone each element.
      *
      * @param a   the array which want to be converted.
@@ -78,7 +78,7 @@ public final class InternalArrays {
      */
     @SuppressWarnings("varargs")
     @SafeVarargs
-    public static <E> List<E> toReadOnlyList(E... a) {
+    public static <E> List<E> toImmutableList(E... a) {
         requireNonNull(a, "array must not be null");
 
         switch (a.length) {
