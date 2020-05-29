@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
@@ -72,8 +73,8 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new LocalDateTimeValue((LocalDateTime) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new LocalDateTimeParameter((LocalDateTime) value);
     }
 
     @Override
@@ -119,27 +120,25 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
         return LocalDateTime.of(date, LocalTime.of(hour, minute, second, (int) TimeUnit.MICROSECONDS.toNanos(micros)));
     }
 
-    private static final class LocalDateTimeValue extends AbstractParameterValue {
+    private static final class LocalDateTimeParameter extends AbstractParameter {
 
         private final LocalDateTime value;
 
-        private LocalDateTimeValue(LocalDateTime value) {
+        private LocalDateTimeParameter(LocalDateTime value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeDateTime(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeDateTime(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
+        public Mono<Void> text(ParameterWriter writer) {
             return Mono.fromRunnable(() -> {
-                builder.append('\'');
-                LocalDateCodec.encodeDate(builder, value.toLocalDate());
-                builder.append(' ');
-                LocalTimeCodec.encodeTime(builder, value.toLocalTime());
-                builder.append('\'');
+                LocalDateCodec.encodeDate(writer, value.toLocalDate());
+                writer.append(' ');
+                LocalTimeCodec.encodeTime(writer, value.toLocalTime());
             });
         }
 
@@ -153,11 +152,11 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof LocalDateTimeValue)) {
+            if (!(o instanceof LocalDateTimeParameter)) {
                 return false;
             }
 
-            LocalDateTimeValue that = (LocalDateTimeValue) o;
+            LocalDateTimeParameter that = (LocalDateTimeParameter) o;
 
             return value.equals(that.value);
         }

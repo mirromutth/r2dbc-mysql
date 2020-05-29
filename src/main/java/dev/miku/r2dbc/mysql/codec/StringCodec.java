@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -50,8 +50,8 @@ final class StringCodec extends AbstractClassedCodec<String> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new StringValue((CharSequence) value, context);
+    public Parameter encode(Object value, CodecContext context) {
+        return new StringParameter((CharSequence) value, context);
     }
 
     @Override
@@ -61,29 +61,25 @@ final class StringCodec extends AbstractClassedCodec<String> {
         return (TypePredicates.isString(type) || TypePredicates.isLob(type)) && info.getCollationId() != CharCollation.BINARY_ID;
     }
 
-    private static class StringValue extends AbstractParameterValue {
+    private static class StringParameter extends AbstractParameter {
 
         private final CharSequence value;
 
         private final CodecContext context;
 
-        private StringValue(CharSequence value, CodecContext context) {
+        private StringParameter(CharSequence value, CodecContext context) {
             this.value = value;
             this.context = context;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeCharSequence(value, context.getClientCollation()));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeCharSequence(value, context.getClientCollation()));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> {
-                builder.append('\'');
-                CodecUtils.appendEscape(builder, value);
-                builder.append('\'');
-            });
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.append(value));
         }
 
         @Override
@@ -96,11 +92,11 @@ final class StringCodec extends AbstractClassedCodec<String> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof StringValue)) {
+            if (!(o instanceof StringParameter)) {
                 return false;
             }
 
-            StringValue that = (StringValue) o;
+            StringParameter that = (StringParameter) o;
 
             return value.equals(that.value);
         }

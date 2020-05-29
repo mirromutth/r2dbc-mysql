@@ -16,17 +16,18 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -34,9 +35,9 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Codec for {@link Blob}.
  * <p>
- * Note: {@link Blob} will be written by {@code ParameterWriter} rather than {@link #encode}.
+ * Note: {@link Blob} will be written by {@code ParameterOutputStream} rather than {@link #encode}.
  */
-final class BlobCodec implements Codec<Blob> {
+final class BlobCodec implements MassiveCodec<Blob> {
 
     static final BlobCodec INSTANCE = new BlobCodec();
 
@@ -54,7 +55,7 @@ final class BlobCodec implements Codec<Blob> {
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
+    public boolean canDecode(FieldInformation info, Class<?> target) {
         short type = info.getType();
         if (!TypePredicates.isLob(type) && DataTypes.GEOMETRY != type) {
             return false;
@@ -69,20 +70,20 @@ final class BlobCodec implements Codec<Blob> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new BlobValue((Blob) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new BlobParameter((Blob) value);
     }
 
-    private static final class BlobValue extends AbstractLobValue {
+    private static final class BlobParameter extends AbstractLobParameter {
 
         private final AtomicReference<Blob> blob;
 
-        private BlobValue(Blob blob) {
+        private BlobParameter(Blob blob) {
             this.blob = new AtomicReference<>(blob);
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
+        public Mono<Void> binary(ParameterOutputStream output) {
             return Mono.defer(() -> {
                 Blob blob = this.blob.getAndSet(null);
 
@@ -91,15 +92,17 @@ final class BlobCodec implements Codec<Blob> {
                 }
 
                 // Need count entire length, so can not streaming here.
+                // Must have defaultIfEmpty, try Mono.fromCallable(() -> null).flux().collectList()
                 return Flux.from(blob.stream())
                     .collectList()
-                    .doOnNext(writer::writeByteBuffers)
+                    .defaultIfEmpty(Collections.emptyList())
+                    .doOnNext(output::writeByteBuffers)
                     .then();
             });
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
+        public Mono<Void> text(ParameterWriter writer) {
             return Mono.defer(() -> {
                 Blob blob = this.blob.getAndSet(null);
 
@@ -108,9 +111,8 @@ final class BlobCodec implements Codec<Blob> {
                 }
 
                 return Flux.from(blob.stream())
-                    .doOnSubscribe(ignored -> builder.append('x').append('\''))
-                    .doOnNext(it -> CodecUtils.appendHex(builder, it))
-                    .doOnComplete(() -> builder.append('\''))
+                    .doOnSubscribe(ignored -> writer.startHex())
+                    .doOnNext(writer::writeHex)
                     .then();
             });
         }
@@ -120,11 +122,11 @@ final class BlobCodec implements Codec<Blob> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BlobValue)) {
+            if (!(o instanceof BlobParameter)) {
                 return false;
             }
 
-            BlobValue blobValue = (BlobValue) o;
+            BlobParameter blobValue = (BlobParameter) o;
 
             return Objects.equals(this.blob.get(), blobValue.blob.get());
         }

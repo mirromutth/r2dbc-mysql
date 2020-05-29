@@ -16,13 +16,24 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
+import java.nio.charset.Charset;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Unit tests for {@link DurationCodec}.
  */
 class DurationCodecTest implements CodecTestSupport<Duration> {
+
+    private static final long SECONDS_OF_DAY = TimeUnit.DAYS.toSeconds(1);
+
+    private static final long SECONDS_OF_HOUR = TimeUnit.HOURS.toSeconds(1);
+
+    private static final long SECONDS_OF_MINUTE = TimeUnit.MINUTES.toSeconds(1);
 
     private static final long MAX_SECONDS = TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 59;
 
@@ -36,14 +47,18 @@ class DurationCodecTest implements CodecTestSupport<Duration> {
         Duration.ofSeconds(-10, -1000L),
         Duration.ofSeconds(30, 200000L),
         Duration.ofSeconds(-30, -200000L),
-        Duration.ofSeconds(1234567, 89101112L),
-        Duration.ofSeconds(-1234567, -89101112L),
+        Duration.ofSeconds(1234567, 89105612L),
+        Duration.ofSeconds(-1234567, -89105612L),
         Duration.ofSeconds(1234567, 800000000L),
         Duration.ofSeconds(-1234567, -800000000L),
         Duration.ofSeconds(MAX_SECONDS, MAX_NANOS),
         Duration.ofSeconds(-MAX_SECONDS, -MAX_NANOS),
         // Following should not be permitted by MySQL server, but also test.
+        Duration.ofSeconds(Integer.MAX_VALUE, -1),
+        Duration.ofSeconds(Integer.MAX_VALUE, 999_999_999),
         Duration.ofSeconds(Integer.MAX_VALUE, Long.MAX_VALUE),
+        Duration.ofSeconds(Integer.MIN_VALUE, -1),
+        Duration.ofSeconds(Integer.MIN_VALUE, 999_999_999),
         Duration.ofSeconds(Integer.MIN_VALUE, Long.MIN_VALUE),
     };
 
@@ -59,15 +74,43 @@ class DurationCodecTest implements CodecTestSupport<Duration> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[durations.length];
-        for (int i = 0; i < results.length; ++i) {
-            if (durations[i].isNegative()) {
-                results[i] = String.format("'-%s'", format(durations[i].abs()));
-            } else {
-                results[i] = String.format("'%s'", format(durations[i]));
-            }
-        }
-        return results;
+        return Arrays.stream(durations)
+            .map(duration -> duration.isNegative() ?
+                String.format("'-%s'", format(duration.abs())) :
+                String.format("'%s'", format(duration)))
+            .toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(durations)
+            .map(it -> {
+                if (it.isZero()) {
+                    return Unpooled.buffer(0, 0);
+                }
+
+                ByteBuf buf = Unpooled.buffer();
+                if (it.isNegative()) {
+                    buf.writeBoolean(true);
+                    it = it.abs();
+                } else {
+                    buf.writeBoolean(false);
+                }
+                long seconds = it.getSeconds();
+                int nanos = it.getNano();
+
+                buf.writeIntLE((int) (seconds / SECONDS_OF_DAY))
+                        .writeByte((int) ((seconds % SECONDS_OF_DAY) / SECONDS_OF_HOUR))
+                        .writeByte((int) ((seconds % SECONDS_OF_HOUR) / SECONDS_OF_MINUTE))
+                        .writeByte((int) (seconds % SECONDS_OF_MINUTE));
+
+                if (nanos != 0) {
+                    buf.writeIntLE((int) TimeUnit.NANOSECONDS.toMicros(nanos));
+                }
+
+                return buf;
+            })
+            .toArray(ByteBuf[]::new);
     }
 
     private static String format(Duration d) {

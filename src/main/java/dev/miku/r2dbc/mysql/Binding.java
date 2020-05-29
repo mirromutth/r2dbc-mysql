@@ -16,39 +16,35 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.message.ParameterValue;
 import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
-import dev.miku.r2dbc.mysql.util.OperatorUtils;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import dev.miku.r2dbc.mysql.message.client.TextQueryMessage;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * A collection of {@link ParameterValue} for one bind invocation of a parametrized statement.
+ * A collection of {@link Parameter} for one bind invocation of a parametrized statement.
  *
  * @see ParametrizedStatementSupport
  */
 final class Binding {
 
-    private static final ParameterValue[] EMPTY_VALUES = {};
+    private static final Parameter[] EMPTY_VALUES = {};
 
-    private final ParameterValue[] values;
+    private final Parameter[] values;
 
     Binding(int length) {
-        this.values = length == 0 ? EMPTY_VALUES : new ParameterValue[length];
+        this.values = length == 0 ? EMPTY_VALUES : new Parameter[length];
     }
 
     /**
-     * Add a {@link ParameterValue} to the binding.
+     * Add a {@link Parameter} to the binding.
      *
-     * @param index the index of the {@link ParameterValue}
-     * @param value the {@link ParameterValue} from {@link PrepareParametrizedStatement}
+     * @param index the index of the {@link Parameter}
+     * @param value the {@link Parameter} from {@link PrepareParametrizedStatement}
      */
-    void add(int index, ParameterValue value) {
+    void add(int index, Parameter value) {
         if (index < 0 || index >= this.values.length) {
             throw new IndexOutOfBoundsException("index must not be a negative integer and less than " + this.values.length);
         }
@@ -63,7 +59,7 @@ final class Binding {
      * @param immediate   use {@code true} if should be execute immediate, otherwise return a open cursor message
      * @return an execute message or open cursor message
      */
-    PreparedExecuteMessage toMessage(int statementId, boolean immediate) {
+    PreparedExecuteMessage toExecuteMessage(int statementId, boolean immediate) {
         if (values.length == 0) {
             return new PreparedExecuteMessage(statementId, immediate, EMPTY_VALUES);
         }
@@ -75,34 +71,8 @@ final class Binding {
         return new PreparedExecuteMessage(statementId, immediate, drainValues());
     }
 
-    Mono<String> toSql(List<String> sqlParts) {
-        // No need defer, because it must be called by inner of Publisher processing.
-        int size = sqlParts.size() - 1;
-
-        if (values.length != size || size == 0) {
-            clear();
-            return Mono.error(new IllegalArgumentException("The number of parameter should be " + size + ", but was " + values.length));
-        }
-
-        if (values[0] == null) {
-            return Mono.error(new IllegalStateException("Parameters has been used"));
-        }
-
-        try {
-            StringBuilder builder = new StringBuilder();
-            Iterator<String> iter = sqlParts.iterator();
-            Consumer<Object> step = ignored -> builder.append(iter.next());
-
-            builder.append(iter.next());
-
-            return OperatorUtils.discardOnCancel(Flux.fromArray(drainValues()))
-                .doOnDiscard(ParameterValue.class, ParameterValue.DISPOSE)
-                .concatMap(it -> it.writeTo(builder).doOnSuccess(step))
-                .then(Mono.fromSupplier(builder::toString));
-        } catch (Throwable e) {
-            clear();
-            throw e;
-        }
+    TextQueryMessage toTextMessage(TextQuery query, Consumer<String> sqlProceed) {
+        return new TextQueryMessage(query.getSqlParts(), drainValues(), sqlProceed);
     }
 
     /**
@@ -111,7 +81,7 @@ final class Binding {
     void clear() {
         int size = this.values.length;
         for (int i = 0; i < size; ++i) {
-            ParameterValue value = this.values[i];
+            Parameter value = this.values[i];
             this.values[i] = null;
 
             if (value != null) {
@@ -156,8 +126,8 @@ final class Binding {
         return String.format("Binding{values=%s}", Arrays.toString(values));
     }
 
-    private ParameterValue[] drainValues() {
-        ParameterValue[] results = new ParameterValue[this.values.length];
+    private Parameter[] drainValues() {
+        Parameter[] results = new Parameter[this.values.length];
 
         System.arraycopy(this.values, 0, results, 0, this.values.length);
         Arrays.fill(this.values, null);

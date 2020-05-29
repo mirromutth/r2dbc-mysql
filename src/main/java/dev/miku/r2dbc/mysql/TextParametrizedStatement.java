@@ -18,11 +18,9 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
-import java.util.function.Function;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -40,8 +38,8 @@ final class TextParametrizedStatement extends ParametrizedStatementSupport {
 
     @Override
     protected Flux<MySqlResult> execute(List<Binding> bindings) {
-        Function<Flux<ServerMessage>, MySqlResult> toResult = messages -> new MySqlResult(false, codecs, context, generatedKeyName, messages);
-        return query.formatSql(bindings).concatMap(it -> QueryFlow.execute(client, it).map(toResult), 1);
+        return QueryFlow.execute(client, query, bindings)
+            .map(messages -> new MySqlResult(false, codecs, context, generatedKeyName, messages));
     }
 
     @Override

@@ -16,6 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
+
 /**
  * Unit tests for {@link BooleanCodec}.
  */
@@ -38,10 +44,18 @@ class BooleanCodecTest implements CodecTestSupport<Boolean> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[booleans.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = booleans[i] ? "b'1'" : "b'0'";
-        }
-        return results;
+        return Arrays.stream(booleans).map(it -> it ? "b'1'" : "b'0'").toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(booleans)
+            .map(it -> Unpooled.wrappedBuffer(it ? new byte[] {1} : new byte[] {0}))
+            .toArray(ByteBuf[]::new);
+    }
+
+    @Override
+    public ByteBuf sized(ByteBuf value) {
+        return value;
     }
 }

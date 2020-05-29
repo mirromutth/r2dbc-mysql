@@ -16,12 +16,22 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.ConnectionContext;
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.collation.CharCollation;
+import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import dev.miku.r2dbc.mysql.message.client.ParameterOutputStreamHelper;
+import dev.miku.r2dbc.mysql.message.client.ParameterWriterHelper;
+import dev.miku.r2dbc.mysql.util.CodecUtils;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.google.common.escape.Escaper;
 import org.testcontainers.shaded.com.google.common.escape.Escapers;
 import reactor.test.StepVerifier;
+
+import java.nio.charset.Charset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -42,6 +52,32 @@ interface CodecTestSupport<T> {
         .build();
 
     @Test
+    default void binary() {
+        Codec<T> codec = getCodec();
+        T[] origin = originParameters();
+        ByteBuf[] binaries = binaryParameters(CharCollation.clientCharCollation().getCharset());
+
+        assertEquals(origin.length, binaries.length);
+
+        for (int i = 0; i < origin.length; ++i) {
+            ParameterOutputStream stream = ParameterOutputStreamHelper.get();
+            codec.encode(origin[i], CONTEXT)
+                .binary(stream)
+                .as(StepVerifier::create)
+                .verifyComplete();
+            ByteBuf buf = ParameterOutputStreamHelper.getBuffer(stream);
+            ByteBuf ans = sized(binaries[i]);
+
+            try {
+                assertEquals(buf, ans);
+            } finally {
+                buf.release();
+                ans.release();
+            }
+        }
+    }
+
+    @Test
     default void stringify() {
         Codec<T> codec = getCodec();
         T[] origin = originParameters();
@@ -50,13 +86,22 @@ interface CodecTestSupport<T> {
         assertEquals(origin.length, strings.length);
 
         for (int i = 0; i < origin.length; ++i) {
-            StringBuilder builder = new StringBuilder();
+            ParameterWriter writer = ParameterWriterHelper.get(1);
             codec.encode(origin[i], CONTEXT)
-                .writeTo(builder)
+                .text(writer)
                 .as(StepVerifier::create)
                 .verifyComplete();
-            assertEquals(builder.toString(), strings[i].toString());
+            assertEquals(ParameterWriterHelper.toSql(writer), strings[i].toString());
         }
+    }
+
+    /**
+     * If encoding no need sized, override it and just return origin value.
+     */
+    default ByteBuf sized(ByteBuf value) {
+        ByteBuf varInt = Unpooled.buffer();
+        CodecUtils.writeVarInt(varInt, value.readableBytes());
+        return Unpooled.wrappedBuffer(varInt, value);
     }
 
     Codec<T> getCodec();
@@ -64,4 +109,6 @@ interface CodecTestSupport<T> {
     T[] originParameters();
 
     Object[] stringifyParameters();
+
+    ByteBuf[] binaryParameters(Charset charset);
 }

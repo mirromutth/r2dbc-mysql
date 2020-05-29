@@ -28,11 +28,7 @@ abstract class AbstractClassedCodec<T> implements Codec<T> {
     }
 
     @Override
-    public final boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
-        if (massive) {
-            return false;
-        }
-
+    public final boolean canDecode(FieldInformation info, Class<?> target) {
         return target.isAssignableFrom(this.clazz) && doCanDecode(info);
     }
 

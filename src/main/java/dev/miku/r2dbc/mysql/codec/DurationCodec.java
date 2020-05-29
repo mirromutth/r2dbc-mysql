@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -52,8 +53,8 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new DurationValue((Duration) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new DurationParameter((Duration) value);
     }
 
     @Override
@@ -61,38 +62,43 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         return DataTypes.TIME == info.getType();
     }
 
-    static void encodeTime(StringBuilder builder, boolean isNegative, int hours, int minutes, int seconds, int micros) {
+    static void encodeTime(ParameterWriter writer, boolean isNegative, int hours, int minutes, int seconds, int micros) {
         if (isNegative) {
-            builder.append('-');
+            writer.append('-');
+        } else {
+            // Time start with number, prepare writer to string mode.
+            writer.startString();
         }
 
         if (hours < 10) {
-            builder.append('0');
+            writer.append('0');
         }
 
-        builder.append(hours).append(':');
+        writer.writeInt(hours);
+        writer.append(':');
 
         if (minutes < 10) {
-            builder.append('0');
+            writer.append('0');
         }
 
-        builder.append(minutes).append(':');
+        writer.writeInt(minutes);
+        writer.append(':');
 
         if (seconds < 10) {
-            builder.append('0');
+            writer.append('0');
         }
 
-        builder.append(seconds);
+        writer.writeInt(seconds);
 
         // Must be greater than 0, can NOT use "micros != 0" here.
         // Sure, micros will never less than 0, but need to check for avoid inf loop.
         if (micros > 0) {
-            builder.append('.');
+            writer.append('.');
             // WATCH OUT for inf loop: i from 100000 to 1, micros is greater than 0,
             // 0 < micros < 1 is impossible, so micros < 1 will be false finally,
             // then loop done. Safe.
             for (int i = 100000; micros < i; i /= 10) {
-                builder.append('0');
+                writer.append('0');
             }
             // WATCH OUT for inf loop: micros is greater than 0, that means it least
             // contains one digit which is not 0, so micros % 10 == 0 will be false
@@ -100,7 +106,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             while (micros % 10 == 0) {
                 micros /= 10;
             }
-            builder.append(micros);
+            writer.writeInt(micros);
         }
     }
 
@@ -141,22 +147,22 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds, isNegative ? -nanos : nanos);
     }
 
-    private static final class DurationValue extends AbstractParameterValue {
+    private static final class DurationParameter extends AbstractParameter {
 
         private final Duration value;
 
-        private DurationValue(Duration value) {
+        private DurationParameter(Duration value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeDuration(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeDuration(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> encodeTo(builder));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> encodeTo(writer));
         }
 
         @Override
@@ -169,11 +175,11 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof DurationValue)) {
+            if (!(o instanceof DurationParameter)) {
                 return false;
             }
 
-            DurationValue that = (DurationValue) o;
+            DurationParameter that = (DurationParameter) o;
 
             return value.equals(that.value);
         }
@@ -183,7 +189,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             return value.hashCode();
         }
 
-        private void encodeTo(StringBuilder builder) {
+        private void encodeTo(ParameterWriter writer) {
             boolean isNegative = this.value.isNegative();
             Duration abs = this.value.abs();
             long totalSeconds = abs.getSeconds();
@@ -196,9 +202,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
                 throw new IllegalStateException(String.format("Too large duration %s, abs value overflowing to %02d:%02d:%02d.%06d", value, hours, minutes, seconds, micros));
             }
 
-            builder.append('\'');
-            encodeTime(builder, isNegative, hours, minutes, seconds, micros);
-            builder.append('\'');
+            encodeTime(writer, isNegative, hours, minutes, seconds, micros);
         }
     }
 }

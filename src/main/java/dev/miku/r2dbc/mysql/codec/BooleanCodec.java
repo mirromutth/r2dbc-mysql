@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -44,8 +45,8 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return (Boolean) value ? BooleanValue.TRUE : BooleanValue.FALSE;
+    public Parameter encode(Object value, CodecContext context) {
+        return (Boolean) value ? BooleanParameter.TRUE : BooleanParameter.FALSE;
     }
 
     @Override
@@ -53,26 +54,26 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
         return DataTypes.BIT == info.getType() && info.getSize() == 1;
     }
 
-    private static final class BooleanValue extends AbstractParameterValue {
+    private static final class BooleanParameter extends AbstractParameter {
 
-        private static final BooleanValue TRUE = new BooleanValue(true);
+        private static final BooleanParameter TRUE = new BooleanParameter(true);
 
-        private static final BooleanValue FALSE = new BooleanValue(false);
+        private static final BooleanParameter FALSE = new BooleanParameter(false);
 
         private final boolean value;
 
-        private BooleanValue(boolean value) {
+        private BooleanParameter(boolean value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeBoolean(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeBoolean(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(value ? "b'1'" : "b'0'"));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeBinary(value));
         }
 
         @Override
@@ -87,11 +88,11 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BooleanValue)) {
+            if (!(o instanceof BooleanParameter)) {
                 return false;
             }
 
-            BooleanValue that = (BooleanValue) o;
+            BooleanParameter that = (BooleanParameter) o;
 
             return value == that.value;
         }

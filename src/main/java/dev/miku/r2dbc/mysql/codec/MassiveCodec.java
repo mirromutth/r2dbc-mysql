@@ -16,25 +16,16 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.ParameterValue;
+import io.netty.buffer.ByteBuf;
+import reactor.util.annotation.Nullable;
+
+import java.util.List;
 
 /**
- * Base class considers non null values for {@link ParameterValue} implementations.
+ * An interface considers massive data for {@link Codec}.
  */
-abstract class AbstractParameterValue implements ParameterValue {
+public interface MassiveCodec<T> extends Codec<T> {
 
-    @Override
-    public final boolean isNull() {
-        return false;
-    }
-
-    @Override
-    public void dispose() {
-        // Do nothing for default
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + "{ non-null, value is hidden }";
-    }
+    @Nullable
+    T decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, CodecContext context);
 }

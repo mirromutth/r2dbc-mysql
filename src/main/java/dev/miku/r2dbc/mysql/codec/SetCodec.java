@@ -16,14 +16,13 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.ParameterizedType;
@@ -36,6 +35,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
 
@@ -104,17 +104,13 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
-        if (DataTypes.SET != info.getType() || massive) {
-            return false;
-        }
-
-        return target.isAssignableFrom(String[].class);
+    public boolean canDecode(FieldInformation info, Class<?> target) {
+        return DataTypes.SET == info.getType() && target.isAssignableFrom(String[].class);
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, ParameterizedType target) {
-        if (DataTypes.SET != info.getType() || massive) {
+    public boolean canDecode(FieldInformation info, ParameterizedType target) {
+        if (DataTypes.SET != info.getType()) {
             return false;
         }
 
@@ -143,11 +139,11 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
+    public Parameter encode(Object value, CodecContext context) {
         if (value instanceof CharSequence[]) {
-            return new StringArrayValue(InternalArrays.toReadOnlyList((CharSequence[]) value), context);
+            return new StringArrayParameter(InternalArrays.toImmutableList((CharSequence[]) value), context);
         } else {
-            return new SetValue((Set<?>) value, context);
+            return new SetParameter((Set<?>) value, context);
         }
     }
 
@@ -179,14 +175,16 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         return true;
     }
 
-    private static void encodeIterator(StringBuilder builder, Iterator<? extends CharSequence> iter) {
+    private static void encodeIterator(ParameterWriter writer, Iterator<? extends CharSequence> iter) {
         if (iter.hasNext()) {
-            CodecUtils.appendEscape(builder, iter.next());
+            writer.append(iter.next());
 
             while (iter.hasNext()) {
-                builder.append(',');
-                CodecUtils.appendEscape(builder, iter.next());
+                writer.append(',').append(iter.next());
             }
+        } else {
+            // Empty set, set to string mode.
+            writer.startString();
         }
     }
 
@@ -285,7 +283,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
     }
 
-    private static final class SetValue extends AbstractParameterValue {
+    private static final class SetParameter extends AbstractParameter {
 
         private static final Function<Object, CharSequence> ELEMENT_CONVERT = SetCodec::convert;
 
@@ -293,27 +291,22 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
         private final CodecContext context;
 
-        private SetValue(Set<?> set, CodecContext context) {
+        private SetParameter(Set<?> set, CodecContext context) {
             this.set = set;
             this.context = context;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Flux.fromIterable(set)
-                .map(ELEMENT_CONVERT)
-                .collectList()
-                .doOnNext(strings -> writer.writeSet(strings, context.getClientCollation()))
-                .then();
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> {
+                List<CharSequence> s = set.stream().map(ELEMENT_CONVERT).collect(Collectors.toList());
+                output.writeSet(s, context.getClientCollation());
+            });
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> {
-                builder.append('\'');
-                encodeIterator(builder, new ConvertedIterator(set.iterator()));
-                builder.append('\'');
-            });
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> encodeIterator(writer, new ConvertedIterator(set.iterator())));
         }
 
         @Override
@@ -326,11 +319,11 @@ final class SetCodec implements ParametrizedCodec<String[]> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof SetValue)) {
+            if (!(o instanceof SetParameter)) {
                 return false;
             }
 
-            SetValue setValue = (SetValue) o;
+            SetParameter setValue = (SetParameter) o;
 
             return set.equals(setValue.set);
         }
@@ -341,29 +334,25 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
     }
 
-    private static final class StringArrayValue extends AbstractParameterValue {
+    private static final class StringArrayParameter extends AbstractParameter {
 
         private final List<CharSequence> value;
 
         private final CodecContext context;
 
-        private StringArrayValue(List<CharSequence> value, CodecContext context) {
+        private StringArrayParameter(List<CharSequence> value, CodecContext context) {
             this.value = value;
             this.context = context;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeSet(value, context.getClientCollation()));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeSet(value, context.getClientCollation()));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> {
-                builder.append('\'');
-                encodeIterator(builder, value.iterator());
-                builder.append('\'');
-            });
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> encodeIterator(writer, value.iterator()));
         }
 
         @Override
@@ -376,11 +365,11 @@ final class SetCodec implements ParametrizedCodec<String[]> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof StringArrayValue)) {
+            if (!(o instanceof StringArrayParameter)) {
                 return false;
             }
 
-            StringArrayValue that = (StringArrayValue) o;
+            StringArrayParameter that = (StringArrayParameter) o;
 
             return this.value.equals(that.value);
         }

@@ -14,26 +14,19 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.message;
+package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import reactor.core.Disposable;
-import reactor.core.publisher.Mono;
+import io.netty.buffer.ByteBuf;
+import reactor.util.annotation.Nullable;
 
-import java.util.function.Consumer;
+import java.lang.reflect.ParameterizedType;
+import java.util.List;
 
 /**
- * A parameter value includes encode logic.
+ * An interface considers massive data with {@link ParameterizedType} for {@link Codec}.
  */
-public interface ParameterValue extends Disposable {
+public interface MassiveParametrizedCodec<T> extends ParametrizedCodec<T>, MassiveCodec<T> {
 
-    Consumer<ParameterValue> DISPOSE = ParameterValue::dispose;
-
-    boolean isNull();
-
-    Mono<Void> writeTo(ParameterWriter writer);
-
-    Mono<Void> writeTo(StringBuilder builder);
-
-    short getType();
+    @Nullable
+    Object decodeMassive(List<ByteBuf> value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context);
 }

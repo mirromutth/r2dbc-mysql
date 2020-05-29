@@ -17,20 +17,13 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 /**
- * A plain text SQL query message without any parameter, it could include multi-statements.
+ * Mock exception instance for unit tests of client messages.
  */
-public final class SimpleQueryMessage extends AbstractQueryMessage implements ExchangeableMessage {
+final class MockException extends RuntimeException {
 
-    static final byte QUERY_FLAG = 3;
+    static final MockException INSTANCE = new MockException();
 
-    public SimpleQueryMessage(String sql) {
-        super(QUERY_FLAG, sql);
-    }
-
-    @Override
-    public String toString() {
-        // SQL should NOT be printed as this may contain security information.
-        // Of course, if user use trace level logs, SQL is still be printed by ByteBuf dump.
-        return "SimpleQueryMessage{sql=REDACTED}";
+    private MockException() {
+        super("Mocked exception");
     }
 }

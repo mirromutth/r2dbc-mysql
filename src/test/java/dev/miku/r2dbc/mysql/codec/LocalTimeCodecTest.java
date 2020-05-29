@@ -16,10 +16,16 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
+import java.nio.charset.Charset;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import static java.time.temporal.ChronoField.HOUR_OF_DAY;
 import static java.time.temporal.ChronoField.MICRO_OF_SECOND;
@@ -66,10 +72,29 @@ class LocalTimeCodecTest implements CodecTestSupport<LocalTime> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[TIMES.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = formatter.format(TIMES[i]);
-        }
-        return results;
+        return Arrays.stream(TIMES).map(formatter::format).toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(TIMES)
+            .map(it -> {
+                if (LocalTime.MIDNIGHT.equals(it)) {
+                    return Unpooled.buffer(0, 0);
+                }
+
+                ByteBuf buf = Unpooled.buffer().writeBoolean(false)
+                    .writeIntLE(0)
+                    .writeByte(it.getHour())
+                    .writeByte(it.getMinute())
+                    .writeByte(it.getSecond());
+
+                if (it.getNano() != 0) {
+                    buf.writeIntLE((int) TimeUnit.NANOSECONDS.toMicros(it.getNano()));
+                }
+
+                return buf;
+            })
+            .toArray(ByteBuf[]::new);
     }
 }

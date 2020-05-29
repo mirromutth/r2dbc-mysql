@@ -16,9 +16,13 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * Unit tests for {@link ByteArrayCodec}.
@@ -46,10 +50,15 @@ class ByteArrayCodecTest implements CodecTestSupport<byte[]> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[bytes.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = String.format("x'%s'", Hex.encodeHexString(bytes[i], false));
-        }
-        return results;
+        return Arrays.stream(bytes)
+            .map(it -> String.format("x'%s'", Hex.encodeHexString(it, false)))
+            .toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(bytes)
+            .map(Unpooled::wrappedBuffer)
+            .toArray(ByteBuf[]::new);
     }
 }

@@ -16,22 +16,23 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import reactor.core.publisher.Mono;
 
 /**
- * An implementation of {@link ParameterValue} which considers value is {@code null}.
+ * An implementation of {@link Parameter} which considers value is {@code null}.
  * <p>
- * Note: the parameter is marked with a bitmap of {@code null}, so {@link #writeTo}
+ * Note: the parameter is marked with a bitmap of {@code null}, so {@link #binary}
  * will not do anything.
  */
-final class NullParameterValue implements ParameterValue {
+final class NullParameter implements Parameter {
 
-    static final NullParameterValue INSTANCE = new NullParameterValue();
+    static final NullParameter INSTANCE = new NullParameter();
 
-    private NullParameterValue() {
+    private NullParameter() {
     }
 
     @Override
@@ -40,13 +41,13 @@ final class NullParameterValue implements ParameterValue {
     }
 
     @Override
-    public Mono<Void> writeTo(ParameterWriter writer) {
+    public Mono<Void> binary(ParameterOutputStream output) {
         return Mono.empty();
     }
 
     @Override
-    public Mono<Void> writeTo(StringBuilder builder) {
-        return Mono.fromRunnable(() -> builder.append("NULL"));
+    public Mono<Void> text(ParameterWriter writer) {
+        return Mono.fromRunnable(writer::writeNull);
     }
 
     @Override
@@ -61,6 +62,6 @@ final class NullParameterValue implements ParameterValue {
 
     @Override
     public String toString() {
-        return "NullParameterValue{ null }";
+        return "NullParameter{ null }";
     }
 }

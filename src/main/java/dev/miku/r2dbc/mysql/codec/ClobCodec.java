@@ -16,18 +16,19 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,9 +36,9 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Codec for {@link Clob}.
  * <p>
- * Note: {@link Clob} will be written by {@code ParameterWriter} rather than {@link #encode}.
+ * Note: {@link Clob} will be written by {@code ParameterOutputStream} rather than {@link #encode}.
  */
-final class ClobCodec implements Codec<Clob> {
+final class ClobCodec implements MassiveCodec<Clob> {
 
     static final ClobCodec INSTANCE = new ClobCodec();
 
@@ -55,7 +56,7 @@ final class ClobCodec implements Codec<Clob> {
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
+    public boolean canDecode(FieldInformation info, Class<?> target) {
         if (info.getCollationId() == CharCollation.BINARY_ID) {
             return false;
         }
@@ -74,23 +75,23 @@ final class ClobCodec implements Codec<Clob> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new ClobValue((Clob) value, context);
+    public Parameter encode(Object value, CodecContext context) {
+        return new ClobParameter((Clob) value, context);
     }
 
-    private static class ClobValue extends AbstractLobValue {
+    private static class ClobParameter extends AbstractLobParameter {
 
         private final AtomicReference<Clob> clob;
 
         private final CodecContext context;
 
-        private ClobValue(Clob clob, CodecContext context) {
+        private ClobParameter(Clob clob, CodecContext context) {
             this.clob = new AtomicReference<>(clob);
             this.context = context;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
+        public Mono<Void> binary(ParameterOutputStream output) {
             return Mono.defer(() -> {
                 Clob clob = this.clob.getAndSet(null);
 
@@ -98,15 +99,17 @@ final class ClobCodec implements Codec<Clob> {
                     return Mono.error(new IllegalStateException("Clob has written, can not write twice"));
                 }
 
+                // Must have defaultIfEmpty, try Mono.fromCallable(() -> null).flux().collectList()
                 return Flux.from(clob.stream())
                     .collectList()
-                    .doOnNext(sequences -> writer.writeCharSequences(sequences, context.getClientCollation()))
+                    .defaultIfEmpty(Collections.emptyList())
+                    .doOnNext(sequences -> output.writeCharSequences(sequences, context.getClientCollation()))
                     .then();
             });
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
+        public Mono<Void> text(ParameterWriter writer) {
             return Mono.defer(() -> {
                 Clob clob = this.clob.getAndSet(null);
 
@@ -115,9 +118,8 @@ final class ClobCodec implements Codec<Clob> {
                 }
 
                 return Flux.from(clob.stream())
-                    .doOnSubscribe(ignored -> builder.append('\''))
-                    .doOnNext(it -> CodecUtils.appendEscape(builder, it))
-                    .doOnComplete(() -> builder.append('\''))
+                    .doOnSubscribe(ignored -> writer.startString())
+                    .doOnNext(writer::append)
                     .then();
             });
         }
@@ -127,11 +129,11 @@ final class ClobCodec implements Codec<Clob> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ClobValue)) {
+            if (!(o instanceof ClobParameter)) {
                 return false;
             }
 
-            ClobValue clobValue = (ClobValue) o;
+            ClobParameter clobValue = (ClobParameter) o;
 
             return Objects.equals(this.clob.get(), clobValue.clob.get());
         }

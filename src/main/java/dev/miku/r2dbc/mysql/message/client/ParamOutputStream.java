@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBuf;
@@ -37,14 +38,14 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * Parameter writer for {@link ByteBuf}(s).
+ * TODO: remove it! see Parameter.
  */
-public final class ParameterWriter {
+final class ParamOutputStream extends ParameterOutputStream {
 
     private static final String COMMA = ",";
 
@@ -54,13 +55,17 @@ public final class ParameterWriter {
 
     private static final int SECONDS_OF_DAY = SECONDS_OF_HOUR * 24;
 
+    private static final int NANOS_OF_SECOND = 1000_000_000;
+
+    private static final int NANOS_OF_MICRO = 1000;
+
     private static final int MIN_CAPACITY = 256;
 
     private final ByteBufAllocator allocator;
 
     private final List<ByteBuf> buffers;
 
-    private ParameterWriter(ByteBuf buf) {
+    private ParamOutputStream(ByteBuf buf) {
         requireNonNull(buf, "buf must not be null");
 
         this.buffers = new ArrayList<>();
@@ -68,34 +73,71 @@ public final class ParameterWriter {
         this.allocator = buf.alloc();
     }
 
+    @Override
+    public void write(int b) {
+        writableBuffer(Byte.BYTES).writeByte(b);
+    }
+
+    @Override
+    public void write(byte[] b) {
+        Objects.requireNonNull(b);
+
+        if (b.length == 0) {
+            return;
+        }
+
+        writableBuffer(b.length).writeBytes(b);
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) {
+        Objects.requireNonNull(b);
+
+        if (off < 0 || off > b.length || len < 0 || off + len > b.length || off + len < 0) {
+            throw new IndexOutOfBoundsException("off: " + off + ", len: " + len + ", bytes length: " + b.length);
+        } else if (len == 0) {
+            return;
+        }
+
+        writableBuffer(len - off).writeBytes(b, off, len);
+    }
+
+    @Override
     public void writeBoolean(boolean value) {
         writableBuffer(Byte.BYTES).writeBoolean(value);
     }
 
+    @Override
     public void writeByte(byte value) {
         writableBuffer(Byte.BYTES).writeByte(value);
     }
 
+    @Override
     public void writeShort(short value) {
         writableBuffer(Short.BYTES).writeShortLE(value);
     }
 
+    @Override
     public void writeInt(int value) {
         writableBuffer(Integer.BYTES).writeIntLE(value);
     }
 
+    @Override
     public void writeLong(long value) {
         writableBuffer(Long.BYTES).writeLongLE(value);
     }
 
+    @Override
     public void writeFloat(float value) {
         writableBuffer(Float.BYTES).writeFloatLE(value);
     }
 
+    @Override
     public void writeDouble(double value) {
         writableBuffer(Double.BYTES).writeDoubleLE(value);
     }
 
+    @Override
     public void writeDate(LocalDate date) {
         writableBuffer(Byte.BYTES + BinaryDateTimes.DATE_SIZE)
             .writeByte(BinaryDateTimes.DATE_SIZE)
@@ -104,6 +146,7 @@ public final class ParameterWriter {
             .writeByte(date.getDayOfMonth());
     }
 
+    @Override
     public void writeDateTime(LocalDateTime dateTime) {
         LocalTime time = dateTime.toLocalTime();
 
@@ -111,17 +154,9 @@ public final class ParameterWriter {
             writeDate(dateTime.toLocalDate());
         } else {
             int nano = time.getNano();
-            int bytes;
+            int bytes = nano > 0 ? BinaryDateTimes.MICRO_DATETIME_SIZE : BinaryDateTimes.DATETIME_SIZE;
 
-            if (nano > 0) {
-                bytes = BinaryDateTimes.MICRO_DATETIME_SIZE;
-            } else {
-                bytes = BinaryDateTimes.DATETIME_SIZE;
-            }
-
-            ByteBuf buf = writableBuffer(Byte.BYTES + bytes);
-
-            buf.writeByte(bytes) // var int
+            ByteBuf buf = writableBuffer(Byte.BYTES + bytes).writeByte(bytes)
                 .writeShortLE(dateTime.getYear())
                 .writeByte(dateTime.getMonthValue())
                 .writeByte(dateTime.getDayOfMonth())
@@ -130,37 +165,72 @@ public final class ParameterWriter {
                 .writeByte(time.getSecond());
 
             if (nano > 0) {
-                buf.writeIntLE((int) TimeUnit.NANOSECONDS.toMicros(nano));
+                buf.writeIntLE(nano / NANOS_OF_MICRO);
             }
         }
     }
 
+    @Override
     public void writeDuration(Duration duration) {
         long seconds = duration.getSeconds();
-        long nanos = duration.getNano();
+        int nanos = duration.getNano();
 
-        if (nanos <= 0) {
-            // Nano muse not be negative.
-            writeSeconds(seconds);
-        } else {
-            writeSecondNanos(seconds, nanos);
+        if (seconds == 0 && nanos == 0) {
+            // It is zero of var int, not terminal.
+            writableBuffer(Byte.BYTES).writeByte(0);
+            return;
+        }
+
+        boolean isNegative = duration.isNegative();
+        if (isNegative) {
+            if (nanos > 0) {
+                // Note: nanos should always be a positive integer or 0, see Duration.getNano().
+                // So if duration is negative, seconds should be humanity seconds - 1, so +1 then negate.
+                seconds = -(seconds + 1);
+                nanos = NANOS_OF_SECOND - nanos;
+            } else {
+                seconds = -seconds;
+            }
+        }
+
+        int size = nanos > 0 ? BinaryDateTimes.MICRO_TIME_SIZE : BinaryDateTimes.TIME_SIZE;
+
+        ByteBuf buf = writableBuffer(Byte.BYTES + size).writeByte(size)
+            .writeBoolean(isNegative)
+            .writeIntLE((int) (seconds / SECONDS_OF_DAY))
+            .writeByte((int) ((seconds % SECONDS_OF_DAY) / SECONDS_OF_HOUR))
+            .writeByte((int) ((seconds % SECONDS_OF_HOUR) / SECONDS_OF_MINUTE))
+            .writeByte((int) (seconds % SECONDS_OF_MINUTE));
+
+        if (nanos > 0) {
+            buf.writeIntLE(nanos / NANOS_OF_MICRO);
         }
     }
 
+    @Override
     public void writeTime(LocalTime time) {
-        long hour = time.getHour();
-        long minute = time.getMinute();
-        long second = time.getSecond();
-        long nanos = time.getNano();
-        long totalSeconds = TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second;
+        if (LocalTime.MIDNIGHT.equals(time)) {
+            writableBuffer(Byte.BYTES).writeByte(0);
+            return;
+        }
 
-        if (nanos <= 0) {
-            writeSeconds(totalSeconds);
-        } else {
-            writeSecondNanos(totalSeconds, nanos);
+        int nanos = time.getNano();
+        int size = nanos == 0 ? BinaryDateTimes.TIME_SIZE : BinaryDateTimes.MICRO_TIME_SIZE;
+
+        ByteBuf buf = writableBuffer(Byte.BYTES + size)
+            .writeByte(size)
+            .writeBoolean(false)
+            .writeIntLE(0)
+            .writeByte(time.getHour())
+            .writeByte(time.getMinute())
+            .writeByte(time.getSecond());
+
+        if (nanos != 0) {
+            buf.writeIntLE(nanos / NANOS_OF_MICRO);
         }
     }
 
+    @Override
     public void writeAsciiString(CharSequence sequence) {
         int bytes = sequence.length();
         ByteBuf buf = writableBuffer(CodecUtils.varIntBytes(bytes) + bytes);
@@ -169,6 +239,7 @@ public final class ParameterWriter {
         buf.writeCharSequence(sequence, StandardCharsets.US_ASCII);
     }
 
+    @Override
     public void writeCharSequence(CharSequence sequence, CharCollation collation) {
         int minBytes = sequence.length();
 
@@ -223,6 +294,7 @@ public final class ParameterWriter {
         }
     }
 
+    @Override
     public void writeCharSequences(List<CharSequence> sequences, CharCollation collation) {
         long minBytes = 0;
 
@@ -302,6 +374,7 @@ public final class ParameterWriter {
         }
     }
 
+    @Override
     public void writeSet(List<CharSequence> elements, CharCollation collation) {
         if (elements.isEmpty()) {
             // Zero of var int, not terminal.
@@ -373,6 +446,7 @@ public final class ParameterWriter {
         }
     }
 
+    @Override
     public void writeByteArray(byte[] bytes) {
         int bufferBytes = bytes.length;
 
@@ -397,6 +471,7 @@ public final class ParameterWriter {
         }
     }
 
+    @Override
     public void writeByteBuffer(ByteBuffer buffer) {
         int bufferBytes = buffer.remaining();
 
@@ -419,6 +494,7 @@ public final class ParameterWriter {
         }
     }
 
+    @Override
     public void writeByteBuffers(List<ByteBuffer> buffers) {
         long bufferBytes = 0;
 
@@ -483,45 +559,6 @@ public final class ParameterWriter {
         return buf;
     }
 
-    private void writeSecondNanos(long seconds, long nanos) {
-        boolean isNegative;
-
-        if (seconds < 0) {
-            isNegative = true;
-            seconds = -(seconds + 1);
-            nanos = TimeUnit.SECONDS.toNanos(1) - nanos;
-        } else {
-            isNegative = false;
-        }
-
-        ByteBuf buf = writableBuffer(Byte.BYTES + BinaryDateTimes.MICRO_TIME_SIZE)
-            .writeByte(BinaryDateTimes.MICRO_TIME_SIZE);
-
-        writeSeconds0(buf, isNegative, seconds).writeIntLE((int) TimeUnit.NANOSECONDS.toMicros(nanos));
-    }
-
-    private void writeSeconds(long seconds) {
-        if (seconds == 0) {
-            // Zero of var int, not terminal.
-            writableBuffer(Byte.BYTES).writeByte(0);
-            return;
-        }
-
-        boolean isNegative;
-
-        if (seconds < 0) {
-            seconds = -seconds;
-            isNegative = true;
-        } else {
-            isNegative = false;
-        }
-
-        ByteBuf buf = writableBuffer(Byte.BYTES + BinaryDateTimes.TIME_SIZE)
-            .writeByte(BinaryDateTimes.TIME_SIZE);
-
-        writeSeconds0(buf, isNegative, seconds);
-    }
-
     /**
      * Write "sliced" {@link CharSequence}s to writer, without vat integer size, without copy.
      */
@@ -584,21 +621,13 @@ public final class ParameterWriter {
         }
     }
 
-    static Publisher<ByteBuf> publish(ByteBuf prefix, ParameterValue[] values) {
-        ParameterWriter writer = new ParameterWriter(prefix);
+    static Publisher<ByteBuf> publish(ByteBuf prefix, Parameter[] values) {
+        ParamOutputStream writer = new ParamOutputStream(prefix);
         return OperatorUtils.discardOnCancel(Flux.fromArray(values))
-            .doOnDiscard(ParameterValue.class, ParameterValue.DISPOSE)
-            .concatMap(param -> param.writeTo(writer))
+            .doOnDiscard(Parameter.class, Parameter.DISPOSE)
+            .concatMap(param -> param.binary(writer))
             .doOnError(ignored -> writer.dispose())
             .thenMany(writer.allBuffers());
-    }
-
-    private static ByteBuf writeSeconds0(ByteBuf buf, boolean isNegative, long seconds) {
-        return buf.writeBoolean(isNegative)
-            .writeIntLE((int) (seconds / SECONDS_OF_DAY))
-            .writeByte((int) ((seconds % SECONDS_OF_DAY) / SECONDS_OF_HOUR))
-            .writeByte((int) ((seconds % SECONDS_OF_HOUR) / SECONDS_OF_MINUTE))
-            .writeByte((int) (seconds % SECONDS_OF_MINUTE));
     }
 
     private static List<CharSequence> slicedSequence(CharSequence sequence, int eachSize) {

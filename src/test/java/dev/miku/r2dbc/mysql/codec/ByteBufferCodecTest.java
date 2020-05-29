@@ -16,10 +16,14 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * Unit tests for {@link ByteBufferCodec}.
@@ -42,19 +46,21 @@ class ByteBufferCodecTest implements CodecTestSupport<ByteBuffer> {
 
     @Override
     public ByteBuffer[] originParameters() {
-        ByteBuffer[] results = new ByteBuffer[buffers.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = buffers[i].slice();
-        }
-        return results;
+        return Arrays.stream(buffers).map(ByteBuffer::slice).toArray(ByteBuffer[]::new);
     }
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[buffers.length];
-        for (int i = 0; i < buffers.length; ++i) {
-            results[i] = String.format("x'%s'", Hex.encodeHexString(buffers[i], false));
-        }
-        return results;
+        return Arrays.stream(buffers)
+            .map(it -> String.format("x'%s'", Hex.encodeHexString(it, false)))
+            .toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(buffers)
+            .map(ByteBuffer::slice)
+            .map(Unpooled::wrappedBuffer)
+            .toArray(ByteBuf[]::new);
     }
 }

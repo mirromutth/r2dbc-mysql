@@ -17,23 +17,13 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Base class considers unit tests for implementations of {@link Query}.
@@ -61,44 +51,6 @@ abstract class QueryTestSupport {
     @Test
     abstract void indexesEquals();
 
-    static void assertParametrizedQuery(String sql, String parsedSql, Map<String, int[]> nameKeyedIndexes, int parameters) {
-        Query query = Query.parse(sql, true);
-
-        assertThat(query).isExactlyInstanceOf(PrepareQuery.class)
-            .extracting(PrepareQuery.class::cast)
-            .satisfies(it -> {
-                assertEquals(it.getSql(), parsedSql);
-                assertEquals(it.getParameters(), parameters);
-                assertEquals(it.getParameterNames(), nameKeyedIndexes.keySet());
-
-                for (Map.Entry<String, int[]> entry : nameKeyedIndexes.entrySet()) {
-                    ParameterIndex indexes = it.getIndexes(entry.getKey());
-                    int[] right = entry.getValue();
-                    int[] left = indexes.toIntArray();
-
-                    assertArrayEquals(left, right, () -> String.format("expected: %s but was: %s", indexes, Arrays.toString(right)));
-                }
-            });
-
-        query = Query.parse(sql, false);
-
-        assertThat(query).isExactlyInstanceOf(TextQuery.class)
-            .extracting(TextQuery.class::cast)
-            .satisfies(it -> {
-                assertEquals(String.join("?", it.getSqlParts()), parsedSql);
-                assertEquals(it.getParameters(), parameters);
-                assertEquals(it.getParameterNames(), nameKeyedIndexes.keySet());
-
-                for (Map.Entry<String, int[]> entry : nameKeyedIndexes.entrySet()) {
-                    ParameterIndex indexes = it.getIndexes(entry.getKey());
-                    int[] right = entry.getValue();
-                    int[] left = indexes.toIntArray();
-
-                    assertArrayEquals(left, right, () -> String.format("expected: %s but was: %s", indexes, Arrays.toString(right)));
-                }
-            });
-    }
-
     static Tuple2<String, int[]> link(String name, int... indexes) {
         if (indexes.length == 0) {
             throw new IllegalArgumentException("must has least one index");
@@ -119,11 +71,11 @@ abstract class QueryTestSupport {
         return result;
     }
 
-    static final class MockValue implements ParameterValue {
+    static final class MockParameter implements Parameter {
 
-        static final MockValue INSTANCE = new MockValue();
+        static final MockParameter INSTANCE = new MockParameter();
 
-        private MockValue() {
+        private MockParameter() {
         }
 
         @Override
@@ -132,12 +84,12 @@ abstract class QueryTestSupport {
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
+        public Mono<Void> binary(ParameterOutputStream output) {
             return Mono.empty();
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
+        public Mono<Void> text(ParameterWriter writer) {
             return Mono.empty();
         }
 
@@ -152,7 +104,7 @@ abstract class QueryTestSupport {
 
         @Override
         public String toString() {
-            return "MockValue{}";
+            return "MockParameter{}";
         }
     }
 }

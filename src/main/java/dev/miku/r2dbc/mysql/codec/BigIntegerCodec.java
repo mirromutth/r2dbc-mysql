@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -55,8 +56,8 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new BigIntegerValue((BigInteger) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new BigIntegerParameter((BigInteger) value);
     }
 
     @Override
@@ -159,22 +160,22 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         return value;
     }
 
-    private static class BigIntegerValue extends AbstractParameterValue {
+    private static class BigIntegerParameter extends AbstractParameter {
 
         private final BigInteger value;
 
-        private BigIntegerValue(BigInteger value) {
+        private BigIntegerParameter(BigInteger value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeAsciiString(value.toString()));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeAsciiString(value.toString()));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(value.toString()));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeBigInteger(value));
         }
 
         @Override
@@ -187,10 +188,10 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BigIntegerValue)) {
+            if (!(o instanceof BigIntegerParameter)) {
                 return false;
             }
-            BigIntegerValue that = (BigIntegerValue) o;
+            BigIntegerParameter that = (BigIntegerParameter) o;
             return value.equals(that.value);
         }
 

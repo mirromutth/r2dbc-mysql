@@ -49,7 +49,7 @@ public final class LargeFieldValue extends AbstractReferenceCounted implements F
             buffers[i] = this.buffers.get(i).slice();
         }
 
-        return InternalArrays.asReadOnlyList(buffers);
+        return InternalArrays.asImmutableList(buffers);
     }
 
     @Override

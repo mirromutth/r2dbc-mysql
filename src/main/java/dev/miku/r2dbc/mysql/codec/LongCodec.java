@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -45,10 +46,10 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public boolean canDecode(boolean massive, FieldInformation info, Class<?> target) {
+    public boolean canDecode(FieldInformation info, Class<?> target) {
         short type = info.getType();
 
-        if (!TypePredicates.isInt(type) || massive) {
+        if (!TypePredicates.isInt(type)) {
             return false;
         }
 
@@ -69,22 +70,22 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
+    public Parameter encode(Object value, CodecContext context) {
         long v = (Long) value;
 
         if ((byte) v == v) {
-            return new ByteCodec.ByteValue((byte) v);
+            return new ByteCodec.ByteParameter((byte) v);
         }
 
         if ((short) v == v) {
-            return new ShortCodec.ShortValue((short) v);
+            return new ShortCodec.ShortParameter((short) v);
         }
 
         if ((int) v == v) {
-            return new IntegerCodec.IntValue((int) v);
+            return new IntegerCodec.IntParameter((int) v);
         }
 
-        return new LongValue(v);
+        return new LongParameter(v);
     }
 
     @Override
@@ -159,22 +160,22 @@ final class LongCodec implements PrimitiveCodec<Long> {
         }
     }
 
-    private static final class LongValue extends AbstractParameterValue {
+    private static final class LongParameter extends AbstractParameter {
 
         private final long value;
 
-        private LongValue(long value) {
+        private LongParameter(long value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeLong(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeLong(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(value));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeLong(value));
         }
 
         @Override
@@ -187,11 +188,11 @@ final class LongCodec implements PrimitiveCodec<Long> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof LongValue)) {
+            if (!(o instanceof LongParameter)) {
                 return false;
             }
 
-            LongValue longValue = (LongValue) o;
+            LongParameter longValue = (LongParameter) o;
 
             return value == longValue.value;
         }

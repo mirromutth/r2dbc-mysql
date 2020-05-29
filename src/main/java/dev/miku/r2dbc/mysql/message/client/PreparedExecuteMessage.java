@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.CursorTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -49,9 +49,9 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
      */
     private final boolean immediate;
 
-    private final ParameterValue[] values;
+    private final Parameter[] values;
 
-    public PreparedExecuteMessage(int statementId, boolean immediate, ParameterValue[] values) {
+    public PreparedExecuteMessage(int statementId, boolean immediate, Parameter[] values) {
         this.values = requireNonNull(values, "values must not be null");
         this.statementId = statementId;
         this.immediate = immediate;
@@ -59,7 +59,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
     @Override
     public void dispose() {
-        for (ParameterValue value : values) {
+        for (Parameter value : values) {
             value.dispose();
         }
         Arrays.fill(values, null);
@@ -91,7 +91,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
                 return Mono.just(buf);
             }
 
-            List<ParameterValue> nonNull = new ArrayList<>(size);
+            List<Parameter> nonNull = new ArrayList<>(size);
             byte[] nullMap = fillNullBitmap(size, nonNull);
 
             // Fill null-bitmap.
@@ -106,7 +106,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
             buf.writeBoolean(true);
             writeTypes(buf, size);
 
-            return ParameterWriter.publish(buf, values);
+            return ParamOutputStream.publish(buf, values);
         } catch (Throwable e) {
             buf.release();
             cancelParameters();
@@ -114,11 +114,11 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
         }
     }
 
-    private byte[] fillNullBitmap(int size, List<ParameterValue> nonNull) {
+    private byte[] fillNullBitmap(int size, List<Parameter> nonNull) {
         byte[] nullMap = new byte[ceilDiv8(size)];
 
         for (int i = 0; i < size; ++i) {
-            ParameterValue value = values[i];
+            Parameter value = values[i];
 
             if (value.isNull()) {
                 nullMap[i >> 3] |= 1 << (i & 7);
@@ -137,7 +137,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
     }
 
     private void cancelParameters() {
-        for (ParameterValue value : values) {
+        for (Parameter value : values) {
             value.dispose();
         }
     }

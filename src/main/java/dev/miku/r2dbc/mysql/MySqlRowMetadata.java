@@ -90,7 +90,7 @@ final class MySqlRowMetadata implements RowMetadata {
 
     @Override
     public List<MySqlColumnMetadata> getColumnMetadatas() {
-        return InternalArrays.asReadOnlyList(idSorted);
+        return InternalArrays.asImmutableList(idSorted);
     }
 
     @Override

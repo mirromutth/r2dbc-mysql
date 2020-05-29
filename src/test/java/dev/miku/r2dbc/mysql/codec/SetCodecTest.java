@@ -16,10 +16,15 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.message.client.ParameterWriterHelper;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.google.common.base.CaseFormat;
 import reactor.test.StepVerifier;
 
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -70,14 +75,19 @@ class SetCodecTest implements CodecTestSupport<String[]> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[strings.length];
-        for (int i = 0; i < results.length; ++i) {
-            String value = Arrays.stream(strings[i])
+        return Arrays.stream(strings)
+            .map(it -> String.format("'%s'", Arrays.stream(it)
                 .map(ESCAPER::escape)
-                .collect(Collectors.joining(","));
-            results[i] = String.format("'%s'", value);
-        }
-        return results;
+                .collect(Collectors.joining(","))))
+            .toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(strings)
+            .map(it -> String.join(",", it).getBytes(charset))
+            .map(Unpooled::wrappedBuffer)
+            .toArray(ByteBuf[]::new);
     }
 
     @Test
@@ -88,12 +98,12 @@ class SetCodecTest implements CodecTestSupport<String[]> {
         assertEquals(sets.length, strings.length);
 
         for (int i = 0; i < sets.length; ++i) {
-            StringBuilder builder = new StringBuilder();
+            ParameterWriter writer = ParameterWriterHelper.get(1);
             codec.encode(sets[i], CONTEXT)
-                .writeTo(builder)
+                .text(writer)
                 .as(StepVerifier::create)
                 .verifyComplete();
-            assertEquals(builder.toString(), strings[i]);
+            assertEquals(ParameterWriterHelper.toSql(writer), strings[i]);
         }
     }
 

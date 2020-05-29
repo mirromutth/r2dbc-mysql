@@ -23,6 +23,7 @@ import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedCloseMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
 import dev.miku.r2dbc.mysql.message.client.SimpleQueryMessage;
+import dev.miku.r2dbc.mysql.message.client.TextQueryMessage;
 import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
 import dev.miku.r2dbc.mysql.message.server.PreparedOkMessage;
@@ -156,6 +157,26 @@ final class QueryFlow {
         }
     }
 
+    static Flux<Flux<ServerMessage>> execute(Client client, TextQuery query, List<Binding> bindings) {
+        switch (bindings.size()) {
+            case 1: // Most case.
+                return Flux.defer(() -> execute0(client, query, bindings.get(0)).windowUntil(RESULT_DONE));
+            case 0:
+                return Flux.empty();
+            default:
+                Iterator<Binding> iter = bindings.iterator();
+                EmitterProcessor<Binding> processor = EmitterProcessor.create(1, true);
+                Runnable complete = () -> OperatorUtils.emitIterator(processor, iter);
+
+                processor.onNext(iter.next());
+
+                return processor.concatMap(it -> execute0(client, query, it).doOnComplete(complete))
+                    .doOnCancel(() -> Binding.clearSubsequent(iter))
+                    .doOnError(ignored -> Binding.clearSubsequent(iter))
+                    .windowUntil(RESULT_DONE);
+        }
+    }
+
     /**
      * Close a prepared statement and release its resources in database server.
      *
@@ -191,7 +212,7 @@ final class QueryFlow {
      * completed by {@link CompleteMessage} for each statement.
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
-        return selfEmitter(InternalArrays.asReadOnlyList(statements), client)
+        return selfEmitter(InternalArrays.asImmutableList(statements), client)
             .doOnNext(SAFE_RELEASE)
             .then();
     }
@@ -264,7 +285,7 @@ final class QueryFlow {
     ) {
         if (fetchSize > 0) {
             int statementId = identifier.getId();
-            ExchangeableMessage cursor = binding.toMessage(statementId, false);
+            ExchangeableMessage cursor = binding.toExecuteMessage(statementId, false);
             // If EOF has been deprecated, it will end by OK message (same as fetch), otherwise it will end by Metadata EOF message.
             // So do not take the last response message (i.e. OK message) for execute if EOF has been deprecated.
             return OperatorUtils.discardOnCancel(client.exchange(cursor, deprecateEof ? FETCH_DONE : METADATA_DONE))
@@ -272,10 +293,19 @@ final class QueryFlow {
                 .handle(new TakeOne(sql)) // Should wait to complete, then concat fetches.
                 .concatWith(Flux.defer(() -> fetch(client, context, identifier, new PreparedFetchMessage(statementId, fetchSize), sql)));
         } else {
-            return OperatorUtils.discardOnCancel(client.exchange(binding.toMessage(identifier.getId(), true), FETCH_DONE))
+            return OperatorUtils.discardOnCancel(client.exchange(binding.toExecuteMessage(identifier.getId(), true), FETCH_DONE))
                 .doOnDiscard(ReferenceCounted.class, RELEASE)
                 .handle(new Handler(sql));
         }
+    }
+
+    private static Flux<ServerMessage> execute0(Client client, TextQuery query, Binding binding) {
+        ProcessableHandler handler = new ProcessableHandler();
+        TextQueryMessage message = binding.toTextMessage(query, handler);
+
+        return OperatorUtils.discardOnCancel(client.exchange(message, FETCH_DONE))
+            .doOnDiscard(ReferenceCounted.class, RELEASE)
+            .handle(handler);
     }
 
     private static Flux<ServerMessage> fetch(
@@ -377,6 +407,25 @@ final class QueryFlow {
             } else {
                 sink.next(message);
             }
+        }
+    }
+
+    private static final class ProcessableHandler implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Consumer<String> {
+
+        private volatile String sql = "Unprocessed";
+
+        @Override
+        public void accept(ServerMessage message, SynchronousSink<ServerMessage> sink) {
+            if (message instanceof ErrorMessage) {
+                sink.error(ExceptionFactory.createException((ErrorMessage) message, this.sql));
+            } else {
+                sink.next(message);
+            }
+        }
+
+        @Override
+        public void accept(String sql) {
+            this.sql = sql;
         }
     }
 

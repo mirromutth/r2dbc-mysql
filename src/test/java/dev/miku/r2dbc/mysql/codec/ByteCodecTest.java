@@ -16,6 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
+
 /**
  * Unit tests for {@link ByteCodec}.
  */
@@ -46,5 +52,17 @@ class ByteCodecTest implements CodecTestSupport<Byte> {
     @Override
     public Object[] stringifyParameters() {
         return bytes;
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(bytes)
+            .map(it -> Unpooled.wrappedBuffer(new byte[] { it }))
+            .toArray(ByteBuf[]::new);
+    }
+
+    @Override
+    public ByteBuf sized(ByteBuf value) {
+        return value;
     }
 }

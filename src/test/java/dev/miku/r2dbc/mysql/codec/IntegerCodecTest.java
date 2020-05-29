@@ -16,6 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
+
 /**
  * Unit tests for {@link IntegerCodec}.
  */
@@ -27,6 +32,8 @@ class IntegerCodecTest implements CodecTestSupport<Integer> {
         -1,
         10,
         -10,
+        (int) Byte.MIN_VALUE,
+        (int) Byte.MAX_VALUE,
         (int) Short.MAX_VALUE,
         (int) Short.MIN_VALUE,
         Integer.MAX_VALUE,
@@ -46,5 +53,15 @@ class IntegerCodecTest implements CodecTestSupport<Integer> {
     @Override
     public Object[] stringifyParameters() {
         return integers;
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(integers).map(LongCodecTest::encode).toArray(ByteBuf[]::new);
+    }
+
+    @Override
+    public ByteBuf sized(ByteBuf value) {
+        return value;
     }
 }

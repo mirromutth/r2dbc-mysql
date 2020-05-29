@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
@@ -69,8 +70,8 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new LocalDateValue((LocalDate) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new LocalDateParameter((LocalDate) value);
     }
 
     @Override
@@ -108,7 +109,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         return LocalDate.of(year, month, day);
     }
 
-    static void encodeDate(StringBuilder builder, LocalDate date) {
+    static void encodeDate(ParameterWriter writer, LocalDate date) {
         boolean isNegative;
         int year = date.getYear();
 
@@ -120,57 +121,56 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         }
 
         if (isNegative) {
-            builder.append('-');
+            writer.append('-');
+        } else {
+            // Date start with number.
+            writer.startString();
         }
 
         // Note: year is the abs value of origin year.
         if (year < 1000) {
-            builder.append('0');
+            writer.append('0');
             if (year < 100) {
-                builder.append('0');
+                writer.append('0');
                 if (year < 10) {
-                    builder.append('0');
+                    writer.append('0');
                 }
             }
         }
 
-        builder.append(year)
-            .append('-');
+        writer.writeInt(year);
+        writer.append('-');
 
         int month = date.getMonthValue();
         if (month < 10) {
-            builder.append('0');
+            writer.append('0');
         }
-        builder.append(month)
-            .append('-');
+        writer.writeInt(month);
+        writer.append('-');
 
         int day = date.getDayOfMonth();
         if (day < 10) {
-            builder.append('0');
+            writer.append('0');
         }
-        builder.append(day);
+        writer.writeInt(day);
     }
 
-    private static final class LocalDateValue extends AbstractParameterValue {
+    private static final class LocalDateParameter extends AbstractParameter {
 
         private final LocalDate date;
 
-        private LocalDateValue(LocalDate date) {
+        private LocalDateParameter(LocalDate date) {
             this.date = date;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeDate(date));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeDate(date));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> {
-                builder.append('\'');
-                encodeDate(builder, date);
-                builder.append('\'');
-            });
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> encodeDate(writer, date));
         }
 
         @Override
@@ -183,11 +183,11 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof LocalDateValue)) {
+            if (!(o instanceof LocalDateParameter)) {
                 return false;
             }
 
-            LocalDateValue that = (LocalDateValue) o;
+            LocalDateParameter that = (LocalDateParameter) o;
 
             return date.equals(that.date);
         }

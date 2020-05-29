@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -70,8 +71,8 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new BigDecimalValue((BigDecimal) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new BigDecimalParameter((BigDecimal) value);
     }
 
     @Override
@@ -80,22 +81,22 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
         return TypePredicates.isDecimal(type) || DataTypes.FLOAT == type || DataTypes.DOUBLE == type;
     }
 
-    private static final class BigDecimalValue extends AbstractParameterValue {
+    private static final class BigDecimalParameter extends AbstractParameter {
 
-        private final BigDecimal decimal;
+        private final BigDecimal value;
 
-        private BigDecimalValue(BigDecimal decimal) {
-            this.decimal = decimal;
+        private BigDecimalParameter(BigDecimal value) {
+            this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeAsciiString(decimal.toString()));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeAsciiString(value.toString()));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(decimal.toString()));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeBigDecimal(value));
         }
 
         @Override
@@ -108,18 +109,18 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BigDecimalValue)) {
+            if (!(o instanceof BigDecimalParameter)) {
                 return false;
             }
 
-            BigDecimalValue that = (BigDecimalValue) o;
+            BigDecimalParameter that = (BigDecimalParameter) o;
 
-            return decimal.equals(that.decimal);
+            return value.equals(that.value);
         }
 
         @Override
         public int hashCode() {
-            return decimal.hashCode();
+            return value.hashCode();
         }
     }
 }

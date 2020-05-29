@@ -16,6 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
+
 /**
  * Unit tests for {@link ShortCodec}.
  */
@@ -46,5 +51,15 @@ class ShortCodecTest implements CodecTestSupport<Short> {
     @Override
     public Object[] stringifyParameters() {
         return shorts;
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(shorts).map(LongCodecTest::encode).toArray(ByteBuf[]::new);
+    }
+
+    @Override
+    public ByteBuf sized(ByteBuf value) {
+        return value;
     }
 }

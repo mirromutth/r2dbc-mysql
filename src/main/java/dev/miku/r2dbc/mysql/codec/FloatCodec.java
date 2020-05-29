@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -50,8 +51,8 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new FloatValue((Float) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new FloatParameter((Float) value);
     }
 
     @Override
@@ -60,22 +61,22 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
         return DataTypes.FLOAT == type || (info.getSize() < 7 && TypePredicates.isDecimal(type));
     }
 
-    private static final class FloatValue extends AbstractParameterValue {
+    private static final class FloatParameter extends AbstractParameter {
 
         private final float value;
 
-        private FloatValue(float value) {
+        private FloatParameter(float value) {
             this.value = value;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeFloat(value));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeFloat(value));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> builder.append(value));
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeFloat(value));
         }
 
         @Override
@@ -88,11 +89,11 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof FloatValue)) {
+            if (!(o instanceof FloatParameter)) {
                 return false;
             }
 
-            FloatValue that = (FloatValue) o;
+            FloatParameter that = (FloatParameter) o;
 
             return Float.compare(that.value, value) == 0;
         }

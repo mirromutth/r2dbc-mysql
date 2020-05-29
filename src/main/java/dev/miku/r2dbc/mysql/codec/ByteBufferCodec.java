@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.message.ParameterValue;
-import dev.miku.r2dbc.mysql.message.client.ParameterWriter;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -53,8 +53,8 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
     }
 
     @Override
-    public ParameterValue encode(Object value, CodecContext context) {
-        return new ByteBufferValue((ByteBuffer) value);
+    public Parameter encode(Object value, CodecContext context) {
+        return new ByteBufferParameter((ByteBuffer) value);
     }
 
     @Override
@@ -67,26 +67,22 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
         return TypePredicates.isBinary(info.getType());
     }
 
-    private static final class ByteBufferValue extends AbstractParameterValue {
+    private static final class ByteBufferParameter extends AbstractParameter {
 
         private final ByteBuffer buffer;
 
-        private ByteBufferValue(ByteBuffer buffer) {
+        private ByteBufferParameter(ByteBuffer buffer) {
             this.buffer = buffer;
         }
 
         @Override
-        public Mono<Void> writeTo(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeByteBuffer(buffer));
+        public Mono<Void> binary(ParameterOutputStream output) {
+            return Mono.fromRunnable(() -> output.writeByteBuffer(buffer));
         }
 
         @Override
-        public Mono<Void> writeTo(StringBuilder builder) {
-            return Mono.fromRunnable(() -> {
-                builder.append('x').append('\'');
-                CodecUtils.appendHex(builder, buffer);
-                builder.append('\'');
-            });
+        public Mono<Void> text(ParameterWriter writer) {
+            return Mono.fromRunnable(() -> writer.writeHex(buffer));
         }
 
         @Override
@@ -99,10 +95,10 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ByteBufferValue)) {
+            if (!(o instanceof ByteBufferParameter)) {
                 return false;
             }
-            ByteBufferValue that = (ByteBufferValue) o;
+            ByteBufferParameter that = (ByteBufferParameter) o;
             return buffer.equals(that.buffer);
         }
 

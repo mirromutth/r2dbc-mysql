@@ -16,6 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
+
 /**
  * Unit tests for {@link StringCodec}.
  */
@@ -26,6 +32,11 @@ class StringCodecTest implements CodecTestSupport<String> {
         "Hello, world!",
         "Hi, R2DBC MySQL!",
         "\r\n\0\032\\'\"\u00a5\u20a9",
+        "Hello, 简体中文!",
+        "Hello, 正體中文!",
+        "Hello, 日本語（にほんご）!",
+        "Hello, 한국!",
+        "Hello, русский!",
     };
 
     @Override
@@ -40,10 +51,15 @@ class StringCodecTest implements CodecTestSupport<String> {
 
     @Override
     public Object[] stringifyParameters() {
-        String[] results = new String[strings.length];
-        for (int i = 0; i < results.length; ++i) {
-            results[i] = String.format("'%s'", ESCAPER.escape(strings[i]));
-        }
-        return results;
+        return Arrays.stream(strings)
+            .map(string -> String.format("'%s'", ESCAPER.escape(string)))
+            .toArray();
+    }
+
+    @Override
+    public ByteBuf[] binaryParameters(Charset charset) {
+        return Arrays.stream(strings)
+            .map(it -> Unpooled.wrappedBuffer(it.getBytes(charset)))
+            .toArray(ByteBuf[]::new);
     }
 }
