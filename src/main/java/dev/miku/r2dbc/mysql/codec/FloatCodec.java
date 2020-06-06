@@ -71,7 +71,7 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> {
                 ByteBuf buf = allocator.buffer(Float.BYTES);
                 try {
@@ -84,7 +84,7 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeFloat(value));
         }
 

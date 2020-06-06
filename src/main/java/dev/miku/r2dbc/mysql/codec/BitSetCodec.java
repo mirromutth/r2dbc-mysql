@@ -86,12 +86,12 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> ByteArrayCodec.encodeBytes(allocator, reverse(set.toByteArray())));
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> {
                 if (set.isEmpty()) {
                     // Must filled by 0 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer on type BIT (i.e. unsafe allocate).

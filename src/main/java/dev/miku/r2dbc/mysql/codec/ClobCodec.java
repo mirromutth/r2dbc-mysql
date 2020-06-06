@@ -102,7 +102,7 @@ final class ClobCodec implements MassiveCodec<Clob> {
         }
 
         @Override
-        public Flux<ByteBuf> binary() {
+        public Flux<ByteBuf> publishBinary() {
             return Flux.defer(() -> {
                 Clob clob = this.clob.getAndSet(null);
 
@@ -157,7 +157,7 @@ final class ClobCodec implements MassiveCodec<Clob> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.defer(() -> {
                 Clob clob = this.clob.getAndSet(null);
 

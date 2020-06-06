@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.json.JacksonCodec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -65,7 +66,7 @@ class JacksonCodecTest implements CodecTestSupport<Object> {
 
     @Override
     public Codec<Object> getCodec(ByteBufAllocator allocator) {
-        return JacksonCodec.ENCODING;
+        return new JacksonCodec(allocator, JacksonCodec.Mode.ALL);
     }
 
     @Override

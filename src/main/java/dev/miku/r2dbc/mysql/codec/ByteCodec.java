@@ -69,12 +69,12 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> allocator.buffer(Byte.BYTES).writeByte(value));
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeInt(value));
         }
 

@@ -118,7 +118,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> {
                 LocalTime time = value.toLocalTime();
 
@@ -152,7 +152,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> {
                 LocalDateCodec.encodeDate(writer, value.toLocalDate());
                 writer.append(' ');

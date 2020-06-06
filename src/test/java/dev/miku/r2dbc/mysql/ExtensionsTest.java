@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.extension.Extension;
-import dev.miku.r2dbc.mysql.extension.JacksonCodecRegistrar;
+import dev.miku.r2dbc.mysql.json.JacksonCodecRegistrar;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

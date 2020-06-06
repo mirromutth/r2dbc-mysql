@@ -49,6 +49,19 @@ abstract class IntegrationTestSupport {
         process(runner).verifyError(R2dbcBadGrammarException.class);
     }
 
+    Mono<MySqlConnection> create() {
+        return connectionFactory.create();
+    }
+
+    private StepVerifier.FirstStep<Void> process(Function<? super MySqlConnection, Publisher<?>> runner) {
+        return create()
+            .flatMap(connection -> Flux.from(runner.apply(connection))
+                .onErrorResume(e -> connection.close().then(Mono.error(e)))
+                .concatWith(connection.close().then(Mono.empty()))
+                .then())
+            .as(StepVerifier::create);
+    }
+
     static Mono<Integer> extractRowsUpdated(Result result) {
         return Mono.from(result.getRowsUpdated());
     }
@@ -75,14 +88,5 @@ abstract class IntegrationTestSupport {
         }
 
         return builder.build();
-    }
-
-    private StepVerifier.FirstStep<Void> process(Function<? super MySqlConnection, Publisher<?>> runner) {
-        return connectionFactory.create()
-            .flatMap(connection -> Flux.from(runner.apply(connection))
-                .onErrorResume(e -> connection.close().then(Mono.error(e)))
-                .concatWith(connection.close().then(Mono.empty()))
-                .then())
-            .as(StepVerifier::create);
     }
 }

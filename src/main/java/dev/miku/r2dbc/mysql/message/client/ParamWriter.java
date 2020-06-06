@@ -341,7 +341,7 @@ final class ParamWriter extends ParameterWriter {
 
         return OperatorUtils.discardOnCancel(Flux.fromArray(values))
             .doOnDiscard(Parameter.class, DISPOSE)
-            .concatMap(it -> it.text(writer).doOnSuccess(writer::flushParameter))
+            .concatMap(it -> it.publishText(writer).doOnSuccess(writer::flushParameter))
             .then(Mono.fromCallable(writer::toSql));
     }
 

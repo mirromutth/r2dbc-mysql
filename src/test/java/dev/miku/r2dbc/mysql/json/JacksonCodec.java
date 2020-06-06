@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.codec;
+package dev.miku.r2dbc.mysql.json;
 
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.codec.CodecContext;
+import dev.miku.r2dbc.mysql.codec.FieldInformation;
+import dev.miku.r2dbc.mysql.codec.ParametrizedCodec;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
@@ -25,10 +28,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.UnpooledByteBufAllocator;
-import io.netty.util.ReferenceCountUtil;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
@@ -46,19 +46,13 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final ByteBufAllocator ALLOC = UnpooledByteBufAllocator.DEFAULT;
+    private final ByteBufAllocator allocator;
 
-    public static final JacksonCodec ENCODING = new JacksonCodec(false);
+    private final Mode mode;
 
-    public static final JacksonCodec DECODING = new JacksonCodec(true);
-
-    /**
-     * {@code true} if this is decode mode.
-     */
-    private final boolean decode;
-
-    private JacksonCodec(boolean decode) {
-        this.decode = decode;
+    public JacksonCodec(ByteBufAllocator allocator, Mode mode) {
+        this.allocator = allocator;
+        this.mode = mode;
     }
 
     @Override
@@ -81,7 +75,7 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new JacksonParameter(ALLOC, value, context);
+        return new JacksonParameter(allocator, value, context);
     }
 
     @Override
@@ -96,11 +90,11 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
 
     @Override
     public boolean canEncode(Object value) {
-        return !decode;
+        return mode.isEncode();
     }
 
     private boolean doCanDecode(FieldInformation info) {
-        return decode && info.getType() == DataTypes.JSON && info.getCollationId() != CharCollation.BINARY_ID;
+        return mode.isDecode() && info.getType() == DataTypes.JSON && info.getCollationId() != CharCollation.BINARY_ID;
     }
 
     private static final class JacksonParameter implements Parameter {
@@ -118,44 +112,35 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
         }
 
         @Override
-        public Flux<ByteBuf> binary() {
-            return Flux.create(sink -> {
+        public Mono<ByteBuf> publishBinary() {
+            return Mono.fromSupplier(() -> {
+                int reserved;
                 Charset charset = context.getClientCollation().getCharset();
-                ByteBuf[] buffers = new ByteBuf[2];
+                ByteBuf content = allocator.buffer();
 
-                buffers[1] = ALLOC.buffer();
-
-                try (Writer writer = new OutputStreamWriter(new ByteBufOutputStream(buffers[1]), charset)) {
-                    MAPPER.writeValue(writer, value);
+                try (Writer w = new OutputStreamWriter(new ByteBufOutputStream(content), charset)) {
+                    VarIntUtils.reserveVarInt(content);
+                    reserved = content.readableBytes();
+                    MAPPER.writeValue(w, value);
                 } catch (IOException e) {
-                    buffers[1].release();
-                    sink.error(new RuntimeException(e));
-                    return;
+                    content.release();
+                    throw new RuntimeException(e);
                 } catch (Throwable e) {
-                    buffers[1].release();
-                    sink.error(e);
-                    return;
+                    content.release();
+                    throw e;
                 }
 
-                int bytes = buffers[1].readableBytes();
-                int varIntSize = VarIntUtils.varIntBytes(bytes);
-
                 try {
-                    buffers[0] = ALLOC.buffer(varIntSize, varIntSize);
-                    VarIntUtils.writeVarInt(buffers[0], bytes);
-                    sink.next(buffers[0]);
-                    sink.next(buffers[1]);
-                    sink.complete();
+                    return VarIntUtils.setReservedVarInt(content, content.readableBytes() - reserved);
                 } catch (Throwable e) {
-                    ReferenceCountUtil.safeRelease(buffers[0]);
-                    buffers[1].release();
-                    sink.error(e);
+                    content.release();
+                    throw e;
                 }
             });
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> {
                 try {
                     MAPPER.writeValue(writer, value);
@@ -169,5 +154,49 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
         public short getType() {
             return DataTypes.VARCHAR;
         }
+    }
+
+    public enum Mode {
+
+        ALL {
+
+            @Override
+            boolean isEncode() {
+                return true;
+            }
+
+            @Override
+            boolean isDecode() {
+                return true;
+            }
+        },
+        ENCODE {
+
+            @Override
+            boolean isEncode() {
+                return true;
+            }
+
+            @Override
+            boolean isDecode() {
+                return false;
+            }
+        },
+        DECODE {
+
+            @Override
+            boolean isEncode() {
+                return false;
+            }
+
+            @Override
+            boolean isDecode() {
+                return true;
+            }
+        };
+
+        abstract boolean isEncode();
+
+        abstract boolean isDecode();
     }
 }

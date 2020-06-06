@@ -173,7 +173,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> {
                 ByteBuf buf = allocator.buffer(Long.BYTES);
                 try {
@@ -186,7 +186,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeLong(value));
         }
 

@@ -76,7 +76,7 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> {
                 ByteBuf buf = allocator.buffer(Double.BYTES);
                 try {
@@ -89,7 +89,7 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeDouble(value));
         }
 

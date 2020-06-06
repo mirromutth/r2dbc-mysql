@@ -117,7 +117,7 @@ final class BlobCodec implements MassiveCodec<Blob> {
         }
 
         @Override
-        public Flux<ByteBuf> binary() {
+        public Flux<ByteBuf> publishBinary() {
             return Flux.defer(() -> {
                 Blob blob = this.blob.getAndSet(null);
 
@@ -172,7 +172,7 @@ final class BlobCodec implements MassiveCodec<Blob> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.defer(() -> {
                 Blob blob = this.blob.getAndSet(null);
 

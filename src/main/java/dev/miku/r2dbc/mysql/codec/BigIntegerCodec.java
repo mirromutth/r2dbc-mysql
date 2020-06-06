@@ -170,12 +170,12 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> BigDecimalCodec.encodeAscii(allocator, value.toString()));
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeBigInteger(value));
         }
 

@@ -314,7 +314,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> {
                 if (value.isEmpty()) {
                     // It is zero of var int, not terminal.
@@ -326,7 +326,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> encodeIterator(writer, new ConvertedIterator(value.iterator())));
         }
 
@@ -370,7 +370,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> {
                 if (value.isEmpty()) {
                     // It is zero of var int, not terminal.
@@ -382,7 +382,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> encodeIterator(writer, value.iterator()));
         }
 

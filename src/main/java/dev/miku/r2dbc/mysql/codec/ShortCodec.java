@@ -94,7 +94,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> {
                 ByteBuf buf = allocator.buffer(Short.BYTES);
 
@@ -108,7 +108,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeInt(value));
         }
 

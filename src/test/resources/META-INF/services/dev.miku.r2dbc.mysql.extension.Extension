@@ -1,1 +1,1 @@
-dev.miku.r2dbc.mysql.extension.JacksonCodecRegistrar
+dev.miku.r2dbc.mysql.json.JacksonCodecRegistrar
