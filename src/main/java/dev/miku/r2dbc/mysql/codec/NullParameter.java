@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 /**
@@ -40,8 +40,11 @@ final class NullParameter implements Parameter {
         return true;
     }
 
+    /**
+     * @return binary protocol encode null parameter to empty.
+     */
     @Override
-    public Mono<Void> binary(ParameterOutputStream output) {
+    public Mono<ByteBuf> binary() {
         return Mono.empty();
     }
 
@@ -62,6 +65,7 @@ final class NullParameter implements Parameter {
 
     @Override
     public String toString() {
-        return "NullParameter{ null }";
+        // Hide parameter detail even it is null.
+        return "Parameter{REDACTED}";
     }
 }

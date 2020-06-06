@@ -16,12 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
@@ -29,9 +29,10 @@ import reactor.core.publisher.Mono;
  */
 final class LongCodec implements PrimitiveCodec<Long> {
 
-    static final LongCodec INSTANCE = new LongCodec();
+    private final ByteBufAllocator allocator;
 
-    private LongCodec() {
+    LongCodec(ByteBufAllocator allocator) {
+        this.allocator = allocator;
     }
 
     @Override
@@ -74,18 +75,18 @@ final class LongCodec implements PrimitiveCodec<Long> {
         long v = (Long) value;
 
         if ((byte) v == v) {
-            return new ByteCodec.ByteParameter((byte) v);
+            return new ByteCodec.ByteParameter(allocator, (byte) v);
         }
 
         if ((short) v == v) {
-            return new ShortCodec.ShortParameter((short) v);
+            return new ShortCodec.ShortParameter(allocator, (short) v);
         }
 
         if ((int) v == v) {
-            return new IntegerCodec.IntParameter((int) v);
+            return new IntegerCodec.IntParameter(allocator, (int) v);
         }
 
-        return new LongParameter(v);
+        return new LongParameter(allocator, v);
     }
 
     @Override
@@ -162,15 +163,26 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
     private static final class LongParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final long value;
 
-        private LongParameter(long value) {
+        private LongParameter(ByteBufAllocator allocator, long value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeLong(value));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                ByteBuf buf = allocator.buffer(Long.BYTES);
+                try {
+                    return buf.writeLongLE(value);
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

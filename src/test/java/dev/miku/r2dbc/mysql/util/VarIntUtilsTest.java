@@ -14,23 +14,20 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.constant;
+package dev.miku.r2dbc.mysql.util;
+
+import dev.miku.r2dbc.mysql.constant.Headers;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Constants of date/time in binary result/parameter.
+ * Unit tests for {@link VarIntUtils} protocol.
  */
-public final class BinaryDateTimes {
+class VarIntUtilsTest {
 
-    public static final int DATE_SIZE = Short.BYTES + (Byte.BYTES << 1);
-
-    public static final int DATETIME_SIZE = DATE_SIZE + (Byte.BYTES * 3);
-
-    public static final int MICRO_DATETIME_SIZE = DATETIME_SIZE + Integer.BYTES;
-
-    public static final int TIME_SIZE = Byte.BYTES + Integer.BYTES + (Byte.BYTES * 3);
-
-    public static final int MICRO_TIME_SIZE = TIME_SIZE + Integer.BYTES;
-
-    private BinaryDateTimes() {
+    @Test
+    void eofHeaderEqualsInt64Code() {
+        assertEquals(Headers.EOF, VarIntUtils.VAR_INT_8_BYTE_CODE);
     }
 }

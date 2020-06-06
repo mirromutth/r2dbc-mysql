@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -30,10 +30,8 @@ import java.nio.charset.StandardCharsets;
  */
 final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
 
-    static final DoubleCodec INSTANCE = new DoubleCodec();
-
-    private DoubleCodec() {
-        super(Double.TYPE, Double.class);
+    DoubleCodec(ByteBufAllocator allocator) {
+        super(allocator, Double.TYPE, Double.class);
     }
 
     @Override
@@ -57,7 +55,7 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new DoubleParameter((Double) value);
+        return new DoubleParameter(allocator, (Double) value);
     }
 
     @Override
@@ -68,15 +66,26 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
 
     private static final class DoubleParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final double value;
 
-        private DoubleParameter(double value) {
+        private DoubleParameter(ByteBufAllocator allocator, double value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeDouble(value));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                ByteBuf buf = allocator.buffer(Double.BYTES);
+                try {
+                    return buf.writeDoubleLE(value);
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

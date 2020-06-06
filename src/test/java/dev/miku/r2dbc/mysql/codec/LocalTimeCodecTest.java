@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
@@ -61,8 +62,8 @@ class LocalTimeCodecTest implements CodecTestSupport<LocalTime> {
         .toFormatter(Locale.ENGLISH);
 
     @Override
-    public LocalTimeCodec getCodec() {
-        return LocalTimeCodec.INSTANCE;
+    public LocalTimeCodec getCodec(ByteBufAllocator allocator) {
+        return new LocalTimeCodec(allocator);
     }
 
     @Override

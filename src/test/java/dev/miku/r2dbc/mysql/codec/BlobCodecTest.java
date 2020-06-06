@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Blob;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
@@ -41,6 +42,7 @@ class BlobCodecTest implements CodecTestSupport<Blob> {
         new MockBlob(new byte[]{0x7F}),
         new MockBlob(new byte[]{0x12, 34, 0x56, 78, (byte) 0x9A}),
         new MockBlob("Hello world!".getBytes(StandardCharsets.US_ASCII)),
+        new MockBlob("Hello 日本語（にほんご）!".getBytes()),
         new MockBlob(new byte[]{(byte) 0xFE, (byte) 0xDC, (byte) 0xBA}),
         new MockBlob(new byte[0], new byte[0]),
         new MockBlob("Hello, ".getBytes(StandardCharsets.US_ASCII), "R2DBC!".getBytes(StandardCharsets.US_ASCII)),
@@ -65,11 +67,16 @@ class BlobCodecTest implements CodecTestSupport<Blob> {
             new byte[]{(byte) 0x98, 0x76, 0x54, 0x32, 0x1},
             new byte[0]
         ),
+        new MockBlob(
+            StringCodecTest.BIG.getBytes(),
+            StringCodecTest.BIG.getBytes(),
+            StringCodecTest.BIG.getBytes()
+        )
     };
 
     @Override
-    public BlobCodec getCodec() {
-        return BlobCodec.INSTANCE;
+    public BlobCodec getCodec(ByteBufAllocator allocator) {
+        return new BlobCodec(allocator);
     }
 
     @Override

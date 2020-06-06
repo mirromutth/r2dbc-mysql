@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 
@@ -40,8 +41,8 @@ class ByteBufferCodecTest implements CodecTestSupport<ByteBuffer> {
     };
 
     @Override
-    public ByteBufferCodec getCodec() {
-        return ByteBufferCodec.INSTANCE;
+    public ByteBufferCodec getCodec(ByteBufAllocator allocator) {
+        return new ByteBufferCodec(allocator);
     }
 
     @Override

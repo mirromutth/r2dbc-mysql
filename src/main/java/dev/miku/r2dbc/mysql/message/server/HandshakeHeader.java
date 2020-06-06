@@ -17,11 +17,11 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.ServerVersion;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.StandardCharsets;
 
+import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -71,7 +71,7 @@ public final class HandshakeHeader {
 
     static HandshakeHeader decode(ByteBuf buf) {
         short protocolVersion = buf.readUnsignedByte();
-        ServerVersion serverVersion = ServerVersion.parse(CodecUtils.readCStringSlice(buf).toString(StandardCharsets.US_ASCII));
+        ServerVersion serverVersion = ServerVersion.parse(readCStringAscii(buf));
         return new HandshakeHeader(protocolVersion, serverVersion, buf.readIntLE());
     }
 
@@ -105,6 +105,25 @@ public final class HandshakeHeader {
         int result = protocolVersion;
         result = 31 * result + serverVersion.hashCode();
         result = 31 * result + connectionId;
+        return result;
+    }
+
+    static String readCStringAscii(ByteBuf buf) {
+        int length = buf.bytesBefore(TERMINAL);
+
+        if (length < 0) {
+            throw new IllegalArgumentException("buf has no C-style string terminal");
+        }
+
+        if (length == 0) {
+            // skip terminal
+            buf.skipBytes(1);
+            return "";
+        }
+
+        String result = buf.toString(buf.readerIndex(), length, StandardCharsets.US_ASCII);
+        buf.skipBytes(length + 1); // skip string and terminal by read
+
         return result;
     }
 }

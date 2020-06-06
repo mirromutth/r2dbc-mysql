@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import io.netty.buffer.ByteBuf;
 import io.netty.util.IllegalReferenceCountException;
 import reactor.core.publisher.Mono;
 
@@ -43,7 +43,7 @@ final class MockParameter extends AtomicInteger implements Parameter {
     }
 
     @Override
-    public Mono<Void> binary(ParameterOutputStream output) {
+    public Mono<ByteBuf> binary() {
         if (success) {
             return Mono.fromRunnable(this::dispose);
         } else {

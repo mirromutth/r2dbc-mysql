@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.AuthTypes;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.CompositeByteBuf;
@@ -27,6 +26,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -143,7 +143,7 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
         try {
             // After handshake header, MySQL give salt first part (should be 8-bytes always).
-            salt.addComponent(true, CodecUtils.readCStringSlice(buf).retain());
+            salt.addComponent(true, readCStringRetainedSlice(buf));
 
             int serverCapabilities;
             CompositeByteBuf capabilities = buf.alloc().compositeBuffer(2);
@@ -169,6 +169,25 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         } finally {
             salt.release();
         }
+    }
+
+    private static ByteBuf readCStringRetainedSlice(ByteBuf buf) {
+        int bytes = buf.bytesBefore(TERMINAL);
+
+        if (bytes < 0) {
+            throw new IllegalArgumentException("buf has no C-style string");
+        }
+
+        if (bytes == 0) {
+            // skip terminal
+            buf.skipBytes(1);
+            // use EmptyByteBuf
+            return buf.alloc().buffer(0, 0);
+        }
+
+        ByteBuf result = buf.readSlice(bytes);
+        buf.skipBytes(1);
+        return result.retain();
     }
 
     private static Builder afterCapabilities(Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf salt) {
@@ -200,8 +219,8 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         builder.salt(ByteBufUtil.getBytes(salt));
 
         if (isPluginAuth) {
-            if (CodecUtils.hasNextCString(buf)) {
-                builder.authType(CodecUtils.readCString(buf, charset));
+            if (buf.bytesBefore(TERMINAL) >= 0) {
+                builder.authType(HandshakeHeader.readCStringAscii(buf));
             } else {
                 // It is MySQL bug 59453, auth type native name has no terminal character in
                 // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2

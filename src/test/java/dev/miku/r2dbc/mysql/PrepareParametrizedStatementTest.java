@@ -19,6 +19,7 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import io.netty.buffer.UnpooledByteBufAllocator;
 
 import java.lang.reflect.Field;
 
@@ -33,7 +34,7 @@ class PrepareParametrizedStatementTest implements StatementTestSupport<PreparePa
 
     private final ConnectionContext context = new ConnectionContext(ZeroDateOption.USE_NULL);
 
-    private final Codecs codecs = Codecs.builder().build();
+    private final Codecs codecs = Codecs.builder(UnpooledByteBufAllocator.DEFAULT).build();
 
     private final Field fetchSize = PrepareParametrizedStatement.class.getDeclaredField("fetchSize");
 

@@ -16,23 +16,24 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
+
+import java.nio.charset.Charset;
 
 /**
  * Codec for {@link String}.
  */
 final class StringCodec extends AbstractClassedCodec<String> {
 
-    static final StringCodec INSTANCE = new StringCodec();
-
-    private StringCodec() {
-        super(String.class);
+    StringCodec(ByteBufAllocator allocator) {
+        super(allocator, String.class);
     }
 
     @Override
@@ -51,7 +52,7 @@ final class StringCodec extends AbstractClassedCodec<String> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new StringParameter((CharSequence) value, context);
+        return new StringParameter(allocator, (CharSequence) value, context);
     }
 
     @Override
@@ -61,20 +62,44 @@ final class StringCodec extends AbstractClassedCodec<String> {
         return (TypePredicates.isString(type) || TypePredicates.isLob(type)) && info.getCollationId() != CharCollation.BINARY_ID;
     }
 
+    static ByteBuf encodeCharSequence(ByteBufAllocator allocator, CharSequence value, CodecContext context) {
+        int length = value.length();
+
+        if (length <= 0) {
+            // It is zero of var int, not terminal.
+            return allocator.buffer(Byte.BYTES).writeByte(0);
+        }
+
+        Charset charset = context.getClientCollation().getCharset();
+        ByteBuf content = allocator.buffer();
+
+        try {
+            VarIntUtils.reserveVarInt(content);
+
+            return VarIntUtils.setReservedVarInt(content, content.writeCharSequence(value, charset));
+        } catch (Throwable e) {
+            content.release();
+            throw e;
+        }
+    }
+
     private static class StringParameter extends AbstractParameter {
+
+        private final ByteBufAllocator allocator;
 
         private final CharSequence value;
 
         private final CodecContext context;
 
-        private StringParameter(CharSequence value, CodecContext context) {
+        private StringParameter(ByteBufAllocator allocator, CharSequence value, CodecContext context) {
+            this.allocator = allocator;
             this.value = value;
             this.context = context;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeCharSequence(value, context.getClientCollation()));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> encodeCharSequence(allocator, value, context));
         }
 
         @Override

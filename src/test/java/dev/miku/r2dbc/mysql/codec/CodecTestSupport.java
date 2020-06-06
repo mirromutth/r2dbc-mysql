@@ -17,18 +17,20 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.message.client.ParameterOutputStreamHelper;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriterHelper;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledByteBufAllocator;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.google.common.escape.Escaper;
 import org.testcontainers.shaded.com.google.common.escape.Escapers;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.nio.charset.Charset;
@@ -53,33 +55,23 @@ interface CodecTestSupport<T> {
 
     @Test
     default void binary() {
-        Codec<T> codec = getCodec();
+        Codec<T> codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
         T[] origin = originParameters();
         ByteBuf[] binaries = binaryParameters(CharCollation.clientCharCollation().getCharset());
 
         assertEquals(origin.length, binaries.length);
 
         for (int i = 0; i < origin.length; ++i) {
-            ParameterOutputStream stream = ParameterOutputStreamHelper.get();
-            codec.encode(origin[i], CONTEXT)
-                .binary(stream)
+            merge(Flux.from(codec.encode(origin[i], CONTEXT).binary()))
                 .as(StepVerifier::create)
+                .expectNext(sized(binaries[i]))
                 .verifyComplete();
-            ByteBuf buf = ParameterOutputStreamHelper.getBuffer(stream);
-            ByteBuf ans = sized(binaries[i]);
-
-            try {
-                assertEquals(buf, ans);
-            } finally {
-                buf.release();
-                ans.release();
-            }
         }
     }
 
     @Test
     default void stringify() {
-        Codec<T> codec = getCodec();
+        Codec<T> codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
         T[] origin = originParameters();
         Object[] strings = stringifyParameters();
 
@@ -100,11 +92,24 @@ interface CodecTestSupport<T> {
      */
     default ByteBuf sized(ByteBuf value) {
         ByteBuf varInt = Unpooled.buffer();
-        CodecUtils.writeVarInt(varInt, value.readableBytes());
+        VarIntUtils.writeVarInt(varInt, value.readableBytes());
         return Unpooled.wrappedBuffer(varInt, value);
     }
 
-    Codec<T> getCodec();
+    default Mono<ByteBuf> merge(Flux<ByteBuf> buffers) {
+        return Mono.create(sink -> {
+            ByteBuf buf = Unpooled.buffer();
+            buffers.subscribe(buf::writeBytes, sink::error, () -> {
+                if (buf.isReadable()) {
+                    sink.success(buf);
+                } else {
+                    sink.error(new IllegalArgumentException("Encoded but nothing received"));
+                }
+            });
+        });
+    }
+
+    Codec<T> getCodec(ByteBufAllocator allocator);
 
     T[] originParameters();
 

@@ -16,14 +16,14 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.ConnectionContext;
+import dev.miku.r2dbc.mysql.constant.Capabilities;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
+import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -98,14 +98,21 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
 
         Charset charset = context.getClientCollation().getCharset();
 
-        CodecUtils.writeCString(buf, username, charset);
+        HandshakeResponse.writeCString(buf, username, charset);
 
         if ((head.getCapabilities() & Capabilities.CONNECT_WITH_DB) == 0) {
             // Write to end-of-buffer because has no database following.
             buf.writeBytes(authentication);
         } else {
-            CodecUtils.writeCString(buf, authentication);
-            CodecUtils.writeCString(buf, database, charset);
+            writeCString(buf, authentication);
+            HandshakeResponse.writeCString(buf, database, charset);
         }
+    }
+
+    private static void writeCString(ByteBuf buf, byte[] value) {
+        if (value.length != 0) {
+            buf.writeBytes(value);
+        }
+        buf.writeByte(TERMINAL);
     }
 }

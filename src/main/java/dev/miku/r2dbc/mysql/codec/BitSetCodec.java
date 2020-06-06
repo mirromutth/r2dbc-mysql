@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
 
@@ -33,10 +33,8 @@ import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
  */
 final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
-    static final BitSetCodec INSTANCE = new BitSetCodec();
-
-    private BitSetCodec() {
-        super(BitSet.class);
+    BitSetCodec(ByteBufAllocator allocator) {
+        super(allocator, BitSet.class);
     }
 
     @Override
@@ -54,7 +52,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new BitSetParameter((BitSet) value);
+        return new BitSetParameter(allocator, (BitSet) value);
     }
 
     @Override
@@ -78,15 +76,18 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
     private static final class BitSetParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final BitSet set;
 
-        private BitSetParameter(BitSet set) {
+        private BitSetParameter(ByteBufAllocator allocator, BitSet set) {
+            this.allocator = allocator;
             this.set = set;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeByteArray(reverse(set.toByteArray())));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> ByteArrayCodec.encodeBytes(allocator, reverse(set.toByteArray())));
         }
 
         @Override

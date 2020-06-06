@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.message.server;
 import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
 import dev.miku.r2dbc.mysql.constant.Headers;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.netty.buffer.ByteBuf;
@@ -188,7 +188,7 @@ public final class ServerMessageDecoder {
                 }
         }
 
-        if (CodecUtils.checkNextVarInt(buf) == 0) {
+        if (VarIntUtils.checkNextVarInt(buf) == 0) {
             // EOF message must be 5-bytes, it will never be looks like a var integer.
             // It looks like has only a var integer, should be column count.
             return ColumnCountMessage.decode(buf);

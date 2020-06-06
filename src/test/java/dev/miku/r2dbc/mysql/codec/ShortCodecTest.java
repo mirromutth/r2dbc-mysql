@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -39,8 +40,8 @@ class ShortCodecTest implements CodecTestSupport<Short> {
     };
 
     @Override
-    public ShortCodec getCodec() {
-        return ShortCodec.INSTANCE;
+    public ShortCodec getCodec(ByteBufAllocator allocator) {
+        return new ShortCodec(allocator);
     }
 
     @Override

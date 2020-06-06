@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
@@ -26,6 +27,13 @@ import java.util.Arrays;
  * Unit tests for {@link StringCodec}.
  */
 class StringCodecTest implements CodecTestSupport<String> {
+
+    static final String BIG;
+
+    static {
+        // Big string with bigger bytes.
+        BIG = new String(new char[1024]).replace('\0', '好');
+    }
 
     private final String[] strings = {
         "",
@@ -37,11 +45,12 @@ class StringCodecTest implements CodecTestSupport<String> {
         "Hello, 日本語（にほんご）!",
         "Hello, 한국!",
         "Hello, русский!",
+        BIG,
     };
 
     @Override
-    public StringCodec getCodec() {
-        return StringCodec.INSTANCE;
+    public StringCodec getCodec(ByteBufAllocator allocator) {
+        return new StringCodec(allocator);
     }
 
     @Override

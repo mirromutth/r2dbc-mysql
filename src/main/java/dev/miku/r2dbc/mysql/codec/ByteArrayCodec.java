@@ -16,11 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
 import reactor.core.publisher.Mono;
 
@@ -33,10 +34,8 @@ import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
  */
 final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
 
-    static final ByteArrayCodec INSTANCE = new ByteArrayCodec();
-
-    private ByteArrayCodec() {
-        super(byte[].class);
+    ByteArrayCodec(ByteBufAllocator allocator) {
+        super(allocator, byte[].class);
     }
 
     @Override
@@ -55,7 +54,7 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new ByteArrayParameter((byte[]) value);
+        return new ByteArrayParameter(allocator, (byte[]) value);
     }
 
     @Override
@@ -63,22 +62,44 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
         return TypePredicates.isBinary(info.getType());
     }
 
+    static ByteBuf encodeBytes(ByteBufAllocator alloc, byte[] value) {
+        int size = value.length;
+
+        if (size == 0) {
+            // It is zero of var int, not terminal.
+            return alloc.buffer(Byte.BYTES).writeByte(0);
+        }
+
+        ByteBuf buf = alloc.buffer(VarIntUtils.varIntBytes(size) + size);
+
+        try {
+            VarIntUtils.writeVarInt(buf, size);
+            return buf.writeBytes(value);
+        } catch (Throwable e) {
+            buf.release();
+            throw e;
+        }
+    }
+
     private static final class ByteArrayParameter extends AbstractParameter {
 
-        private final byte[] bytes;
+        private final ByteBufAllocator allocator;
 
-        private ByteArrayParameter(byte[] bytes) {
-            this.bytes = bytes;
+        private final byte[] value;
+
+        private ByteArrayParameter(ByteBufAllocator allocator, byte[] value) {
+            this.allocator = allocator;
+            this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeByteArray(bytes));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> encodeBytes(allocator, value));
         }
 
         @Override
         public Mono<Void> text(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> writer.writeHex(bytes));
+            return Mono.fromRunnable(() -> writer.writeHex(value));
         }
 
         @Override
@@ -97,12 +118,12 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
 
             ByteArrayParameter that = (ByteArrayParameter) o;
 
-            return Arrays.equals(bytes, that.bytes);
+            return Arrays.equals(value, that.value);
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(bytes);
+            return Arrays.hashCode(value);
         }
     }
 }

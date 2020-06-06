@@ -19,10 +19,6 @@ package dev.miku.r2dbc.mysql.codec;
 /**
  * The builder for {@link Codecs}.
  * <p>
- * It will return default singleton {@link Codecs} when codec has been never added.
- * But if user added any {@link Codec} by calling {@link #addFirst} or {@link #addLast},
- * it will generate a new {@link Codecs} every time {@link #build()}.
- * <p>
  * Note: user should not remove/change any built-in {@link Codec} because it will
  * cause the driver to not work, so now this interface has only functions of "add".
  */

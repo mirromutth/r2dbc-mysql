@@ -27,9 +27,29 @@ import java.nio.charset.StandardCharsets;
 import java.time.temporal.Temporal;
 
 /**
- * An utility with date/time generic logic for {@link Codec} implementations.
+ * An utility considers date/time generic logic for {@link Codec} implementations.
  */
-final class CodecDateUtils {
+final class DateTimes {
+
+    static final int DATE_SIZE = Short.BYTES + (Byte.BYTES << 1);
+
+    static final int DATETIME_SIZE = DATE_SIZE + (Byte.BYTES * 3);
+
+    static final int MICRO_DATETIME_SIZE = DATETIME_SIZE + Integer.BYTES;
+
+    static final int TIME_SIZE = Byte.BYTES + Integer.BYTES + (Byte.BYTES * 3);
+
+    static final int MICRO_TIME_SIZE = TIME_SIZE + Integer.BYTES;
+
+    static final int SECONDS_OF_MINUTE = 60;
+
+    static final int SECONDS_OF_HOUR = SECONDS_OF_MINUTE * 60;
+
+    static final int SECONDS_OF_DAY = SECONDS_OF_HOUR * 24;
+
+    static final int NANOS_OF_SECOND = 1000_000_000;
+
+    static final int NANOS_OF_MICRO = 1000;
 
     static int readIntInDigits(ByteBuf buf) {
         if (!buf.isReadable()) {
@@ -59,7 +79,7 @@ final class CodecDateUtils {
     }
 
     @Nullable
-    static <T extends Temporal> T handle(ZeroDateOption option, boolean binary, ByteBuf buf, int index, int bytes, T round) {
+    static <T extends Temporal> T zeroDate(ZeroDateOption option, boolean binary, ByteBuf buf, int index, int bytes, T round) {
         switch (option) {
             case USE_NULL:
                 return null;
@@ -77,6 +97,6 @@ final class CodecDateUtils {
         throw new R2dbcNonTransientResourceException(message, SqlStates.ILLEGAL_ARGUMENT);
     }
 
-    private CodecDateUtils() {
+    private DateTimes() {
     }
 }

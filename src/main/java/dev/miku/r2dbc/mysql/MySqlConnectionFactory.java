@@ -21,6 +21,7 @@ import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.codec.CodecsBuilder;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.extension.CodecRegistrar;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
@@ -79,10 +80,11 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             return Client.connect(address, ssl, context, configuration.getConnectTimeout())
                 .flatMap(client -> LoginFlow.login(client, sslMode, database, context, username, password))
                 .flatMap(client -> {
-                    CodecsBuilder builder = Codecs.builder();
+                    ByteBufAllocator allocator = client.getByteBufAllocator();
+                    CodecsBuilder builder = Codecs.builder(allocator);
 
                     extensions.forEach(CodecRegistrar.class, registrar ->
-                        registrar.register(client.getByteBufAllocator(), builder));
+                        registrar.register(allocator, builder));
 
                     return MySqlConnection.create(client, builder.build(), context, prepare);
                 });

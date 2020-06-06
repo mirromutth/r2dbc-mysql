@@ -24,17 +24,8 @@ import dev.miku.r2dbc.mysql.Parameter;
 abstract class AbstractParameter implements Parameter {
 
     @Override
-    public final boolean isNull() {
-        return false;
-    }
-
-    @Override
-    public void dispose() {
-        // Do nothing for default
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + "{ non-null, value is hidden }";
+    public final String toString() {
+        // Hide parameter detail even its type.
+        return "Parameter{REDACTED}";
     }
 }

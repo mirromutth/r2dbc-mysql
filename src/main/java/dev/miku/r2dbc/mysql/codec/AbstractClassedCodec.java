@@ -16,14 +16,19 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import io.netty.buffer.ByteBufAllocator;
+
 /**
  * Codec for classed type when field bytes less or equals than {@link Integer#MAX_VALUE}.
  */
 abstract class AbstractClassedCodec<T> implements Codec<T> {
 
+    protected final ByteBufAllocator allocator;
+
     private final Class<? extends T> clazz;
 
-    AbstractClassedCodec(Class<? extends T> clazz) {
+    AbstractClassedCodec(ByteBufAllocator allocator, Class<? extends T> clazz) {
+        this.allocator = allocator;
         this.clazz = clazz;
     }
 

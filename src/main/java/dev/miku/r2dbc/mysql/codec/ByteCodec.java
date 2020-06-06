@@ -16,12 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
@@ -29,10 +29,8 @@ import reactor.core.publisher.Mono;
  */
 final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
-    static final ByteCodec INSTANCE = new ByteCodec();
-
-    private ByteCodec() {
-        super(Byte.TYPE, Byte.class);
+    ByteCodec(ByteBufAllocator allocator) {
+        super(allocator, Byte.TYPE, Byte.class);
     }
 
     @Override
@@ -51,7 +49,7 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new ByteParameter((Byte) value);
+        return new ByteParameter(allocator, (Byte) value);
     }
 
     @Override
@@ -61,15 +59,18 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
     static final class ByteParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final byte value;
 
-        ByteParameter(byte value) {
+        ByteParameter(ByteBufAllocator allocator, byte value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeByte(value));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> allocator.buffer(Byte.BYTES).writeByte(value));
         }
 
         @Override

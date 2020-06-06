@@ -19,6 +19,7 @@ package dev.miku.r2dbc.mysql.codec;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
 import java.time.Year;
 
@@ -29,10 +30,8 @@ import java.time.Year;
  */
 final class YearCodec extends AbstractClassedCodec<Year> {
 
-    static final YearCodec INSTANCE = new YearCodec();
-
-    private YearCodec() {
-        super(Year.class);
+    YearCodec(ByteBufAllocator allocator) {
+        super(allocator, Year.class);
     }
 
     @Override
@@ -54,15 +53,15 @@ final class YearCodec extends AbstractClassedCodec<Year> {
         int year = ((Year) value).getValue();
 
         if ((byte) year == year) {
-            return new ByteCodec.ByteParameter((byte) year);
+            return new ByteCodec.ByteParameter(allocator, (byte) year);
         }
 
         if ((short) year == year) {
-            return new ShortCodec.ShortParameter((short) year);
+            return new ShortCodec.ShortParameter(allocator, (short) year);
         }
 
         // Unsupported, but should be considered here.
-        return new IntegerCodec.IntParameter(year);
+        return new IntegerCodec.IntParameter(allocator, year);
     }
 
     @Override

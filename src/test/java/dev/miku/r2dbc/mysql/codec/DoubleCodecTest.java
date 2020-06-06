@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
@@ -45,8 +46,8 @@ class DoubleCodecTest implements CodecTestSupport<Double> {
     };
 
     @Override
-    public DoubleCodec getCodec() {
-        return DoubleCodec.INSTANCE;
+    public DoubleCodec getCodec(ByteBufAllocator allocator) {
+        return new DoubleCodec(allocator);
     }
 
     @Override

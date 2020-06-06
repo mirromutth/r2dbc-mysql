@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Clob;
 import reactor.core.publisher.Flux;
@@ -45,11 +46,12 @@ class ClobCodecTest implements CodecTestSupport<Clob> {
         new MockClob("", "Hi, ", "MySQL"),
         new MockClob("Hi, ", "", "MySQL"),
         new MockClob("Hi, ", "MySQL", ""),
+        new MockClob(StringCodecTest.BIG, StringCodecTest.BIG, StringCodecTest.BIG)
     };
 
     @Override
-    public ClobCodec getCodec() {
-        return ClobCodec.INSTANCE;
+    public ClobCodec getCodec(ByteBufAllocator allocator) {
+        return new ClobCodec(allocator);
     }
 
     @Override

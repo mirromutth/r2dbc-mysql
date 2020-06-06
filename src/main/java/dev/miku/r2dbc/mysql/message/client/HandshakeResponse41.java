@@ -16,9 +16,9 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
 import dev.miku.r2dbc.mysql.ConnectionContext;
+import dev.miku.r2dbc.mysql.constant.Capabilities;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -26,7 +26,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
 
-import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -122,10 +121,10 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
         int capabilities = head.getCapabilities();
         Charset charset = context.getClientCollation().getCharset();
 
-        CodecUtils.writeCString(buf, username, charset);
+        HandshakeResponse.writeCString(buf, username, charset);
 
         if ((capabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0) {
-            CodecUtils.writeVarIntSizedBytes(buf, authentication);
+            writeVarIntSizedBytes(buf, authentication);
         } else if (authentication.length <= ONE_BYTE_MAX_INT) {
             buf.writeByte(authentication.length).writeBytes(authentication);
         } else {
@@ -134,12 +133,12 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
         }
 
         if ((capabilities & Capabilities.CONNECT_WITH_DB) != 0) {
-            CodecUtils.writeCString(buf, database, charset);
+            HandshakeResponse.writeCString(buf, database, charset);
         }
 
         if ((capabilities & Capabilities.PLUGIN_AUTH) != 0) {
             // This must be an UTF-8 string.
-            CodecUtils.writeCString(buf, authType, StandardCharsets.UTF_8);
+            HandshakeResponse.writeCString(buf, authType, StandardCharsets.UTF_8);
         }
 
         if ((capabilities & Capabilities.CONNECT_ATTRS) != 0) {
@@ -149,7 +148,8 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     private void writeAttrs(ByteBuf buf, Charset charset) {
         if (attributes.isEmpty()) {
-            CodecUtils.writeVarIntSizedBytes(buf, EMPTY_BYTES);
+            // It is zero of var int, not terminal.
+            buf.writeByte(0);
             return;
         }
 
@@ -157,13 +157,51 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
         try {
             for (Map.Entry<String, String> entry : attributes.entrySet()) {
-                CodecUtils.writeVarIntSizedString(attributesBuf, entry.getKey(), charset);
-                CodecUtils.writeVarIntSizedString(attributesBuf, entry.getValue(), charset);
+                writeVarIntString(attributesBuf, entry.getKey(), charset);
+                writeVarIntString(attributesBuf, entry.getValue(), charset);
             }
 
-            CodecUtils.writeVarIntSizedBytes(buf, attributesBuf);
+            writeVarIntSizedBytes(buf, attributesBuf);
         } finally {
             attributesBuf.release();
         }
+    }
+
+    private static void writeVarIntString(ByteBuf buf, String value, Charset charset) {
+        if (value.isEmpty()) {
+            // It is zero of var int, not terminal.
+            buf.writeByte(0);
+            return;
+        }
+
+        // NEVER use value.length() in here, size must be bytes' size, not string size.
+        // Can not use reserved var integer, because this buffer header has been used.
+        writeVarIntSizedBytes(buf, value.getBytes(charset));
+    }
+
+    private static void writeVarIntSizedBytes(ByteBuf buf, byte[] value) {
+        int size = value.length;
+
+        if (size == 0) {
+            // It is zero of var int, not terminal.
+            buf.writeByte(0);
+            return;
+        }
+
+        VarIntUtils.writeVarInt(buf, size);
+        buf.writeBytes(value);
+    }
+
+    private static void writeVarIntSizedBytes(ByteBuf buf, ByteBuf value) {
+        int size = value.readableBytes();
+
+        if (size == 0) {
+            // It is zero of var int, not terminal.
+            buf.writeByte(0);
+            return;
+        }
+
+        VarIntUtils.writeVarInt(buf, size);
+        buf.writeBytes(value);
     }
 }

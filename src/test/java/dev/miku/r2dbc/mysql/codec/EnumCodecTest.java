@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import org.testcontainers.shaded.com.google.common.base.CaseFormat;
 import org.testcontainers.shaded.com.google.common.collect.BoundType;
@@ -40,8 +41,8 @@ class EnumCodecTest implements CodecTestSupport<Enum<?>> {
     };
 
     @Override
-    public EnumCodec getCodec() {
-        return EnumCodec.INSTANCE;
+    public EnumCodec getCodec(ByteBufAllocator allocator) {
+        return new EnumCodec(allocator);
     }
 
     @Override

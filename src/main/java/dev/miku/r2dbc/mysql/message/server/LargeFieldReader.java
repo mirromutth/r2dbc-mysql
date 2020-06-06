@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
@@ -90,12 +90,12 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
         ByteBuf currentBuf = nonEmptyBuffer();
         long fieldSize;
 
-        if (CodecUtils.checkNextVarInt(currentBuf) < 0) {
+        if (VarIntUtils.checkNextVarInt(currentBuf) < 0) {
             ByteBuf nextBuf = this.buffers[currentBufIndex + 1];
-            fieldSize = CodecUtils.crossReadVarInt(currentBuf, nextBuf);
+            fieldSize = VarIntUtils.crossReadVarInt(currentBuf, nextBuf);
             ++currentBufIndex;
         } else {
-            fieldSize = CodecUtils.readVarInt(currentBuf);
+            fieldSize = VarIntUtils.readVarInt(currentBuf);
         }
 
         // Refresh non empty buffer because current buffer has been read.

@@ -17,11 +17,15 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriterHelper;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledByteBufAllocator;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.google.common.base.CaseFormat;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 import java.nio.charset.Charset;
@@ -64,8 +68,8 @@ class SetCodecTest implements CodecTestSupport<String[]> {
     };
 
     @Override
-    public SetCodec getCodec() {
-        return SetCodec.INSTANCE;
+    public SetCodec getCodec(ByteBufAllocator allocator) {
+        return new SetCodec(allocator);
     }
 
     @Override
@@ -76,9 +80,9 @@ class SetCodecTest implements CodecTestSupport<String[]> {
     @Override
     public Object[] stringifyParameters() {
         return Arrays.stream(strings)
-            .map(it -> String.format("'%s'", Arrays.stream(it)
+            .map(it -> Arrays.stream(it)
                 .map(ESCAPER::escape)
-                .collect(Collectors.joining(","))))
+                .collect(Collectors.joining(",", "'", "'")))
             .toArray();
     }
 
@@ -91,8 +95,23 @@ class SetCodecTest implements CodecTestSupport<String[]> {
     }
 
     @Test
+    void binarySet() {
+        SetCodec codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
+        ByteBuf[] binaries = binarySets(CharCollation.clientCharCollation().getCharset());
+
+        assertEquals(sets.length, binaries.length);
+
+        for (int i = 0; i < sets.length; ++i) {
+            merge(Flux.from(codec.encode(sets[i], CONTEXT).binary()))
+                .as(StepVerifier::create)
+                .expectNext(sized(binaries[i]))
+                .verifyComplete();
+        }
+    }
+
+    @Test
     void stringifySet() {
-        SetCodec codec = getCodec();
+        SetCodec codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
         String[] strings = stringifySets();
 
         assertEquals(sets.length, strings.length);
@@ -108,15 +127,22 @@ class SetCodecTest implements CodecTestSupport<String[]> {
     }
 
     private String[] stringifySets() {
-        String[] results = new String[sets.length];
-        for (int i = 0; i < results.length; ++i) {
-            String value = sets[i].stream()
-                .map(SetCodec::convert)
+        return Arrays.stream(sets)
+            .map(set -> set.stream()
+                .map(it -> it instanceof Enum<?> ? ((Enum<?>) it).name() : it.toString())
                 .map(ESCAPER::escape)
-                .collect(Collectors.joining(","));
-            results[i] = String.format("'%s'", value);
-        }
-        return results;
+                .collect(Collectors.joining(",", "'", "'")))
+            .toArray(String[]::new);
+    }
+
+    private ByteBuf[] binarySets(Charset charset) {
+        return Arrays.stream(sets)
+            .map(set -> set.stream()
+                .map(it -> it instanceof Enum<?> ? ((Enum<?>) it).name() : it.toString())
+                .collect(Collectors.joining(","))
+                .getBytes(charset))
+            .map(Unpooled::wrappedBuffer)
+            .toArray(ByteBuf[]::new);
     }
 
     private enum SomeElement {

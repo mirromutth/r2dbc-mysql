@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
@@ -50,8 +51,8 @@ class YearCodecTest implements CodecTestSupport<Year> {
     };
 
     @Override
-    public YearCodec getCodec() {
-        return YearCodec.INSTANCE;
+    public YearCodec getCodec(ByteBufAllocator allocator) {
+        return new YearCodec(allocator);
     }
 
     @Override
