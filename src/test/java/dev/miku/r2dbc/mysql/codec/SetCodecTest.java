@@ -102,7 +102,7 @@ class SetCodecTest implements CodecTestSupport<String[]> {
         assertEquals(sets.length, binaries.length);
 
         for (int i = 0; i < sets.length; ++i) {
-            merge(Flux.from(codec.encode(sets[i], CONTEXT).binary()))
+            merge(Flux.from(codec.encode(sets[i], CONTEXT).publishBinary()))
                 .as(StepVerifier::create)
                 .expectNext(sized(binaries[i]))
                 .verifyComplete();
@@ -119,7 +119,7 @@ class SetCodecTest implements CodecTestSupport<String[]> {
         for (int i = 0; i < sets.length; ++i) {
             ParameterWriter writer = ParameterWriterHelper.get(1);
             codec.encode(sets[i], CONTEXT)
-                .text(writer)
+                .publishText(writer)
                 .as(StepVerifier::create)
                 .verifyComplete();
             assertEquals(ParameterWriterHelper.toSql(writer), strings[i]);

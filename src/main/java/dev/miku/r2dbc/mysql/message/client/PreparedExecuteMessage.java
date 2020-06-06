@@ -113,7 +113,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
 
             Flux<ByteBuf> parameters = OperatorUtils.discardOnCancel(Flux.fromArray(values))
                 .doOnDiscard(Parameter.class, DISPOSE)
-                .concatMap(Parameter::binary);
+                .concatMap(Parameter::publishBinary);
 
             return Flux.just(buf).concatWith(parameters);
         } catch (Throwable e) {

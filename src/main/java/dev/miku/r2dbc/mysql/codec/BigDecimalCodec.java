@@ -113,12 +113,12 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> encodeAscii(allocator, value.toString()));
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> writer.writeBigDecimal(value));
         }
 

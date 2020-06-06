@@ -23,13 +23,15 @@ import reactor.core.publisher.Mono;
 
 /**
  * A parameter value includes encode logic.
+ * <p>
+ * TODO: add ScalarParameter for better performance.
  */
 public interface Parameter extends Disposable {
 
     /**
      * Note: the {@code null} is processed by built-in codecs.
      *
-     * @return {@code true} if parameter is {@code null}. Codec extensions should always return {@code false}.
+     * @return {@code true} if it is {@code null}. Codec extensions should always return {@code false}.
      */
     default boolean isNull() {
         return false;
@@ -41,22 +43,23 @@ public interface Parameter extends Disposable {
      * <p>
      * Note: not like the text protocol, it make a sense for state-less. Binary protocol
      * maybe need to add a var-integer before each binaries of the parameter. So if it
-     * seems like {@code Mono<Void> binary(Xxx binaryWriter)}, and if we need to support
-     * multiple times writing like a {@code OutputStream} or {@code Writer} for each
-     * parameter, this make a hell of a complex state system. If we don't support multiple
-     * times writing, it will be hard to understand and maybe make a confuse to user.
+     * seems like {@code Mono<Void> publishBinary(Xxx binaryWriter)}, and if we need to
+     * support multiple times writing like a {@code OutputStream} or {@code Writer} for
+     * each parameter, this make a hell of a complex state system. If we don't support
+     * multiple times writing, it will be hard to understand and maybe make a confuse
+     * to user.
      *
      * @return the encoded binary buffer(s).
      */
-    Publisher<ByteBuf> binary();
+    Publisher<ByteBuf> publishBinary();
 
     /**
      * Text protocol encoding.
      * <p>
      * Note: not like the binary protocol, it make a sense for copy-less. If it seems
-     * like {@code Publisher<? extends CharSequence> text()}, then we need to always
-     * deep copy results (with escaping) into the string buffer of the synthesized SQL
-     * statement.
+     * like {@code Publisher<? extends CharSequence> publishText()}, then we need to
+     * always deep copy results (with escaping) into the string buffer of the
+     * synthesized SQL statement.
      * <p>
      * WARNING: the {@code output} requires state synchronization after
      * this function called, so if the {@code writer} is buffered,
@@ -65,7 +68,7 @@ public interface Parameter extends Disposable {
      * @param writer the text protocol writer, extended {@code Writer}, not thread-safety.
      * @return the encoding completion signal.
      */
-    Mono<Void> text(ParameterWriter writer);
+    Mono<Void> publishText(ParameterWriter writer);
 
     /**
      * If don't want to support the binary protocol, please throw an exception.

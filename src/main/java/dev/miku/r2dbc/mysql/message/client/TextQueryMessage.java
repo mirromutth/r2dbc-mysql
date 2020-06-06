@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Parametrized query with text protocol message.
@@ -42,11 +43,20 @@ public final class TextQueryMessage extends LargeClientMessage implements Exchan
     private final Consumer<String> sqlProceed;
 
     public TextQueryMessage(List<String> sqlParts, Parameter[] values, Consumer<String> sqlProceed) {
+        requireNonNull(sqlParts, "sql parts must not be null");
+        requireNonNull(values, "values must not be null");
+        requireNonNull(sqlProceed, "sqlProceed must not be null");
         require(sqlParts.size() - 1 == values.length, "sql parts size must not be parameters size + 1");
+
 
         this.sqlParts = sqlParts;
         this.values = values;
         this.sqlProceed = sqlProceed;
+    }
+
+    @Override
+    public String toString() {
+        return "TextQueryMessage{sqlParts=REDACTED, values=REDACTED}";
     }
 
     @Override

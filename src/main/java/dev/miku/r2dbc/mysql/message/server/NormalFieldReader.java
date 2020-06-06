@@ -61,7 +61,7 @@ final class NormalFieldReader implements FieldReader {
 
     @Override
     public FieldValue readVarIntSizedField() {
-        return new NormalFieldValue(readSizedRetainedSlice(buf));
+        return new NormalFieldValue(readVarIntSizedRetained(buf));
     }
 
     @Override
@@ -103,7 +103,7 @@ final class NormalFieldReader implements FieldReader {
         return buf.release(decrement);
     }
 
-    private static ByteBuf readSizedRetainedSlice(ByteBuf buf) {
+    private static ByteBuf readVarIntSizedRetained(ByteBuf buf) {
         int size = (int) VarIntUtils.readVarInt(buf);
         if (size == 0) {
             // Use EmptyByteBuf, new buffer no need to be retained.

@@ -43,7 +43,7 @@ final class MockParameter extends AtomicInteger implements Parameter {
     }
 
     @Override
-    public Mono<ByteBuf> binary() {
+    public Mono<ByteBuf> publishBinary() {
         if (success) {
             return Mono.fromRunnable(this::dispose);
         } else {
@@ -55,7 +55,7 @@ final class MockParameter extends AtomicInteger implements Parameter {
     }
 
     @Override
-    public Mono<Void> text(ParameterWriter writer) {
+    public Mono<Void> publishText(ParameterWriter writer) {
         if (success) {
             return Mono.fromRunnable(this::dispose);
         } else {

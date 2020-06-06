@@ -146,7 +146,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         }
 
         @Override
-        public Mono<ByteBuf> binary() {
+        public Mono<ByteBuf> publishBinary() {
             return Mono.fromSupplier(() -> {
                 if (LocalTime.MIDNIGHT.equals(time)) {
                     // It is zero of var int, not terminal.
@@ -179,7 +179,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         }
 
         @Override
-        public Mono<Void> text(ParameterWriter writer) {
+        public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> encodeTime(writer, time));
         }
 

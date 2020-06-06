@@ -25,7 +25,7 @@ import reactor.core.publisher.Mono;
 /**
  * An implementation of {@link Parameter} which considers value is {@code null}.
  * <p>
- * Note: the parameter is marked with a bitmap of {@code null}, so {@link #binary}
+ * Note: the parameter is marked with a bitmap of {@code null}, so {@link #publishBinary}
  * will not do anything.
  */
 final class NullParameter implements Parameter {
@@ -44,12 +44,12 @@ final class NullParameter implements Parameter {
      * @return binary protocol encode null parameter to empty.
      */
     @Override
-    public Mono<ByteBuf> binary() {
+    public Mono<ByteBuf> publishBinary() {
         return Mono.empty();
     }
 
     @Override
-    public Mono<Void> text(ParameterWriter writer) {
+    public Mono<Void> publishText(ParameterWriter writer) {
         return Mono.fromRunnable(writer::writeNull);
     }
 

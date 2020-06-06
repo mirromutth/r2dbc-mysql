@@ -39,6 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Base class considers unit tests for implementations of {@link Codec}.
+ * <p>
+ * TODO: add test cases for decoding.
  */
 interface CodecTestSupport<T> {
 
@@ -62,7 +64,7 @@ interface CodecTestSupport<T> {
         assertEquals(origin.length, binaries.length);
 
         for (int i = 0; i < origin.length; ++i) {
-            merge(Flux.from(codec.encode(origin[i], CONTEXT).binary()))
+            merge(Flux.from(codec.encode(origin[i], CONTEXT).publishBinary()))
                 .as(StepVerifier::create)
                 .expectNext(sized(binaries[i]))
                 .verifyComplete();
@@ -80,7 +82,7 @@ interface CodecTestSupport<T> {
         for (int i = 0; i < origin.length; ++i) {
             ParameterWriter writer = ParameterWriterHelper.get(1);
             codec.encode(origin[i], CONTEXT)
-                .text(writer)
+                .publishText(writer)
                 .as(StepVerifier::create)
                 .verifyComplete();
             assertEquals(ParameterWriterHelper.toSql(writer), strings[i].toString());

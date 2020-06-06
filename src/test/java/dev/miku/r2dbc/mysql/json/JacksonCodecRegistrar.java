@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.extension;
+package dev.miku.r2dbc.mysql.json;
 
 import dev.miku.r2dbc.mysql.codec.CodecRegistry;
-import dev.miku.r2dbc.mysql.codec.JacksonCodec;
+import dev.miku.r2dbc.mysql.extension.CodecRegistrar;
 import io.netty.buffer.ByteBufAllocator;
 
 /**
@@ -31,8 +31,8 @@ public final class JacksonCodecRegistrar implements CodecRegistrar {
     public void register(ByteBufAllocator allocator, CodecRegistry registry) {
         if (setUp) {
             // Decoding JSON by highest priority, encoding anything by lowest priority.
-            registry.addFirst(JacksonCodec.DECODING)
-                .addLast(JacksonCodec.ENCODING);
+            registry.addFirst(new JacksonCodec(allocator, JacksonCodec.Mode.DECODE))
+                .addLast(new JacksonCodec(allocator, JacksonCodec.Mode.ENCODE));
         }
     }
 
