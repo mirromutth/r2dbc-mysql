@@ -16,11 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
@@ -31,10 +32,8 @@ import java.nio.charset.StandardCharsets;
  */
 final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
 
-    static final BigDecimalCodec INSTANCE = new BigDecimalCodec();
-
-    private BigDecimalCodec() {
-        super(BigDecimal.class);
+    BigDecimalCodec(ByteBufAllocator allocator) {
+        super(allocator, BigDecimal.class);
     }
 
     @Override
@@ -72,7 +71,7 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new BigDecimalParameter((BigDecimal) value);
+        return new BigDecimalParameter(allocator, (BigDecimal) value);
     }
 
     @Override
@@ -81,17 +80,41 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
         return TypePredicates.isDecimal(type) || DataTypes.FLOAT == type || DataTypes.DOUBLE == type;
     }
 
+    static ByteBuf encodeAscii(ByteBufAllocator alloc, String ascii) {
+        // Using ASCII, so byte size is string length.
+        int size = ascii.length();
+
+        if (size == 0) {
+            // It is zero of var int, not terminal.
+            return alloc.buffer(Byte.BYTES).writeByte(0);
+        }
+
+        ByteBuf buf = alloc.buffer(VarIntUtils.varIntBytes(size) + size);
+
+        try {
+            VarIntUtils.writeVarInt(buf, size);
+            buf.writeCharSequence(ascii, StandardCharsets.US_ASCII);
+            return buf;
+        } catch (Throwable e) {
+            buf.release();
+            throw e;
+        }
+    }
+
     private static final class BigDecimalParameter extends AbstractParameter {
+
+        private final ByteBufAllocator allocator;
 
         private final BigDecimal value;
 
-        private BigDecimalParameter(BigDecimal value) {
+        private BigDecimalParameter(ByteBufAllocator allocator, BigDecimal value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeAsciiString(value.toString()));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> encodeAscii(allocator, value.toString()));
         }
 
         @Override

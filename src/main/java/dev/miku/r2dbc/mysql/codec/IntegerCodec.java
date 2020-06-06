@@ -16,12 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
@@ -29,10 +29,8 @@ import reactor.core.publisher.Mono;
  */
 final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
-    static final IntegerCodec INSTANCE = new IntegerCodec();
-
-    private IntegerCodec() {
-        super(Integer.TYPE, Integer.class);
+    IntegerCodec(ByteBufAllocator allocator) {
+        super(allocator, Integer.TYPE, Integer.class);
     }
 
     @Override
@@ -55,14 +53,14 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         int v = (Integer) value;
 
         if ((byte) v == v) {
-            return new ByteCodec.ByteParameter((byte) v);
+            return new ByteCodec.ByteParameter(allocator, (byte) v);
         }
 
         if ((short) v == v) {
-            return new ShortCodec.ShortParameter((short) v);
+            return new ShortCodec.ShortParameter(allocator, (short) v);
         }
 
-        return new IntParameter(v);
+        return new IntParameter(allocator, v);
     }
 
     @Override
@@ -132,15 +130,27 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
     static final class IntParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final int value;
 
-        IntParameter(int value) {
+        IntParameter(ByteBufAllocator allocator, int value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeInt(value));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                ByteBuf buf = allocator.buffer(Integer.BYTES);
+
+                try {
+                    return buf.writeIntLE(value);
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

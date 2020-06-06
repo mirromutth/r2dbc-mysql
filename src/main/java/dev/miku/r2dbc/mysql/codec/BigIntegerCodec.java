@@ -16,12 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.math.BigInteger;
@@ -34,10 +34,8 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
 
     private static final String LONG_MAX_VALUE = Long.toString(Long.MAX_VALUE);
 
-    static final BigIntegerCodec INSTANCE = new BigIntegerCodec();
-
-    private BigIntegerCodec() {
-        super(BigInteger.class);
+    BigIntegerCodec(ByteBufAllocator allocator) {
+        super(allocator, BigInteger.class);
     }
 
     @Override
@@ -57,7 +55,7 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new BigIntegerParameter((BigInteger) value);
+        return new BigIntegerParameter(allocator, (BigInteger) value);
     }
 
     @Override
@@ -162,15 +160,18 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
 
     private static class BigIntegerParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final BigInteger value;
 
-        private BigIntegerParameter(BigInteger value) {
+        private BigIntegerParameter(ByteBufAllocator allocator, BigInteger value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeAsciiString(value.toString()));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> BigDecimalCodec.encodeAscii(allocator, value.toString()));
         }
 
         @Override

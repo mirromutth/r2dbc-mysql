@@ -20,7 +20,7 @@ import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.Nullable;
@@ -146,8 +146,8 @@ public final class DefinitionMetadataMessage implements ServerMessage {
     private static DefinitionMetadataMessage decode320(ByteBuf buf, ConnectionContext context) {
         CharCollation collation = context.getClientCollation();
         Charset charset = collation.getCharset();
-        String table = CodecUtils.readVarIntSizedString(buf, charset);
-        String column = CodecUtils.readVarIntSizedString(buf, charset);
+        String table = readVarIntSizedString(buf, charset);
+        String column = readVarIntSizedString(buf, charset);
 
         buf.skipBytes(1); // Constant 0x3
         int size = buf.readUnsignedMediumLE();
@@ -178,13 +178,13 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
         CharCollation collation = context.getClientCollation();
         Charset charset = collation.getCharset();
-        String database = CodecUtils.readVarIntSizedString(buf, charset);
-        String table = CodecUtils.readVarIntSizedString(buf, charset);
-        String originTable = CodecUtils.readVarIntSizedString(buf, charset);
-        String column = CodecUtils.readVarIntSizedString(buf, charset);
-        String originColumn = CodecUtils.readVarIntSizedString(buf, charset);
+        String database = readVarIntSizedString(buf, charset);
+        String table = readVarIntSizedString(buf, charset);
+        String originTable = readVarIntSizedString(buf, charset);
+        String column = readVarIntSizedString(buf, charset);
+        String originColumn = readVarIntSizedString(buf, charset);
 
-        CodecUtils.readVarInt(buf); // skip constant 0x0c encoded by var integer
+        VarIntUtils.readVarInt(buf); // skip constant 0x0c encoded by var integer
 
         int collationId = buf.readUnsignedShortLE();
         long size = buf.readUnsignedIntLE();
@@ -215,5 +215,18 @@ public final class DefinitionMetadataMessage implements ServerMessage {
             definitions,
             buf.readUnsignedByte()
         );
+    }
+
+    private static String readVarIntSizedString(ByteBuf buf, Charset charset) {
+        int bytes = (int) VarIntUtils.readVarInt(buf); // JVM can NOT support string which length upper than maximum of int32
+
+        if (bytes == 0) {
+            return "";
+        }
+
+        String result = buf.toString(buf.readerIndex(), bytes, charset);
+        buf.skipBytes(bytes);
+
+        return result;
     }
 }

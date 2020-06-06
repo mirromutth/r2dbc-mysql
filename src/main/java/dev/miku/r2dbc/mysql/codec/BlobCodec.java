@@ -16,17 +16,21 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Blob;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -34,14 +38,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Codec for {@link Blob}.
- * <p>
- * Note: {@link Blob} will be written by {@code ParameterOutputStream} rather than {@link #encode}.
  */
 final class BlobCodec implements MassiveCodec<Blob> {
 
-    static final BlobCodec INSTANCE = new BlobCodec();
+    private static final int MAX_MERGE = 1 << 14;
 
-    private BlobCodec() {
+    private final ByteBufAllocator allocator;
+
+    BlobCodec(ByteBufAllocator allocator) {
+        this.allocator = allocator;
     }
 
     @Override
@@ -71,33 +76,98 @@ final class BlobCodec implements MassiveCodec<Blob> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new BlobParameter((Blob) value);
+        return new BlobParameter(allocator, (Blob) value);
+    }
+
+    static List<ByteBuf> toList(List<ByteBuf> buffers) {
+        switch (buffers.size()) {
+            case 0:
+                return Collections.emptyList();
+            case 1:
+                return Collections.singletonList(buffers.get(0));
+            default:
+                return buffers;
+        }
+    }
+
+    static void releaseAll(List<ByteBuf> buffers, ByteBuf lastBuf) {
+        boolean nonLast = true;
+
+        for (ByteBuf buf : buffers) {
+            ReferenceCountUtil.safeRelease(buf);
+            if (buf == lastBuf) {
+                nonLast = false;
+            }
+        }
+
+        if (nonLast) {
+            lastBuf.release();
+        }
     }
 
     private static final class BlobParameter extends AbstractLobParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final AtomicReference<Blob> blob;
 
-        private BlobParameter(Blob blob) {
+        private BlobParameter(ByteBufAllocator allocator, Blob blob) {
+            this.allocator = allocator;
             this.blob = new AtomicReference<>(blob);
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.defer(() -> {
+        public Flux<ByteBuf> binary() {
+            return Flux.defer(() -> {
                 Blob blob = this.blob.getAndSet(null);
 
                 if (blob == null) {
-                    return Mono.error(new IllegalStateException("Blob has written, can not write twice"));
+                    return Flux.error(new IllegalStateException("Blob has written, can not write twice"));
                 }
 
-                // Need count entire length, so can not streaming here.
                 // Must have defaultIfEmpty, try Mono.fromCallable(() -> null).flux().collectList()
                 return Flux.from(blob.stream())
                     .collectList()
                     .defaultIfEmpty(Collections.emptyList())
-                    .doOnNext(output::writeByteBuffers)
-                    .then();
+                    .flatMapIterable(list -> {
+                        if (list.isEmpty()) {
+                            // It is zero of var int, not terminal.
+                            return Collections.singletonList(allocator.buffer(Byte.BYTES).writeByte(0));
+                        }
+
+                        long bytes = 0;
+                        List<ByteBuf> buffers = new ArrayList<>();
+                        ByteBuf lastBuf = allocator.buffer();
+
+                        try {
+                            ByteBuf firstBuf = lastBuf;
+
+                            buffers.add(firstBuf);
+                            VarIntUtils.reserveVarInt(firstBuf);
+
+                            for (ByteBuffer src : list) {
+                                if (src.hasRemaining()) {
+                                    int size = src.remaining();
+                                    bytes += size;
+
+                                    // size + lastBuf.readableBytes() > MAX_MERGE
+                                    if (size > MAX_MERGE - lastBuf.readableBytes()) {
+                                        lastBuf = allocator.buffer();
+                                        buffers.add(lastBuf);
+                                    }
+
+                                    lastBuf.writeBytes(src);
+                                }
+                            }
+
+                            VarIntUtils.setReservedVarInt(firstBuf, bytes);
+
+                            return toList(buffers);
+                        } catch (Throwable e) {
+                            releaseAll(buffers, lastBuf);
+                            throw e;
+                        }
+                    });
             });
         }
 

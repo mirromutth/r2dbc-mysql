@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
@@ -40,7 +40,7 @@ public final class ColumnCountMessage implements ServerMessage {
     }
 
     static ColumnCountMessage decode(ByteBuf buf) {
-        return new ColumnCountMessage(Math.toIntExact(CodecUtils.readVarInt(buf)));
+        return new ColumnCountMessage(Math.toIntExact(VarIntUtils.readVarInt(buf)));
     }
 
     @Override

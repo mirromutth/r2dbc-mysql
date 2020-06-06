@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.math.BigDecimal;
@@ -37,8 +38,8 @@ class BigDecimalCodecTest implements CodecTestSupport<BigDecimal> {
     };
 
     @Override
-    public BigDecimalCodec getCodec() {
-        return BigDecimalCodec.INSTANCE;
+    public BigDecimalCodec getCodec(ByteBufAllocator allocator) {
+        return new BigDecimalCodec(allocator);
     }
 
     @Override

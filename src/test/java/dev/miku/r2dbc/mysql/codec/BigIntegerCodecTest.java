@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.math.BigInteger;
@@ -37,8 +38,8 @@ class BigIntegerCodecTest implements CodecTestSupport<BigInteger> {
     };
 
     @Override
-    public BigIntegerCodec getCodec() {
-        return BigIntegerCodec.INSTANCE;
+    public BigIntegerCodec getCodec(ByteBufAllocator allocator) {
+        return new BigIntegerCodec(allocator);
     }
 
     @Override

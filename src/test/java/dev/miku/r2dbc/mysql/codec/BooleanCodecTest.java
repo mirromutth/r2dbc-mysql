@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
@@ -33,8 +34,8 @@ class BooleanCodecTest implements CodecTestSupport<Boolean> {
     };
 
     @Override
-    public BooleanCodec getCodec() {
-        return BooleanCodec.INSTANCE;
+    public BooleanCodec getCodec(ByteBufAllocator allocator) {
+        return new BooleanCodec(allocator);
     }
 
     @Override

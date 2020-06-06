@@ -16,11 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
-import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
@@ -30,7 +31,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -266,62 +266,61 @@ final class DefaultCodecs implements Codecs {
         return type;
     }
 
-    private static Codec<?>[] defaultCodecs() {
+    private static Codec<?>[] defaultCodecs(ByteBufAllocator allocator) {
         return new Codec<?>[]{
-            ByteCodec.INSTANCE,
-            ShortCodec.INSTANCE,
-            IntegerCodec.INSTANCE,
-            LongCodec.INSTANCE,
-            BigIntegerCodec.INSTANCE,
+            new ByteCodec(allocator),
+            new ShortCodec(allocator),
+            new IntegerCodec(allocator),
+            new LongCodec(allocator),
+            new BigIntegerCodec(allocator),
 
-            BigDecimalCodec.INSTANCE, // Only all decimals
-            FloatCodec.INSTANCE, // Decimal (precision < 7) or float
-            DoubleCodec.INSTANCE, // Decimal (precision < 16) or double or float
+            new BigDecimalCodec(allocator), // Only all decimals
+            new FloatCodec(allocator), // Decimal (precision < 7) or float
+            new DoubleCodec(allocator), // Decimal (precision < 16) or double or float
 
-            BooleanCodec.INSTANCE,
-            BitSetCodec.INSTANCE,
+            new BooleanCodec(allocator),
+            new BitSetCodec(allocator),
 
-            LocalDateTimeCodec.INSTANCE,
-            LocalDateCodec.INSTANCE,
-            LocalTimeCodec.INSTANCE,
-            DurationCodec.INSTANCE,
-            YearCodec.INSTANCE,
+            new LocalDateTimeCodec(allocator),
+            new LocalDateCodec(allocator),
+            new LocalTimeCodec(allocator),
+            new DurationCodec(allocator),
+            new YearCodec(allocator),
 
-            StringCodec.INSTANCE,
+            new StringCodec(allocator),
 
-            EnumCodec.INSTANCE,
-            SetCodec.INSTANCE,
+            new EnumCodec(allocator),
+            new SetCodec(allocator),
 
-            ClobCodec.INSTANCE,
-            BlobCodec.INSTANCE,
+            new ClobCodec(allocator),
+            new BlobCodec(allocator),
 
-            ByteBufferCodec.INSTANCE,
-            ByteArrayCodec.INSTANCE
+            new ByteBufferCodec(allocator),
+            new ByteArrayCodec(allocator)
         };
     }
 
-    static final class Holder implements Supplier<Codecs> {
-
-        static final DefaultCodecs CODECS = new DefaultCodecs(defaultCodecs());
-
-        private Holder() {
-        }
-
-        @Override
-        public Codecs get() {
-            return CODECS;
-        }
-    }
-
     static final class Builder extends ArrayList<Codec<?>> implements CodecsBuilder {
+
+        private final ByteBufAllocator allocator;
+
+        Builder(ByteBufAllocator allocator) {
+            this.allocator = allocator;
+        }
 
         @Override
         public CodecsBuilder addFirst(Codec<?> codec) {
             synchronized (this) {
                 if (isEmpty()) {
-                    addAll(InternalArrays.asImmutableList(defaultCodecs()));
+                    Codec<?>[] codecs = defaultCodecs(allocator);
+
+                    ensureCapacity(codecs.length + 1);
+                    // Add first.
+                    add(codec);
+                    addAll(InternalArrays.asImmutableList(codecs));
+                } else {
+                    add(0, codec);
                 }
-                add(0, codec);
             }
             return this;
         }
@@ -330,7 +329,7 @@ final class DefaultCodecs implements Codecs {
         public CodecsBuilder addLast(Codec<?> codec) {
             synchronized (this) {
                 if (isEmpty()) {
-                    addAll(InternalArrays.asImmutableList(defaultCodecs()));
+                    addAll(InternalArrays.asImmutableList(defaultCodecs(allocator)));
                 }
                 add(codec);
             }
@@ -340,10 +339,15 @@ final class DefaultCodecs implements Codecs {
         @Override
         public Codecs build() {
             synchronized (this) {
-                if (isEmpty()) {
-                    return Holder.CODECS;
+                try {
+                    if (isEmpty()) {
+                        return new DefaultCodecs(defaultCodecs(allocator));
+                    }
+                    return new DefaultCodecs(toArray(new Codec<?>[0]));
+                } finally {
+                    clear();
+                    trimToSize();
                 }
-                return new DefaultCodecs(toArray(new Codec<?>[0]));
             }
         }
     }

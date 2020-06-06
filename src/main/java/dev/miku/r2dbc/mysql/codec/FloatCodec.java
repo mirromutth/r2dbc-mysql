@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -30,10 +30,8 @@ import java.nio.charset.StandardCharsets;
  */
 final class FloatCodec extends AbstractPrimitiveCodec<Float> {
 
-    static final FloatCodec INSTANCE = new FloatCodec();
-
-    private FloatCodec() {
-        super(Float.TYPE, Float.class);
+    FloatCodec(ByteBufAllocator allocator) {
+        super(allocator, Float.TYPE, Float.class);
     }
 
     @Override
@@ -52,7 +50,7 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new FloatParameter((Float) value);
+        return new FloatParameter(allocator, (Float) value);
     }
 
     @Override
@@ -63,15 +61,26 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
 
     private static final class FloatParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final float value;
 
-        private FloatParameter(float value) {
+        private FloatParameter(ByteBufAllocator allocator, float value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeFloat(value));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                ByteBuf buf = allocator.buffer(Float.BYTES);
+                try {
+                    return buf.writeFloatLE(value);
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

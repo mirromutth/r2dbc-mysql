@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.Parameter;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
@@ -39,7 +40,7 @@ public interface Codecs {
 
     Parameter encodeNull();
 
-    static CodecsBuilder builder() {
-        return new DefaultCodecs.Builder();
+    static CodecsBuilder builder(ByteBufAllocator allocator) {
+        return new DefaultCodecs.Builder(allocator);
     }
 }

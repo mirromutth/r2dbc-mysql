@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -67,7 +67,7 @@ public final class PreparedLargeDataMessage extends LargeClientMessage implement
                     .writeIntLE(statementId)
                     .writeShortLE(parameterId);
 
-                CodecUtils.writeVarInt(header, bytes);
+                VarIntUtils.writeVarInt(header, bytes);
                 results[0] = header;
                 header = null;
 

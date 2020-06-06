@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
@@ -44,8 +45,8 @@ class LongCodecTest implements CodecTestSupport<Long> {
     };
 
     @Override
-    public LongCodec getCodec() {
-        return LongCodec.INSTANCE;
+    public LongCodec getCodec(ByteBufAllocator allocator) {
+        return new LongCodec(allocator);
     }
 
     @Override

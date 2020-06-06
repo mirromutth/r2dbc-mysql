@@ -17,8 +17,12 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
+import io.netty.buffer.ByteBuf;
 
+import java.nio.charset.Charset;
 import java.util.Map;
+
+import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
 
 /**
  * A message considers handshake response implementations of {@link ExchangeableMessage}.
@@ -34,5 +38,12 @@ public interface HandshakeResponse extends ExchangeableMessage {
         } else {
             return new HandshakeResponse41(capabilities, collationId, username, authentication, authType, database, attributes);
         }
+    }
+
+    static void writeCString(ByteBuf buf, String value, Charset charset) {
+        if (!value.isEmpty()) {
+            buf.writeCharSequence(value, charset);
+        }
+        buf.writeByte(TERMINAL);
     }
 }

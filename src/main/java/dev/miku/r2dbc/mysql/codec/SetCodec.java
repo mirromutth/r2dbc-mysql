@@ -16,13 +16,14 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.ParameterizedType;
@@ -34,8 +35,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
 
@@ -44,9 +43,10 @@ import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
  */
 final class SetCodec implements ParametrizedCodec<String[]> {
 
-    static final SetCodec INSTANCE = new SetCodec();
+    private final ByteBufAllocator allocator;
 
-    private SetCodec() {
+    SetCodec(ByteBufAllocator allocator) {
+        this.allocator = allocator;
     }
 
     @Override
@@ -141,17 +141,9 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     @Override
     public Parameter encode(Object value, CodecContext context) {
         if (value instanceof CharSequence[]) {
-            return new StringArrayParameter(InternalArrays.toImmutableList((CharSequence[]) value), context);
+            return new StringArrayParameter(allocator, InternalArrays.toImmutableList((CharSequence[]) value), context);
         } else {
-            return new SetParameter((Set<?>) value, context);
-        }
-    }
-
-    static String convert(Object o) {
-        if (o instanceof Enum<?>) {
-            return ((Enum<?>) o).name();
-        } else {
-            return o.toString();
+            return new SetParameter(allocator, (Set<?>) value, context);
         }
     }
 
@@ -185,6 +177,29 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         } else {
             // Empty set, set to string mode.
             writer.startString();
+        }
+    }
+
+    private static ByteBuf encodeSet(ByteBufAllocator alloc, Iterator<? extends CharSequence> iter, CodecContext context) {
+        Charset charset = context.getClientCollation().getCharset();
+        ByteBuf content = alloc.buffer();
+
+        try {
+            // Max size of var int, fill zero to protect memory data.
+            VarIntUtils.reserveVarInt(content);
+
+            CharSequence name = iter.next();
+            int size = content.writeCharSequence(name, charset);
+
+            while (iter.hasNext()) {
+                name = iter.next();
+                size += content.writeByte(',').writeCharSequence(name, charset) + 1;
+            }
+
+            return VarIntUtils.setReservedVarInt(content, size);
+        } catch (Throwable e) {
+            content.release();
+            throw e;
         }
     }
 
@@ -279,34 +294,40 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
         @Override
         public String next() {
-            return convert(origin.next());
+            Object o = origin.next();
+            return o instanceof Enum<?> ? ((Enum<?>) o).name() : o.toString();
         }
     }
 
     private static final class SetParameter extends AbstractParameter {
 
-        private static final Function<Object, CharSequence> ELEMENT_CONVERT = SetCodec::convert;
+        private final ByteBufAllocator allocator;
 
-        private final Set<?> set;
+        private final Set<?> value;
 
         private final CodecContext context;
 
-        private SetParameter(Set<?> set, CodecContext context) {
-            this.set = set;
+        private SetParameter(ByteBufAllocator allocator, Set<?> value, CodecContext context) {
+            this.allocator = allocator;
+            this.value = value;
             this.context = context;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> {
-                List<CharSequence> s = set.stream().map(ELEMENT_CONVERT).collect(Collectors.toList());
-                output.writeSet(s, context.getClientCollation());
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                if (value.isEmpty()) {
+                    // It is zero of var int, not terminal.
+                    return allocator.buffer(Byte.BYTES).writeByte(0);
+                }
+
+                return encodeSet(allocator, new ConvertedIterator(value.iterator()), context);
             });
         }
 
         @Override
         public Mono<Void> text(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> encodeIterator(writer, new ConvertedIterator(set.iterator())));
+            return Mono.fromRunnable(() -> encodeIterator(writer, new ConvertedIterator(value.iterator())));
         }
 
         @Override
@@ -325,29 +346,39 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
             SetParameter setValue = (SetParameter) o;
 
-            return set.equals(setValue.set);
+            return value.equals(setValue.value);
         }
 
         @Override
         public int hashCode() {
-            return set.hashCode();
+            return value.hashCode();
         }
     }
 
     private static final class StringArrayParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final List<CharSequence> value;
 
         private final CodecContext context;
 
-        private StringArrayParameter(List<CharSequence> value, CodecContext context) {
+        private StringArrayParameter(ByteBufAllocator allocator, List<CharSequence> value, CodecContext context) {
+            this.allocator = allocator;
             this.value = value;
             this.context = context;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeSet(value, context.getClientCollation()));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                if (value.isEmpty()) {
+                    // It is zero of var int, not terminal.
+                    return allocator.buffer(Byte.BYTES).writeByte(0);
+                }
+
+                return encodeSet(allocator, value.iterator(), context);
+            });
         }
 
         @Override

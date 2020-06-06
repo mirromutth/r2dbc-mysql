@@ -16,12 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
-import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.constant.DataTypes;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
@@ -34,34 +33,21 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     static final LocalDate ROUND = LocalDate.of(1, 1, 1);
 
-    static final LocalDateCodec INSTANCE = new LocalDateCodec();
-
-    private LocalDateCodec() {
-        super(LocalDate.class);
+    LocalDateCodec(ByteBufAllocator allocator) {
+        super(allocator, LocalDate.class);
     }
 
     @Override
     public LocalDate decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         int index = value.readerIndex();
         int bytes = value.readableBytes();
+        LocalDate date = binary ? readDateBinary(value, bytes) : readDateText(value);
 
-        if (binary) {
-            LocalDate date = readDateBinary(value, bytes);
-
-            if (date == null) {
-                return CodecDateUtils.handle(context.getZeroDateOption(), true, value, index, bytes, ROUND);
-            } else {
-                return date;
-            }
-        } else {
-            LocalDate date = readDateText(value);
-
-            if (date == null) {
-                return CodecDateUtils.handle(context.getZeroDateOption(), false, value, index, bytes, ROUND);
-            }
-
+        if (date != null) {
             return date;
         }
+
+        return DateTimes.zeroDate(context.getZeroDateOption(), binary, value, index, bytes, ROUND);
     }
 
     @Override
@@ -71,7 +57,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new LocalDateParameter((LocalDate) value);
+        return new LocalDateParameter(allocator, (LocalDate) value);
     }
 
     @Override
@@ -81,9 +67,9 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     @Nullable
     static LocalDate readDateText(ByteBuf buf) {
-        int year = CodecDateUtils.readIntInDigits(buf);
-        int month = CodecDateUtils.readIntInDigits(buf);
-        int day = CodecDateUtils.readIntInDigits(buf);
+        int year = DateTimes.readIntInDigits(buf);
+        int month = DateTimes.readIntInDigits(buf);
+        int day = DateTimes.readIntInDigits(buf);
 
         if (month == 0 || day == 0) {
             return null;
@@ -94,7 +80,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     @Nullable
     static LocalDate readDateBinary(ByteBuf buf, int bytes) {
-        if (bytes < BinaryDateTimes.DATE_SIZE) {
+        if (bytes < DateTimes.DATE_SIZE) {
             return null;
         }
 
@@ -107,6 +93,20 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         }
 
         return LocalDate.of(year, month, day);
+    }
+
+    static ByteBuf encodeDate(ByteBufAllocator alloc, LocalDate date) {
+        ByteBuf buf = alloc.buffer(Byte.BYTES + DateTimes.DATE_SIZE);
+
+        try {
+            return buf.writeByte(DateTimes.DATE_SIZE)
+                .writeShortLE(date.getYear())
+                .writeByte(date.getMonthValue())
+                .writeByte(date.getDayOfMonth());
+        } catch (Throwable e) {
+            buf.release();
+            throw e;
+        }
     }
 
     static void encodeDate(ParameterWriter writer, LocalDate date) {
@@ -157,20 +157,23 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
     private static final class LocalDateParameter extends AbstractParameter {
 
-        private final LocalDate date;
+        private final ByteBufAllocator allocator;
 
-        private LocalDateParameter(LocalDate date) {
-            this.date = date;
+        private final LocalDate value;
+
+        private LocalDateParameter(ByteBufAllocator allocator, LocalDate value) {
+            this.allocator = allocator;
+            this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeDate(date));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> encodeDate(allocator, value));
         }
 
         @Override
         public Mono<Void> text(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> encodeDate(writer, date));
+            return Mono.fromRunnable(() -> encodeDate(writer, value));
         }
 
         @Override
@@ -189,12 +192,12 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
 
             LocalDateParameter that = (LocalDateParameter) o;
 
-            return date.equals(that.date);
+            return value.equals(that.value);
         }
 
         @Override
         public int hashCode() {
-            return date.hashCode();
+            return value.hashCode();
         }
     }
 }

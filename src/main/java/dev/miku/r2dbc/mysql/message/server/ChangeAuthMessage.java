@@ -16,11 +16,9 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.util.CodecUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -79,7 +77,7 @@ public final class ChangeAuthMessage implements ServerMessage {
     static ChangeAuthMessage decode(ByteBuf buf) {
         buf.skipBytes(1); // skip generic header 0xFE of change authentication messages
 
-        String authType = CodecUtils.readCString(buf, StandardCharsets.US_ASCII);
+        String authType = HandshakeHeader.readCStringAscii(buf); // See also HandshakeV10Request
         int bytes = buf.readableBytes();
 
         if (bytes > 0 && buf.getByte(buf.writerIndex() - 1) == 0) {

@@ -16,12 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
-import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.constant.DataTypes;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalTime;
@@ -36,12 +35,10 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
     private static final int SECONDS_OF_DAY = HOURS_OF_DAY * 60 * 60;
 
-    private static final long NANO_OF_DAY = SECONDS_OF_DAY * 1000_000_000L;
+    private static final long NANO_OF_DAY = ((long) SECONDS_OF_DAY) * 1000_000_000L;
 
-    static final LocalTimeCodec INSTANCE = new LocalTimeCodec();
-
-    private LocalTimeCodec() {
-        super(LocalTime.class);
+    LocalTimeCodec(ByteBufAllocator allocator) {
+        super(allocator, LocalTime.class);
     }
 
     @Override
@@ -60,7 +57,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new LocalTimeParameter((LocalTime) value);
+        return new LocalTimeParameter(allocator, (LocalTime) value);
     }
 
     @Override
@@ -70,9 +67,9 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
     static LocalTime readTimeText(ByteBuf buf) {
         boolean isNegative = readNegative(buf);
-        int hour = CodecDateUtils.readIntInDigits(buf);
-        int minute = CodecDateUtils.readIntInDigits(buf);
-        int second = CodecDateUtils.readIntInDigits(buf);
+        int hour = DateTimes.readIntInDigits(buf);
+        int minute = DateTimes.readIntInDigits(buf);
+        int second = DateTimes.readIntInDigits(buf);
 
         if (isNegative) {
             // The `hour` is a positive integer.
@@ -95,7 +92,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     private static LocalTime decodeBinary(ByteBuf buf) {
         int bytes = buf.readableBytes();
 
-        if (bytes < BinaryDateTimes.TIME_SIZE) {
+        if (bytes < DateTimes.TIME_SIZE) {
             return LocalTime.MIDNIGHT;
         }
 
@@ -108,7 +105,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         short minute = buf.readUnsignedByte();
         short second = buf.readUnsignedByte();
 
-        if (bytes < BinaryDateTimes.MICRO_TIME_SIZE) {
+        if (bytes < DateTimes.MICRO_TIME_SIZE) {
             if (isNegative) {
                 // The `hour` is a positive integer.
                 long totalSeconds = -(TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second);
@@ -139,15 +136,46 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
     private static final class LocalTimeParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final LocalTime time;
 
-        private LocalTimeParameter(LocalTime time) {
+        private LocalTimeParameter(ByteBufAllocator allocator, LocalTime time) {
+            this.allocator = allocator;
             this.time = time;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeTime(time));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                if (LocalTime.MIDNIGHT.equals(time)) {
+                    // It is zero of var int, not terminal.
+                    return allocator.buffer(Byte.BYTES).writeByte(0);
+                }
+
+                int nanos = time.getNano();
+                int size = nanos > 0 ? DateTimes.MICRO_TIME_SIZE : DateTimes.TIME_SIZE;
+
+                ByteBuf buf = allocator.buffer(Byte.BYTES + size);
+
+                try {
+                    buf.writeByte(size)
+                        .writeBoolean(false)
+                        .writeIntLE(0)
+                        .writeByte(time.getHour())
+                        .writeByte(time.getMinute())
+                        .writeByte(time.getSecond());
+
+                    if (nanos > 0) {
+                        return buf.writeIntLE(nanos / DateTimes.NANOS_OF_MICRO);
+                    }
+
+                    return buf;
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

@@ -16,18 +16,21 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.constant.CursorTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ConnectionContext;
+import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.constant.CursorTypes;
+import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -41,6 +44,8 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
     private static final int TIMES = 1;
 
     private static final byte EXECUTE_FLAG = 0x17;
+
+    private static final Consumer<Parameter> DISPOSE = Parameter::dispose;
 
     private final int statementId;
 
@@ -106,7 +111,11 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
             buf.writeBoolean(true);
             writeTypes(buf, size);
 
-            return ParamOutputStream.publish(buf, values);
+            Flux<ByteBuf> parameters = OperatorUtils.discardOnCancel(Flux.fromArray(values))
+                .doOnDiscard(Parameter.class, DISPOSE)
+                .concatMap(Parameter::binary);
+
+            return Flux.just(buf).concatWith(parameters);
         } catch (Throwable e) {
             buf.release();
             cancelParameters();

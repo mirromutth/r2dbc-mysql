@@ -16,12 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
@@ -31,9 +31,10 @@ import java.nio.charset.Charset;
  */
 final class EnumCodec implements Codec<Enum<?>> {
 
-    static final EnumCodec INSTANCE = new EnumCodec();
+    private final ByteBufAllocator allocator;
 
-    private EnumCodec() {
+    EnumCodec(ByteBufAllocator allocator) {
+        this.allocator = allocator;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -55,23 +56,26 @@ final class EnumCodec implements Codec<Enum<?>> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new EnumParameter((Enum<?>) value, context);
+        return new EnumParameter(allocator, (Enum<?>) value, context);
     }
 
     private static final class EnumParameter extends AbstractParameter {
+
+        private final ByteBufAllocator allocator;
 
         private final Enum<?> value;
 
         private final CodecContext context;
 
-        private EnumParameter(Enum<?> value, CodecContext context) {
+        private EnumParameter(ByteBufAllocator allocator, Enum<?> value, CodecContext context) {
+            this.allocator = allocator;
             this.value = value;
             this.context = context;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeCharSequence(value.name(), context.getClientCollation()));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> StringCodec.encodeCharSequence(allocator, value.name(), context));
         }
 
         @Override

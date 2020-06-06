@@ -16,12 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
@@ -37,34 +36,21 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
 
     private static final LocalDateTime ROUND = LocalDateTime.of(LocalDateCodec.ROUND, LocalTime.MIN);
 
-    static final LocalDateTimeCodec INSTANCE = new LocalDateTimeCodec();
-
-    private LocalDateTimeCodec() {
-        super(LocalDateTime.class);
+    LocalDateTimeCodec(ByteBufAllocator allocator) {
+        super(allocator, LocalDateTime.class);
     }
 
     @Override
     public LocalDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         int index = value.readerIndex();
         int bytes = value.readableBytes();
+        LocalDateTime dateTime = binary ? decodeBinary(value, bytes) : decodeText(value);
 
-        if (binary) {
-            LocalDateTime dateTime = decodeBinary(value, bytes);
-
-            if (dateTime == null) {
-                return CodecDateUtils.handle(context.getZeroDateOption(), true, value, index, bytes, ROUND);
-            } else {
-                return dateTime;
-            }
-        } else {
-            LocalDateTime dateTime = decodeText(value);
-
-            if (dateTime == null) {
-                return CodecDateUtils.handle(context.getZeroDateOption(), false, value, index, bytes, ROUND);
-            }
-
+        if (dateTime != null) {
             return dateTime;
         }
+
+        return DateTimes.zeroDate(context.getZeroDateOption(), binary, value, index, bytes, ROUND);
     }
 
     @Override
@@ -74,7 +60,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new LocalDateTimeParameter((LocalDateTime) value);
+        return new LocalDateTimeParameter(allocator, (LocalDateTime) value);
     }
 
     @Override
@@ -103,7 +89,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
             return null;
         }
 
-        if (bytes < BinaryDateTimes.DATETIME_SIZE) {
+        if (bytes < DateTimes.DATETIME_SIZE) {
             return LocalDateTime.of(date, LocalTime.MIDNIGHT);
         }
 
@@ -111,7 +97,7 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
         byte minute = buf.readByte();
         byte second = buf.readByte();
 
-        if (bytes < BinaryDateTimes.MICRO_DATETIME_SIZE) {
+        if (bytes < DateTimes.MICRO_DATETIME_SIZE) {
             return LocalDateTime.of(date, LocalTime.of(hour, minute, second));
         }
 
@@ -122,15 +108,47 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
 
     private static final class LocalDateTimeParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final LocalDateTime value;
 
-        private LocalDateTimeParameter(LocalDateTime value) {
+        private LocalDateTimeParameter(ByteBufAllocator allocator, LocalDateTime value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeDateTime(value));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                LocalTime time = value.toLocalTime();
+
+                if (LocalTime.MIDNIGHT.equals(time)) {
+                    return LocalDateCodec.encodeDate(allocator, value.toLocalDate());
+                }
+
+                int nano = time.getNano();
+                int bytes = nano > 0 ? DateTimes.MICRO_DATETIME_SIZE : DateTimes.DATETIME_SIZE;
+                ByteBuf buf = allocator.buffer(Byte.BYTES + bytes);
+
+                try {
+                    buf.writeByte(bytes)
+                        .writeShortLE(value.getYear())
+                        .writeByte(value.getMonthValue())
+                        .writeByte(value.getDayOfMonth())
+                        .writeByte(time.getHour())
+                        .writeByte(time.getMinute())
+                        .writeByte(time.getSecond());
+
+                    if (nano > 0) {
+                        return buf.writeIntLE(nano / DateTimes.NANOS_OF_MICRO);
+                    }
+
+                    return buf;
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

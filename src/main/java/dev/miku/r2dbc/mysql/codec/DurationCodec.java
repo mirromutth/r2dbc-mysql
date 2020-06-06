@@ -16,12 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
-import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.BinaryDateTimes;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.constant.DataTypes;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -32,10 +31,8 @@ import java.util.concurrent.TimeUnit;
  */
 final class DurationCodec extends AbstractClassedCodec<Duration> {
 
-    static final DurationCodec INSTANCE = new DurationCodec();
-
-    private DurationCodec() {
-        super(Duration.class);
+    DurationCodec(ByteBufAllocator allocator) {
+        super(allocator, Duration.class);
     }
 
     @Override
@@ -54,7 +51,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new DurationParameter((Duration) value);
+        return new DurationParameter(allocator, (Duration) value);
     }
 
     @Override
@@ -112,9 +109,9 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
 
     private static Duration decodeText(ByteBuf buf) {
         boolean isNegative = LocalTimeCodec.readNegative(buf);
-        int hour = CodecDateUtils.readIntInDigits(buf);
-        int minute = CodecDateUtils.readIntInDigits(buf);
-        int second = CodecDateUtils.readIntInDigits(buf);
+        int hour = DateTimes.readIntInDigits(buf);
+        int minute = DateTimes.readIntInDigits(buf);
+        int second = DateTimes.readIntInDigits(buf);
         long totalSeconds = TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second;
 
         return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
@@ -123,7 +120,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     private static Duration decodeBinary(ByteBuf buf) {
         int bytes = buf.readableBytes();
 
-        if (bytes < BinaryDateTimes.TIME_SIZE) {
+        if (bytes < DateTimes.TIME_SIZE) {
             return Duration.ZERO;
         }
 
@@ -138,7 +135,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             TimeUnit.MINUTES.toSeconds(minute) +
             second;
 
-        if (bytes < BinaryDateTimes.MICRO_TIME_SIZE) {
+        if (bytes < DateTimes.MICRO_TIME_SIZE) {
             return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
         }
 
@@ -149,15 +146,60 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
 
     private static final class DurationParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final Duration value;
 
-        private DurationParameter(Duration value) {
+        private DurationParameter(ByteBufAllocator allocator, Duration value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeDuration(value));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                long seconds = value.getSeconds();
+                int nanos = value.getNano();
+
+                if (seconds == 0 && nanos == 0) {
+                    // It is zero of var int, not terminal.
+                    return allocator.buffer(Byte.BYTES).writeByte(0);
+                }
+
+                boolean isNegative = value.isNegative();
+                if (isNegative) {
+                    if (nanos > 0) {
+                        // Note: nanos should always be a positive integer or 0, see Duration.getNano().
+                        // So if duration is negative, seconds should be humanity seconds - 1, so +1 then negate.
+                        seconds = -(seconds + 1);
+                        nanos = DateTimes.NANOS_OF_SECOND - nanos;
+                    } else {
+                        seconds = -seconds;
+                    }
+                }
+
+                int size = nanos > 0 ? DateTimes.MICRO_TIME_SIZE : DateTimes.TIME_SIZE;
+
+                ByteBuf buf = allocator.buffer(Byte.BYTES + size);
+
+                try {
+                    buf.writeByte(size)
+                        .writeBoolean(isNegative)
+                        .writeIntLE((int) (seconds / DateTimes.SECONDS_OF_DAY))
+                        .writeByte((int) ((seconds % DateTimes.SECONDS_OF_DAY) / DateTimes.SECONDS_OF_HOUR))
+                        .writeByte((int) ((seconds % DateTimes.SECONDS_OF_HOUR) / DateTimes.SECONDS_OF_MINUTE))
+                        .writeByte((int) (seconds % DateTimes.SECONDS_OF_MINUTE));
+
+                    if (nanos > 0) {
+                        return buf.writeIntLE(nanos / DateTimes.NANOS_OF_MICRO);
+                    }
+
+                    return buf;
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

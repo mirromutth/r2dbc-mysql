@@ -16,11 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
@@ -32,10 +33,8 @@ import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
  */
 final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
 
-    static final ByteBufferCodec INSTANCE = new ByteBufferCodec();
-
-    private ByteBufferCodec() {
-        super(ByteBuffer.class);
+    ByteBufferCodec(ByteBufAllocator allocator) {
+        super(allocator, ByteBuffer.class);
     }
 
     @Override
@@ -54,7 +53,7 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new ByteBufferParameter((ByteBuffer) value);
+        return new ByteBufferParameter(allocator, (ByteBuffer) value);
     }
 
     @Override
@@ -69,15 +68,34 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
 
     private static final class ByteBufferParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final ByteBuffer buffer;
 
-        private ByteBufferParameter(ByteBuffer buffer) {
+        private ByteBufferParameter(ByteBufAllocator allocator, ByteBuffer buffer) {
+            this.allocator = allocator;
             this.buffer = buffer;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeByteBuffer(buffer));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                if (!buffer.hasRemaining()) {
+                    // It is zero of var int, not terminal.
+                    return allocator.buffer(Byte.BYTES).writeByte(0);
+                }
+
+                int size = buffer.remaining();
+                ByteBuf buf = allocator.buffer(VarIntUtils.varIntBytes(size) + size);
+
+                try {
+                    VarIntUtils.writeVarInt(buf, size);
+                    return buf.writeBytes(buffer);
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

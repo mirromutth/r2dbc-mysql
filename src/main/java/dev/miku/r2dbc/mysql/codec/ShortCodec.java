@@ -16,12 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
@@ -29,10 +29,8 @@ import reactor.core.publisher.Mono;
  */
 final class ShortCodec extends AbstractPrimitiveCodec<Short> {
 
-    static final ShortCodec INSTANCE = new ShortCodec();
-
-    private ShortCodec() {
-        super(Short.TYPE, Short.class);
+    ShortCodec(ByteBufAllocator allocator) {
+        super(allocator, Short.TYPE, Short.class);
     }
 
     @Override
@@ -66,10 +64,10 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
         short v = (Short) value;
 
         if ((byte) v == v) {
-            return new ByteCodec.ByteParameter((byte) v);
+            return new ByteCodec.ByteParameter(allocator, (byte) v);
         }
 
-        return new ShortParameter(v);
+        return new ShortParameter(allocator, v);
     }
 
     @Override
@@ -86,15 +84,27 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
 
     static final class ShortParameter extends AbstractParameter {
 
+        private final ByteBufAllocator allocator;
+
         private final short value;
 
-        ShortParameter(short value) {
+        ShortParameter(ByteBufAllocator allocator, short value) {
+            this.allocator = allocator;
             this.value = value;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.fromRunnable(() -> output.writeShort(value));
+        public Mono<ByteBuf> binary() {
+            return Mono.fromSupplier(() -> {
+                ByteBuf buf = allocator.buffer(Short.BYTES);
+
+                try {
+                    return buf.writeShortLE(value);
+                } catch (Throwable e) {
+                    buf.release();
+                    throw e;
+                }
+            });
         }
 
         @Override

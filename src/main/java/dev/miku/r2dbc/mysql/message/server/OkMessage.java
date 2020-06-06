@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
@@ -134,8 +134,8 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
         buf.skipBytes(1); // OK message header, 0x00 or 0xFE
 
         int capabilities = context.getCapabilities();
-        long affectedRows = CodecUtils.readVarInt(buf);
-        long lastInsertId = CodecUtils.readVarInt(buf);
+        long affectedRows = VarIntUtils.readVarInt(buf);
+        long lastInsertId = VarIntUtils.readVarInt(buf);
         short serverStatuses;
         int warnings;
 
@@ -151,13 +151,13 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
 
         if (buf.isReadable()) {
             Charset charset = context.getClientCollation().getCharset();
-            int sizeAfterVarInt = CodecUtils.checkNextVarInt(buf);
+            int sizeAfterVarInt = VarIntUtils.checkNextVarInt(buf);
 
             if (sizeAfterVarInt < 0) {
                 return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, buf.toString(charset));
             } else {
                 int readerIndex = buf.readerIndex();
-                long size = CodecUtils.readVarInt(buf);
+                long size = VarIntUtils.readVarInt(buf);
                 String information;
 
                 if (size > sizeAfterVarInt) {

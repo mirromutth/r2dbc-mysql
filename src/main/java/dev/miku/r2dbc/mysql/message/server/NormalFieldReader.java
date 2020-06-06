@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.util.CodecUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import io.netty.buffer.ByteBuf;
@@ -61,7 +61,7 @@ final class NormalFieldReader implements FieldReader {
 
     @Override
     public FieldValue readVarIntSizedField() {
-        return new NormalFieldValue(CodecUtils.readVarIntSizedSlice(buf).retain());
+        return new NormalFieldValue(readSizedRetainedSlice(buf));
     }
 
     @Override
@@ -101,5 +101,15 @@ final class NormalFieldReader implements FieldReader {
     @Override
     public boolean release(int decrement) {
         return buf.release(decrement);
+    }
+
+    private static ByteBuf readSizedRetainedSlice(ByteBuf buf) {
+        int size = (int) VarIntUtils.readVarInt(buf);
+        if (size == 0) {
+            // Use EmptyByteBuf, new buffer no need to be retained.
+            return buf.alloc().buffer(0, 0);
+        }
+
+        return buf.readRetainedSlice(size);
     }
 }

@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.constant.DataTypes;
+import io.netty.buffer.ByteBuf;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -84,13 +85,13 @@ abstract class QueryTestSupport {
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.empty();
+        public Mono<ByteBuf> binary() {
+            return Mono.error(() -> new IllegalStateException("Mock parameter, has no value"));
         }
 
         @Override
         public Mono<Void> text(ParameterWriter writer) {
-            return Mono.empty();
+            return Mono.error(() -> new IllegalStateException("Mock parameter, has no value"));
         }
 
         @Override

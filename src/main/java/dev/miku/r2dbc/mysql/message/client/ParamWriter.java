@@ -16,8 +16,8 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -28,6 +28,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -39,6 +40,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 final class ParamWriter extends ParameterWriter {
 
     private static final char[] HEX = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+
+    private static final Consumer<Parameter> DISPOSE = Parameter::dispose;
 
     private final StringBuilder builder;
 
@@ -337,7 +340,7 @@ final class ParamWriter extends ParameterWriter {
         ParamWriter writer = new ParamWriter(new StringBuilder().append(iter.next()), iter);
 
         return OperatorUtils.discardOnCancel(Flux.fromArray(values))
-            .doOnDiscard(Parameter.class, Parameter.DISPOSE)
+            .doOnDiscard(Parameter.class, DISPOSE)
             .concatMap(it -> it.text(writer).doOnSuccess(writer::flushParameter))
             .then(Mono.fromCallable(writer::toSql));
     }

@@ -19,7 +19,6 @@ package dev.miku.r2dbc.mysql.extension;
 import dev.miku.r2dbc.mysql.codec.CodecRegistry;
 import dev.miku.r2dbc.mysql.codec.JacksonCodec;
 import io.netty.buffer.ByteBufAllocator;
-import reactor.core.publisher.Mono;
 
 /**
  * The JSON {@link CodecRegistrar} based on jackson.
@@ -31,6 +30,7 @@ public final class JacksonCodecRegistrar implements CodecRegistrar {
     @Override
     public void register(ByteBufAllocator allocator, CodecRegistry registry) {
         if (setUp) {
+            // Decoding JSON by highest priority, encoding anything by lowest priority.
             registry.addFirst(JacksonCodec.DECODING)
                 .addLast(JacksonCodec.ENCODING);
         }

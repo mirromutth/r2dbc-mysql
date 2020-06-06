@@ -16,29 +16,28 @@
 
 package dev.miku.r2dbc.mysql;
 
+import io.netty.buffer.ByteBuf;
+import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
-
-import java.util.function.Consumer;
 
 /**
  * A parameter value includes encode logic.
  */
 public interface Parameter extends Disposable {
 
-    Consumer<Parameter> DISPOSE = Parameter::dispose;
-
     /**
      * Note: the {@code null} is processed by built-in codecs.
      *
      * @return {@code true} if parameter is {@code null}. Codec extensions should always return {@code false}.
      */
-    boolean isNull();
+    default boolean isNull() {
+        return false;
+    }
 
     /**
-     * Binary protocol encoding.
-     * <p>
-     * TODO: refactor it to {@code Publisher<? extends ByteBuf> binary()}.
+     * Binary protocol encoding. See MySQL protocol documentations, if don't want to support
+     * the binary protocol, please receive an exception.
      * <p>
      * Note: not like the text protocol, it make a sense for state-less. Binary protocol
      * maybe need to add a var-integer before each binaries of the parameter. So if it
@@ -47,10 +46,9 @@ public interface Parameter extends Disposable {
      * parameter, this make a hell of a complex state system. If we don't support multiple
      * times writing, it will be hard to understand and maybe make a confuse to user.
      *
-     * @param output the binary protocol output stream, extended from {@code OutputStream}.
-     * @return the encoding completion signal.
+     * @return the encoded binary buffer(s).
      */
-    Mono<Void> binary(ParameterOutputStream output);
+    Publisher<ByteBuf> binary();
 
     /**
      * Text protocol encoding.
@@ -70,7 +68,16 @@ public interface Parameter extends Disposable {
     Mono<Void> text(ParameterWriter writer);
 
     /**
+     * If don't want to support the binary protocol, please throw an exception.
+     *
      * @return the MySQL data type of this parameter data, see {@code DataTypes}.
      */
     short getType();
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default void dispose() {
+    }
 }

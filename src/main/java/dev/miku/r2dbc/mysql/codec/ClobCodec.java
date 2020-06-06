@@ -16,18 +16,21 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ParameterOutputStream;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.r2dbc.spi.Clob;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -35,14 +38,19 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Codec for {@link Clob}.
- * <p>
- * Note: {@link Clob} will be written by {@code ParameterOutputStream} rather than {@link #encode}.
  */
 final class ClobCodec implements MassiveCodec<Clob> {
 
-    static final ClobCodec INSTANCE = new ClobCodec();
+    /**
+     * It should less than {@link BlobCodec}'s, because we can only
+     * make a minimum estimate before writing the string.
+     */
+    private static final int MAX_MERGE = 1 << 13;
 
-    private ClobCodec() {
+    private final ByteBufAllocator allocator;
+
+    ClobCodec(ByteBufAllocator allocator) {
+        this.allocator = allocator;
     }
 
     @Override
@@ -76,23 +84,26 @@ final class ClobCodec implements MassiveCodec<Clob> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new ClobParameter((Clob) value, context);
+        return new ClobParameter(allocator, (Clob) value, context);
     }
 
     private static class ClobParameter extends AbstractLobParameter {
+
+        private final ByteBufAllocator allocator;
 
         private final AtomicReference<Clob> clob;
 
         private final CodecContext context;
 
-        private ClobParameter(Clob clob, CodecContext context) {
+        private ClobParameter(ByteBufAllocator allocator, Clob clob, CodecContext context) {
+            this.allocator = allocator;
             this.clob = new AtomicReference<>(clob);
             this.context = context;
         }
 
         @Override
-        public Mono<Void> binary(ParameterOutputStream output) {
-            return Mono.defer(() -> {
+        public Flux<ByteBuf> binary() {
+            return Flux.defer(() -> {
                 Clob clob = this.clob.getAndSet(null);
 
                 if (clob == null) {
@@ -103,8 +114,45 @@ final class ClobCodec implements MassiveCodec<Clob> {
                 return Flux.from(clob.stream())
                     .collectList()
                     .defaultIfEmpty(Collections.emptyList())
-                    .doOnNext(sequences -> output.writeCharSequences(sequences, context.getClientCollation()))
-                    .then();
+                    .flatMapIterable(list -> {
+                        if (list.isEmpty()) {
+                            // It is zero of var int, not terminal.
+                            return Collections.singletonList(allocator.buffer(Byte.BYTES).writeByte(0));
+                        }
+
+                        long bytes = 0;
+                        Charset charset = context.getClientCollation().getCharset();
+                        List<ByteBuf> buffers = new ArrayList<>();
+                        ByteBuf lastBuf = allocator.buffer();
+
+                        try {
+                            ByteBuf firstBuf = lastBuf;
+
+                            buffers.add(firstBuf);
+                            VarIntUtils.reserveVarInt(firstBuf);
+
+                            for (CharSequence src : list) {
+                                int length = src.length();
+
+                                if (length > 0) {
+                                    // size + lastBuf.readableBytes() > MAX_MERGE, it just a minimum estimate.
+                                    if (length > MAX_MERGE - lastBuf.readableBytes()) {
+                                        lastBuf = allocator.buffer();
+                                        buffers.add(lastBuf);
+                                    }
+
+                                    bytes += lastBuf.writeCharSequence(src, charset);
+                                }
+                            }
+
+                            VarIntUtils.setReservedVarInt(firstBuf, bytes);
+
+                            return BlobCodec.toList(buffers);
+                        } catch (Throwable e) {
+                            BlobCodec.releaseAll(buffers, lastBuf);
+                            throw e;
+                        }
+                    });
             });
         }
 
