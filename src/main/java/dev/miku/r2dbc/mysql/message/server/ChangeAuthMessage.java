@@ -21,6 +21,7 @@ import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
 
+import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -77,14 +78,13 @@ public final class ChangeAuthMessage implements ServerMessage {
     static ChangeAuthMessage decode(ByteBuf buf) {
         buf.skipBytes(1); // skip generic header 0xFE of change authentication messages
 
-        String authType = HandshakeHeader.readCStringAscii(buf); // See also HandshakeV10Request
+        String authType = HandshakeHeader.readCStringAscii(buf);
         int bytes = buf.readableBytes();
+        byte[] salt = bytes > 0 && buf.getByte(buf.writerIndex() - 1) == TERMINAL ?
+            ByteBufUtil.getBytes(buf, buf.readerIndex(), bytes - 1) :
+            ByteBufUtil.getBytes(buf);
 
-        if (bytes > 0 && buf.getByte(buf.writerIndex() - 1) == 0) {
-            // Remove last 0.
-            return new ChangeAuthMessage(authType, ByteBufUtil.getBytes(buf, buf.readerIndex(), bytes - 1));
-        } else {
-            return new ChangeAuthMessage(authType, ByteBufUtil.getBytes(buf));
-        }
+        // The terminal character has been removed from salt.
+        return new ChangeAuthMessage(authType, salt);
     }
 }

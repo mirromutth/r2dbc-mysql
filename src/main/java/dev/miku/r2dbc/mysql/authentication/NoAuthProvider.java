@@ -19,7 +19,6 @@ package dev.miku.r2dbc.mysql.authentication;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import static dev.miku.r2dbc.mysql.constant.AuthTypes.NO_AUTH_PROVIDER;
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
@@ -29,9 +28,6 @@ import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 final class NoAuthProvider implements MySqlAuthProvider {
 
     static final NoAuthProvider INSTANCE = new NoAuthProvider();
-
-    private NoAuthProvider() {
-    }
 
     @Override
     public boolean isSslNecessary() {
@@ -52,5 +48,8 @@ final class NoAuthProvider implements MySqlAuthProvider {
     @Override
     public String getType() {
         return NO_AUTH_PROVIDER;
+    }
+
+    private NoAuthProvider() {
     }
 }

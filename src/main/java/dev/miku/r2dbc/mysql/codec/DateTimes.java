@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.constant.SqlStates;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -50,6 +49,8 @@ final class DateTimes {
     static final int NANOS_OF_SECOND = 1000_000_000;
 
     static final int NANOS_OF_MICRO = 1000;
+
+    private static final String ILLEGAL_ARGUMENT = "S1009";
 
     static int readIntInDigits(ByteBuf buf) {
         if (!buf.isReadable()) {
@@ -94,7 +95,7 @@ final class DateTimes {
             message = String.format("Text value '%s' invalid and ZeroDateOption is %s", buf.toString(StandardCharsets.US_ASCII), ZeroDateOption.EXCEPTION.name());
         }
 
-        throw new R2dbcNonTransientResourceException(message, SqlStates.ILLEGAL_ARGUMENT);
+        throw new R2dbcNonTransientResourceException(message, ILLEGAL_ARGUMENT);
     }
 
     private DateTimes() {

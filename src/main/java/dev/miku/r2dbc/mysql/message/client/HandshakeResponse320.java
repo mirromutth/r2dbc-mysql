@@ -23,7 +23,7 @@ import io.netty.buffer.ByteBuf;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
-import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -104,15 +104,18 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
             // Write to end-of-buffer because has no database following.
             buf.writeBytes(authentication);
         } else {
-            writeCString(buf, authentication);
+            if (authentication.length == 0) {
+                buf.writeByte(TERMINAL);
+            } else {
+                buf.writeBytes(authentication);
+
+                if (authentication[authentication.length - 1] != TERMINAL) {
+                    // Should not write twice terminal.
+                    buf.writeByte(TERMINAL);
+                }
+            }
+
             HandshakeResponse.writeCString(buf, database, charset);
         }
-    }
-
-    private static void writeCString(ByteBuf buf, byte[] value) {
-        if (value.length != 0) {
-            buf.writeBytes(value);
-        }
-        buf.writeByte(TERMINAL);
     }
 }

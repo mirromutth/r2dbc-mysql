@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.Parameter;
-import dev.miku.r2dbc.mysql.constant.CursorTypes;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -39,6 +38,23 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class PreparedExecuteMessage extends LargeClientMessage implements ExchangeableMessage, Disposable {
 
+    /**
+     * No cursor, just return entire result without fetch.
+     */
+    private static final byte NO_CURSOR = 0;
+
+    /**
+     * Read only cursor, it will be closed when prepared statement closing and resetting.
+     */
+    private static final byte READ_ONLY = 1;
+
+    // Useless cursors for R2DBC client.
+//    private static final byte FOR_UPDATE = 2;
+//    private static final byte SCROLLABLE = 4;
+
+    /**
+     * The fixed size of execute message when it has no parameter.
+     */
     private static final int NO_PARAM_SIZE = Byte.BYTES + Integer.BYTES + Byte.BYTES + Integer.BYTES;
 
     private static final int TIMES = 1;
@@ -89,7 +105,7 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
         try {
             buf.writeByte(EXECUTE_FLAG)
                 .writeIntLE(statementId)
-                .writeByte(immediate ? CursorTypes.NO_CURSOR : CursorTypes.READ_ONLY)
+                .writeByte(immediate ? NO_CURSOR : READ_ONLY)
                 .writeIntLE(TIMES);
 
             if (size == 0) {

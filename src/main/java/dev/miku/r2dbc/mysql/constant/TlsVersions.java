@@ -21,9 +21,6 @@ package dev.miku.r2dbc.mysql.constant;
  */
 public final class TlsVersions {
 
-    private TlsVersions() {
-    }
-
     public static final String TLS1 = "TLSv1";
 
     public static final String TLS1_1 = "TLSv1.1";
@@ -38,9 +35,12 @@ public final class TlsVersions {
 
     /**
      * The {@literal TLSv1.3} is available as of MySQL 8.0.16 or higher,
-     * but requires compiling MySQL using OpenSSL 1.1.1 or higher.
+     * and requires compiling MySQL using OpenSSL 1.1.1 or higher.
      * <p>
      * It will not be used unless user has set it up.
      */
     public static final String TLS1_3 = "TLSv1.3";
+
+    private TlsVersions() {
+    }
 }

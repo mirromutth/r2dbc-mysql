@@ -17,8 +17,9 @@
 package dev.miku.r2dbc.mysql.constant;
 
 /**
- * Constants for MySQL protocol envelopes, do NOT use it outer than {@literal r2dbc-mysql},
- * we can NOT promise it will never be changes.
+ * Constants for MySQL protocol envelopes (e.g. business layer packages).
+ * <p>
+ * WARNING: do NOT use it outer than {@literal r2dbc-mysql}.
  */
 public final class Envelopes {
 
@@ -33,6 +34,11 @@ public final class Envelopes {
      * The max bytes size of each envelope, value is 16777215. (i.e. max value of int24, (2 ** 24) - 1)
      */
     public static final int MAX_ENVELOPE_SIZE = (1 << (SIZE_FIELD_SIZE << 3)) - 1;
+
+    /**
+     * The terminal of C-style string or C-style binary data.
+     */
+    public static final byte TERMINAL = 0;
 
     private Envelopes() {
     }

@@ -16,14 +16,14 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.constant.AuthTypes;
+import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
 
-import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
  * MySQL Handshake Message for protocol version 9.
@@ -52,7 +52,7 @@ final class HandshakeV9Request implements HandshakeRequest {
 
     @Override
     public String getAuthType() {
-        return AuthTypes.MYSQL_OLD_PASSWORD;
+        return MySqlAuthProvider.MYSQL_OLD_PASSWORD;
     }
 
     @Override

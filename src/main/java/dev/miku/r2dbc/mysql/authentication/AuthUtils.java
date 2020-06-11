@@ -24,15 +24,12 @@ import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 
 /**
- * A utility for general authentication hashing algorithm.
+ * An utility for general authentication hashing algorithm.
  */
-final class AuthHelper {
-
-    private AuthHelper() {
-    }
+final class AuthUtils {
 
     static byte[] generalHash(String algorithm, boolean leftSalt, CharSequence password, byte[] salt, CharCollation collation) {
         Charset charset = collation.getCharset();
@@ -94,5 +91,8 @@ final class AuthHelper {
         }
 
         return left;
+    }
+
+    private AuthUtils() {
     }
 }

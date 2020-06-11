@@ -62,12 +62,12 @@ public final class DataTypes {
     public static final short NEW_DECIMAL = 246;
 
     /**
-     * Virtual type, MySQL server always returned ENUMERABLE flag in definitions and type is VARCHAR.
+     * Virtual type, MySQL server always returned ENUMERABLE flag in definitions and type is as VARCHAR.
      */
     public static final short ENUMERABLE = 247;
 
     /**
-     * Virtual type, MySQL server always returned SET flag in definitions and type is VARCHAR.
+     * Virtual type, MySQL server always returned SET flag in definitions and type is as VARCHAR.
      */
     public static final short SET = 248;
 
@@ -77,6 +77,7 @@ public final class DataTypes {
     public static final short TINY_BLOB = 249;
 
     // has no small blob and small text
+
     /**
      * Note: is also MEDIUMTEXT.
      */

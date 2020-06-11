@@ -21,8 +21,7 @@ import reactor.util.annotation.Nullable;
 
 import java.nio.CharBuffer;
 
-import static dev.miku.r2dbc.mysql.constant.AuthTypes.SHA256_PASSWORD;
-import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -31,9 +30,6 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 final class Sha256AuthProvider implements MySqlAuthProvider {
 
     static final Sha256AuthProvider INSTANCE = new Sha256AuthProvider();
-
-    private Sha256AuthProvider() {
-    }
 
     @Override
     public boolean isSslNecessary() {
@@ -48,7 +44,7 @@ final class Sha256AuthProvider implements MySqlAuthProvider {
 
         requireNonNull(collation, "collation must not be null when password exists");
 
-        return AuthHelper.encodeTerminal(CharBuffer.wrap(password), collation.getCharset());
+        return AuthUtils.encodeTerminal(CharBuffer.wrap(password), collation.getCharset());
     }
 
     @Override
@@ -59,5 +55,8 @@ final class Sha256AuthProvider implements MySqlAuthProvider {
     @Override
     public String getType() {
         return SHA256_PASSWORD;
+    }
+
+    private Sha256AuthProvider() {
     }
 }

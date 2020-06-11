@@ -19,8 +19,7 @@ package dev.miku.r2dbc.mysql.authentication;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import static dev.miku.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
-import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -33,9 +32,6 @@ final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
     private static final String ALGORITHM = "SHA-256";
 
     private static final boolean IS_LEFT_SALT = false;
-
-    private CachingSha2FastAuthProvider() {
-    }
 
     @Override
     public boolean isSslNecessary() {
@@ -57,7 +53,7 @@ final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
         requireNonNull(salt, "salt must not be null when password exists");
         requireNonNull(collation, "collation must not be null when password exists");
 
-        return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
+        return AuthUtils.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
@@ -68,5 +64,8 @@ final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
     @Override
     public String getType() {
         return CACHING_SHA2_PASSWORD;
+    }
+
+    private CachingSha2FastAuthProvider() {
     }
 }

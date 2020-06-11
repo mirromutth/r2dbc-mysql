@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.codec.FieldInformation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
@@ -30,6 +29,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class RowMessage implements ReferenceCounted, ServerMessage {
 
+    static final short NULL_VALUE = 0xFB;
+
     private static final byte BIT_MASK_INIT = 1 << 2;
 
     private final FieldReader reader;
@@ -39,11 +40,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
     }
 
     public final FieldValue[] decode(boolean isBinary, FieldInformation[] context) {
-        if (isBinary) {
-            return binary(context);
-        } else {
-            return text(context.length);
-        }
+        return isBinary ? binary(context) : text(context.length);
     }
 
     private FieldValue[] text(int size) {
@@ -51,7 +48,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
 
         try {
             for (int i = 0; i < size; ++i) {
-                if (DataValues.NULL_VALUE == reader.getUnsignedByte()) {
+                if (NULL_VALUE == reader.getUnsignedByte()) {
                     reader.skipOneByte();
                     fields[i] = FieldValue.nullField();
                 } else {

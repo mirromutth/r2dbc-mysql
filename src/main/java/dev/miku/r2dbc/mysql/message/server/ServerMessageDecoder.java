@@ -16,12 +16,10 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.constant.DataValues;
-import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.constant.Headers;
-import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.ConnectionContext;
+import dev.miku.r2dbc.mysql.constant.Envelopes;
 import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
@@ -37,6 +35,18 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * Generic message decoder logic.
  */
 public final class ServerMessageDecoder {
+
+    private static final short OK = 0;
+
+    private static final short AUTH_MORE_DATA = 1;
+
+    private static final short HANDSHAKE_V9 = 9;
+
+    private static final short HANDSHAKE_V10 = 10;
+
+    private static final short EOF = 0xFE;
+
+    private static final short ERROR = 0xFF;
 
     private static final ByteBufJoiner JOINER = ByteBufJoiner.wrapped();
 
@@ -98,7 +108,7 @@ public final class ServerMessageDecoder {
     private static ServerMessage decodePreparedMetadata(ByteBuf buf, ConnectionContext context, PreparedMetadataDecodeContext decodeContext) {
         short header = buf.getUnsignedByte(buf.readerIndex());
 
-        if (header == Headers.ERROR) {
+        if (header == ERROR) {
             // 0xFF is not header of var integer,
             // not header of text result null (0xFB) and
             // not header of column metadata (0x03 + "def")
@@ -150,9 +160,9 @@ public final class ServerMessageDecoder {
     private static ServerMessage decodePrepareQuery(ByteBuf buf) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
-            case Headers.ERROR:
+            case ERROR:
                 return ErrorMessage.decode(buf);
-            case Headers.OK:
+            case OK:
                 if (PreparedOkMessage.isLooksLike(buf)) {
                     return PreparedOkMessage.decode(buf);
                 }
@@ -165,15 +175,15 @@ public final class ServerMessageDecoder {
     private static ServerMessage decodeCommandMessage(ByteBuf buf, ConnectionContext context) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
-            case Headers.ERROR:
+            case ERROR:
                 return ErrorMessage.decode(buf);
-            case Headers.OK:
+            case OK:
                 if (OkMessage.isValidSize(buf.readableBytes())) {
                     return OkMessage.decode(buf, context);
                 }
 
                 break;
-            case Headers.EOF:
+            case EOF:
                 int byteSize = buf.readableBytes();
 
                 // Maybe OK, maybe column count (unsupported EOF on command phase)
@@ -200,20 +210,20 @@ public final class ServerMessageDecoder {
     private static ServerMessage decodeConnectionMessage(ByteBuf buf, ConnectionContext context) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
-            case Headers.OK:
+            case OK:
                 if (OkMessage.isValidSize(buf.readableBytes())) {
                     return OkMessage.decode(buf, context);
                 }
 
                 break;
-            case Headers.AUTH_MORE_DATA: // Auth more data
+            case AUTH_MORE_DATA: // Auth more data
                 return AuthMoreDataMessage.decode(buf);
-            case Headers.HANDSHAKE_V9:
-            case Headers.HANDSHAKE_V10: // Handshake V9 (not supported) or V10
+            case HANDSHAKE_V9:
+            case HANDSHAKE_V10: // Handshake V9 (not supported) or V10
                 return HandshakeRequest.decode(buf);
-            case Headers.ERROR: // Error
+            case ERROR: // Error
                 return ErrorMessage.decode(buf);
-            case Headers.EOF: // Auth exchange message or EOF message
+            case EOF: // Auth exchange message or EOF message
                 if (EofMessage.isValidSize(buf.readableBytes())) {
                     return EofMessage.decode(buf);
                 } else {
@@ -256,30 +266,31 @@ public final class ServerMessageDecoder {
     }
 
     private static boolean isRow(List<ByteBuf> buffers, ByteBuf firstBuf, short header) {
-        if (header == DataValues.NULL_VALUE) {
-            // NULL_VALUE (0xFB) is not header of var integer and not header of OK (0x0 or 0xFE)
-            return true;
-        } else if (header == Headers.EOF) {
-            // 0xFE means it maybe EOF, or var int (64-bits) header in text row.
-            if (buffers.size() > 1) {
-                // Multi-buffers, must be big data row message.
+        switch (header) {
+            case RowMessage.NULL_VALUE:
+                // NULL_VALUE (0xFB) is not header of var integer and not header of OK (0x0 or 0xFE)
                 return true;
-            } else {
-                // Not EOF or OK.
-                int size = firstBuf.readableBytes();
-                return !EofMessage.isValidSize(size) && !OkMessage.isValidSize(size);
-            }
-        } else {
-            // If header is 0, SHOULD NOT be OK message.
-            // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
-            // Now, it is not OK message, not be error message, it must be row.
-            return true;
+            case EOF:
+                // 0xFE means it maybe EOF, or var int (64-bits) header in text row.
+                if (buffers.size() > 1) {
+                    // Multi-buffers, must be big data row message.
+                    return true;
+                } else {
+                    // Not EOF or OK.
+                    int size = firstBuf.readableBytes();
+                    return !EofMessage.isValidSize(size) && !OkMessage.isValidSize(size);
+                }
+            default:
+                // If header is 0, SHOULD NOT be OK message.
+                // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
+                // Now, it is not OK message, not be error message, it must be row.
+                return true;
         }
     }
 
     @Nullable
     private static ErrorMessage decodeCheckError(List<ByteBuf> buffers, short header) {
-        if (Headers.ERROR == header) {
+        if (ERROR == header) {
             // 0xFF is not header of var integer,
             // not header of text result null (0xFB) and
             // not header of column metadata (0x03 + "def")
@@ -297,7 +308,7 @@ public final class ServerMessageDecoder {
     private static ServerMessage decodeRow(List<ByteBuf> buffers, ByteBuf firstBuf, short header, ConnectionContext context, String phase) {
         if (isRow(buffers, firstBuf, header)) {
             return new RowMessage(FieldReader.of(JOINER, buffers));
-        } else if (header == Headers.EOF) {
+        } else if (header == EOF) {
             int byteSize = firstBuf.readableBytes();
 
             if (OkMessage.isValidSize(byteSize)) {
@@ -336,7 +347,7 @@ public final class ServerMessageDecoder {
     private static SyntheticMetadataMessage decodeInMetadata(ByteBuf buf, short header, ConnectionContext context, MetadataDecodeContext decodeContext) {
         ServerMessage message;
 
-        if (Headers.EOF == header && EofMessage.isValidSize(buf.readableBytes())) {
+        if (EOF == header && EofMessage.isValidSize(buf.readableBytes())) {
             message = EofMessage.decode(buf);
         } else {
             message = DefinitionMetadataMessage.decode(buf, context);

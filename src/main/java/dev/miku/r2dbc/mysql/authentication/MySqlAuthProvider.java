@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql.authentication;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.AuthTypes;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import reactor.util.annotation.Nullable;
 
@@ -34,19 +33,46 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public interface MySqlAuthProvider {
 
+    /**
+     * The new authentication type in MySQL 8.0+.
+     */
+    String CACHING_SHA2_PASSWORD = "caching_sha2_password";
+
+    /**
+     * The most generic authentication type in MySQL 5.x.
+     */
+    String MYSQL_NATIVE_PASSWORD = "mysql_native_password";
+
+    String SHA256_PASSWORD = "sha256_password";
+
+    /**
+     * The Old Password Authentication, it is also the only type of
+     * authentication in handshake V9.
+     * <p>
+     * WARNING: The hashing algorithm has broken that is used for the
+     * Old Password Authentication (as shown in CVE-2000-0981).
+     */
+    String MYSQL_OLD_PASSWORD = "mysql_old_password";
+
+    /**
+     * Try use empty string to represent has no authentication provider
+     * when {@code Capabilities.PLUGIN_AUTH} does not set.
+     */
+    String NO_AUTH_PROVIDER = "";
+
     static MySqlAuthProvider build(String type) {
         requireNonNull(type, "type must not be null");
 
         switch (type) {
-            case AuthTypes.CACHING_SHA2_PASSWORD:
+            case CACHING_SHA2_PASSWORD:
                 return CachingSha2FastAuthProvider.INSTANCE;
-            case AuthTypes.MYSQL_NATIVE_PASSWORD:
+            case MYSQL_NATIVE_PASSWORD:
                 return MySqlNativeAuthProvider.INSTANCE;
-            case AuthTypes.SHA256_PASSWORD:
+            case SHA256_PASSWORD:
                 return Sha256AuthProvider.INSTANCE;
-            case AuthTypes.MYSQL_OLD_PASSWORD:
+            case MYSQL_OLD_PASSWORD:
                 return OldAuthProvider.INSTANCE;
-            case AuthTypes.NO_AUTH_PROVIDER:
+            case NO_AUTH_PROVIDER:
                 return NoAuthProvider.INSTANCE;
         }
 

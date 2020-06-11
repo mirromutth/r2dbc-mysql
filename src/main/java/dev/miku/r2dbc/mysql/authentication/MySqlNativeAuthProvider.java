@@ -19,7 +19,6 @@ package dev.miku.r2dbc.mysql.authentication;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import reactor.util.annotation.Nullable;
 
-import static dev.miku.r2dbc.mysql.constant.AuthTypes.MYSQL_NATIVE_PASSWORD;
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -33,9 +32,6 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
     private static final String ALGORITHM = "SHA-1";
 
     private static final boolean IS_LEFT_SALT = true;
-
-    private MySqlNativeAuthProvider() {
-    }
 
     @Override
     public boolean isSslNecessary() {
@@ -56,7 +52,7 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
         requireNonNull(salt, "salt must not be null when password exists");
         requireNonNull(collation, "collation must not be null when password exists");
 
-        return AuthHelper.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
+        return AuthUtils.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
     }
 
     @Override
@@ -67,5 +63,8 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
     @Override
     public String getType() {
         return MYSQL_NATIVE_PASSWORD;
+    }
+
+    private MySqlNativeAuthProvider() {
     }
 }

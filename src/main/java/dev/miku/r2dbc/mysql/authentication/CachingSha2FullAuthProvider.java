@@ -21,8 +21,7 @@ import reactor.util.annotation.Nullable;
 
 import java.nio.CharBuffer;
 
-import static dev.miku.r2dbc.mysql.constant.AuthTypes.CACHING_SHA2_PASSWORD;
-import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -31,9 +30,6 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 final class CachingSha2FullAuthProvider implements MySqlAuthProvider {
 
     static final CachingSha2FullAuthProvider INSTANCE = new CachingSha2FullAuthProvider();
-
-    private CachingSha2FullAuthProvider() {
-    }
 
     @Override
     public boolean isSslNecessary() {
@@ -49,7 +45,7 @@ final class CachingSha2FullAuthProvider implements MySqlAuthProvider {
 
         requireNonNull(collation, "collation must not be null when password exists");
 
-        return AuthHelper.encodeTerminal(CharBuffer.wrap(password), collation.getCharset());
+        return AuthUtils.encodeTerminal(CharBuffer.wrap(password), collation.getCharset());
     }
 
     @Override
@@ -60,5 +56,8 @@ final class CachingSha2FullAuthProvider implements MySqlAuthProvider {
     @Override
     public String getType() {
         return CACHING_SHA2_PASSWORD;
+    }
+
+    private CachingSha2FullAuthProvider() {
     }
 }

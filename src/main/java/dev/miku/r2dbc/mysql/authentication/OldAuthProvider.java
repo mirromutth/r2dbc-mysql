@@ -23,15 +23,11 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
-import static dev.miku.r2dbc.mysql.constant.AuthTypes.MYSQL_OLD_PASSWORD;
-import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
  * An implementation of {@link MySqlAuthProvider} for type "mysql_old_password".
- * <p>
- * WARNING: The hashing algorithm has broken that is used for the Old Password Authentication
- * "mysql_old_password" (as shown in CVE-2000-0981).
  */
 final class OldAuthProvider implements MySqlAuthProvider {
 
@@ -56,9 +52,6 @@ final class OldAuthProvider implements MySqlAuthProvider {
     private static final int RESULT_INC = 0x40;
 
     private static final int RESULT_MULTIPLIER = 0x1F;
-
-    private OldAuthProvider() {
-    }
 
     @Override
     public boolean isSslNecessary() {
@@ -114,7 +107,7 @@ final class OldAuthProvider implements MySqlAuthProvider {
             results[i] ^= mark;
         }
 
-        return AuthHelper.encodeTerminal(CharBuffer.wrap(results), charset);
+        return AuthUtils.encodeTerminal(CharBuffer.wrap(results), charset);
     }
 
     @Override
@@ -176,5 +169,8 @@ final class OldAuthProvider implements MySqlAuthProvider {
         }
 
         return ((firstPart & Integer.MAX_VALUE) << Integer.SIZE) | (secondPart & Integer.MAX_VALUE);
+    }
+
+    private OldAuthProvider() {
     }
 }

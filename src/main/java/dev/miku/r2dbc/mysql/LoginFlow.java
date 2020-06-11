@@ -18,9 +18,7 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import dev.miku.r2dbc.mysql.client.Client;
-import dev.miku.r2dbc.mysql.constant.AuthTypes;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.constant.SqlStates;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.message.client.AuthResponse;
 import dev.miku.r2dbc.mysql.message.client.HandshakeResponse;
@@ -58,6 +56,8 @@ final class LoginFlow {
      * Connection attributes, always empty for now.
      */
     private static final Map<String, String> ATTRIBUTES = Collections.emptyMap();
+
+    private static final String CLI_SPECIFIC_CONDITION = "HY000";
 
     private static final byte AUTH_SUCCEED = 3;
 
@@ -135,7 +135,7 @@ final class LoginFlow {
             MySqlAuthProvider authProvider = getAndNextProvider();
 
             if (authProvider.isSslNecessary() && !sslCompleted) {
-                throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), "handshake"), SqlStates.CLI_SPECIFIC_CONDITION);
+                throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), "handshake"), CLI_SPECIFIC_CONDITION);
             }
 
             String username = this.username;
@@ -146,10 +146,10 @@ final class LoginFlow {
             byte[] authorization = authProvider.authentication(password, salt, context.getClientCollation());
             String authType = authProvider.getType();
 
-            if (AuthTypes.NO_AUTH_PROVIDER.equals(authType)) {
+            if (MySqlAuthProvider.NO_AUTH_PROVIDER.equals(authType)) {
                 // Authentication type is not matter because of it has no authentication type.
                 // Server need send a Change Authentication Message after handshake response.
-                authType = AuthTypes.CACHING_SHA2_PASSWORD;
+                authType = MySqlAuthProvider.CACHING_SHA2_PASSWORD;
             }
 
             return HandshakeResponse.from(
@@ -169,7 +169,7 @@ final class LoginFlow {
             MySqlAuthProvider authProvider = getAndNextProvider();
 
             if (authProvider.isSslNecessary() && !sslCompleted) {
-                throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase), SqlStates.CLI_SPECIFIC_CONDITION);
+                throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase), CLI_SPECIFIC_CONDITION);
             }
 
             return new AuthResponse(authProvider.authentication(password, salt, context.getClientCollation()));
@@ -184,7 +184,7 @@ final class LoginFlow {
             // Server unsupported SSL.
             if (sslMode.requireSsl()) {
                 String message = String.format("Server version '%s' does not support SSL but mode '%s' requires SSL", context.getServerVersion(), sslMode);
-                throw new R2dbcPermissionDeniedException(message, SqlStates.CLI_SPECIFIC_CONDITION);
+                throw new R2dbcPermissionDeniedException(message, CLI_SPECIFIC_CONDITION);
             }
 
             if (sslMode.startSsl()) {

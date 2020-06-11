@@ -16,17 +16,16 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.constant.AuthTypes;
+import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.CompositeByteBuf;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import static dev.miku.r2dbc.mysql.constant.DataValues.TERMINAL;
+import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
@@ -165,7 +164,7 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
                 capabilities.release();
             }
 
-            return afterCapabilities(builder, buf, serverCapabilities, salt).build();
+            return afterCapabilities(builder, buf, serverCapabilities, salt);
         } finally {
             salt.release();
         }
@@ -190,9 +189,9 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         return result.retain();
     }
 
-    private static Builder afterCapabilities(Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf salt) {
-        // Special charset on handshake process, just use ascii.
-        Charset charset = StandardCharsets.US_ASCII;
+    private static HandshakeV10Request afterCapabilities(
+        Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf salt
+    ) {
         short saltSize;
         boolean isPluginAuth = (serverCapabilities & Capabilities.PLUGIN_AUTH) != 0;
 
@@ -200,7 +199,8 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
             saltSize = buf.readUnsignedByte();
         } else {
             saltSize = 0;
-            buf.skipBytes(1); // if PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
+            // If PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
+            buf.skipBytes(1);
         }
 
         // Reserved field, all bytes are 0x00.
@@ -219,20 +219,20 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         builder.salt(ByteBufUtil.getBytes(salt));
 
         if (isPluginAuth) {
-            if (buf.bytesBefore(TERMINAL) >= 0) {
-                builder.authType(HandshakeHeader.readCStringAscii(buf));
-            } else {
-                // It is MySQL bug 59453, auth type native name has no terminal character in
-                // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
-                // And MySQL only support "mysql_native_password" in those versions,
-                // maybe just use constant "mysql_native_password" without read?
-                builder.authType(buf.toString(charset));
-            }
+            // See also MySQL bug 59453, auth type native name has no terminal character in
+            // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
+            // And MySQL only support "mysql_native_password" in those versions that has the
+            // bug, maybe just use constant "mysql_native_password" without read?
+            int length = buf.bytesBefore(TERMINAL);
+            String authType = length < 0 ? buf.toString(StandardCharsets.US_ASCII) :
+                (length == 0 ? "" : buf.toString(buf.readerIndex(), length, StandardCharsets.US_ASCII));
+
+            builder.authType(authType);
         } else {
-            builder.authType(AuthTypes.NO_AUTH_PROVIDER);
+            builder.authType(MySqlAuthProvider.NO_AUTH_PROVIDER);
         }
 
-        return builder;
+        return builder.build();
     }
 
     private static final class Builder {
@@ -248,9 +248,6 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         private int serverCapabilities;
 
         private short serverStatuses;
-
-        private Builder() {
-        }
 
         HandshakeV10Request build() {
             return new HandshakeV10Request(header, salt, serverCapabilities, collationLow8Bits, serverStatuses, authType);

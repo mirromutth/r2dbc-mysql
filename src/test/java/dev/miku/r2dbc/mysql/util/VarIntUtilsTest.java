@@ -16,8 +16,9 @@
 
 package dev.miku.r2dbc.mysql.util;
 
-import dev.miku.r2dbc.mysql.constant.Headers;
+import dev.miku.r2dbc.mysql.message.server.ServerMessageDecoder;
 import org.junit.jupiter.api.Test;
+import org.junit.platform.commons.util.ReflectionUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -28,6 +29,8 @@ class VarIntUtilsTest {
 
     @Test
     void eofHeaderEqualsInt64Code() {
-        assertEquals(Headers.EOF, VarIntUtils.VAR_INT_8_BYTE_CODE);
+        short v = (Short) ReflectionUtils.tryToReadFieldValue(ServerMessageDecoder.class, "EOF", null)
+            .getOrThrow(RuntimeException::new);
+        assertEquals(v, VarIntUtils.VAR_INT_8_BYTE_CODE);
     }
 }
