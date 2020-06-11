@@ -19,6 +19,7 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.TlsVersions;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
+import dev.miku.r2dbc.mysql.extension.Extension;
 import io.netty.handler.ssl.SslContextBuilder;
 import org.assertj.core.api.ObjectAssert;
 import org.assertj.core.api.ThrowableTypeAssert;
@@ -26,6 +27,8 @@ import org.junit.jupiter.api.Test;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -140,6 +143,31 @@ class MySqlConnectionConfigurationTest {
         assertThatIllegalArgumentException()
             .isThrownBy(() -> MySqlConnectionConfiguration.builder().sslContextBuilderCustomizer(null))
             .withMessageContaining("sslContextBuilderCustomizer");
+    }
+
+    @Test
+    void autodetectExtensions() {
+        List<Extension> list = new ArrayList<>();
+        MySqlConnectionConfiguration.builder()
+            .host(HOST)
+            .username(USERNAME)
+            .build()
+            .getExtensions()
+            .forEach(Extension.class, list::add);
+        assertThat(list).isNotEmpty();
+    }
+
+    @Test
+    void nonAutodetectExtensions() {
+        List<Extension> list = new ArrayList<>();
+        MySqlConnectionConfiguration.builder()
+            .host(HOST)
+            .username(USERNAME)
+            .autodetectExtensions(false)
+            .build()
+            .getExtensions()
+            .forEach(Extension.class, list::add);
+        assertThat(list).isEmpty();
     }
 
     private static MySqlConnectionConfiguration unixSocketSslMode(SslMode sslMode) {
