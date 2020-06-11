@@ -43,11 +43,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
     @Override
     public LocalTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        if (binary) {
-            return decodeBinary(value);
-        } else {
-            return readTimeText(value);
-        }
+        return binary ? decodeBinary(value) : readTimeText(value);
     }
 
     @Override
