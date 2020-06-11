@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
 import java.time.Year;
@@ -69,15 +68,7 @@ class YearCodecTest implements CodecTestSupport<Year> {
     public ByteBuf[] binaryParameters(Charset charset) {
         return Arrays.stream(years)
             .map(Year::getValue)
-            .map(it -> {
-                if (it >= Byte.MIN_VALUE && it <= Byte.MAX_VALUE) {
-                    return Unpooled.wrappedBuffer(new byte[]{it.byteValue()});
-                } else if (it >= Short.MIN_VALUE && it <= Short.MAX_VALUE) {
-                    return Unpooled.buffer(Short.BYTES, Short.BYTES).writeShortLE(it.shortValue());
-                } else {
-                    return Unpooled.buffer(Integer.BYTES, Integer.BYTES).writeIntLE(it);
-                }
-            })
+            .map(LongCodecTest::encode)
             .toArray(ByteBuf[]::new);
     }
 
