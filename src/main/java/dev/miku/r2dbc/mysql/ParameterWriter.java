@@ -25,6 +25,8 @@ import java.nio.ByteBuffer;
 
 /**
  * A writer for {@link Parameter}s of parametrized statements with text-based protocol.
+ * <p>
+ * TODO: write more comments.
  */
 public abstract class ParameterWriter extends Writer {
 

@@ -40,11 +40,7 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
 
     @Override
     public BigInteger decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        if (binary) {
-            return decodeBinary(value, info);
-        } else {
-            return decodeText(value, info);
-        }
+        return binary ? decodeBinary(value, info) : decodeText(value, info);
     }
 
     @Override

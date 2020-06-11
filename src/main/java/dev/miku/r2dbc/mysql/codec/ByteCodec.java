@@ -35,11 +35,7 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
     @Override
     public Byte decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        if (binary) {
-            return value.readByte();
-        } else {
-            return (byte) IntegerCodec.parse(value);
-        }
+        return binary ? value.readByte() : (byte) IntegerCodec.parse(value);
     }
 
     @Override

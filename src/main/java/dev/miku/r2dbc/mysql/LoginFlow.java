@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.constant.AuthTypes;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.constant.DataValues;
 import dev.miku.r2dbc.mysql.constant.SqlStates;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.message.client.AuthResponse;
@@ -59,6 +58,8 @@ final class LoginFlow {
      * Connection attributes, always empty for now.
      */
     private static final Map<String, String> ATTRIBUTES = Collections.emptyMap();
+
+    private static final byte AUTH_SUCCEED = 3;
 
     private static final int CURRENT_HANDSHAKE_VERSION = 10;
 
@@ -310,7 +311,7 @@ final class LoginFlow {
         HANDSHAKE {
 
             private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof OkMessage ||
-                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) ||
+                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != AUTH_SUCCEED) ||
                 message instanceof ChangeAuthMessage;
 
             @Override
@@ -323,7 +324,7 @@ final class LoginFlow {
                         } else if (message instanceof OkMessage) {
                             sink.next(COMPLETED);
                         } else if (message instanceof AuthMoreDataMessage) {
-                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) {
+                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != AUTH_SUCCEED) {
                                 if (logger.isDebugEnabled()) {
                                     logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
                                 }
@@ -344,7 +345,7 @@ final class LoginFlow {
         CHANGE_AUTH {
 
             private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof OkMessage ||
-                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED);
+                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != AUTH_SUCCEED);
 
             @Override
             Mono<State> handle(LoginFlow flow) {
@@ -356,7 +357,7 @@ final class LoginFlow {
                         } else if (message instanceof OkMessage) {
                             sink.next(COMPLETED);
                         } else if (message instanceof AuthMoreDataMessage) {
-                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != DataValues.AUTH_SUCCEED) {
+                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != AUTH_SUCCEED) {
                                 if (logger.isDebugEnabled()) {
                                     logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
                                 }

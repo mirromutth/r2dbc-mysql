@@ -22,7 +22,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 /**
- * A parameter value includes encode logic.
+ * A parameter value bound to an {@link Binding}.
  * <p>
  * TODO: add ScalarParameter for better performance.
  */

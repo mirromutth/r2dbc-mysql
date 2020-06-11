@@ -37,11 +37,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
 
     @Override
     public Duration decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        if (binary) {
-            return decodeBinary(value);
-        } else {
-            return decodeText(value);
-        }
+        return binary ? decodeBinary(value) : decodeText(value);
     }
 
     @Override
