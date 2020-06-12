@@ -17,30 +17,28 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
-
-import java.util.Arrays;
-
-import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Authentication more data request, means continue send auth change response message if is exists.
  */
 public final class AuthMoreDataMessage implements ServerMessage {
 
-    private final byte[] authMethodData;
+    private static final byte AUTH_SUCCEED = 3;
 
-    private AuthMoreDataMessage(byte[] authMethodData) {
-        this.authMethodData = requireNonNull(authMethodData, "authMethodData must not be null");
+    private final boolean failed;
+
+    private AuthMoreDataMessage(boolean failed) {
+        this.failed = failed;
     }
 
-    public byte[] getAuthMethodData() {
-        return authMethodData;
+    public boolean isFailed() {
+        return failed;
     }
 
     static AuthMoreDataMessage decode(ByteBuf buf) {
         buf.skipBytes(1); // auth more data message header, 0x01
-        return new AuthMoreDataMessage(ByteBufUtil.getBytes(buf));
+
+        return new AuthMoreDataMessage(buf.readByte() != AUTH_SUCCEED);
     }
 
     @Override
@@ -54,16 +52,16 @@ public final class AuthMoreDataMessage implements ServerMessage {
 
         AuthMoreDataMessage that = (AuthMoreDataMessage) o;
 
-        return Arrays.equals(authMethodData, that.authMethodData);
+        return failed == that.failed;
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(authMethodData);
+        return Boolean.hashCode(failed);
     }
 
     @Override
     public String toString() {
-        return String.format("AuthMoreDataMessage{authMethodData=%s}", Arrays.toString(authMethodData));
+        return String.format("AuthMoreDataMessage{failed=%b}", failed);
     }
 }
