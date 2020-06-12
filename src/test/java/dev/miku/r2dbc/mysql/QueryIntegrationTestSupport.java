@@ -72,41 +72,9 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
 
     private static final BigInteger UINT64_MAX_VALUE = new BigInteger("18446744073709551615");
 
-    private static final List<Tuple2<Duration, LocalTime>> DURATION_TIME_CASES;
-
-    static final Duration MIN_DURATION = Duration.ofSeconds(-TimeUnit.HOURS.toSeconds(838) - TimeUnit.MINUTES.toSeconds(59) - 59);
-
-    static final Duration MAX_DURATION = Duration.ofSeconds(TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 59);
-
-    static final LocalTime MIN_TIME = LocalTime.MIDNIGHT;
-
-    static final LocalTime MAX_TIME = LocalTime.of(23, 59, 59);
-
     static final LocalDate MIN_DATE = LocalDate.of(1000, 1, 1);
 
     static final LocalDate MAX_DATE = LocalDate.of(9999, 12, 31);
-
-    static final LocalDateTime MIN_DATE_TIME = LocalDateTime.of(1000, 1, 1, 0, 0, 0);
-
-    static final LocalDateTime MAX_DATE_TIME = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
-
-    static final LocalDateTime MIN_TIMESTAMP = LocalDateTime.of(1970, 1, 3, 0, 0, 0);
-
-    static final LocalDateTime MAX_TIMESTAMP = LocalDateTime.of(2038, 1, 15, 23, 59, 59);
-
-    static {
-        Duration negativeOne = Duration.ofSeconds(-1);
-        Duration negativeOneDayOneSecond = Duration.ofSeconds(-TimeUnit.DAYS.toSeconds(1) - 1);
-        Duration oneDayOneSecond = Duration.ofSeconds(TimeUnit.DAYS.toSeconds(1) + 1);
-        LocalTime lastSecond = LocalTime.of(23, 59, 59);
-        LocalTime firstSecond = LocalTime.of(0, 0, 1);
-
-        DURATION_TIME_CASES = Arrays.asList(
-            Tuples.of(negativeOne, lastSecond),
-            Tuples.of(negativeOneDayOneSecond, lastSecond),
-            Tuples.of(oneDayOneSecond, firstSecond)
-        );
-    }
 
     QueryIntegrationTestSupport(MySqlConnectionConfiguration configuration) {
         super(configuration);
@@ -273,32 +241,119 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
 
     @Test
     void date() {
-        testType(LocalDate.class, true, "DATE", null, MIN_DATE, MAX_DATE);
+        testType(LocalDate.class, true, "DATE", null, MIN_DATE, LocalDate.of(2020, 1, 1), MAX_DATE);
     }
 
     @Test
     void time() {
-        testType(LocalTime.class, true, "TIME", null, MIN_TIME, MAX_TIME);
-        testType(Duration.class, true, "TIME", null, MIN_DURATION, MAX_DURATION);
+        LocalTime minTime = LocalTime.MIDNIGHT;
+        LocalTime aTime = LocalTime.of(10, 5, 28);
+        LocalTime maxTime = LocalTime.of(23, 59, 59);
+        Duration minDuration = Duration.ofSeconds(-TimeUnit.HOURS.toSeconds(838) - TimeUnit.MINUTES.toSeconds(59) - 59);
+        Duration aDuration = Duration.ofSeconds(1854672);
+        Duration maxDuration = Duration.ofSeconds(TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 59);
+
+        testType(LocalTime.class, true, "TIME", null, minTime, aTime, maxTime);
+        testType(Duration.class, true, "TIME", null, minDuration, aDuration, maxDuration);
+    }
+
+    @DisabledIfSystemProperty(named = "test.mysql.version", matches = "5\\.5(\\.\\d+)?")
+    @Test
+    void time6() {
+        LocalTime smallTime = LocalTime.of(0, 0, 0, 1000);
+        LocalTime aTime = LocalTime.of(10, 5, 28, 5_410_000);
+        LocalTime maxTime = LocalTime.of(23, 59, 59, 999_999_000);
+        Duration smallDuration = Duration.ofSeconds(-TimeUnit.HOURS.toSeconds(838) - TimeUnit.MINUTES.toSeconds(59) - 58, -999_999_000);
+        Duration aDuration = Duration.ofSeconds(1854672, 5_410_000);
+        Duration bigDuration = Duration.ofSeconds(TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 58, 999_999_000);
+
+        testType(LocalTime.class, true, "TIME(6)", null, smallTime, aTime, maxTime);
+        testType(Duration.class, true, "TIME(6)", null, smallDuration, aDuration, bigDuration);
     }
 
     @Test
     void timeDuration() {
+        Duration negativeOne = Duration.ofSeconds(-1);
+        Duration negativeOneDay = Duration.ofSeconds(-TimeUnit.DAYS.toSeconds(1) - 1);
+        Duration oneDayOneSecond = Duration.ofSeconds(TimeUnit.DAYS.toSeconds(1) + 1);
+        LocalTime lastSecond = LocalTime.of(23, 59, 59);
+        LocalTime firstSecond = LocalTime.of(0, 0, 1);
+
+        List<Tuple2<Duration, LocalTime>> dataCases = Arrays.asList(
+            Tuples.of(negativeOne, lastSecond),
+            Tuples.of(negativeOneDay, lastSecond),
+            Tuples.of(oneDayOneSecond, firstSecond)
+        );
         String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value TIME)";
         complete(connection -> Mono.from(connection.createStatement(tdl).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .thenMany(Flux.fromIterable(DURATION_TIME_CASES).concatMap(pair -> testTimeDuration(connection, pair.getT1(), pair.getT2()))));
+            .thenMany(Flux.fromIterable(dataCases)
+                .concatMap(pair -> testTimeDuration(connection, pair.getT1(), pair.getT2()))));
+    }
+
+    @DisabledIfSystemProperty(named = "test.mysql.version", matches = "5\\.5(\\.\\d+)?")
+    @Test
+    void timeDuration6() {
+        long seconds = TimeUnit.HOURS.toSeconds(8) + TimeUnit.MINUTES.toSeconds(5) + 45;
+        Duration one = Duration.ofSeconds(0, -1000);
+        Duration aDuration = Duration.ofSeconds(seconds, 45_610_000);
+        Duration oneDay = Duration.ofSeconds(-TimeUnit.DAYS.toSeconds(1), -1000);
+        Duration oneDayOne = Duration.ofSeconds(TimeUnit.DAYS.toSeconds(1), 1000);
+        LocalTime aTime = LocalTime.of(8, 5, 45, 45_610_000);
+        LocalTime lastMicro = LocalTime.of(23, 59, 59, 999_999_000);
+        LocalTime firstMicro = LocalTime.of(0, 0, 0, 1000);
+
+        List<Tuple2<Duration, LocalTime>> dataCases = Arrays.asList(
+            Tuples.of(one, lastMicro),
+            Tuples.of(oneDay, lastMicro),
+            Tuples.of(oneDayOne, firstMicro),
+            Tuples.of(aDuration, aTime)
+        );
+        String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value TIME(6))";
+        complete(connection -> Mono.from(connection.createStatement(tdl).execute())
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .thenMany(Flux.fromIterable(dataCases)
+                .concatMap(pair -> testTimeDuration(connection, pair.getT1(), pair.getT2()))));
     }
 
     @Test
     void dateTime() {
-        testType(LocalDateTime.class, true, "DATETIME", null, MIN_DATE_TIME, MAX_DATE_TIME);
+        LocalDateTime minDateTime = LocalDateTime.of(1000, 1, 1, 0, 0, 0);
+        LocalDateTime aDateTime = LocalDateTime.of(2020, 5, 12, 8, 4, 10);
+        LocalDateTime maxDateTime = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+
+        testType(LocalDateTime.class, true, "DATETIME", null, minDateTime, aDateTime, maxDateTime);
+    }
+
+    @DisabledIfSystemProperty(named = "test.mysql.version", matches = "5\\.5(\\.\\d+)?")
+    @Test
+    void dateTime6() {
+        LocalDateTime smallDateTime = LocalDateTime.of(1000, 1, 1, 0, 0, 0, 1000);
+        LocalDateTime aDateTime = LocalDateTime.of(2020, 5, 12, 8, 4, 10, 5_4210_000);
+        LocalDateTime maxDateTime = LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_000);
+
+        testType(LocalDateTime.class, true, "DATETIME(6)", null, smallDateTime, aDateTime, maxDateTime);
     }
 
     @Test
     void timestamp() {
+        LocalDateTime minTimestamp = LocalDateTime.of(1970, 1, 3, 0, 0, 0);
+        LocalDateTime aTimestamp = LocalDateTime.of(2020, 5, 12, 8, 4, 10);
+        LocalDateTime maxTimestamp = LocalDateTime.of(2038, 1, 15, 23, 59, 59);
+
         // TIMESTAMP must not be null when database version less than 8.0
-        testType(LocalDateTime.class, true, "TIMESTAMP", MIN_TIMESTAMP, MAX_TIMESTAMP);
+        testType(LocalDateTime.class, true, "TIMESTAMP", minTimestamp, aTimestamp, maxTimestamp);
+    }
+
+    @DisabledIfSystemProperty(named = "test.mysql.version", matches = "5\\.5(\\.\\d+)?")
+    @Test
+    void timestamp6() {
+        LocalDateTime minTimestamp = LocalDateTime.of(1970, 1, 3, 0, 0, 0, 1000);
+        LocalDateTime aTimestamp = LocalDateTime.of(2020, 5, 12, 8, 4, 10, 5_4210_000);
+        LocalDateTime maxTimestamp = LocalDateTime.of(2038, 1, 15, 23, 59, 59, 999_999_000);
+
+        // TIMESTAMP must not be null when database version less than 8.0
+        testType(LocalDateTime.class, true, "TIMESTAMP(6)", minTimestamp, aTimestamp, maxTimestamp);
     }
 
     /**
