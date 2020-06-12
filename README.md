@@ -17,7 +17,7 @@ This driver provides the following features:
 - [x] Reactive LOB types (e.g. BLOB, CLOB)
 - [x] All charsets from MySQL, like `utf8mb4_0900_ai_ci`, `latin1_general_ci`, `utf32_unicode_520_ci`, etc.
 - [x] All authentication types for MySQL, like `caching_sha2_password`, `mysql_native_password`, etc.
-- [x] General exceptions of error code and standard SQL state mappings.
+- [x] General exceptions with error code and standard SQL state mappings.
 - [x] Secure connection with verification (SSL/TLS), auto-select TLS version for community and enterprise editions.
 - [x] Transactions with savepoint.
 - [x] Native ping command that can be verifying when argument is `ValidationDepth.REMOTE`
@@ -213,27 +213,27 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 | tlsVersion | Any value list of `TlsVersions` | Optional, default is auto-selected by the server | The TLS version for SSL, see following notice |
 | zeroDateOption | Any value of `ZeroDateOption` | Optional, default `USE_NULL` | The option indicates "zero date" handling, see following notice |
 
-- `SslMode`: Considers security level and verification for SSL, make sure the database server supports SSL before you want change SSL mode to `REQUIRED` or higher. **The Unix Domain Socket only offers "DISABLED" available**
-  - `DISABLED`: I don't care about security and don't want to pay the overhead for encryption
-  - `PREFERRED`: I don't care about encryption but will pay the overhead of encryption if the server supports it. **Unavailable on Unix Domain Socket**
-  - `REQUIRED`: I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want. **Unavailable on Unix Domain Socket**
-  - `VERIFY_CA`: I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust. **Unavailable on Unix Domain Socket**
-  - `VERIFY_IDENTITY` (highest level, most like web browser): I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify. **Unavailable on Unix Domain Socket**
-- `TlsVersions`: Considers TLS version names for SSL, can be **multi-values** in configuration, make sure the database server supports selected TLS versions. **Unavailable on Unix Domain Socket**
-  - `TLS1` (i.e. "TLSv1"): Under generic circumstances, MySQL database supports it if database supports SSL
-  - `TLS1_1` (i.e. "TLSv1.1"): Under generic circumstances, MySQL database supports it if database supports SSL
-  - `TLS1_2` (i.e. "TLSv1.2"): Supported only in Community Edition `8.0.4` or higher, otherwise in Enterprise Edition `5.6.0` or higher
-  - `TLS1_3` (i.e. "TLSv1.3"): Supported only available as of MySQL `8.0.16` or higher, and requires compiling MySQL using OpenSSL `1.1.1` or higher
-- `ZeroDateOption`: Considers special handling when MySQL database server returning "zero date" (i.e. `0000-00-00 00:00:00`)
-  - `EXCEPTION`: Just throw a exception when MySQL database server return "zero date"
-  - `USE_NULL`: Use `null` when MySQL database server return "zero date"
-  - `USE_ROUND`: **NOT** RECOMMENDED, only for compatibility. Use "round" date (i.e. `0001-01-01 00:00:00`) when MySQL database server return "zero date"
+- `SslMode` Considers security level and verification for SSL, make sure the database server supports SSL before you want change SSL mode to `REQUIRED` or higher. **The Unix Domain Socket only offers "DISABLED" available**
+  - `DISABLED` I don't care about security and don't want to pay the overhead for encryption
+  - `PREFERRED` I don't care about encryption but will pay the overhead of encryption if the server supports it. **Unavailable on Unix Domain Socket**
+  - `REQUIRED` I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want. **Unavailable on Unix Domain Socket**
+  - `VERIFY_CA` I want my data encrypted, and I accept the overhead. I want to be sure I connect to a server that I trust. **Unavailable on Unix Domain Socket**
+  - `VERIFY_IDENTITY` (the highest level, most like web browser): I want my data encrypted, and I accept the overhead. I want to be sure I connect to a server I trust, and that it's the one I specify. **Unavailable on Unix Domain Socket**
+- `TlsVersions` Considers TLS version names for SSL, can be **multi-values** in the configuration, make sure the database server supports selected TLS versions. **Unavailable on Unix Domain Socket**
+  - `TLS1` (i.e. "TLSv1") Under generic circumstances, MySQL database supports it if database supports SSL
+  - `TLS1_1` (i.e. "TLSv1.1") Under generic circumstances, MySQL database supports it if database supports SSL
+  - `TLS1_2` (i.e. "TLSv1.2") Supported only in Community Edition `8.0.4` or higher, otherwise in Enterprise Edition `5.6.0` or higher
+  - `TLS1_3` (i.e. "TLSv1.3") Supported only available as of MySQL `8.0.16` or higher, and requires compiling MySQL using OpenSSL `1.1.1` or higher
+- `ZeroDateOption` Considers special handling when MySQL database server returning "zero date" (i.e. `0000-00-00 00:00:00`)
+  - `EXCEPTION` Just throw an exception when MySQL database server return "zero date"
+  - `USE_NULL` Use `null` when MySQL database server return "zero date"
+  - `USE_ROUND` **NOT** RECOMMENDED, only for compatibility. Use "round" date (i.e. `0001-01-01 00:00:00`) when MySQL database server return "zero date"
 - Prepare Statement: Considers based on server-preparing or client-preparing, some database server maybe not support server-preparing binary-query, such as Vitess
-  - `useClientPrepareStatement()`: default preparing mode, use client-preparing text-query for parametrized statements
-  - `useServerPrepareStatement()`: use server-preparing binary-query for parametrized statements
-  - `useServerPrepareStatement(Predicate<String>)`: use server-preparing binary-query for parametrized statements, and enforce server-preparing usage for simple query (not parametrized statements). The usage is judged by `Predicate`, it's parameter is the simple SQL statement, enforce server-preparing if return `true`
+  - `useClientPrepareStatement()` default preparing mode, use client-preparing text-query for parametrized statements
+  - `useServerPrepareStatement()` use server-preparing binary-query for parametrized statements
+  - `useServerPrepareStatement(Predicate<String>)` use server-preparing binary-query for parametrized statements, and enforce server-preparing usage for simple query (not parametrized statements). The usage is judged by `Predicate`, it's parameter is the simple SQL statement, enforce server-preparing if return `true`
 
-Should use `enum` in [Programmatic](#programmatic-configuration) configuration that not like discovery configurations, except `TlsVersions` (All elements of `TlsVersions` will be always `String` which is case sensitive).
+Should use `enum` in [Programmatic](#programmatic-configuration) configuration that not like discovery configurations, except `TlsVersions` (All elements of `TlsVersions` will be always `String` which is case-sensitive).
 
 ### Pooling
 
@@ -339,13 +339,12 @@ If you want to raise an issue, please follow the recommendations below:
 
 ## Before use
 
-- The MySQL data fields encoded by index-based natively, get fields by index will have **better** performance than get by column name.
+- The MySQL data fields encoded by index-based natively, get fields by an index will have **better** performance than get by column name.
 - Each `Result` should be used (call `getRowsUpdated` or `map`, even table definition), can **NOT** just ignore any `Result`, otherwise inbound stream is unable to align. (like `ResultSet.close` in jdbc, `Result` auto-close after used by once)
-- The MySQL returns microseconds &amp; milliseconds when only in server-preparing queries' result (and maybe contains not even in these results). Therefore this driver does not guarantee decoded `LocalDateTime`s contain more precision than seconds.
 - The MySQL server does not **actively** return time zone when query `DATETIME` or `TIMESTAMP`, this driver does not attempt time zone conversion. That means should always use `LocalDateTime` for SQL type `DATETIME` or `TIMESTAMP`. Execute `SHOW VARIABLES LIKE '%time_zone%'` to get more information.
 - Should not turn-on the `trace` log level unless debugging. Otherwise, the security information may be exposed through `ByteBuf` dump.
 - If `Statement` bound `returnGeneratedValues`, the `Result` of the `Statement` can be called both: `getRowsUpdated` to get affected rows, and `map` to get last inserted ID.
-- The MySQL may be not support search rows by binary field, like `BIT`, `BLOB` and `JSON`, because those data fields maybe just an address of reference in MySQL server, or maybe need strict bit-aligned. (but `VARBINARY` is OK)
+- The MySQL may be not support search rows by a binary field, like `BIT`, `BLOB` and `JSON`, because those data fields maybe just an address of reference in MySQL server, or maybe need strict bit-aligned. (but `VARBINARY` is OK)
 
 ## License
 
