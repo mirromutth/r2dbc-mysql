@@ -24,7 +24,8 @@ import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+
+import static dev.miku.r2dbc.mysql.codec.DateTimes.*;
 
 /**
  * Codec for {@link Duration}.
@@ -105,18 +106,23 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
 
     private static Duration decodeText(ByteBuf buf) {
         boolean isNegative = LocalTimeCodec.readNegative(buf);
-        int hour = DateTimes.readIntInDigits(buf);
-        int minute = DateTimes.readIntInDigits(buf);
-        int second = DateTimes.readIntInDigits(buf);
-        long totalSeconds = TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second;
+        int hour = readIntInDigits(buf);
+        int minute = readIntInDigits(buf);
+        int second = readIntInDigits(buf);
+        int totalSeconds = hour * SECONDS_OF_HOUR + minute * SECONDS_OF_MINUTE + second;
 
-        return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
+        if (buf.isReadable()) {
+            int nano = readMicroInDigits(buf) * NANOS_OF_MICRO;
+            return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds, isNegative ? -nano : nano);
+        } else {
+            return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
+        }
     }
 
     private static Duration decodeBinary(ByteBuf buf) {
         int bytes = buf.readableBytes();
 
-        if (bytes < DateTimes.TIME_SIZE) {
+        if (bytes < TIME_SIZE) {
             return Duration.ZERO;
         }
 
@@ -126,16 +132,14 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         byte hour = buf.readByte();
         byte minute = buf.readByte();
         byte second = buf.readByte();
-        long totalSeconds = TimeUnit.DAYS.toSeconds(day) +
-            TimeUnit.HOURS.toSeconds(hour) +
-            TimeUnit.MINUTES.toSeconds(minute) +
-            second;
+        long totalSeconds = day * SECONDS_OF_DAY + ((long) hour) * SECONDS_OF_HOUR +
+            ((long) minute) * SECONDS_OF_MINUTE + ((long) second);
 
-        if (bytes < DateTimes.MICRO_TIME_SIZE) {
+        if (bytes < MICRO_TIME_SIZE) {
             return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
         }
 
-        long nanos = TimeUnit.MICROSECONDS.toNanos(buf.readUnsignedIntLE());
+        long nanos = buf.readUnsignedIntLE() * NANOS_OF_MICRO;
 
         return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds, isNegative ? -nanos : nanos);
     }
@@ -168,26 +172,26 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
                         // Note: nanos should always be a positive integer or 0, see Duration.getNano().
                         // So if duration is negative, seconds should be humanity seconds - 1, so +1 then negate.
                         seconds = -(seconds + 1);
-                        nanos = DateTimes.NANOS_OF_SECOND - nanos;
+                        nanos = NANOS_OF_SECOND - nanos;
                     } else {
                         seconds = -seconds;
                     }
                 }
 
-                int size = nanos > 0 ? DateTimes.MICRO_TIME_SIZE : DateTimes.TIME_SIZE;
+                int size = nanos > 0 ? MICRO_TIME_SIZE : TIME_SIZE;
 
                 ByteBuf buf = allocator.buffer(Byte.BYTES + size);
 
                 try {
                     buf.writeByte(size)
                         .writeBoolean(isNegative)
-                        .writeIntLE((int) (seconds / DateTimes.SECONDS_OF_DAY))
-                        .writeByte((int) ((seconds % DateTimes.SECONDS_OF_DAY) / DateTimes.SECONDS_OF_HOUR))
-                        .writeByte((int) ((seconds % DateTimes.SECONDS_OF_HOUR) / DateTimes.SECONDS_OF_MINUTE))
-                        .writeByte((int) (seconds % DateTimes.SECONDS_OF_MINUTE));
+                        .writeIntLE((int) (seconds / SECONDS_OF_DAY))
+                        .writeByte((int) ((seconds % SECONDS_OF_DAY) / SECONDS_OF_HOUR))
+                        .writeByte((int) ((seconds % SECONDS_OF_HOUR) / SECONDS_OF_MINUTE))
+                        .writeByte((int) (seconds % SECONDS_OF_MINUTE));
 
                     if (nanos > 0) {
-                        return buf.writeIntLE(nanos / DateTimes.NANOS_OF_MICRO);
+                        return buf.writeIntLE(nanos / NANOS_OF_MICRO);
                     }
 
                     return buf;
@@ -231,10 +235,10 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             boolean isNegative = this.value.isNegative();
             Duration abs = this.value.abs();
             long totalSeconds = abs.getSeconds();
-            int hours = (int) (totalSeconds / 3600);
-            int minutes = (int) ((totalSeconds / 60) % 60);
-            int seconds = (int) (totalSeconds % 60);
-            int micros = (int) TimeUnit.NANOSECONDS.toMicros(abs.getNano());
+            int hours = (int) (totalSeconds / SECONDS_OF_HOUR);
+            int minutes = (int) ((totalSeconds % SECONDS_OF_HOUR) / SECONDS_OF_MINUTE);
+            int seconds = (int) (totalSeconds % SECONDS_OF_MINUTE);
+            int micros = abs.getNano() / NANOS_OF_MICRO;
 
             if (hours < 0 || minutes < 0 || seconds < 0 || micros < 0) {
                 throw new IllegalStateException(String.format("Too large duration %s, abs value overflowing to %02d:%02d:%02d.%06d", value, hours, minutes, seconds, micros));

@@ -16,9 +16,9 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -27,7 +27,6 @@ import reactor.util.annotation.Nullable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Codec for {@link LocalDateTime}.
@@ -101,9 +100,8 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
             return LocalDateTime.of(date, LocalTime.of(hour, minute, second));
         }
 
-        long micros = buf.readUnsignedIntLE();
-
-        return LocalDateTime.of(date, LocalTime.of(hour, minute, second, (int) TimeUnit.MICROSECONDS.toNanos(micros)));
+        int nano = (int) (buf.readUnsignedIntLE() * DateTimes.NANOS_OF_MICRO);
+        return LocalDateTime.of(date, LocalTime.of(hour, minute, second, nano));
     }
 
     private static final class LocalDateTimeParameter extends AbstractParameter {

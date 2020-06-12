@@ -24,18 +24,13 @@ import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalTime;
-import java.util.concurrent.TimeUnit;
+
+import static dev.miku.r2dbc.mysql.codec.DateTimes.*;
 
 /**
  * Codec for {@link LocalTime}.
  */
 final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
-
-    private static final int HOURS_OF_DAY = 24;
-
-    private static final int SECONDS_OF_DAY = HOURS_OF_DAY * 60 * 60;
-
-    private static final long NANO_OF_DAY = ((long) SECONDS_OF_DAY) * 1000_000_000L;
 
     LocalTimeCodec(ByteBufAllocator allocator) {
         super(allocator, LocalTime.class);
@@ -63,13 +58,25 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
     static LocalTime readTimeText(ByteBuf buf) {
         boolean isNegative = readNegative(buf);
-        int hour = DateTimes.readIntInDigits(buf);
-        int minute = DateTimes.readIntInDigits(buf);
-        int second = DateTimes.readIntInDigits(buf);
+        int hour = readIntInDigits(buf);
+        int minute = readIntInDigits(buf);
+        int second = readIntInDigits(buf);
+
+        if (buf.isReadable()) {
+            int nano = readMicroInDigits(buf) * NANOS_OF_MICRO;
+            if (isNegative) {
+                long totalNanos = -(((long) hour) * NANOS_OF_HOUR + ((long) minute) * NANOS_OF_MINUTE +
+                    ((long) second) * NANOS_OF_SECOND + ((long) nano));
+                return LocalTime.ofNanoOfDay(((totalNanos % NANOS_OF_DAY) + NANOS_OF_DAY) % NANOS_OF_DAY);
+            } else {
+                return LocalTime.of(hour % HOURS_OF_DAY, minute, second, nano);
+            }
+        }
 
         if (isNegative) {
             // The `hour` is a positive integer.
-            long totalSeconds = -(TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second);
+            long totalSeconds = -(((long) hour) * SECONDS_OF_HOUR + ((long) minute) * SECONDS_OF_MINUTE +
+                ((long) second));
             return LocalTime.ofSecondOfDay(((totalSeconds % SECONDS_OF_DAY) + SECONDS_OF_DAY) % SECONDS_OF_DAY);
         } else {
             return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
@@ -77,18 +84,22 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     static boolean readNegative(ByteBuf buf) {
-        if (buf.getByte(buf.readerIndex()) == '-') {
-            buf.skipBytes(1);
-            return true;
-        } else {
-            return false;
+        switch (buf.getByte(buf.readerIndex())) {
+            case '-':
+                buf.skipBytes(1);
+                return true;
+            case '+':
+                buf.skipBytes(1);
+                return false;
+            default:
+                return false;
         }
     }
 
     private static LocalTime decodeBinary(ByteBuf buf) {
         int bytes = buf.readableBytes();
 
-        if (bytes < DateTimes.TIME_SIZE) {
+        if (bytes < TIME_SIZE) {
             return LocalTime.MIDNIGHT;
         }
 
@@ -97,14 +108,14 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         // Skip day part.
         buf.skipBytes(Integer.BYTES);
 
-        short hour = buf.readUnsignedByte();
-        short minute = buf.readUnsignedByte();
-        short second = buf.readUnsignedByte();
+        byte hour = buf.readByte();
+        byte minute = buf.readByte();
+        byte second = buf.readByte();
 
-        if (bytes < DateTimes.MICRO_TIME_SIZE) {
+        if (bytes < MICRO_TIME_SIZE) {
             if (isNegative) {
                 // The `hour` is a positive integer.
-                long totalSeconds = -(TimeUnit.HOURS.toSeconds(hour) + TimeUnit.MINUTES.toSeconds(minute) + second);
+                int totalSeconds = -(((int) hour) * SECONDS_OF_HOUR + ((int) minute) * SECONDS_OF_MINUTE + ((int) second));
                 return LocalTime.ofSecondOfDay(((totalSeconds % SECONDS_OF_DAY) + SECONDS_OF_DAY) % SECONDS_OF_DAY);
             } else {
                 return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
@@ -114,19 +125,17 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         long micros = buf.readUnsignedIntLE();
 
         if (isNegative) {
-            long nanos = -(TimeUnit.HOURS.toNanos(hour) +
-                TimeUnit.MINUTES.toNanos(minute) +
-                TimeUnit.SECONDS.toNanos(second) +
-                TimeUnit.MICROSECONDS.toNanos(micros));
+            long nanos = -(((long) hour) * NANOS_OF_HOUR + ((long) minute) * NANOS_OF_MINUTE +
+                ((long) second) * NANOS_OF_SECOND + micros * NANOS_OF_MICRO);
 
-            return LocalTime.ofNanoOfDay(((nanos % NANO_OF_DAY) + NANO_OF_DAY) % NANO_OF_DAY);
+            return LocalTime.ofNanoOfDay(((nanos % NANOS_OF_DAY) + NANOS_OF_DAY) % NANOS_OF_DAY);
         } else {
-            return LocalTime.of(hour % HOURS_OF_DAY, minute, second, (int) TimeUnit.MICROSECONDS.toNanos(micros));
+            return LocalTime.of(hour % HOURS_OF_DAY, minute, second, (int) (micros * NANOS_OF_MICRO));
         }
     }
 
     static void encodeTime(ParameterWriter writer, LocalTime time) {
-        int micros = (int) TimeUnit.NANOSECONDS.toMicros(time.getNano());
+        int micros = time.getNano() / NANOS_OF_MICRO;
         DurationCodec.encodeTime(writer, false, time.getHour(), time.getMinute(), time.getSecond(), micros);
     }
 
@@ -150,7 +159,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
                 }
 
                 int nanos = time.getNano();
-                int size = nanos > 0 ? DateTimes.MICRO_TIME_SIZE : DateTimes.TIME_SIZE;
+                int size = nanos > 0 ? MICRO_TIME_SIZE : TIME_SIZE;
 
                 ByteBuf buf = allocator.buffer(Byte.BYTES + size);
 
@@ -163,7 +172,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
                         .writeByte(time.getSecond());
 
                     if (nanos > 0) {
-                        return buf.writeIntLE(nanos / DateTimes.NANOS_OF_MICRO);
+                        return buf.writeIntLE(nanos / NANOS_OF_MICRO);
                     }
 
                     return buf;
