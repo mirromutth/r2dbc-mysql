@@ -46,23 +46,64 @@ final class DateTimes {
 
     static final int SECONDS_OF_DAY = SECONDS_OF_HOUR * 24;
 
+    static final int HOURS_OF_DAY = 24;
+
     static final int NANOS_OF_SECOND = 1000_000_000;
 
     static final int NANOS_OF_MICRO = 1000;
 
+    static final long NANOS_OF_DAY = ((long) SECONDS_OF_DAY) * NANOS_OF_SECOND;
+
+    static final long NANOS_OF_HOUR = ((long) SECONDS_OF_HOUR) * NANOS_OF_SECOND;
+
+    static final long NANOS_OF_MINUTE = ((long) SECONDS_OF_MINUTE) * NANOS_OF_SECOND;
+
     private static final String ILLEGAL_ARGUMENT = "S1009";
+
+    private static final int MICRO_DIGITS = 6;
+
+    /**
+     * Read microseconds part, it is not like {@link #readIntInDigits(ByteBuf)}。
+     * For example, 3:45:59.1, should format microseconds as 100000 rather than 1.
+     *
+     * @param buf the buffer that want to be decoded.
+     * @return the value of microseconds, from 0 to 999999.
+     */
+    static int readMicroInDigits(ByteBuf buf) {
+        if (!buf.isReadable()) {
+            return 0;
+        }
+
+        int micro = 0;
+        int num;
+        byte digit;
+        for (num = MICRO_DIGITS; buf.isReadable() && num > 0; --num) {
+            digit = buf.readByte();
+
+            if (digit < '0' || digit > '9') {
+                break;
+            }
+
+            micro = micro * 10 + (digit - '0');
+        }
+
+        while (num-- > 0) {
+            micro *= 10;
+        }
+
+        return micro;
+    }
 
     static int readIntInDigits(ByteBuf buf) {
         if (!buf.isReadable()) {
             return 0;
         }
 
-        int readerIndex = buf.readerIndex();
         int writerIndex = buf.writerIndex();
         int result = 0;
         byte digit;
 
-        for (int i = readerIndex; i < writerIndex; ++i) {
+        for (int i = buf.readerIndex(); i < writerIndex; ++i) {
             digit = buf.getByte(i);
 
             if (digit >= '0' && digit <= '9') {
