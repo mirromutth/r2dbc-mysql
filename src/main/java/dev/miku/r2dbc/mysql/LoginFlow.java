@@ -59,8 +59,6 @@ final class LoginFlow {
 
     private static final String CLI_SPECIFIC_CONDITION = "HY000";
 
-    private static final byte AUTH_SUCCEED = 3;
-
     private static final int CURRENT_HANDSHAKE_VERSION = 10;
 
     private final Client client;
@@ -311,7 +309,7 @@ final class LoginFlow {
         HANDSHAKE {
 
             private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof OkMessage ||
-                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != AUTH_SUCCEED) ||
+                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).isFailed()) ||
                 message instanceof ChangeAuthMessage;
 
             @Override
@@ -324,7 +322,7 @@ final class LoginFlow {
                         } else if (message instanceof OkMessage) {
                             sink.next(COMPLETED);
                         } else if (message instanceof AuthMoreDataMessage) {
-                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != AUTH_SUCCEED) {
+                            if (((AuthMoreDataMessage) message).isFailed()) {
                                 if (logger.isDebugEnabled()) {
                                     logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
                                 }
@@ -345,7 +343,7 @@ final class LoginFlow {
         CHANGE_AUTH {
 
             private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof OkMessage ||
-                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).getAuthMethodData()[0] != AUTH_SUCCEED);
+                (message instanceof AuthMoreDataMessage && ((AuthMoreDataMessage) message).isFailed());
 
             @Override
             Mono<State> handle(LoginFlow flow) {
@@ -357,7 +355,7 @@ final class LoginFlow {
                         } else if (message instanceof OkMessage) {
                             sink.next(COMPLETED);
                         } else if (message instanceof AuthMoreDataMessage) {
-                            if (((AuthMoreDataMessage) message).getAuthMethodData()[0] != AUTH_SUCCEED) {
+                            if (((AuthMoreDataMessage) message).isFailed()) {
                                 if (logger.isDebugEnabled()) {
                                     logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", flow.context.getConnectionId());
                                 }
