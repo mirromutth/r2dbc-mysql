@@ -24,23 +24,73 @@ import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
+import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.chrono.ChronoLocalDateTime;
 
 /**
- * Codec for {@link LocalDateTime}.
+ * Codec for {@link LocalDateTime} and {@link ChronoLocalDateTime}.
+ * <p>
+ * For now, supports A.D. calendar only in {@link ChronoLocalDateTime}.
  */
-final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
+final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
 
     private static final LocalDateTime ROUND = LocalDateTime.of(LocalDateCodec.ROUND, LocalTime.MIN);
 
+    private final ByteBufAllocator allocator;
+
     LocalDateTimeCodec(ByteBufAllocator allocator) {
-        super(allocator, LocalDateTime.class);
+        this.allocator = allocator;
     }
 
     @Override
     public LocalDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+        return decode0(value, binary, context);
+    }
+
+    @Override
+    public boolean canEncode(Object value) {
+        return value instanceof LocalDateTime;
+    }
+
+    @Override
+    public ChronoLocalDateTime<LocalDate> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
+        return decode0(value, binary, context);
+    }
+
+    @Override
+    public boolean canDecode(FieldInformation info, ParameterizedType target) {
+        short type = info.getType();
+
+        if (DataTypes.DATETIME != type && DataTypes.TIMESTAMP != type && DataTypes.TIMESTAMP2 != type) {
+            return false;
+        }
+
+        Class<?> argument = ParametrizedUtils.getTypeArgument(target, ChronoLocalDateTime.class);
+
+        if (argument == null) {
+            return false;
+        }
+
+        return argument == LocalDate.class;
+    }
+
+    @Override
+    public Parameter encode(Object value, CodecContext context) {
+        return new LocalDateTimeParameter(allocator, (LocalDateTime) value);
+    }
+
+    @Override
+    public boolean canDecode(FieldInformation info, Class<?> target) {
+        short type = info.getType();
+        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
+            target.isAssignableFrom(LocalDateTime.class);
+    }
+
+    @Nullable
+    private static LocalDateTime decode0(ByteBuf value, boolean binary, CodecContext context) {
         int index = value.readerIndex();
         int bytes = value.readableBytes();
         LocalDateTime dateTime = binary ? decodeBinary(value, bytes) : decodeText(value);
@@ -50,22 +100,6 @@ final class LocalDateTimeCodec extends AbstractClassedCodec<LocalDateTime> {
         }
 
         return DateTimes.zeroDate(context.getZeroDateOption(), binary, value, index, bytes, ROUND);
-    }
-
-    @Override
-    public boolean canEncode(Object value) {
-        return value instanceof LocalDateTime;
-    }
-
-    @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new LocalDateTimeParameter(allocator, (LocalDateTime) value);
-    }
-
-    @Override
-    public boolean doCanDecode(FieldInformation info) {
-        short type = info.getType();
-        return DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type;
     }
 
     @Nullable
