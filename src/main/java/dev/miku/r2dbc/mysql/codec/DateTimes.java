@@ -40,23 +40,17 @@ final class DateTimes {
 
     static final int MICRO_TIME_SIZE = TIME_SIZE + Integer.BYTES;
 
+    static final int HOURS_OF_DAY = 24;
+
     static final int SECONDS_OF_MINUTE = 60;
 
     static final int SECONDS_OF_HOUR = SECONDS_OF_MINUTE * 60;
 
-    static final int SECONDS_OF_DAY = SECONDS_OF_HOUR * 24;
-
-    static final int HOURS_OF_DAY = 24;
+    static final int SECONDS_OF_DAY = SECONDS_OF_HOUR * HOURS_OF_DAY;
 
     static final int NANOS_OF_SECOND = 1000_000_000;
 
     static final int NANOS_OF_MICRO = 1000;
-
-    static final long NANOS_OF_DAY = ((long) SECONDS_OF_DAY) * NANOS_OF_SECOND;
-
-    static final long NANOS_OF_HOUR = ((long) SECONDS_OF_HOUR) * NANOS_OF_SECOND;
-
-    static final long NANOS_OF_MINUTE = ((long) SECONDS_OF_MINUTE) * NANOS_OF_SECOND;
 
     private static final String ILLEGAL_ARGUMENT = "S1009";
 
