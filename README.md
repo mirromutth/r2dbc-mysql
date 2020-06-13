@@ -162,7 +162,7 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 ```java
 MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builder()
     .host("127.0.0.1")
-    .username("root")
+    .user("root")
     .port(3306) // optional, default 3306
     .password("database-password-in-here") // optional, default null, null means has no password
     .database("r2dbc") // optional, default null, null means not specifying the database
@@ -186,7 +186,7 @@ Or use unix domain socket like following:
 // Minimum configuration for unix domain socket
 MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builder()
     .unixSocket("/path/to/mysql.sock")
-    .username("root")
+    .user("root")
     .build();
 ConnectionFactory connectionFactory = MySqlConnectionFactory.from(configuration);
 
@@ -201,7 +201,7 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 | host | A hostname or IP | Required when `unixSocket` does not exists | The host of MySQL database server |
 | unixSocket | An absolute or relative path | Required when `host` does not exists | The `.sock` file of Unix Domain Socket |
 | port | A positive integer less than 65536 | Optional, default 3306 | The port of MySQL database server |
-| username | A valid MySQL username and not be empty | Required | Who wants to connect to the MySQL database |
+| user/username | A valid MySQL username and not be empty | Required | Who wants to connect to the MySQL database |
 | password | Any printable string | Optional, default no password | The password of the MySQL database user |
 | database | A valid MySQL database name | Optional, default does not initialize database | Database used by the MySQL connection |
 | connectTimeout | A `Duration` which must be positive duration | Optional, default has no timeout | TCP connect timeout |

@@ -165,7 +165,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.autodetectExtensions(autodetectExtensions);
         }
 
-        MySqlConnectionConfiguration configuration = builder.username(options.getRequiredValue(USER))
+        MySqlConnectionConfiguration configuration = builder.user(options.getRequiredValue(USER))
             .password(options.getValue(PASSWORD))
             .connectTimeout(options.getValue(CONNECT_TIMEOUT))
             .database(options.getValue(DATABASE))
