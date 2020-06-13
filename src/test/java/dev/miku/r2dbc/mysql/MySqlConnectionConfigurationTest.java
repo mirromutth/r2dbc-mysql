@@ -45,7 +45,7 @@ class MySqlConnectionConfigurationTest {
 
     private static final String UNIX_SOCKET = "/path/to/mysql.sock";
 
-    private static final String USERNAME = "root";
+    private static final String USER = "root";
 
     private static final String SSL_CA = "/path/to/mysql/ca.pem";
 
@@ -57,7 +57,7 @@ class MySqlConnectionConfigurationTest {
         asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().build());
         asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().host(HOST).build());
         asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().unixSocket(UNIX_SOCKET).build());
-        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().username(USERNAME).build());
+        asserted.isThrownBy(() -> MySqlConnectionConfiguration.builder().user(USER).build());
     }
 
     @Test
@@ -72,10 +72,10 @@ class MySqlConnectionConfigurationTest {
 
         ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(MySqlConnectionConfiguration.builder()
             .unixSocket(UNIX_SOCKET)
-            .username(USERNAME)
+            .user(USER)
             .build());
         asserted.extracting(MySqlConnectionConfiguration::getDomain).isEqualTo(UNIX_SOCKET);
-        asserted.extracting(MySqlConnectionConfiguration::getUsername).isEqualTo(USERNAME);
+        asserted.extracting(MySqlConnectionConfiguration::getUser).isEqualTo(USER);
         asserted.extracting(MySqlConnectionConfiguration::isHost).isEqualTo(false);
         asserted.extracting(MySqlConnectionConfiguration::getSsl).extracting(MySqlSslConfiguration::getSslMode).isEqualTo(SslMode.DISABLED);
     }
@@ -93,10 +93,10 @@ class MySqlConnectionConfigurationTest {
 
         ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(MySqlConnectionConfiguration.builder()
             .host(HOST)
-            .username(USERNAME)
+            .user(USER)
             .build());
         asserted.extracting(MySqlConnectionConfiguration::getDomain).isEqualTo(HOST);
-        asserted.extracting(MySqlConnectionConfiguration::getUsername).isEqualTo(USERNAME);
+        asserted.extracting(MySqlConnectionConfiguration::getUser).isEqualTo(USER);
         asserted.extracting(MySqlConnectionConfiguration::isHost).isEqualTo(true);
         asserted.extracting(MySqlConnectionConfiguration::getSsl).extracting(MySqlSslConfiguration::getSslMode).isEqualTo(SslMode.PREFERRED);
     }
@@ -127,7 +127,7 @@ class MySqlConnectionConfigurationTest {
         };
         MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builder()
             .host(HOST)
-            .username(USERNAME)
+            .user(USER)
             .sslMode(SslMode.REQUIRED)
             .sslContextBuilderCustomizer(customizer)
             .build();
@@ -150,7 +150,7 @@ class MySqlConnectionConfigurationTest {
         List<Extension> list = new ArrayList<>();
         MySqlConnectionConfiguration.builder()
             .host(HOST)
-            .username(USERNAME)
+            .user(USER)
             .build()
             .getExtensions()
             .forEach(Extension.class, list::add);
@@ -162,7 +162,7 @@ class MySqlConnectionConfigurationTest {
         List<Extension> list = new ArrayList<>();
         MySqlConnectionConfiguration.builder()
             .host(HOST)
-            .username(USERNAME)
+            .user(USER)
             .autodetectExtensions(false)
             .build()
             .getExtensions()
@@ -173,7 +173,7 @@ class MySqlConnectionConfigurationTest {
     private static MySqlConnectionConfiguration unixSocketSslMode(SslMode sslMode) {
         return MySqlConnectionConfiguration.builder()
             .unixSocket(UNIX_SOCKET)
-            .username(USERNAME)
+            .user(USER)
             .sslMode(sslMode)
             .build();
     }
@@ -181,7 +181,7 @@ class MySqlConnectionConfigurationTest {
     private static MySqlConnectionConfiguration hostedSslMode(SslMode sslMode, @Nullable String sslCa) {
         return MySqlConnectionConfiguration.builder()
             .host(HOST)
-            .username(USERNAME)
+            .user(USER)
             .sslMode(sslMode)
             .sslCa(sslCa)
             .build();
@@ -190,7 +190,7 @@ class MySqlConnectionConfigurationTest {
     private static MySqlConnectionConfiguration filledUp() {
         return MySqlConnectionConfiguration.builder()
             .host(HOST)
-            .username(USERNAME)
+            .user(USER)
             .port(3306)
             .password("database-password-in-here")
             .database("r2dbc")

@@ -46,7 +46,7 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     private final SslRequest41 head;
 
-    private final String username;
+    private final String user;
 
     private final byte[] authentication;
 
@@ -58,10 +58,10 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     // private final byte zStdCompressionLevel; // When Z-Standard compression supporting
 
-    HandshakeResponse41(int capabilities, int collationId, String username, byte[] authentication, String authType, String database, Map<String, String> attributes) {
+    HandshakeResponse41(int capabilities, int collationId, String user, byte[] authentication, String authType, String database, Map<String, String> attributes) {
         this.head = new SslRequest41(capabilities, collationId);
 
-        this.username = requireNonNull(username, "username must not be null");
+        this.user = requireNonNull(user, "user must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
         this.authType = requireNonNull(authType, "authType must not be null");
@@ -82,7 +82,7 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
         if (!head.equals(that.head)) {
             return false;
         }
-        if (!username.equals(that.username)) {
+        if (!user.equals(that.user)) {
             return false;
         }
         if (!Arrays.equals(authentication, that.authentication)) {
@@ -100,7 +100,7 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
     @Override
     public int hashCode() {
         int result = head.hashCode();
-        result = 31 * result + username.hashCode();
+        result = 31 * result + user.hashCode();
         result = 31 * result + Arrays.hashCode(authentication);
         result = 31 * result + authType.hashCode();
         result = 31 * result + database.hashCode();
@@ -110,8 +110,8 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     @Override
     public String toString() {
-        return String.format("HandshakeResponse41{capabilities=%x, collationId=%d, username='%s', authentication=REDACTED, authType='%s', database='%s', attributes=%s}",
-            head.getCapabilities(), head.getCollationId(), username, authType, database, attributes);
+        return String.format("HandshakeResponse41{capabilities=%x, collationId=%d, user='%s', authentication=REDACTED, authType='%s', database='%s', attributes=%s}",
+            head.getCapabilities(), head.getCollationId(), user, authType, database, attributes);
     }
 
     @Override
@@ -121,7 +121,7 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
         int capabilities = head.getCapabilities();
         Charset charset = context.getClientCollation().getCharset();
 
-        HandshakeResponse.writeCString(buf, username, charset);
+        HandshakeResponse.writeCString(buf, user, charset);
 
         if ((capabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0) {
             writeVarIntSizedBytes(buf, authentication);

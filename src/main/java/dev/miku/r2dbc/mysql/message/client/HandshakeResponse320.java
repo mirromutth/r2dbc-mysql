@@ -41,15 +41,15 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
 
     private final SslRequest320 head;
 
-    private final String username;
+    private final String user;
 
     private final byte[] authentication;
 
     private final String database;
 
-    HandshakeResponse320(int capabilities, String username, byte[] authentication, String database) {
+    HandshakeResponse320(int capabilities, String user, byte[] authentication, String database) {
         this.head = new SslRequest320(capabilities);
-        this.username = requireNonNull(username, "username must not be null");
+        this.user = requireNonNull(user, "user must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
     }
@@ -68,7 +68,7 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
         if (!head.equals(that.head)) {
             return false;
         }
-        if (!username.equals(that.username)) {
+        if (!user.equals(that.user)) {
             return false;
         }
         if (!Arrays.equals(authentication, that.authentication)) {
@@ -80,7 +80,7 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
     @Override
     public int hashCode() {
         int result = head.hashCode();
-        result = 31 * result + username.hashCode();
+        result = 31 * result + user.hashCode();
         result = 31 * result + Arrays.hashCode(authentication);
         result = 31 * result + database.hashCode();
         return result;
@@ -88,8 +88,8 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
 
     @Override
     public String toString() {
-        return String.format("HandshakeResponse320{capabilities=%x, username='%s', authentication=REDACTED, database='%s'}",
-            head.getCapabilities(), username, database);
+        return String.format("HandshakeResponse320{capabilities=%x, user='%s', authentication=REDACTED, database='%s'}",
+            head.getCapabilities(), user, database);
     }
 
     @Override
@@ -98,7 +98,7 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
 
         Charset charset = context.getClientCollation().getCharset();
 
-        HandshakeResponse.writeCString(buf, username, charset);
+        HandshakeResponse.writeCString(buf, user, charset);
 
         if ((head.getCapabilities() & Capabilities.CONNECT_WITH_DB) == 0) {
             // Write to end-of-buffer because has no database following.

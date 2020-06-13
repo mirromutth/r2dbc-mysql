@@ -30,13 +30,13 @@ import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 public interface HandshakeResponse extends ExchangeableMessage {
 
     static HandshakeResponse from(
-        int capabilities, int collationId, String username, byte[] authentication,
+        int capabilities, int collationId, String user, byte[] authentication,
         String authType, String database, Map<String, String> attributes
     ) {
         if ((capabilities & Capabilities.PROTOCOL_41) == 0) {
-            return new HandshakeResponse320(capabilities, username, authentication, database);
+            return new HandshakeResponse320(capabilities, user, authentication, database);
         } else {
-            return new HandshakeResponse41(capabilities, collationId, username, authentication, authType, database, attributes);
+            return new HandshakeResponse41(capabilities, collationId, user, authentication, authType, database, attributes);
         }
     }
 

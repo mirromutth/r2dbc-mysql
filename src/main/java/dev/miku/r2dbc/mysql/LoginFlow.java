@@ -73,18 +73,18 @@ final class LoginFlow {
 
     private volatile MySqlAuthProvider authProvider;
 
-    private volatile String username;
+    private volatile String user;
 
     private volatile CharSequence password;
 
     private volatile byte[] salt;
 
-    private LoginFlow(Client client, SslMode sslMode, String database, ConnectionContext context, String username, @Nullable CharSequence password) {
+    private LoginFlow(Client client, SslMode sslMode, String database, ConnectionContext context, String user, @Nullable CharSequence password) {
         this.client = requireNonNull(client, "client must not be null");
         this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
         this.database = requireNonNull(database, "database must not be null");
         this.context = requireNonNull(context, "context must not be null");
-        this.username = requireNonNull(username, "username must not be null");
+        this.user = requireNonNull(user, "user must not be null");
         this.password = password;
     }
 
@@ -136,9 +136,9 @@ final class LoginFlow {
                 throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), "handshake"), CLI_SPECIFIC_CONDITION);
             }
 
-            String username = this.username;
-            if (username == null) {
-                throw new IllegalStateException("username must not be null when login");
+            String user = this.user;
+            if (user == null) {
+                throw new IllegalStateException("user must not be null when login");
             }
 
             byte[] authorization = authProvider.authentication(password, salt, context.getClientCollation());
@@ -153,7 +153,7 @@ final class LoginFlow {
             return HandshakeResponse.from(
                 context.getCapabilities(),
                 context.getClientCollation().getId(),
-                username,
+                user,
                 authorization,
                 authType,
                 database,
@@ -217,7 +217,7 @@ final class LoginFlow {
      * All authentication data should be remove when connection phase completed or client closed in connection phase.
      */
     private void clearAuthentication() {
-        this.username = null;
+        this.user = null;
         this.password = null;
         this.salt = null;
         this.authProvider = null;
@@ -233,8 +233,8 @@ final class LoginFlow {
         client.forceClose().subscribe();
     }
 
-    static Mono<Client> login(Client client, SslMode sslMode, String database, ConnectionContext context, String username, @Nullable CharSequence password) {
-        LoginFlow flow = new LoginFlow(client, sslMode, database, context, username, password);
+    static Mono<Client> login(Client client, SslMode sslMode, String database, ConnectionContext context, String user, @Nullable CharSequence password) {
+        LoginFlow flow = new LoginFlow(client, sslMode, database, context, user, password);
         EmitterProcessor<State> stateMachine = EmitterProcessor.create(1, true);
 
         stateMachine.onNext(State.INIT);

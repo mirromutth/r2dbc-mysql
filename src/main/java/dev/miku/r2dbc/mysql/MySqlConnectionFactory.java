@@ -70,7 +70,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             }
 
             String database = configuration.getDatabase();
-            String username = configuration.getUsername();
+            String user = configuration.getUser();
             CharSequence password = configuration.getPassword();
             SslMode sslMode = ssl.getSslMode();
             Predicate<String> prepare = configuration.getPreferPrepareStatement();
@@ -78,7 +78,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             Extensions extensions = configuration.getExtensions();
 
             return Client.connect(address, ssl, context, configuration.getConnectTimeout())
-                .flatMap(client -> LoginFlow.login(client, sslMode, database, context, username, password))
+                .flatMap(client -> LoginFlow.login(client, sslMode, database, context, user, password))
                 .flatMap(client -> {
                     ByteBufAllocator allocator = client.getByteBufAllocator();
                     CodecsBuilder builder = Codecs.builder(allocator);
