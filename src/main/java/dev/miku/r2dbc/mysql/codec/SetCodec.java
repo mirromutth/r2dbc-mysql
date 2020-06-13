@@ -20,14 +20,13 @@ import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
-import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -114,23 +113,13 @@ final class SetCodec implements ParametrizedCodec<String[]> {
             return false;
         }
 
-        Type[] typeArguments = target.getActualTypeArguments();
+        Class<?> argument = ParametrizedUtils.getTypeArgument(target, Set.class);
 
-        if (typeArguments.length != 1) {
+        if (argument == null) {
             return false;
         }
 
-        Type rawType = target.getRawType();
-        Type subType = typeArguments[0];
-
-        if (!(rawType instanceof Class<?>) || !(subType instanceof Class<?>)) {
-            return false;
-        }
-
-        Class<?> rawClass = (Class<?>) rawType;
-        Class<?> subClass = (Class<?>) subType;
-
-        return rawClass.isAssignableFrom(Set.class) && (subClass.isEnum() || subClass.isAssignableFrom(String.class));
+        return argument.isEnum() || argument.isAssignableFrom(String.class);
     }
 
     @Override
