@@ -77,7 +77,6 @@ public interface Client {
         requireNonNull(ssl, "ssl must not be null");
         requireNonNull(context, "context must not be null");
 
-
         TcpClient tcpClient = TcpClient.newConnection();
 
         if (connectTimeout != null) {

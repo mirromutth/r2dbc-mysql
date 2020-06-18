@@ -19,8 +19,8 @@ package dev.miku.r2dbc.mysql.codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
-import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
 import org.testcontainers.shaded.org.apache.commons.lang.ArrayUtils;
+import org.testcontainers.shaded.org.bouncycastle.util.encoders.Hex;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -57,7 +57,7 @@ class BitSetCodecTest implements CodecTestSupport<BitSet> {
             } else {
                 byte[] bytes = it.toByteArray();
                 ArrayUtils.reverse(bytes);
-                return String.format("x'%s'", Hex.encodeHexString(bytes, false));
+                return String.format("x'%s'", Hex.toHexString(bytes).toUpperCase());
             }
         }).toArray();
     }

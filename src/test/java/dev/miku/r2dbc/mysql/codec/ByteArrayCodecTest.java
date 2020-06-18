@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
-import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
+import org.testcontainers.shaded.org.bouncycastle.util.encoders.Hex;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -52,7 +52,7 @@ class ByteArrayCodecTest implements CodecTestSupport<byte[]> {
     @Override
     public Object[] stringifyParameters() {
         return Arrays.stream(bytes)
-            .map(it -> String.format("x'%s'", Hex.encodeHexString(it, false)))
+            .map(it -> String.format("x'%s'", Hex.toHexString(it).toUpperCase()))
             .toArray();
     }
 

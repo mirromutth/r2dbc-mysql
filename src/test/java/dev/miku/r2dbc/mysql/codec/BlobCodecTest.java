@@ -20,7 +20,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.r2dbc.spi.Blob;
-import org.testcontainers.shaded.org.apache.commons.codec.binary.Hex;
+import org.testcontainers.shaded.org.bouncycastle.util.encoders.Hex;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -88,7 +88,7 @@ class BlobCodecTest implements CodecTestSupport<Blob> {
     public Object[] stringifyParameters() {
         return Arrays.stream(blob)
             .map(it -> Arrays.stream(it.values)
-                .map(v -> v.length == 0 ? "" : Hex.encodeHexString(v, false))
+                .map(v -> v.length == 0 ? "" : Hex.toHexString(v).toUpperCase())
                 .collect(Collectors.joining("", "x'", "'")))
             .toArray();
     }
