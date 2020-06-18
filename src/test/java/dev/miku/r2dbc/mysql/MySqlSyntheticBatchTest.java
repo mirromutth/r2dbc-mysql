@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,7 +28,7 @@ import static org.mockito.Mockito.mock;
  */
 class MySqlSyntheticBatchTest {
 
-    private final MySqlSyntheticBatch batch = new MySqlSyntheticBatch(mock(Client.class), mock(Codecs.class), new ConnectionContext(ZeroDateOption.USE_NULL));
+    private final MySqlSyntheticBatch batch = new MySqlSyntheticBatch(mock(Client.class), mock(Codecs.class), ConnectionContextTest.mock());
 
     @SuppressWarnings("ConstantConditions")
     @Test

@@ -22,6 +22,6 @@ package dev.miku.r2dbc.mysql;
 class JacksonTextIntegrationTest extends JacksonIntegrationTestSupport {
 
     JacksonTextIntegrationTest() {
-        super(configuration(true, null));
+        super(configuration(true, null, null));
     }
 }

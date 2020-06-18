@@ -23,6 +23,7 @@ import io.netty.handler.ssl.SslContextBuilder;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -63,6 +64,9 @@ public final class MySqlConnectionConfiguration {
     @Nullable
     private final Duration connectTimeout;
 
+    @Nullable
+    private final ZoneId serverZoneId;
+
     private final ZeroDateOption zeroDateOption;
 
     private final String user;
@@ -79,7 +83,7 @@ public final class MySqlConnectionConfiguration {
 
     private MySqlConnectionConfiguration(
         boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
-        @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption,
+        @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
         String user, @Nullable CharSequence password, @Nullable String database,
         @Nullable Predicate<String> preferPrepareStatement, Extensions extensions
     ) {
@@ -88,6 +92,7 @@ public final class MySqlConnectionConfiguration {
         this.port = port;
         this.connectTimeout = connectTimeout;
         this.ssl = requireNonNull(ssl, "ssl must not be null");
+        this.serverZoneId = serverZoneId;
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.user = requireNonNull(user, "user must not be null");
         this.password = password;
@@ -123,6 +128,11 @@ public final class MySqlConnectionConfiguration {
 
     ZeroDateOption getZeroDateOption() {
         return zeroDateOption;
+    }
+
+    @Nullable
+    ZoneId getServerZoneId() {
+        return serverZoneId;
     }
 
     String getUser() {
@@ -161,6 +171,7 @@ public final class MySqlConnectionConfiguration {
             port == that.port &&
             ssl.equals(that.ssl) &&
             Objects.equals(connectTimeout, that.connectTimeout) &&
+            Objects.equals(serverZoneId, that.serverZoneId) &&
             zeroDateOption == that.zeroDateOption &&
             user.equals(that.user) &&
             Objects.equals(password, that.password) &&
@@ -171,19 +182,37 @@ public final class MySqlConnectionConfiguration {
 
     @Override
     public int hashCode() {
-        return Objects.hash(isHost, domain, port, ssl, connectTimeout, zeroDateOption, user, password, database, preferPrepareStatement, extensions);
+        return Objects.hash(isHost, domain, port, ssl, connectTimeout, serverZoneId, zeroDateOption, user, password, database, preferPrepareStatement, extensions);
     }
 
     @Override
     public String toString() {
         if (isHost) {
-            return String.format("MySqlConnectionConfiguration{host=%s, port=%d, ssl=%s, connectTimeout=%s, zeroDateOption=%s, user='%s', password=REDACTED, database='%s', " +
-                    "preferPrepareStatement=%s, extensions=%s}",
-                domain, port, ssl, connectTimeout, zeroDateOption, user, database, preferPrepareStatement, extensions);
+            return "MySqlConnectionConfiguration{" +
+                ", host='" + domain + '\'' +
+                ", port=" + port +
+                ", ssl=" + ssl +
+                ", connectTimeout=" + connectTimeout +
+                ", serverZoneId=" + serverZoneId +
+                ", zeroDateOption=" + zeroDateOption +
+                ", user='" + user + '\'' +
+                ", password=" + password +
+                ", database='" + database + '\'' +
+                ", preferPrepareStatement=" + preferPrepareStatement +
+                ", extensions=" + extensions +
+                '}';
         } else {
-            return String.format("MySqlConnectionConfiguration{unixSocket=%s, connectTimeout=%s, zeroDateOption=%s, user='%s', password=REDACTED, database='%s', preferPrepareStatement=%s, " +
-                    "extensions=%s}",
-                domain, connectTimeout, zeroDateOption, user, database, preferPrepareStatement, extensions);
+            return "MySqlConnectionConfiguration{" +
+                ", unixSocket='" + domain + '\'' +
+                ", connectTimeout=" + connectTimeout +
+                ", serverZoneId=" + serverZoneId +
+                ", zeroDateOption=" + zeroDateOption +
+                ", user='" + user + '\'' +
+                ", password=" + password +
+                ", database='" + database + '\'' +
+                ", preferPrepareStatement=" + preferPrepareStatement +
+                ", extensions=" + extensions +
+                '}';
         }
     }
 
@@ -207,6 +236,9 @@ public final class MySqlConnectionConfiguration {
         private String user;
 
         private ZeroDateOption zeroDateOption = ZeroDateOption.USE_NULL;
+
+        @Nullable
+        private ZoneId serverZoneId;
 
         @Nullable
         private SslMode sslMode;
@@ -250,8 +282,8 @@ public final class MySqlConnectionConfiguration {
             }
 
             MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
-            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, user, password, database, preferPrepareStatement,
-                Extensions.from(extensions, autodetectExtensions));
+            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, serverZoneId,
+                user, password, database, preferPrepareStatement, Extensions.from(extensions, autodetectExtensions));
         }
 
         /**
@@ -350,6 +382,17 @@ public final class MySqlConnectionConfiguration {
          */
         public Builder username(String user) {
             return user(user);
+        }
+
+        /**
+         * Enforce the time zone of server.  Default to query server time zone in initialization (no enforce).
+         *
+         * @param serverZoneId the {@link ZoneId}, or {@code null} if query in initialization.
+         * @return this {@link Builder}
+         */
+        public Builder serverZoneId(@Nullable ZoneId serverZoneId) {
+            this.serverZoneId = serverZoneId;
+            return this;
         }
 
         /**

@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,7 +29,7 @@ import static org.mockito.Mockito.mock;
  */
 class MySqlBatchingBatchTest {
 
-    private final MySqlBatchingBatch batch = new MySqlBatchingBatch(mock(Client.class), mock(Codecs.class), new ConnectionContext(ZeroDateOption.USE_NULL));
+    private final MySqlBatchingBatch batch = new MySqlBatchingBatch(mock(Client.class), mock(Codecs.class), ConnectionContextTest.mock());
 
     @Test
     void add() {

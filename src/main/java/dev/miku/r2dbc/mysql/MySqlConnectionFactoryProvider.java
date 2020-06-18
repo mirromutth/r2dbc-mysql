@@ -24,19 +24,13 @@ import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
 
+import java.time.ZoneId;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.r2dbc.spi.ConnectionFactoryOptions.CONNECT_TIMEOUT;
-import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
-import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
-import static io.r2dbc.spi.ConnectionFactoryOptions.HOST;
-import static io.r2dbc.spi.ConnectionFactoryOptions.PASSWORD;
-import static io.r2dbc.spi.ConnectionFactoryOptions.PORT;
-import static io.r2dbc.spi.ConnectionFactoryOptions.SSL;
-import static io.r2dbc.spi.ConnectionFactoryOptions.USER;
+import static io.r2dbc.spi.ConnectionFactoryOptions.*;
 
 /**
  * An implementation of {@link ConnectionFactoryProvider} for creating {@link MySqlConnectionFactory}s.
@@ -46,6 +40,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public static final String MYSQL_DRIVER = "mysql";
 
     public static final Option<String> UNIX_SOCKET = Option.valueOf("unixSocket");
+
+    public static final Option<Object> SERVER_ZONE_ID = Option.valueOf("serverZoneId");
 
     /**
      * This option indicates special handling when MySQL server returning "zero date" (aka. "0000-00-00 00:00:00")
@@ -77,9 +73,14 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
 
         MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder();
 
-        String zeroDate = options.getValue(ZERO_DATE);
-        if (zeroDate != null) {
-            builder.zeroDateOption(ZeroDateOption.valueOf(zeroDate.toUpperCase()));
+        String unixSocket = options.getValue(UNIX_SOCKET);
+        String host = options.getValue(HOST);
+        if (unixSocket == null) {
+            requireNonNull(host, "host must not be null when unixSocket is null");
+
+            builder.host(host);
+        } else {
+            builder.unixSocket(unixSocket);
         }
 
         Integer port = options.getValue(PORT);
@@ -122,14 +123,20 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.sslContextBuilderCustomizer((Function<SslContextBuilder, SslContextBuilder>) sslContextBuilderCustomizer);
         }
 
-        String unixSocket = options.getValue(UNIX_SOCKET);
-        String host = options.getValue(HOST);
-        if (unixSocket == null) {
-            requireNonNull(host, "host must not be null when unixSocket is null");
+        Object serverZoneId = options.getValue(SERVER_ZONE_ID);
+        if (serverZoneId != null) {
+            if (serverZoneId instanceof ZoneId) {
+                builder.serverZoneId((ZoneId) serverZoneId);
+            } else if (serverZoneId instanceof String) {
+                builder.serverZoneId(ZoneId.of((String) serverZoneId));
+            } else {
+                throw new IllegalArgumentException("serverZoneId must be ZoneId or a string of ZoneId");
+            }
+        }
 
-            builder.host(host);
-        } else {
-            builder.unixSocket(unixSocket);
+        String zeroDate = options.getValue(ZERO_DATE);
+        if (zeroDate != null) {
+            builder.zeroDateOption(ZeroDateOption.valueOf(zeroDate.toUpperCase()));
         }
 
         Object serverPreparing = options.getValue(USE_SERVER_PREPARE_STATEMENT);
