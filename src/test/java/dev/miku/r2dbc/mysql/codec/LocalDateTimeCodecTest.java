@@ -21,39 +21,12 @@ import io.netty.buffer.ByteBufAllocator;
 
 import java.nio.charset.Charset;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.SignStyle;
 import java.util.Arrays;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
-
-import static java.time.temporal.ChronoField.*;
 
 /**
  * Unit tests for {@link LocalDateTimeCodec}.
  */
-class LocalDateTimeCodecTest implements CodecTestSupport<LocalDateTime> {
-
-    private final DateTimeFormatter formatter = new DateTimeFormatterBuilder()
-        .appendLiteral('\'')
-        .appendValue(YEAR, 4, 19, SignStyle.NORMAL)
-        .appendLiteral('-')
-        .appendValue(MONTH_OF_YEAR, 2)
-        .appendLiteral('-')
-        .appendValue(DAY_OF_MONTH, 2)
-        .appendLiteral(' ')
-        .appendValue(HOUR_OF_DAY, 2)
-        .appendLiteral(':')
-        .appendValue(MINUTE_OF_HOUR, 2)
-        .appendLiteral(':')
-        .appendValue(SECOND_OF_MINUTE, 2)
-        .optionalStart()
-        .appendFraction(MICRO_OF_SECOND, 0, 6, true)
-        .optionalEnd()
-        .appendLiteral('\'')
-        .toFormatter(Locale.ENGLISH);
+class LocalDateTimeCodecTest extends DateTimeCodecTestSupport<LocalDateTime> {
 
     private final LocalDateTime[] dateTimes = multiple();
 
@@ -69,31 +42,12 @@ class LocalDateTimeCodecTest implements CodecTestSupport<LocalDateTime> {
 
     @Override
     public Object[] stringifyParameters() {
-        return Arrays.stream(dateTimes).map(formatter::format).toArray();
+        return Arrays.stream(dateTimes).map(this::toText).toArray();
     }
 
     @Override
     public ByteBuf[] binaryParameters(Charset charset) {
-        return Arrays.stream(dateTimes)
-            .map(it -> {
-                ByteBuf buf = LocalDateCodecTest.encode(it.toLocalDate());
-                LocalTime time = it.toLocalTime();
-
-                if (LocalTime.MIDNIGHT.equals(time)) {
-                    return buf;
-                }
-
-                buf.writeByte(time.getHour())
-                    .writeByte(time.getMinute())
-                    .writeByte(time.getSecond());
-
-                if (time.getNano() != 0) {
-                    buf.writeIntLE((int) TimeUnit.NANOSECONDS.toMicros(time.getNano()));
-                }
-
-                return buf;
-            })
-            .toArray(ByteBuf[]::new);
+        return Arrays.stream(dateTimes).map(this::toBinary).toArray(ByteBuf[]::new);
     }
 
     private static LocalDateTime[] multiple() {

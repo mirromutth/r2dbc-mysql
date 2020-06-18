@@ -18,11 +18,9 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import reactor.util.annotation.Nullable;
 
-import java.nio.charset.StandardCharsets;
 import java.time.temporal.Temporal;
 
 /**
@@ -115,7 +113,7 @@ final class DateTimes {
     }
 
     @Nullable
-    static <T extends Temporal> T zeroDate(ZeroDateOption option, boolean binary, ByteBuf buf, int index, int bytes, T round) {
+    static <T extends Temporal> T zeroDate(ZeroDateOption option, boolean binary, T round) {
         switch (option) {
             case USE_NULL:
                 return null;
@@ -123,13 +121,7 @@ final class DateTimes {
                 return round;
         }
 
-        String message;
-        if (binary) {
-            message = String.format("Binary value %s (hex dump) invalid and ZeroDateOption is %s", ByteBufUtil.hexDump(buf, index, bytes), ZeroDateOption.EXCEPTION.name());
-        } else {
-            message = String.format("Text value '%s' invalid and ZeroDateOption is %s", buf.toString(StandardCharsets.US_ASCII), ZeroDateOption.EXCEPTION.name());
-        }
-
+        String message = (binary ? "Binary" : "Text") + " value is zero date and ZeroDateOption is " + ZeroDateOption.EXCEPTION;
         throw new R2dbcNonTransientResourceException(message, ILLEGAL_ARGUMENT);
     }
 

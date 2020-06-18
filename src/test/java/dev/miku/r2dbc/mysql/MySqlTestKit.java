@@ -16,27 +16,19 @@
 
 package dev.miku.r2dbc.mysql;
 
-import com.zaxxer.hikari.HikariDataSource;
 import io.r2dbc.spi.test.TestKit;
 import org.springframework.jdbc.core.JdbcTemplate;
-
-import java.time.Duration;
-import java.util.Optional;
 
 /**
  * An implementation of {@link TestKit}.
  */
-class MySqlTestKit implements TestKit<String> {
-
-    private final MySqlConnectionFactory connectionFactory;
+class MySqlTestKit extends IntegrationTestSupport implements TestKit<String> {
 
     private final JdbcTemplate jdbcOperations;
 
     MySqlTestKit() {
-        MySqlConnectionConfiguration configuration = IntegrationTestSupport.configuration(false, null);
-
-        this.connectionFactory = MySqlConnectionFactory.from(configuration);
-        this.jdbcOperations = jdbc(configuration);
+        super(configuration(false, null, null));
+        this.jdbcOperations = jdbc(connectionConfiguration, null);
     }
 
     @Override
@@ -72,17 +64,5 @@ class MySqlTestKit implements TestKit<String> {
     @Override
     public String clobType() {
         return "TEXT";
-    }
-
-    private static JdbcTemplate jdbc(MySqlConnectionConfiguration configuration) {
-        HikariDataSource source = new HikariDataSource();
-
-        source.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s", configuration.getDomain(), configuration.getPort(), configuration.getDatabase()));
-        source.setUsername(configuration.getUser());
-        source.setPassword(Optional.ofNullable(configuration.getPassword()).map(Object::toString).orElse(null));
-        source.setMaximumPoolSize(1);
-        source.setConnectionTimeout(Optional.ofNullable(configuration.getConnectTimeout()).map(Duration::toMillis).orElse(0L));
-
-        return new JdbcTemplate(source);
     }
 }

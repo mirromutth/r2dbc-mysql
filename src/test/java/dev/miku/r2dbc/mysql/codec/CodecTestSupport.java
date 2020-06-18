@@ -16,10 +16,9 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.ConnectionContext;
+import dev.miku.r2dbc.mysql.ConnectionContextTest;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriterHelper;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
@@ -44,8 +43,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 interface CodecTestSupport<T> {
 
-    ConnectionContext CONTEXT = new ConnectionContext(ZeroDateOption.USE_NULL);
-
     Escaper ESCAPER = Escapers.builder()
         .addEscape('\'', "''")
         .addEscape('\0', "\\0")
@@ -64,7 +61,7 @@ interface CodecTestSupport<T> {
         assertEquals(origin.length, binaries.length);
 
         for (int i = 0; i < origin.length; ++i) {
-            merge(Flux.from(codec.encode(origin[i], CONTEXT).publishBinary()))
+            merge(Flux.from(codec.encode(origin[i], context()).publishBinary()))
                 .as(StepVerifier::create)
                 .expectNext(sized(binaries[i]))
                 .verifyComplete();
@@ -81,7 +78,7 @@ interface CodecTestSupport<T> {
 
         for (int i = 0; i < origin.length; ++i) {
             ParameterWriter writer = ParameterWriterHelper.get(1);
-            codec.encode(origin[i], CONTEXT)
+            codec.encode(origin[i], context())
                 .publishText(writer)
                 .as(StepVerifier::create)
                 .verifyComplete();
@@ -109,6 +106,10 @@ interface CodecTestSupport<T> {
                 }
             });
         });
+    }
+
+    default CodecContext context() {
+        return ConnectionContextTest.mock();
     }
 
     Codec<T> getCodec(ByteBufAllocator allocator);

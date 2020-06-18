@@ -16,15 +16,19 @@
 
 package dev.miku.r2dbc.mysql;
 
+import com.zaxxer.hikari.HikariDataSource;
 import io.r2dbc.spi.R2dbcBadGrammarException;
 import io.r2dbc.spi.Result;
 import org.reactivestreams.Publisher;
+import org.springframework.jdbc.core.JdbcTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.time.ZoneId;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -35,9 +39,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 abstract class IntegrationTestSupport {
 
-    private final MySqlConnectionFactory connectionFactory;
+    protected final MySqlConnectionConfiguration connectionConfiguration;
+
+    protected final MySqlConnectionFactory connectionFactory;
 
     IntegrationTestSupport(MySqlConnectionConfiguration configuration) {
+        this.connectionConfiguration = configuration;
         this.connectionFactory = MySqlConnectionFactory.from(configuration);
     }
 
@@ -66,7 +73,7 @@ abstract class IntegrationTestSupport {
         return Mono.from(result.getRowsUpdated());
     }
 
-    static MySqlConnectionConfiguration configuration(boolean autodetectExtensions, @Nullable Predicate<String> preferPrepared) {
+    static MySqlConnectionConfiguration configuration(boolean autodetectExtensions, @Nullable ZoneId serverZoneId, @Nullable Predicate<String> preferPrepared) {
         String password = System.getProperty("test.mysql.password");
 
         assertThat(password).withFailMessage("Property test.mysql.password must exists and not be empty")
@@ -81,6 +88,10 @@ abstract class IntegrationTestSupport {
             .database("r2dbc")
             .autodetectExtensions(autodetectExtensions);
 
+        if (serverZoneId != null) {
+            builder.serverZoneId(serverZoneId);
+        }
+
         if (preferPrepared == null) {
             builder.useClientPrepareStatement();
         } else {
@@ -88,5 +99,21 @@ abstract class IntegrationTestSupport {
         }
 
         return builder.build();
+    }
+
+    static JdbcTemplate jdbc(MySqlConnectionConfiguration configuration, @Nullable String timezone) {
+        HikariDataSource source = new HikariDataSource();
+
+        source.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s", configuration.getDomain(), configuration.getPort(), configuration.getDatabase()));
+        source.setUsername(configuration.getUser());
+        source.setPassword(Optional.ofNullable(configuration.getPassword()).map(Object::toString).orElse(null));
+        source.setMaximumPoolSize(1);
+        source.setConnectionTimeout(Optional.ofNullable(configuration.getConnectTimeout()).map(Duration::toMillis).orElse(0L));
+
+        if (timezone != null) {
+            source.addDataSourceProperty("serverTimezone", timezone);
+        }
+
+        return new JdbcTemplate(source);
     }
 }

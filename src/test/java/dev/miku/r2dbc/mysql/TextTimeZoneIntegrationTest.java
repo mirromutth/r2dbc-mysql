@@ -17,11 +17,11 @@
 package dev.miku.r2dbc.mysql;
 
 /**
- * Integration tests for {@link SimpleQuery}, {@link TextSimpleStatement} and {@link TextParametrizedStatement}.
+ * Integration tests for time zone conversion in the text protocol.
  */
-class TextQueryIntegrationTest extends QueryIntegrationTestSupport {
+class TextTimeZoneIntegrationTest extends TimeZoneIntegrationTestSupport {
 
-    TextQueryIntegrationTest() {
-        super(configuration(false, null, null));
+    TextTimeZoneIntegrationTest() {
+        super(null);
     }
 }

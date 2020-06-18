@@ -74,7 +74,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             CharSequence password = configuration.getPassword();
             SslMode sslMode = ssl.getSslMode();
             Predicate<String> prepare = configuration.getPreferPrepareStatement();
-            ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption());
+            ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption(), configuration.getServerZoneId());
             Extensions extensions = configuration.getExtensions();
 
             return Client.connect(address, ssl, context, configuration.getConnectTimeout())

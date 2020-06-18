@@ -26,7 +26,7 @@ import static io.r2dbc.spi.IsolationLevel.READ_COMMITTED;
 import static io.r2dbc.spi.IsolationLevel.READ_UNCOMMITTED;
 import static io.r2dbc.spi.IsolationLevel.REPEATABLE_READ;
 import static io.r2dbc.spi.IsolationLevel.SERIALIZABLE;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,20 +36,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConnectionIntegrationTest extends IntegrationTestSupport {
 
     ConnectionIntegrationTest() {
-        super(configuration(false, null));
+        super(configuration(false, null, null));
     }
 
     @Test
     void isInTransaction() {
-        complete(connection -> Mono.<Void>fromRunnable(() -> assertFalse(connection.isInTransaction()))
+        complete(connection -> Mono.<Void>fromRunnable(() -> assertThat(connection.isInTransaction()).isFalse())
             .then(connection.beginTransaction())
-            .doOnSuccess(ignored -> assertTrue(connection.isInTransaction()))
+            .doOnSuccess(ignored -> assertThat(connection.isInTransaction()).isTrue())
             .then(connection.commitTransaction())
-            .doOnSuccess(ignored -> assertFalse(connection.isInTransaction()))
+            .doOnSuccess(ignored -> assertThat(connection.isInTransaction()).isFalse())
             .then(connection.beginTransaction())
-            .doOnSuccess(ignored -> assertTrue(connection.isInTransaction()))
+            .doOnSuccess(ignored -> assertThat(connection.isInTransaction()).isTrue())
             .then(connection.rollbackTransaction())
-            .doOnSuccess(ignored -> assertFalse(connection.isInTransaction())));
+            .doOnSuccess(ignored -> assertThat(connection.isInTransaction()).isFalse()));
     }
 
     @Test
@@ -88,7 +88,7 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
     void setTransactionIsolationLevel() {
         complete(connection -> Flux.just(READ_UNCOMMITTED, READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE)
             .concatMap(level -> connection.setTransactionIsolationLevel(level)
-                .doOnSuccess(ignored -> assertEquals(connection.getTransactionIsolationLevel(), level))));
+                .doOnSuccess(ignored -> assertThat(level).isEqualTo(connection.getTransactionIsolationLevel()))));
     }
 
     @Test
@@ -130,29 +130,25 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
                 .execute())
                 .thenMany(insertBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
-                .doOnNext(updated -> assertEquals(updated.intValue(), 1))
+                .doOnNext(updated -> assertThat(updated).isEqualTo(1))
                 .reduce(Math::addExact)
-                .doOnNext(all -> assertEquals(all.intValue(), 5))
+                .doOnNext(all -> assertThat(all).isEqualTo(5))
                 .then(Mono.from(selectStmt.execute()))
                 .flatMapMany(result -> result.map((row, metadata) -> row.get("value", String.class)))
                 .collectList()
-                .doOnNext(data -> assertEquals(data.size(), 5))
-                .doOnNext(data -> assertEquals(data, Arrays.asList(firstData, secondData, thirdData, fourthData, fifthData)))
+                .doOnNext(data -> assertThat(data).isEqualTo(Arrays.asList(firstData, secondData, thirdData, fourthData, fifthData)))
                 .thenMany(updateBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
                 .collectList()
-                .doOnNext(updated -> assertEquals(updated.size(), 2))
-                .doOnNext(updated -> assertEquals(updated, Arrays.asList(2, 3)))
+                .doOnNext(updated -> assertThat(updated).isEqualTo(Arrays.asList(2, 3)))
                 .thenMany(selectBatch.execute())
                 .concatMap(result -> result.map((row, metadata) -> row.get("value", String.class)))
                 .collectList()
-                .doOnNext(data -> assertEquals(data.size(), 5))
-                .doOnNext(data -> assertEquals(data, Arrays.asList(sixthData, sixthData, seventhData, seventhData, seventhData)))
+                .doOnNext(data -> assertThat(data).isEqualTo(Arrays.asList(sixthData, sixthData, seventhData, seventhData, seventhData)))
                 .thenMany(deleteBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
                 .collectList()
-                .doOnNext(deleted -> assertEquals(deleted.size(), 2))
-                .doOnNext(deleted -> assertEquals(deleted, Arrays.asList(3, 2)))
+                .doOnNext(deleted -> assertThat(deleted).isEqualTo(Arrays.asList(3, 2)))
                 .then();
         });
     }

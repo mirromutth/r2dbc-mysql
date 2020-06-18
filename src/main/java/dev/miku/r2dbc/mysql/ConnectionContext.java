@@ -20,7 +20,11 @@ import dev.miku.r2dbc.mysql.codec.CodecContext;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.util.AssertUtils;
+import reactor.util.annotation.Nullable;
+
+import java.time.ZoneId;
+
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * The MySQL connection context considers the behavior of server or client.
@@ -39,6 +43,9 @@ public final class ConnectionContext implements CodecContext {
 
     private final ZeroDateOption zeroDateOption;
 
+    @Nullable
+    private ZoneId serverZoneId;
+
     /**
      * Assume that the auto commit is always turned on, it will be set after handshake V10 request message,
      * or OK message which means handshake V9 completed.
@@ -47,8 +54,9 @@ public final class ConnectionContext implements CodecContext {
 
     private volatile int capabilities = 0;
 
-    public ConnectionContext(ZeroDateOption zeroDateOption) {
-        this.zeroDateOption = AssertUtils.requireNonNull(zeroDateOption, "zeroDateOption must not be null");
+    ConnectionContext(ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId) {
+        this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
+        this.serverZoneId = serverZoneId;
     }
 
     public int getConnectionId() {
@@ -71,6 +79,25 @@ public final class ConnectionContext implements CodecContext {
     @Override
     public CharCollation getClientCollation() {
         return CharCollation.clientCharCollation();
+    }
+
+    @Override
+    public ZoneId getServerZoneId() {
+        if (serverZoneId == null) {
+            throw new IllegalStateException("Server timezone have not initialization");
+        }
+        return serverZoneId;
+    }
+
+    boolean shouldSetServerZoneId() {
+        return serverZoneId == null;
+    }
+
+    void setServerZoneId(ZoneId serverZoneId) {
+        if (this.serverZoneId != null) {
+            throw new IllegalStateException("Server timezone have been initialized");
+        }
+        this.serverZoneId = serverZoneId;
     }
 
     @Override

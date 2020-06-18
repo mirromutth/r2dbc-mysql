@@ -47,7 +47,7 @@ final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
 
     @Override
     public LocalDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        return decode0(value, binary, context);
+        return decodeOrigin(value, binary, context);
     }
 
     @Override
@@ -57,7 +57,7 @@ final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
 
     @Override
     public ChronoLocalDateTime<LocalDate> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
-        return decode0(value, binary, context);
+        return decodeOrigin(value, binary, context);
     }
 
     @Override
@@ -90,16 +90,46 @@ final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
     }
 
     @Nullable
-    private static LocalDateTime decode0(ByteBuf value, boolean binary, CodecContext context) {
-        int index = value.readerIndex();
-        int bytes = value.readableBytes();
-        LocalDateTime dateTime = binary ? decodeBinary(value, bytes) : decodeText(value);
+    static LocalDateTime decodeOrigin(ByteBuf value, boolean binary, CodecContext context) {
+        LocalDateTime dateTime = binary ? decodeBinary(value) : decodeText(value);
+        return dateTime == null ? DateTimes.zeroDate(context.getZeroDateOption(), binary, ROUND) : dateTime;
+    }
 
-        if (dateTime != null) {
-            return dateTime;
+    static ByteBuf encodeBinary(ByteBufAllocator alloc, LocalDateTime value) {
+        LocalTime time = value.toLocalTime();
+
+        if (LocalTime.MIDNIGHT.equals(time)) {
+            return LocalDateCodec.encodeDate(alloc, value.toLocalDate());
         }
 
-        return DateTimes.zeroDate(context.getZeroDateOption(), binary, value, index, bytes, ROUND);
+        int nano = time.getNano();
+        int bytes = nano > 0 ? DateTimes.MICRO_DATETIME_SIZE : DateTimes.DATETIME_SIZE;
+        ByteBuf buf = alloc.buffer(Byte.BYTES + bytes);
+
+        try {
+            buf.writeByte(bytes)
+                .writeShortLE(value.getYear())
+                .writeByte(value.getMonthValue())
+                .writeByte(value.getDayOfMonth())
+                .writeByte(time.getHour())
+                .writeByte(time.getMinute())
+                .writeByte(time.getSecond());
+
+            if (nano > 0) {
+                return buf.writeIntLE(nano / DateTimes.NANOS_OF_MICRO);
+            }
+
+            return buf;
+        } catch (Throwable e) {
+            buf.release();
+            throw e;
+        }
+    }
+
+    static void encodeText(ParameterWriter writer, LocalDateTime value) {
+        LocalDateCodec.encodeDate(writer, value.toLocalDate());
+        writer.append(' ');
+        LocalTimeCodec.encodeTime(writer, value.toLocalTime());
     }
 
     @Nullable
@@ -115,7 +145,8 @@ final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
     }
 
     @Nullable
-    private static LocalDateTime decodeBinary(ByteBuf buf, int bytes) {
+    private static LocalDateTime decodeBinary(ByteBuf buf) {
+        int bytes = buf.readableBytes();
         LocalDate date = LocalDateCodec.readDateBinary(buf, bytes);
 
         if (date == null) {
@@ -151,45 +182,12 @@ final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
 
         @Override
         public Mono<ByteBuf> publishBinary() {
-            return Mono.fromSupplier(() -> {
-                LocalTime time = value.toLocalTime();
-
-                if (LocalTime.MIDNIGHT.equals(time)) {
-                    return LocalDateCodec.encodeDate(allocator, value.toLocalDate());
-                }
-
-                int nano = time.getNano();
-                int bytes = nano > 0 ? DateTimes.MICRO_DATETIME_SIZE : DateTimes.DATETIME_SIZE;
-                ByteBuf buf = allocator.buffer(Byte.BYTES + bytes);
-
-                try {
-                    buf.writeByte(bytes)
-                        .writeShortLE(value.getYear())
-                        .writeByte(value.getMonthValue())
-                        .writeByte(value.getDayOfMonth())
-                        .writeByte(time.getHour())
-                        .writeByte(time.getMinute())
-                        .writeByte(time.getSecond());
-
-                    if (nano > 0) {
-                        return buf.writeIntLE(nano / DateTimes.NANOS_OF_MICRO);
-                    }
-
-                    return buf;
-                } catch (Throwable e) {
-                    buf.release();
-                    throw e;
-                }
-            });
+            return Mono.fromSupplier(() -> encodeBinary(allocator, value));
         }
 
         @Override
         public Mono<Void> publishText(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> {
-                LocalDateCodec.encodeDate(writer, value.toLocalDate());
-                writer.append(' ');
-                LocalTimeCodec.encodeTime(writer, value.toLocalTime());
-            });
+            return Mono.fromRunnable(() -> encodeText(writer, value));
         }
 
         @Override

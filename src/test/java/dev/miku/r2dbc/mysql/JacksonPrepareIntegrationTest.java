@@ -22,7 +22,7 @@ package dev.miku.r2dbc.mysql;
 class JacksonPrepareIntegrationTest extends JacksonIntegrationTestSupport {
 
     JacksonPrepareIntegrationTest() {
-        super(configuration(true, sql -> false));
+        super(configuration(true, null, sql -> false));
     }
 }
 

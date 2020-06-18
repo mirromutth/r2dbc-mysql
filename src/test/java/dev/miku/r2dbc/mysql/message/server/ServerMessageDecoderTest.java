@@ -16,11 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
-import dev.miku.r2dbc.mysql.constant.ServerStatuses;
-import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.ConnectionContext;
-import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.ConnectionContextTest;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.assertj.core.api.AbstractObjectAssert;
@@ -54,20 +50,9 @@ class ServerMessageDecoderTest {
         preparedOk.extracting(PreparedOkMessage::getTotalParameters).isEqualTo(1);
     }
 
-    private static ConnectionContext context() {
-        ConnectionContext mocked = new ConnectionContext(ZeroDateOption.USE_NULL);
-
-        mocked.setConnectionId(1);
-        mocked.setCapabilities(Capabilities.ALL_SUPPORTED);
-        mocked.setServerVersion(ServerVersion.parse("8.0.18.MOCKED"));
-        mocked.setServerStatuses(ServerStatuses.AUTO_COMMIT);
-
-        return mocked;
-    }
-
     @Nullable
     private static ServerMessage decode(ByteBuf buf, DecodeContext decodeContext) {
-        return new ServerMessageDecoder().decode(buf, context(), decodeContext, null);
+        return new ServerMessageDecoder().decode(buf, ConnectionContextTest.mock(), decodeContext, null);
     }
 
     private static ByteBuf okLike() {

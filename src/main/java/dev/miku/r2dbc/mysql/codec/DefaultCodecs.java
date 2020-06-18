@@ -282,6 +282,7 @@ final class DefaultCodecs implements Codecs {
             new BitSetCodec(allocator),
 
             new LocalDateTimeCodec(allocator),
+            new InstantCodec(allocator),
             new LocalDateCodec(allocator),
             new LocalTimeCodec(allocator),
             new DurationCodec(allocator),

@@ -16,14 +16,21 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.ServerVersion;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
-import dev.miku.r2dbc.mysql.ServerVersion;
+
+import java.time.ZoneId;
 
 /**
  * Codec variables context for encoding/decoding.
  */
 public interface CodecContext {
+
+    /**
+     * @return the {@link ZoneId} of server-side.
+     */
+    ZoneId getServerZoneId();
 
     /**
      * @return the option for zero date handling which is set by connection configuration.

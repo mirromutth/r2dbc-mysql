@@ -36,6 +36,9 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 import reactor.util.annotation.Nullable;
 
+import java.time.DateTimeException;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -49,6 +52,12 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireValidName;
 public final class MySqlConnection implements Connection {
 
     private static final Logger logger = LoggerFactory.getLogger(MySqlConnection.class);
+
+    private static final String ZONE_PREFIX_POSIX = "posix/";
+
+    private static final String ZONE_PREFIX_RIGHT = "right/";
+
+    private static final int PREFIX_LENGTH = 6;
 
     /**
      * If MySQL server version greater than or equal to {@literal 8.0.3}, or greater than
@@ -71,7 +80,28 @@ public final class MySqlConnection implements Connection {
      * Convert initialize result to {@link InitData}.
      */
     private static final Function<MySqlResult, Publisher<InitData>> INIT_HANDLER = r ->
-        r.map((row, meta) -> new InitData(convertIsolationLevel(row.get(0, String.class)), row.get(1, String.class)));
+        r.map((row, meta) -> new InitData(convertIsolationLevel(row.get(0, String.class)), row.get(1, String.class), null));
+
+    private static final Function<MySqlResult, Publisher<InitData>> FULL_INIT_HANDLER = r -> r.map((row, meta) -> {
+        IsolationLevel level = convertIsolationLevel(row.get(0, String.class));
+        String product = row.get(1, String.class);
+        String systemTimeZone = row.get(2, String.class);
+        String timeZone = row.get(3, String.class);
+        ZoneId zoneId;
+
+        if (timeZone == null || timeZone.isEmpty() || "SYSTEM".equals(timeZone)) {
+            if (systemTimeZone == null || systemTimeZone.isEmpty()) {
+                logger.warn("MySQL does not return any timezone, trying to use system default timezone");
+                zoneId = ZoneId.systemDefault();
+            } else {
+                zoneId = convertZoneId(systemTimeZone);
+            }
+        } else {
+            zoneId = convertZoneId(timeZone);
+        }
+
+        return new InitData(level, product, zoneId);
+    });
 
     private static final BiConsumer<ServerMessage, SynchronousSink<Boolean>> PING_HANDLER = (message, sink) -> {
         if (message instanceof ErrorMessage) {
@@ -381,20 +411,74 @@ public final class MySqlConnection implements Connection {
         requireNonNull(context, "context must not be null");
 
         ServerVersion version = context.getServerVersion();
-        String query;
+        StringBuilder query = new StringBuilder(128);
 
         // Maybe create a InitFlow for data initialization after login?
         if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8X) || (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5X) && version.isLessThan(TX_LEVEL_8X))) {
-            query = "SELECT @@transaction_isolation AS i, @@version_comment AS v";
+            query.append("SELECT @@transaction_isolation AS i, @@version_comment AS v");
         } else {
-            query = "SELECT @@tx_isolation AS i, @@version_comment AS v";
+            query.append("SELECT @@tx_isolation AS i, @@version_comment AS v");
         }
 
-        return new TextSimpleStatement(client, codecs, context, query)
+        Function<MySqlResult, Publisher<InitData>> handler;
+
+        if (context.shouldSetServerZoneId()) {
+            handler = FULL_INIT_HANDLER;
+            query.append(", @@system_time_zone AS s, @@time_zone AS t");
+        } else {
+            handler = INIT_HANDLER;
+        }
+
+        return new TextSimpleStatement(client, codecs, context, query.toString())
             .execute()
-            .flatMap(INIT_HANDLER)
+            .flatMap(handler)
             .last()
-            .map(data -> new MySqlConnection(client, context, codecs, data.level, data.product, prepare));
+            .map(data -> {
+                ZoneId serverZoneId = data.serverZoneId;
+                if (serverZoneId != null) {
+                    logger.debug("Set server time zone to {} from init query", serverZoneId);
+                    context.setServerZoneId(serverZoneId);
+                }
+
+                return new MySqlConnection(client, context, codecs, data.level, data.product, prepare);
+            });
+    }
+
+    /**
+     * @param id the ID/name of MySQL time zone
+     * @return the {@link ZoneId} from {@code id}, or system default timezone if not found.
+     */
+    private static ZoneId convertZoneId(String id) {
+        String realId;
+
+        if (id.startsWith(ZONE_PREFIX_POSIX) || id.startsWith(ZONE_PREFIX_RIGHT)) {
+            realId = id.substring(PREFIX_LENGTH);
+        } else {
+            realId = id;
+        }
+
+        try {
+            switch (realId) {
+                case "Factory":
+                    // Looks like the "Factory" time zone is UTC.
+                    return ZoneOffset.UTC;
+                case "America/Nuuk":
+                    // They are same timezone including DST.
+                    return ZoneId.of("America/Godthab");
+                case "ROC":
+                    // Republic of China, 1912-1949, very very old time zone.
+                    // Even the ZoneId.SHORT_IDS does not support it.
+                    // Is there anyone using this time zone, really?
+                    // Don't think so, but should support it for compatible.
+                    // Just use GMT+8, id is equal to +08:00.
+                    return ZoneId.of("+8");
+                default:
+                    return ZoneId.of(realId, ZoneId.SHORT_IDS);
+            }
+        } catch (DateTimeException e) {
+            logger.warn("The server timezone is <{}> that's unknown, trying to use system default timezone", id);
+            return ZoneId.systemDefault();
+        }
     }
 
     private static IsolationLevel convertIsolationLevel(@Nullable String name) {
@@ -425,9 +509,13 @@ public final class MySqlConnection implements Connection {
         @Nullable
         private final String product;
 
-        private InitData(IsolationLevel level, @Nullable String product) {
+        @Nullable
+        private final ZoneId serverZoneId;
+
+        private InitData(IsolationLevel level, @Nullable String product, @Nullable ZoneId serverZoneId) {
             this.level = level;
             this.product = product;
+            this.serverZoneId = serverZoneId;
         }
     }
 }

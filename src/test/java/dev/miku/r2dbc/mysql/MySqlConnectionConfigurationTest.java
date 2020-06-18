@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -199,6 +200,7 @@ class MySqlConnectionConfigurationTest {
             .sslCa(SSL_CA)
             .sslKeyAndCert("/path/to/mysql/client-cert.pem", "/path/to/mysql/client-key.pem", "pem-password-in-here")
             .tlsVersion(TlsVersions.TLS1_1, TlsVersions.TLS1_2, TlsVersions.TLS1_3)
+            .serverZoneId(ZoneId.systemDefault())
             .zeroDateOption(ZeroDateOption.USE_NULL)
             .autodetectExtensions(false)
             .build();
