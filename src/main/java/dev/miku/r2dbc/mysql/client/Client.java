@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.client;
 
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
 import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
 import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
-import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelOption;
 import reactor.core.publisher.Flux;
@@ -77,15 +77,14 @@ public interface Client {
         requireNonNull(ssl, "ssl must not be null");
         requireNonNull(context, "context must not be null");
 
-        return TcpClient.newConnection()
-            .bootstrap(b -> {
-                if (connectTimeout != null) {
-                    b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
-                }
 
-                return b.remoteAddress(address);
-            })
-            .connect()
+        TcpClient tcpClient = TcpClient.newConnection();
+
+        if (connectTimeout != null) {
+            tcpClient = tcpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
+        }
+
+        return tcpClient.remoteAddress(() -> address).connect()
             .map(conn -> new ReactorNettyClient(conn, ssl, context));
     }
 }
