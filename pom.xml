@@ -68,7 +68,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <r2dbc-spi.version>0.8.1.RELEASE</r2dbc-spi.version>
-        <reactor.version>Dysprosium-SR4</reactor.version>
+        <reactor.version>Dysprosium-SR8</reactor.version>
         <slf4j.version>1.7.30</slf4j.version>
         <testcontainers.version>1.12.5</testcontainers.version>
         <hikari-cp.version>3.4.2</hikari-cp.version>
