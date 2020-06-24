@@ -22,56 +22,72 @@ import dev.miku.r2dbc.mysql.constant.DataTypes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
+import reactor.util.annotation.Nullable;
 
-import java.time.Instant;
+import java.lang.reflect.ParameterizedType;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.chrono.ChronoZonedDateTime;
 
 /**
- * Codec for {@link Instant}.
+ * Codec for {@link ZonedDateTime} and {@link ChronoZonedDateTime}.
+ * <p>
+ * For now, supports only A.D. calendar in {@link ChronoZonedDateTime}.
  */
-final class InstantCodec implements Codec<Instant> {
+final class ZonedDateTimeCodec implements ParametrizedCodec<ZonedDateTime> {
 
     private final ByteBufAllocator allocator;
 
-    InstantCodec(ByteBufAllocator allocator) {
+    ZonedDateTimeCodec(ByteBufAllocator allocator) {
         this.allocator = allocator;
     }
 
     @Override
-    public Instant decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        LocalDateTime origin = LocalDateTimeCodec.decodeOrigin(value, binary, context);
+    public ZonedDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+        return decode0(value, binary, context);
+    }
 
-        if (origin == null) {
-            return null;
-        }
-
-        return origin.toInstant(context.getServerZoneId().getRules().getOffset(origin));
+    @Override
+    public ChronoZonedDateTime<LocalDate> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
+        return decode0(value, binary, context);
     }
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new InstantParameter(allocator, (Instant) value, context);
+        return new ZonedDateTimeParameter(allocator, (ZonedDateTime) value, context);
     }
 
     @Override
     public boolean canEncode(Object value) {
-        return value instanceof Instant;
+        return value instanceof ZonedDateTime;
+    }
+
+    @Override
+    public boolean canDecode(FieldInformation info, ParameterizedType target) {
+        return DateTimes.canDecodeChronology(info.getType(), target, ChronoZonedDateTime.class);
     }
 
     @Override
     public boolean canDecode(FieldInformation info, Class<?> target) {
-        return DateTimes.canDecodeDateTime(info.getType(), target, Instant.class);
+        return DateTimes.canDecodeDateTime(info.getType(), target, ZonedDateTime.class);
     }
 
-    private static final class InstantParameter extends AbstractParameter {
+    @Nullable
+    private ZonedDateTime decode0(ByteBuf value, boolean binary, CodecContext context) {
+        LocalDateTime origin =  LocalDateTimeCodec.decodeOrigin(value, binary, context);
+        return origin == null ? null : ZonedDateTime.of(origin, context.getServerZoneId());
+    }
+
+    private static final class ZonedDateTimeParameter extends AbstractParameter {
 
         private final ByteBufAllocator allocator;
 
-        private final Instant value;
+        private final ZonedDateTime value;
 
         private final CodecContext context;
 
-        private InstantParameter(ByteBufAllocator allocator, Instant value, CodecContext context) {
+        private ZonedDateTimeParameter(ByteBufAllocator allocator, ZonedDateTime value, CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
@@ -97,10 +113,12 @@ final class InstantCodec implements Codec<Instant> {
             if (this == o) {
                 return true;
             }
-            if (o == null || getClass() != o.getClass()) {
+            if (!(o instanceof ZonedDateTimeParameter)) {
                 return false;
             }
-            InstantParameter that = (InstantParameter) o;
+
+            ZonedDateTimeParameter that = (ZonedDateTimeParameter) o;
+
             return value.equals(that.value);
         }
 
@@ -110,7 +128,8 @@ final class InstantCodec implements Codec<Instant> {
         }
 
         private LocalDateTime serverValue() {
-            return LocalDateTime.ofInstant(value, context.getServerZoneId());
+            return value.withZoneSameInstant(context.getServerZoneId())
+                .toLocalDateTime();
         }
     }
 }

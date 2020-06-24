@@ -44,7 +44,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
     @Override
     public LocalTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        return binary ? decodeBinary(value) : readTimeText(value);
+        return decodeOrigin(binary, value);
     }
 
     @Override
@@ -60,6 +60,10 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     @Override
     public boolean doCanDecode(FieldInformation info) {
         return DataTypes.TIME == info.getType();
+    }
+
+    static LocalTime decodeOrigin(boolean binary, ByteBuf value) {
+        return binary ? decodeBinary(value) : readTimeText(value);
     }
 
     static LocalTime readTimeText(ByteBuf buf) {
@@ -131,6 +135,36 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         }
     }
 
+    static ByteBuf encodeBinary(ByteBufAllocator alloc, LocalTime time) {
+        if (LocalTime.MIDNIGHT.equals(time)) {
+            // It is zero of var int, not terminal.
+            return alloc.buffer(Byte.BYTES).writeByte(0);
+        }
+
+        int nanos = time.getNano();
+        int size = nanos > 0 ? MICRO_TIME_SIZE : TIME_SIZE;
+
+        ByteBuf buf = alloc.buffer(Byte.BYTES + size);
+
+        try {
+            buf.writeByte(size)
+                .writeBoolean(false)
+                .writeIntLE(0)
+                .writeByte(time.getHour())
+                .writeByte(time.getMinute())
+                .writeByte(time.getSecond());
+
+            if (nanos > 0) {
+                return buf.writeIntLE(nanos / NANOS_OF_MICRO);
+            }
+
+            return buf;
+        } catch (Throwable e) {
+            buf.release();
+            throw e;
+        }
+    }
+
     static void encodeTime(ParameterWriter writer, LocalTime time) {
         int micros = time.getNano() / NANOS_OF_MICRO;
         DurationCodec.encodeTime(writer, false, time.getHour(), time.getMinute(), time.getSecond(), micros);
@@ -152,49 +186,21 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
         private final ByteBufAllocator allocator;
 
-        private final LocalTime time;
+        private final LocalTime value;
 
-        private LocalTimeParameter(ByteBufAllocator allocator, LocalTime time) {
+        private LocalTimeParameter(ByteBufAllocator allocator, LocalTime value) {
             this.allocator = allocator;
-            this.time = time;
+            this.value = value;
         }
 
         @Override
         public Mono<ByteBuf> publishBinary() {
-            return Mono.fromSupplier(() -> {
-                if (LocalTime.MIDNIGHT.equals(time)) {
-                    // It is zero of var int, not terminal.
-                    return allocator.buffer(Byte.BYTES).writeByte(0);
-                }
-
-                int nanos = time.getNano();
-                int size = nanos > 0 ? MICRO_TIME_SIZE : TIME_SIZE;
-
-                ByteBuf buf = allocator.buffer(Byte.BYTES + size);
-
-                try {
-                    buf.writeByte(size)
-                        .writeBoolean(false)
-                        .writeIntLE(0)
-                        .writeByte(time.getHour())
-                        .writeByte(time.getMinute())
-                        .writeByte(time.getSecond());
-
-                    if (nanos > 0) {
-                        return buf.writeIntLE(nanos / NANOS_OF_MICRO);
-                    }
-
-                    return buf;
-                } catch (Throwable e) {
-                    buf.release();
-                    throw e;
-                }
-            });
+            return Mono.fromSupplier(() -> encodeBinary(allocator, value));
         }
 
         @Override
         public Mono<Void> publishText(ParameterWriter writer) {
-            return Mono.fromRunnable(() -> encodeTime(writer, time));
+            return Mono.fromRunnable(() -> encodeTime(writer, value));
         }
 
         @Override
@@ -213,12 +219,12 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
             LocalTimeParameter that = (LocalTimeParameter) o;
 
-            return time.equals(that.time);
+            return value.equals(that.value);
         }
 
         @Override
         public int hashCode() {
-            return time.hashCode();
+            return value.hashCode();
         }
     }
 }

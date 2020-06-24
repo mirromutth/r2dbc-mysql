@@ -16,11 +16,14 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import reactor.util.annotation.Nullable;
 
+import java.lang.reflect.ParameterizedType;
+import java.time.LocalDate;
 import java.time.temporal.Temporal;
 
 /**
@@ -123,6 +126,16 @@ final class DateTimes {
 
         String message = (binary ? "Binary" : "Text") + " value is zero date and ZeroDateOption is " + ZeroDateOption.EXCEPTION;
         throw new R2dbcNonTransientResourceException(message, ILLEGAL_ARGUMENT);
+    }
+
+    static boolean canDecodeChronology(short type, ParameterizedType target, Class<? extends Temporal> chronology) {
+        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
+            LocalDate.class == ParametrizedUtils.getTypeArgument(target, chronology);
+    }
+
+    static boolean canDecodeDateTime(short type, Class<?> target, Class<? extends Temporal> temporal) {
+        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
+            target.isAssignableFrom(temporal);
     }
 
     private DateTimes() {

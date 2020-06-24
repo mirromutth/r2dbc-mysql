@@ -33,11 +33,11 @@ import java.time.chrono.ChronoLocalDateTime;
 /**
  * Codec for {@link LocalDateTime} and {@link ChronoLocalDateTime}.
  * <p>
- * For now, supports A.D. calendar only in {@link ChronoLocalDateTime}.
+ * For now, supports only A.D. calendar in {@link ChronoLocalDateTime}.
  */
 final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
 
-    private static final LocalDateTime ROUND = LocalDateTime.of(LocalDateCodec.ROUND, LocalTime.MIN);
+    static final LocalDateTime ROUND = LocalDateTime.of(LocalDateCodec.ROUND, LocalTime.MIN);
 
     private final ByteBufAllocator allocator;
 
@@ -51,30 +51,8 @@ final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
     }
 
     @Override
-    public boolean canEncode(Object value) {
-        return value instanceof LocalDateTime;
-    }
-
-    @Override
     public ChronoLocalDateTime<LocalDate> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
         return decodeOrigin(value, binary, context);
-    }
-
-    @Override
-    public boolean canDecode(FieldInformation info, ParameterizedType target) {
-        short type = info.getType();
-
-        if (DataTypes.DATETIME != type && DataTypes.TIMESTAMP != type && DataTypes.TIMESTAMP2 != type) {
-            return false;
-        }
-
-        Class<?> argument = ParametrizedUtils.getTypeArgument(target, ChronoLocalDateTime.class);
-
-        if (argument == null) {
-            return false;
-        }
-
-        return argument == LocalDate.class;
     }
 
     @Override
@@ -83,10 +61,18 @@ final class LocalDateTimeCodec implements ParametrizedCodec<LocalDateTime> {
     }
 
     @Override
+    public boolean canEncode(Object value) {
+        return value instanceof LocalDateTime;
+    }
+
+    @Override
+    public boolean canDecode(FieldInformation info, ParameterizedType target) {
+        return DateTimes.canDecodeChronology(info.getType(), target, ChronoLocalDateTime.class);
+    }
+
+    @Override
     public boolean canDecode(FieldInformation info, Class<?> target) {
-        short type = info.getType();
-        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
-            target.isAssignableFrom(LocalDateTime.class);
+        return DateTimes.canDecodeDateTime(info.getType(), target, LocalDateTime.class);
     }
 
     @Nullable
