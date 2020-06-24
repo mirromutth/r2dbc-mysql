@@ -23,55 +23,59 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 /**
- * Codec for {@link Instant}.
+ * Codec for {@link OffsetDateTime}.
  */
-final class InstantCodec implements Codec<Instant> {
+final class OffsetDateTimeCodec implements Codec<OffsetDateTime> {
 
     private final ByteBufAllocator allocator;
 
-    InstantCodec(ByteBufAllocator allocator) {
+    OffsetDateTimeCodec(ByteBufAllocator allocator) {
         this.allocator = allocator;
     }
 
     @Override
-    public Instant decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public OffsetDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
         LocalDateTime origin = LocalDateTimeCodec.decodeOrigin(value, binary, context);
 
         if (origin == null) {
             return null;
         }
 
-        return origin.toInstant(context.getServerZoneId().getRules().getOffset(origin));
+        ZoneId zone = context.getServerZoneId();
+
+        return OffsetDateTime.of(origin, zone instanceof ZoneOffset ? (ZoneOffset) zone : zone.getRules().getOffset(origin));
     }
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new InstantParameter(allocator, (Instant) value, context);
+        return new OffsetDateTimeParameter(allocator, (OffsetDateTime) value, context);
     }
 
     @Override
     public boolean canEncode(Object value) {
-        return value instanceof Instant;
+        return value instanceof OffsetDateTime;
     }
 
     @Override
     public boolean canDecode(FieldInformation info, Class<?> target) {
-        return DateTimes.canDecodeDateTime(info.getType(), target, Instant.class);
+        return DateTimes.canDecodeDateTime(info.getType(), target, OffsetDateTime.class);
     }
 
-    private static final class InstantParameter extends AbstractParameter {
+    private static final class OffsetDateTimeParameter extends AbstractParameter {
 
         private final ByteBufAllocator allocator;
 
-        private final Instant value;
+        private final OffsetDateTime value;
 
         private final CodecContext context;
 
-        private InstantParameter(ByteBufAllocator allocator, Instant value, CodecContext context) {
+        private OffsetDateTimeParameter(ByteBufAllocator allocator, OffsetDateTime value, CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
@@ -100,7 +104,7 @@ final class InstantCodec implements Codec<Instant> {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            InstantParameter that = (InstantParameter) o;
+            OffsetDateTimeParameter that = (OffsetDateTimeParameter) o;
             return value.equals(that.value);
         }
 
@@ -110,7 +114,9 @@ final class InstantCodec implements Codec<Instant> {
         }
 
         private LocalDateTime serverValue() {
-            return LocalDateTime.ofInstant(value, context.getServerZoneId());
+            ZoneId zone = context.getServerZoneId();
+            return zone instanceof ZoneOffset ? value.withOffsetSameInstant((ZoneOffset) zone).toLocalDateTime() :
+                value.toZonedDateTime().withZoneSameInstant(zone).toLocalDateTime();
         }
     }
 }
