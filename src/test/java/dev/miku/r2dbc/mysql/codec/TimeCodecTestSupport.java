@@ -18,34 +18,30 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.ConnectionContextTest;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.SignStyle;
 import java.time.temporal.Temporal;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-import static java.time.temporal.ChronoField.*;
+import static java.time.temporal.ChronoField.HOUR_OF_DAY;
+import static java.time.temporal.ChronoField.MICRO_OF_SECOND;
+import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
+import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 
 /**
- * Base class considers codecs unit tests of date/time.
+ * Base class considers codecs unit tests of time.
  */
-abstract class DateTimeCodecTestSupport<T extends Temporal> implements CodecTestSupport<T> {
+abstract class TimeCodecTestSupport<T extends Temporal> implements CodecTestSupport<T> {
 
     protected static final ZoneId ENCODE_SERVER_ZONE = ZoneId.of("+6");
 
     private static final DateTimeFormatter FORMATTER = new DateTimeFormatterBuilder()
         .appendLiteral('\'')
-        .appendValue(YEAR, 4, 19, SignStyle.NORMAL)
-        .appendLiteral('-')
-        .appendValue(MONTH_OF_YEAR, 2)
-        .appendLiteral('-')
-        .appendValue(DAY_OF_MONTH, 2)
-        .appendLiteral(' ')
         .appendValue(HOUR_OF_DAY, 2)
         .appendLiteral(':')
         .appendValue(MINUTE_OF_HOUR, 2)
@@ -57,28 +53,23 @@ abstract class DateTimeCodecTestSupport<T extends Temporal> implements CodecTest
         .appendLiteral('\'')
         .toFormatter(Locale.ENGLISH);
 
-    static {
-        System.setProperty("user.timezone", "GMT+2");
-    }
-
     @Override
     public CodecContext context() {
         return ConnectionContextTest.mock(ENCODE_SERVER_ZONE);
     }
 
-    protected final String toText(Temporal dateTime) {
-        return FORMATTER.format(dateTime);
+    protected final String toText(Temporal time) {
+        return FORMATTER.format(time);
     }
 
-    protected final ByteBuf toBinary(LocalDateTime dateTime) {
-        ByteBuf buf = LocalDateCodecTest.encode(dateTime.toLocalDate());
-        LocalTime time = dateTime.toLocalTime();
-
+    protected final ByteBuf toBinary(LocalTime time) {
         if (LocalTime.MIDNIGHT.equals(time)) {
-            return buf;
+            return Unpooled.buffer(0, 0);
         }
 
-        buf.writeByte(time.getHour())
+        ByteBuf buf = Unpooled.buffer().writeBoolean(false)
+            .writeIntLE(0)
+            .writeByte(time.getHour())
             .writeByte(time.getMinute())
             .writeByte(time.getSecond());
 

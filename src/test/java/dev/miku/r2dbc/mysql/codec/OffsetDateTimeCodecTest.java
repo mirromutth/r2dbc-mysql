@@ -22,44 +22,43 @@ import io.netty.buffer.ByteBufAllocator;
 import java.nio.charset.Charset;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 
 /**
- * Unit tests for {@link InstantCodec}.
+ * Unit tests for {@link OffsetDateTimeCodec}.
  */
-class InstantCodecTest extends DateTimeCodecTestSupport<Instant> {
+class OffsetDateTimeCodecTest extends DateTimeCodecTestSupport<OffsetDateTime> {
 
-    private final Instant[] instants = {
-        Instant.EPOCH,
-        Instant.ofEpochMilli(-1000),
-        Instant.ofEpochMilli(1000),
-        Instant.ofEpochMilli(-1577777771671L),
-        Instant.ofEpochMilli(1577777771671L),
-        Instant.ofEpochSecond(-30557014167219200L),
-        Instant.ofEpochSecond(30557014167219200L),
+    private final OffsetDateTime[] dateTimes = {
+        OffsetDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC),
+        OffsetDateTime.ofInstant(Instant.EPOCH, ZoneOffset.MAX),
+        OffsetDateTime.ofInstant(Instant.EPOCH, ZoneOffset.MIN),
+        OffsetDateTime.of(2020, 6, 1, 12, 0, 0, 56789000, ZoneOffset.of("+10"))
     };
 
     @Override
-    public InstantCodec getCodec(ByteBufAllocator allocator) {
-        return new InstantCodec(allocator);
+    public OffsetDateTimeCodec getCodec(ByteBufAllocator allocator) {
+        return new OffsetDateTimeCodec(allocator);
     }
 
     @Override
-    public Instant[] originParameters() {
-        return instants;
+    public OffsetDateTime[] originParameters() {
+        return dateTimes;
     }
 
     @Override
     public Object[] stringifyParameters() {
-        return Arrays.stream(instants).map(this::convert).map(this::toText).toArray();
+        return Arrays.stream(dateTimes).map(this::convert).map(this::toText).toArray();
     }
 
     @Override
     public ByteBuf[] binaryParameters(Charset charset) {
-        return Arrays.stream(instants).map(this::convert).map(this::toBinary).toArray(ByteBuf[]::new);
+        return Arrays.stream(dateTimes).map(this::convert).map(this::toBinary).toArray(ByteBuf[]::new);
     }
 
-    private LocalDateTime convert(Instant value) {
-        return LocalDateTime.ofInstant(value, ENCODE_SERVER_ZONE);
+    private LocalDateTime convert(OffsetDateTime value) {
+        return value.withOffsetSameInstant((ZoneOffset) ENCODE_SERVER_ZONE).toLocalDateTime();
     }
 }
