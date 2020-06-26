@@ -18,25 +18,15 @@ package dev.miku.r2dbc.mysql.codec;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.Unpooled;
 
 import java.nio.charset.Charset;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.Arrays;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
-
-import static java.time.temporal.ChronoField.HOUR_OF_DAY;
-import static java.time.temporal.ChronoField.MICRO_OF_SECOND;
-import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
-import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 
 /**
  * Unit tests for {@link LocalTimeCodec}.
  */
-class LocalTimeCodecTest implements CodecTestSupport<LocalTime> {
+class LocalTimeCodecTest extends TimeCodecTestSupport<LocalTime> {
 
     static final LocalTime[] TIMES = {
         LocalTime.MIDNIGHT,
@@ -47,19 +37,6 @@ class LocalTimeCodecTest implements CodecTestSupport<LocalTime> {
         LocalTime.of(12, 34, 56, 789100000),
         LocalTime.of(9, 8, 7, 654321000),
     };
-
-    private final DateTimeFormatter formatter = new DateTimeFormatterBuilder()
-        .appendLiteral('\'')
-        .appendValue(HOUR_OF_DAY, 2)
-        .appendLiteral(':')
-        .appendValue(MINUTE_OF_HOUR, 2)
-        .appendLiteral(':')
-        .appendValue(SECOND_OF_MINUTE, 2)
-        .optionalStart()
-        .appendFraction(MICRO_OF_SECOND, 0, 6, true)
-        .optionalEnd()
-        .appendLiteral('\'')
-        .toFormatter(Locale.ENGLISH);
 
     @Override
     public LocalTimeCodec getCodec(ByteBufAllocator allocator) {
@@ -73,29 +50,11 @@ class LocalTimeCodecTest implements CodecTestSupport<LocalTime> {
 
     @Override
     public Object[] stringifyParameters() {
-        return Arrays.stream(TIMES).map(formatter::format).toArray();
+        return Arrays.stream(TIMES).map(this::toText).toArray();
     }
 
     @Override
     public ByteBuf[] binaryParameters(Charset charset) {
-        return Arrays.stream(TIMES)
-            .map(it -> {
-                if (LocalTime.MIDNIGHT.equals(it)) {
-                    return Unpooled.buffer(0, 0);
-                }
-
-                ByteBuf buf = Unpooled.buffer().writeBoolean(false)
-                    .writeIntLE(0)
-                    .writeByte(it.getHour())
-                    .writeByte(it.getMinute())
-                    .writeByte(it.getSecond());
-
-                if (it.getNano() != 0) {
-                    buf.writeIntLE((int) TimeUnit.NANOSECONDS.toMicros(it.getNano()));
-                }
-
-                return buf;
-            })
-            .toArray(ByteBuf[]::new);
+        return Arrays.stream(TIMES).map(this::toBinary).toArray(ByteBuf[]::new);
     }
 }
