@@ -43,7 +43,7 @@ final class OffsetTimeCodec extends AbstractClassedCodec<OffsetTime> {
         LocalTime origin = LocalTimeCodec.decodeOrigin(binary, value);
         ZoneId zone = context.getServerZoneId();
 
-        return OffsetTime.of(origin, zone instanceof ZoneOffset ? (ZoneOffset) zone : zone.getRules().getOffset(Instant.EPOCH));
+        return OffsetTime.of(origin, zone instanceof ZoneOffset ? (ZoneOffset) zone : zone.getRules().getStandardOffset(Instant.EPOCH));
     }
 
     @Override
@@ -111,15 +111,10 @@ final class OffsetTimeCodec extends AbstractClassedCodec<OffsetTime> {
 
         private LocalTime serverValue() {
             ZoneId zone = context.getServerZoneId();
-            ZoneOffset offset = zone instanceof ZoneOffset ? (ZoneOffset) zone : zone.getRules().getOffset(Instant.EPOCH);
+            ZoneOffset offset = zone instanceof ZoneOffset ? (ZoneOffset) zone : zone.getRules().getStandardOffset(Instant.EPOCH);
 
-            if (offset.equals(value.getOffset())) {
-                return value.toLocalTime();
-            } else {
-                int difference = offset.getTotalSeconds() - value.getOffset().getTotalSeconds();
-
-                return value.toLocalTime().plusSeconds(difference);
-            }
+            return value.toLocalTime()
+                .plusSeconds(offset.getTotalSeconds() - value.getOffset().getTotalSeconds());
         }
     }
 }
