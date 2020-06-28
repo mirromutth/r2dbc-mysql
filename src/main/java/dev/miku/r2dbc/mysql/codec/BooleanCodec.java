@@ -34,6 +34,9 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
 
     @Override
     public Boolean decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+        if (!binary && DataTypes.TINYINT == info.getType()) {
+            return value.readByte() != '0';
+        }
         return value.readBoolean();
     }
 
@@ -49,7 +52,8 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
 
     @Override
     public boolean doCanDecode(FieldInformation info) {
-        return DataTypes.BIT == info.getType() && info.getSize() == 1;
+        return (DataTypes.BIT == info.getType() || DataTypes.TINYINT == info.getType()) &&
+            info.getSize() == 1;
     }
 
     private static final class BooleanParameter extends AbstractParameter {
