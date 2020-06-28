@@ -50,8 +50,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Base class considers integration tests for queries and data.
@@ -203,6 +201,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         testType(BitSet.class, false, "BIT(16)", null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
         testType(BitSet.class, true, "BIT(16)", BitSet.valueOf(new byte[0]));
         testType(ByteBuffer.class, false, "BIT(16)", null, ByteBuffer.wrap(new byte[]{1, 2}));
+    }
+
+    @Test
+    void bool() {
+        testType(Boolean.class, true, "BOOLEAN", null, false, true);
     }
 
     @SuppressWarnings("unchecked")
@@ -367,9 +370,9 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     void selectOne() {
         complete(connection -> Mono.from(connection.createStatement("SELECT 1").execute())
             .flatMapMany(result -> result.map((row, metadata) -> row.get(0, Number.class)))
-            .doOnNext(number -> assertEquals(number.intValue(), 1))
+            .doOnNext(number -> assertThat(number.intValue()).isEqualTo(1))
             .reduce((x, y) -> Math.addExact(x.intValue(), y.intValue()))
-            .doOnNext(number -> assertEquals(number.intValue(), 1)));
+            .doOnNext(number -> assertThat(number.intValue()).isEqualTo(1)));
     }
 
     /**
@@ -397,11 +400,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                 .execute()))
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .reduce(Math::addExact)
-            .doOnNext(it -> assertEquals(it, 10))
+            .doOnNext(it -> assertThat(it).isEqualTo(10))
             .then(Mono.from(connection.createStatement("SELECT email FROM test").execute()))
             .flatMapMany(result -> result.map((row, metadata) -> row.get(0, String.class)))
             .collectList()
-            .doOnNext(it -> assertEquals(it, IntStream.range(0, 10)
+            .doOnNext(it -> assertThat(it).isEqualTo(IntStream.range(0, 10)
                 .mapToObj(i -> String.format("integration-test%d@mail.com", i))
                 .collect(Collectors.toList()))));
     }
@@ -425,7 +428,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                 .execute())
                 .flatMapMany(r -> r.map((row, metadata) -> row.get(0, Integer.TYPE))).take(2))
             .collectList()
-            .doOnNext(it -> assertEquals(it, Arrays.asList(1, 2, 3, 1, 2))));
+            .doOnNext(it -> assertThat(it).isEqualTo(Arrays.asList(1, 2, 3, 1, 2))));
     }
 
     /**
@@ -449,7 +452,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                 .execute())
             .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.TYPE)))
             .collectList()
-            .doOnNext(it -> assertEquals(it, Arrays.asList(3, 2, 1))));
+            .doOnNext(it -> assertThat(it).isEqualTo(Arrays.asList(3, 2, 1))));
     }
 
     /**
@@ -467,7 +470,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                 .bind(0, value).bind(1, 1).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .reduce(Math::addExact)
-            .doOnNext(it -> assertEquals(it, 1)));
+            .doOnNext(it -> assertThat(it).isEqualTo(1)));
     }
 
     static Flux<Integer> extractId(Result result) {
@@ -493,7 +496,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                 .execute())
             .<Optional<LocalTime>>flatMap(r -> extractOptionalField(r, LocalTime.class))
             .map(Optional::get)
-            .doOnNext(t -> assertEquals(t, time))
+            .doOnNext(t -> assertThat(t).isEqualTo(time))
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0")
                 .execute()))
             .flatMap(QueryIntegrationTestSupport::extractRowsUpdated)
@@ -524,11 +527,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         return Mono.from(insert.returnGeneratedValues("id")
             .execute())
             .flatMap(result -> extractRowsUpdated(result)
-                .doOnNext(u -> assertEquals(u, 1))
+                .doOnNext(u -> assertThat(u).isEqualTo(1))
                 .thenMany(extractId(result))
                 .collectList()
                 .map(ids -> {
-                    assertEquals(1, ids.size());
+                    assertThat(ids).hasSize(1);
                     return ids.get(0);
                 }))
             .flatMap(id -> Mono.from(connection.createStatement("SELECT value FROM test WHERE id=?")
@@ -537,7 +540,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
             .<Optional<T>>flatMapMany(r -> extractOptionalField(r, type))
             .collectList()
             .map(list -> {
-                assertEquals(list.size(), 1);
+                assertThat(list).hasSize(1);
                 return list.get(0);
             })
             .doOnNext(data -> {
@@ -551,10 +554,10 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                             assertThat(value).isInstanceOfSatisfying(Object[].class, it -> assertThat(it).isEqualTo(t));
                         }
                     } else {
-                        assertEquals(t, value);
+                        assertThat(value).isEqualTo(t);
                     }
                 } else {
-                    assertNull(value);
+                    assertThat(value).isNull();
                 }
             })
             .as(it -> {
@@ -577,7 +580,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                         .<Optional<T>>flatMapMany(r -> extractOptionalField(r, type))
                         .collectList()
                         .map(list -> {
-                            assertEquals(list.size(), 1);
+                            assertThat(list).hasSize(1);
                             return list.get(0);
                         })
                         .doOnNext(data -> {
@@ -591,10 +594,10 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                                         assertThat(value).isInstanceOfSatisfying(Object[].class, item -> assertThat(item).isEqualTo(t));
                                     }
                                 } else {
-                                    assertEquals(t, value);
+                                    assertThat(value).isEqualTo(t);
                                 }
                             } else {
-                                assertNull(value);
+                                assertThat(value).isNull();
                             }
                         });
                 }
@@ -602,7 +605,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
             })
             .then(Mono.from(connection.createStatement("DELETE FROM test WHERE id>0").execute()))
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .doOnNext(u -> assertEquals(u, 1))
+            .doOnNext(u -> assertThat(u).isEqualTo(1))
             .then();
     }
 
