@@ -75,8 +75,7 @@ public class ConnectionContextTest {
     public static ConnectionContext mock(ZoneId zoneId) {
         ConnectionContext context = new ConnectionContext(ZeroDateOption.USE_NULL, zoneId);
 
-        context.setConnectionId(1);
-        context.setCapabilities(Capabilities.ALL_SUPPORTED);
+        context.init(1, ServerVersion.parse("8.0.11.MOCKED"), Capabilities.ALL_SUPPORTED);
         context.setServerStatuses(ServerStatuses.AUTO_COMMIT);
 
         return context;
