@@ -63,17 +63,15 @@ public final class ConnectionContext implements CodecContext {
         return connectionId;
     }
 
-    public void setConnectionId(int connectionId) {
+    public void init(int connectionId, ServerVersion version, int capabilities) {
         this.connectionId = connectionId;
+        this.serverVersion = version;
+        this.capabilities = capabilities;
     }
 
     @Override
     public ServerVersion getServerVersion() {
         return serverVersion;
-    }
-
-    public void setServerVersion(ServerVersion serverVersion) {
-        this.serverVersion = serverVersion;
     }
 
     @Override
@@ -115,9 +113,5 @@ public final class ConnectionContext implements CodecContext {
 
     public int getCapabilities() {
         return capabilities;
-    }
-
-    public void setCapabilities(int capabilities) {
-        this.capabilities = capabilities;
     }
 }

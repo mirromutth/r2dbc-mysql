@@ -101,9 +101,7 @@ final class LoginFlow {
         }
 
         // No need initialize server statuses because it has initialized by read filter.
-        this.context.setConnectionId(header.getConnectionId());
-        this.context.setServerVersion(serverVersion);
-        this.context.setCapabilities(calculateClientCapabilities(message.getServerCapabilities()));
+        this.context.init(header.getConnectionId(), serverVersion, clientCapabilities(message.getServerCapabilities()));
 
         this.authProvider = MySqlAuthProvider.build(message.getAuthType());
         this.salt = message.getSalt();
@@ -174,11 +172,11 @@ final class LoginFlow {
         });
     }
 
-    private int calculateClientCapabilities(int serverCapabilities) {
+    private int clientCapabilities(int serverCapabilities) {
         // Remove unknown flags.
-        int clientCapabilities = serverCapabilities & Capabilities.ALL_SUPPORTED;
+        int capabilities = serverCapabilities & Capabilities.ALL_SUPPORTED;
 
-        if ((clientCapabilities & Capabilities.SSL) == 0) {
+        if ((capabilities & Capabilities.SSL) == 0) {
             // Server unsupported SSL.
             if (sslMode.requireSsl()) {
                 String message = String.format("Server version '%s' does not support SSL but mode '%s' requires SSL", context.getServerVersion(), sslMode);
@@ -193,24 +191,24 @@ final class LoginFlow {
             // Server supports SSL.
             if (!sslMode.startSsl()) {
                 // SSL does not start, just remove flag.
-                clientCapabilities &= ~Capabilities.SSL;
+                capabilities &= ~Capabilities.SSL;
             }
 
             if (!sslMode.verifyCertificate()) {
                 // No need verify server cert, remove flag.
-                clientCapabilities &= ~Capabilities.SSL_VERIFY_SERVER_CERT;
+                capabilities &= ~Capabilities.SSL_VERIFY_SERVER_CERT;
             }
         }
 
-        if (database.isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
-            clientCapabilities &= ~Capabilities.CONNECT_WITH_DB;
+        if (database.isEmpty() && (capabilities & Capabilities.CONNECT_WITH_DB) != 0) {
+            capabilities &= ~Capabilities.CONNECT_WITH_DB;
         }
 
-        if (ATTRIBUTES.isEmpty() && (clientCapabilities & Capabilities.CONNECT_ATTRS) != 0) {
-            clientCapabilities &= ~Capabilities.CONNECT_ATTRS;
+        if (ATTRIBUTES.isEmpty() && (capabilities & Capabilities.CONNECT_ATTRS) != 0) {
+            capabilities &= ~Capabilities.CONNECT_ATTRS;
         }
 
-        return clientCapabilities;
+        return capabilities;
     }
 
     /**
