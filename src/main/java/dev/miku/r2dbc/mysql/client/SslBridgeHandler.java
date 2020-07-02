@@ -64,14 +64,21 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
 
     private final boolean verifyIdentity;
 
-    private volatile SSLEngine sslEngine;
+    private final MySqlSslConfiguration ssl;
 
-    private volatile MySqlSslConfiguration ssl;
+    private SSLEngine sslEngine;
 
     SslBridgeHandler(ConnectionContext context, MySqlSslConfiguration ssl) {
         this.context = requireNonNull(context, "context must not be null");
         this.ssl = requireNonNull(ssl, "ssl must not be null");
         this.verifyIdentity = ssl.getSslMode().verifyIdentity();
+    }
+
+    @Override
+    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+        if(ssl.getSslMode() == SslMode.TUNNEL){
+            userEventTriggered(ctx, SslState.BRIDGING);
+        }
     }
 
     @Override
@@ -107,7 +114,9 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
             }
         }
 
-        ctx.fireChannelRead(SyntheticSslResponseMessage.getInstance());
+        if (ssl.getSslMode() != SslMode.TUNNEL) {
+            ctx.fireChannelRead(SyntheticSslResponseMessage.getInstance());
+        }
 
         // Remove self because it is useless. (kick down the ladder!)
         logger.debug("SSL handshake completed, remove SSL bridge in pipeline");
@@ -120,7 +129,6 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                 logger.debug("SSL event triggered, enable SSL handler to pipeline");
 
                 MySqlSslConfiguration ssl = this.ssl;
-                this.ssl = null;
 
                 if (ssl == null) {
                     ctx.fireExceptionCaught(new IllegalStateException("The SSL bridge has used, cannot build SSL handler twice"));
@@ -144,7 +152,8 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         // Ignore another custom SSL states because they are useless.
     }
 
-    private static SslProvider buildProvider(MySqlSslConfiguration ssl, ServerVersion version) {
+    private static SslProvider buildProvider(MySqlSslConfiguration ssl, ServerVersion
+        version) {
         return SslProvider.builder()
             .sslContext(buildContext(ssl, version))
             .defaultConfiguration(SslProvider.DefaultConfigurationType.TCP)
@@ -170,11 +179,9 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         if (mode.verifyCertificate()) {
             String sslCa = ssl.getSslCa();
 
-            if (sslCa == null) {
-                throw new IllegalStateException(String.format("SSL mode %s requires SSL CA parameter", mode));
+            if (sslCa != null) {
+                builder.trustManager(new File(sslCa));
             }
-
-            builder.trustManager(new File(sslCa));
         } else {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }

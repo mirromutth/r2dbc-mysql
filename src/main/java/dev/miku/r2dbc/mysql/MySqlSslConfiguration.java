@@ -155,9 +155,11 @@ public final class MySqlSslConfiguration {
         }
 
         requireNonNull(tlsVersion, "tlsVersion must not be null");
-        require(!sslMode.verifyCertificate() || sslCa != null, "sslCa must not be null when verifying mode has set");
-        require((sslKey == null && sslCert == null) || (sslKey != null && sslCert != null), "sslKey and cert must be both null or both non-null");
 
         return new MySqlSslConfiguration(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
+    }
+
+    public String getHostName() {
+        return null;
     }
 }

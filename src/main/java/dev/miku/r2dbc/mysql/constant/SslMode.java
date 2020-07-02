@@ -56,7 +56,15 @@ public enum SslMode {
      * <p>
      * In other words: I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
      */
-    VERIFY_IDENTITY;
+    VERIFY_IDENTITY,
+
+    /**
+     * Establish an encrypted connection based on {@link #VERIFY_CA}, additionally perform identity verification by checking the hostname.
+     * The connection attempt fails if the identity mismatched.
+     * <p>
+     * In other words: I want to connect to a SSL proxy without using MySQL's SSL protocol.
+     */
+    TUNNEL;
 
     public final boolean requireSsl() {
         return REQUIRED == this || VERIFY_CA == this || VERIFY_IDENTITY == this;
@@ -67,7 +75,7 @@ public enum SslMode {
     }
 
     public final boolean verifyCertificate() {
-        return VERIFY_CA == this || VERIFY_IDENTITY == this;
+        return VERIFY_CA == this || VERIFY_IDENTITY == this || TUNNEL == this;
     }
 
     public final boolean verifyIdentity() {
