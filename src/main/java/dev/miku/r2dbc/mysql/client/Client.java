@@ -28,6 +28,7 @@ import reactor.core.publisher.Mono;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.time.Duration;
 import java.util.function.Predicate;
@@ -72,7 +73,7 @@ public interface Client {
 
     void loginSuccess();
 
-    static Mono<Client> connect(SocketAddress address, MySqlSslConfiguration ssl, ConnectionContext context, @Nullable Duration connectTimeout) {
+    static Mono<Client> connect(MySqlSslConfiguration ssl, SocketAddress address, boolean tcpKeepAlive, boolean tcpNoDelay, ConnectionContext context, @Nullable Duration connectTimeout) {
         requireNonNull(address, "address must not be null");
         requireNonNull(ssl, "ssl must not be null");
         requireNonNull(context, "context must not be null");
@@ -81,6 +82,11 @@ public interface Client {
 
         if (connectTimeout != null) {
             tcpClient = tcpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
+        }
+
+        if(address instanceof InetSocketAddress) {
+            tcpClient = tcpClient.option(ChannelOption.SO_KEEPALIVE, tcpKeepAlive);
+            tcpClient = tcpClient.option(ChannelOption.TCP_NODELAY, tcpNoDelay);
         }
 
         return tcpClient.remoteAddress(() -> address).connect()

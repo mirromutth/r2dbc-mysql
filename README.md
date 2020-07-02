@@ -210,6 +210,8 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 | sslCert | A path of local file which type is `PEM` | Required when `sslKey` exists | The SSL cert of client |
 | sslKey | A path of local file which type is `PEM` | Required when `sslCert` exists | The SSL key of client |
 | sslKeyPassword | Any valid password for `PEM` file | Optional, default `sslKey` has no password | The password for client SSL key (i.e. `sslKey`) |
+| tcpKeepAlive | Enable TCP KeepAlive | Optional, disabled. `true` or `false` | Controls TCP KeepAlive |
+| tcpNoDelay | Enable TCP NoDelay | Optional, disabled. `true` or `false` | Controls TCP NoDelay |
 | tlsVersion | Any value list of `TlsVersions` | Optional, default is auto-selected by the server | The TLS version for SSL, see following notice |
 | zeroDateOption | Any value of `ZeroDateOption` | Optional, default `USE_NULL` | The option indicates "zero date" handling, see following notice |
 
