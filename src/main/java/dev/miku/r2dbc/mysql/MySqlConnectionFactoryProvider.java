@@ -62,6 +62,20 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
 
     public static final Option<Object> SSL_CONTEXT_BUILDER_CUSTOMIZER = Option.valueOf("sslContextBuilderCustomizer");
 
+    /**
+     * Enable TCP KeepAlive.
+     *
+     * @since 0.8.2
+     */
+    public static final Option<Object> TCP_KEEPALIVE = Option.valueOf("tcpKeepAlive");
+
+    /**
+     * Enable TCP NoDelay.
+     *
+     * @since 0.8.2
+     */
+    public static final Option<Object> TCP_NODELAY = Option.valueOf("tcpNoDelay");
+
     public static final Option<Object> USE_SERVER_PREPARE_STATEMENT = Option.valueOf("useServerPrepareStatement");
 
     public static final Option<Boolean> AUTODETECT_EXTENSIONS = Option.valueOf("autodetectExtensions");
@@ -134,9 +148,18 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             }
         }
 
-        String zeroDate = options.getValue(ZERO_DATE);
-        if (zeroDate != null) {
-            builder.zeroDateOption(ZeroDateOption.valueOf(zeroDate.toUpperCase()));
+        Object tcpKeepAlive = options.getValue(TCP_KEEPALIVE);
+        if (tcpKeepAlive != null) {
+            // Convert stringify option.
+            builder.tcpKeepAlive(tcpKeepAlive instanceof String ? Boolean
+                    .parseBoolean(tcpKeepAlive.toString()) : (Boolean) tcpKeepAlive);
+        }
+
+        Object tcpNoDelay = options.getValue(TCP_NODELAY);
+        if (tcpNoDelay != null) {
+            // Convert stringify option.
+            builder.tcpNoDelay(tcpNoDelay instanceof String ? Boolean
+                    .parseBoolean(tcpNoDelay.toString()) : (Boolean) tcpNoDelay);
         }
 
         Object serverPreparing = options.getValue(USE_SERVER_PREPARE_STATEMENT);

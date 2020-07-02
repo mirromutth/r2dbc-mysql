@@ -22,6 +22,7 @@ import dev.miku.r2dbc.mysql.extension.Extension;
 import io.netty.handler.ssl.SslContextBuilder;
 import reactor.util.annotation.Nullable;
 
+import java.net.Socket;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -61,6 +62,10 @@ public final class MySqlConnectionConfiguration {
 
     private final MySqlSslConfiguration ssl;
 
+    private final boolean tcpKeepAlive;
+
+    private final boolean tcpNoDelay;
+
     @Nullable
     private final Duration connectTimeout;
 
@@ -82,14 +87,16 @@ public final class MySqlConnectionConfiguration {
     private final Extensions extensions;
 
     private MySqlConnectionConfiguration(
-        boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
-        @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
-        String user, @Nullable CharSequence password, @Nullable String database,
-        @Nullable Predicate<String> preferPrepareStatement, Extensions extensions
+            boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
+            boolean tcpKeepAlive, boolean tcpNoDelay, @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
+            String user, @Nullable CharSequence password, @Nullable String database,
+            @Nullable Predicate<String> preferPrepareStatement, Extensions extensions
     ) {
         this.isHost = isHost;
         this.domain = domain;
         this.port = port;
+        this.tcpKeepAlive = tcpKeepAlive;
+        this.tcpNoDelay = tcpNoDelay;
         this.connectTimeout = connectTimeout;
         this.ssl = requireNonNull(ssl, "ssl must not be null");
         this.serverZoneId = serverZoneId;
@@ -124,6 +131,14 @@ public final class MySqlConnectionConfiguration {
 
     MySqlSslConfiguration getSsl() {
         return ssl;
+    }
+
+    boolean isTcpKeepAlive() {
+        return this.tcpKeepAlive;
+    }
+
+    boolean isTcpNoDelay() {
+        return this.tcpNoDelay;
     }
 
     ZeroDateOption getZeroDateOption() {
@@ -170,6 +185,8 @@ public final class MySqlConnectionConfiguration {
             domain.equals(that.domain) &&
             port == that.port &&
             ssl.equals(that.ssl) &&
+            tcpKeepAlive == that.tcpKeepAlive &&
+            tcpNoDelay == that.tcpNoDelay &&
             Objects.equals(connectTimeout, that.connectTimeout) &&
             Objects.equals(serverZoneId, that.serverZoneId) &&
             zeroDateOption == that.zeroDateOption &&
@@ -182,7 +199,7 @@ public final class MySqlConnectionConfiguration {
 
     @Override
     public int hashCode() {
-        return Objects.hash(isHost, domain, port, ssl, connectTimeout, serverZoneId, zeroDateOption, user, password, database, preferPrepareStatement, extensions);
+        return Objects.hash(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay, connectTimeout, serverZoneId, zeroDateOption, user, password, database, preferPrepareStatement, extensions);
     }
 
     @Override
@@ -192,6 +209,8 @@ public final class MySqlConnectionConfiguration {
                 ", host='" + domain + '\'' +
                 ", port=" + port +
                 ", ssl=" + ssl +
+                ", tcpNoDelay=" + tcpNoDelay +
+                ", tcpKeepAlive=" + tcpKeepAlive +
                 ", connectTimeout=" + connectTimeout +
                 ", serverZoneId=" + serverZoneId +
                 ", zeroDateOption=" + zeroDateOption +
@@ -260,6 +279,10 @@ public final class MySqlConnectionConfiguration {
         @Nullable
         private Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer;
 
+        private boolean tcpKeepAlive;
+
+        private boolean tcpNoDelay;
+
         @Nullable
         private Predicate<String> preferPrepareStatement;
 
@@ -282,7 +305,7 @@ public final class MySqlConnectionConfiguration {
             }
 
             MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
-            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, connectTimeout, zeroDateOption, serverZoneId,
+            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay, connectTimeout, zeroDateOption, serverZoneId,
                 user, password, database, preferPrepareStatement, Extensions.from(extensions, autodetectExtensions));
         }
 
@@ -506,6 +529,32 @@ public final class MySqlConnectionConfiguration {
             requireNonNull(customizer, "sslContextBuilderCustomizer must not be null");
 
             this.sslContextBuilderCustomizer = customizer;
+            return this;
+        }
+
+        /**
+         * Configure TCP KeepAlive.
+         *
+         * @param enabled whether to enable TCP KeepAlive
+         * @return this {@link Builder}
+         * @see Socket#setKeepAlive(boolean)
+         * @since 0.8.1
+         */
+        public Builder tcpKeepAlive(boolean enabled) {
+            this.tcpKeepAlive = enabled;
+            return this;
+        }
+
+        /**
+         * Configure TCP NoDelay.
+         *
+         * @param enabled whether to enable TCP NoDelay
+         * @return this {@link Builder}
+         * @see Socket#setTcpNoDelay(boolean)
+         * @since 0.8.1
+         */
+        public Builder tcpNoDelay(boolean enabled) {
+            this.tcpNoDelay = enabled;
             return this;
         }
 

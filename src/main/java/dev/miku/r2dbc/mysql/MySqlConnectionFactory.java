@@ -77,7 +77,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption(), configuration.getServerZoneId());
             Extensions extensions = configuration.getExtensions();
 
-            return Client.connect(address, ssl, context, configuration.getConnectTimeout())
+            return Client.connect(ssl, address, configuration.isTcpKeepAlive(), configuration.isTcpNoDelay(), context, configuration.getConnectTimeout())
                 .flatMap(client -> LoginFlow.login(client, sslMode, database, context, user, password))
                 .flatMap(client -> {
                     ByteBufAllocator allocator = client.getByteBufAllocator();

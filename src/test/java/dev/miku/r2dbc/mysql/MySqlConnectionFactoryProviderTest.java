@@ -159,6 +159,8 @@ class MySqlConnectionFactoryProviderTest {
             .option(Option.valueOf("sslKey"), "/path/to/client-key.pem")
             .option(Option.valueOf("sslCert"), "/path/to/client-cert.pem")
             .option(Option.valueOf("sslKeyPassword"), "ssl123456")
+            .option(Option.valueOf("tcpKeepAlive"), "true")
+            .option(Option.valueOf("tcpNoDelay"), "true")
             .build();
 
         assertThat(ConnectionFactories.get(options)).isExactlyInstanceOf(MySqlConnectionFactory.class);
