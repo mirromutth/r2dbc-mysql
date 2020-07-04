@@ -19,7 +19,6 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -33,26 +32,17 @@ final class PrepareParametrizedStatement extends ParametrizedStatementSupport {
 
     private final PrepareQuery query;
 
-    private final boolean deprecateEof;
-
     private int fetchSize = 0;
 
-    PrepareParametrizedStatement(Client client, Codecs codecs, ConnectionContext context, PrepareQuery query, boolean deprecateEof) {
+    PrepareParametrizedStatement(Client client, Codecs codecs, ConnectionContext context, PrepareQuery query) {
         super(client, codecs, context, requireNonNull(query, "query must not be null").getParameters());
         this.query = query;
-        this.deprecateEof = deprecateEof;
     }
 
     @Override
     public Flux<MySqlResult> execute(List<Binding> bindings) {
-        String sql = query.getSql();
-        return QueryFlow.prepare(client, sql)
-            .doOnCancel(bindings::clear)
-            .flatMapMany(it -> QueryFlow.execute(client, context, sql, it, deprecateEof, fetchSize, bindings)
-                .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages))
-                .onErrorResume(e -> it.close().then(Mono.error(e)))
-                .concatWith(it.close().then(Mono.empty()))
-                .doOnCancel(() -> it.close().subscribe()));
+        return QueryFlow.execute(client, query.getSql(), bindings, fetchSize)
+            .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
     }
 
     @Override

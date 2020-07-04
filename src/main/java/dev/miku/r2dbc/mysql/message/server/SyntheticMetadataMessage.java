@@ -16,7 +16,10 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import reactor.util.annotation.Nullable;
+
 import java.util.Arrays;
+import java.util.Objects;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -34,9 +37,13 @@ public final class SyntheticMetadataMessage implements ServerMessage {
 
     private final DefinitionMetadataMessage[] messages;
 
-    SyntheticMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages) {
+    @Nullable
+    private final EofMessage eof;
+
+    SyntheticMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages, @Nullable EofMessage eof) {
         this.completed = completed;
         this.messages = requireNonNull(messages, "messages must not be null");
+        this.eof = eof;
     }
 
     public final DefinitionMetadataMessage[] unwrap() {
@@ -47,12 +54,17 @@ public final class SyntheticMetadataMessage implements ServerMessage {
         return completed;
     }
 
+    @Nullable
+    public EofMessage getEof() {
+        return eof;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof SyntheticMetadataMessage)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
@@ -61,27 +73,28 @@ public final class SyntheticMetadataMessage implements ServerMessage {
         if (completed != that.completed) {
             return false;
         }
-        return Arrays.equals(messages, that.messages);
+        // Probably incorrect - comparing Object[] arrays with Arrays.equals
+        if (!Arrays.equals(messages, that.messages)) {
+            return false;
+        }
+        return Objects.equals(eof, that.eof);
     }
 
     @Override
     public int hashCode() {
-        int result = Arrays.hashCode(messages);
-        result = 31 * result + (completed ? 1 : 0);
+        int result = (completed ? 1 : 0);
+        result = 31 * result + Arrays.hashCode(messages);
+        result = 31 * result + Objects.hashCode(eof);
         return result;
     }
 
     @Override
     public String toString() {
         if (messages.length <= 3) {
-            return String.format("SyntheticMetadataMessage{completed=%b, messages=%s}", completed, Arrays.toString(messages));
+            return String.format("SyntheticMetadataMessage{completed=%b, messages=%s, eof=%s}", completed, Arrays.toString(messages), eof);
         }
 
         // MySQL support 4096 columns for pre-table, no need print large bundle of messages in here.
-        return String.format("SyntheticMetadataMessage{completed=%b, messages=[%s, %s, ...more %d messages]}", completed, messages[0], messages[1], messages.length - 2);
-    }
-
-    public static SyntheticMetadataMessage completedEmpty() {
-        return new SyntheticMetadataMessage(true, EMPTY_METADATA);
+        return String.format("SyntheticMetadataMessage{completed=%b, messages=[%s, %s, ...more %d messages], eof=%s}", completed, messages[0], messages[1], messages.length - 2, eof);
     }
 }

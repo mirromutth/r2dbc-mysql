@@ -62,7 +62,7 @@ class PrepareSimpleStatementTest implements StatementTestSupport<PrepareSimpleSt
 
     @Override
     public PrepareSimpleStatement makeInstance(String parametrizedSql, String simpleSql) {
-        return new PrepareSimpleStatement(client, codecs, context, simpleSql, true);
+        return new PrepareSimpleStatement(client, codecs, context, simpleSql);
     }
 
     @Override

@@ -27,8 +27,6 @@ import static io.r2dbc.spi.IsolationLevel.READ_UNCOMMITTED;
 import static io.r2dbc.spi.IsolationLevel.REPEATABLE_READ;
 import static io.r2dbc.spi.IsolationLevel.SERIALIZABLE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Integration tests for {@link MySqlConnection}.
@@ -53,25 +51,12 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    void transactionIsAutoCommit() {
-        complete(connection -> Mono.<Void>fromRunnable(() -> assertTrue(connection.isAutoCommit()))
-            .then(connection.beginTransaction())
-            .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
-            .then(connection.commitTransaction())
-            .doOnSuccess(ignored -> assertTrue(connection.isAutoCommit()))
-            .then(connection.beginTransaction())
-            .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
-            .then(connection.rollbackTransaction())
-            .doOnSuccess(ignored -> assertTrue(connection.isAutoCommit())));
-    }
-
-    @Test
     void setAutoCommit() {
-        complete(connection -> Mono.<Void>fromRunnable(() -> assertTrue(connection.isAutoCommit()))
+        complete(connection -> Mono.<Void>fromRunnable(() -> assertThat(connection.isAutoCommit()).isTrue())
             .then(connection.setAutoCommit(false))
-            .doOnSuccess(ignored -> assertFalse(connection.isAutoCommit()))
+            .doOnSuccess(ignored -> assertThat(connection.isAutoCommit()).isFalse())
             .then(connection.setAutoCommit(true))
-            .doOnSuccess(ignored -> assertTrue(connection.isAutoCommit())));
+            .doOnSuccess(ignored -> assertThat(connection.isAutoCommit()).isTrue()));
     }
 
     @Test

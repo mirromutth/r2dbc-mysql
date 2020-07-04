@@ -48,7 +48,7 @@ class PrepareParametrizedStatementTest implements StatementTestSupport<PreparePa
 
     @Override
     public PrepareParametrizedStatement makeInstance(String parametrizedSql, String simpleSql) {
-        return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) Query.parse(parametrizedSql, true), true);
+        return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) Query.parse(parametrizedSql, true));
     }
 
     @Override

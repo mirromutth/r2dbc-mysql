@@ -18,10 +18,9 @@ package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.MonoSink;
 import reactor.util.annotation.Nullable;
-
-import java.util.function.Supplier;
 
 /**
  * A task for execute, propagate errors and release resources.
@@ -35,16 +34,16 @@ final class RequestTask<T> {
 
     private final MonoSink<T> sink;
 
-    private final Supplier<T> supplier;
+    private final T supplier;
 
-    private RequestTask(@Nullable Disposable disposable, MonoSink<T> sink, Supplier<T> supplier) {
+    private RequestTask(@Nullable Disposable disposable, MonoSink<T> sink, T supplier) {
         this.disposable = disposable;
         this.sink = sink;
         this.supplier = supplier;
     }
 
     void run() {
-        sink.success(supplier.get());
+        sink.success(supplier);
     }
 
     /**
@@ -59,7 +58,7 @@ final class RequestTask<T> {
         sink.error(e);
     }
 
-    static <T> RequestTask<T> wrap(ClientMessage message, MonoSink<T> sink, Supplier<T> supplier) {
+    static <T> RequestTask<T> wrap(ClientMessage message, MonoSink<T> sink, T supplier) {
         if (message instanceof Disposable) {
             return new RequestTask<>((Disposable) message, sink, supplier);
         }
@@ -67,11 +66,29 @@ final class RequestTask<T> {
         return new RequestTask<>(null, sink, supplier);
     }
 
-    static <T> RequestTask<T> wrap(Disposable disposable, MonoSink<T> sink, Supplier<T> supplier) {
-        return new RequestTask<>(disposable, sink, supplier);
+    static <T> RequestTask<T> wrap(Flux<? extends ClientMessage> messages, MonoSink<T> sink, T supplier) {
+        return new RequestTask<>(new DisposableFlux(messages), sink, supplier);
     }
 
-    static <T> RequestTask<T> wrap(MonoSink<T> sink, Supplier<T> supplier) {
+    static <T> RequestTask<T> wrap(MonoSink<T> sink, T supplier) {
         return new RequestTask<>(null, sink, supplier);
+    }
+
+    private static final class DisposableFlux implements Disposable {
+
+        private final Flux<? extends ClientMessage> messages;
+
+        private DisposableFlux(Flux<? extends ClientMessage> messages) {
+            this.messages = messages;
+        }
+
+        @Override
+        public void dispose() {
+            Flux.from(messages).subscribe(it -> {
+                if (it instanceof Disposable) {
+                    ((Disposable) it).dispose();
+                }
+            });
+        }
     }
 }

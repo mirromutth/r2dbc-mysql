@@ -127,8 +127,6 @@ public final class MySqlConnection implements Connection {
 
     private final IsolationLevel sessionLevel;
 
-    private final boolean deprecateEof;
-
     @Nullable
     private final Predicate<String> prepare;
 
@@ -153,7 +151,6 @@ public final class MySqlConnection implements Connection {
     ) {
         this.client = client;
         this.context = context;
-        this.deprecateEof = (this.context.getCapabilities() & Capabilities.DEPRECATE_EOF) != 0;
         this.sessionLevel = level;
         this.currentLevel = level;
         this.codecs = codecs;
@@ -175,13 +172,7 @@ public final class MySqlConnection implements Connection {
                 return Mono.empty();
             }
 
-            if (!isAutoCommit()) {
-                return QueryFlow.executeVoid(client, "START TRANSACTION");
-            } else if (batchSupported) {
-                return QueryFlow.executeVoid(client, "SET autocommit=0;START TRANSACTION");
-            } else {
-                return QueryFlow.executeVoid(client, "SET autocommit=0", "START TRANSACTION");
-            }
+            return QueryFlow.executeVoid(client, "BEGIN");
         });
     }
 
@@ -204,17 +195,7 @@ public final class MySqlConnection implements Connection {
                 return Mono.empty();
             }
 
-            Mono<Void> commit;
-
-            if (isAutoCommit()) {
-                commit = QueryFlow.executeVoid(client, "COMMIT");
-            } else if (batchSupported) {
-                commit = QueryFlow.executeVoid(client, "COMMIT;SET autocommit=1");
-            } else {
-                commit = QueryFlow.executeVoid(client, "COMMIT", "SET autocommit=1");
-            }
-
-            return recoverIsolationLevel(commit);
+            return recoverIsolationLevel(QueryFlow.executeVoid(client, "COMMIT"));
         });
     }
 
@@ -236,21 +217,11 @@ public final class MySqlConnection implements Connection {
         return Mono.defer(() -> {
             if (isInTransaction()) {
                 return QueryFlow.executeVoid(client, sql);
-            }
-
-            // See TestKit.savePointStartsTransaction, if connection does not in transaction, then starts transaction.
-            if (batchSupported) {
-                if (isAutoCommit()) {
-                    return QueryFlow.executeVoid(client, "SET autocommit=0;START TRANSACTION;" + sql);
-                } else {
-                    return QueryFlow.executeVoid(client, "START TRANSACTION;" + sql);
-                }
+            } else if (batchSupported) {
+                // See TestKit.savePointStartsTransaction, if connection does not in transaction, then starts transaction.
+                return QueryFlow.executeVoid(client, "BEGIN;" + sql);
             } else {
-                if (isAutoCommit()) {
-                    return QueryFlow.executeVoid(client, "SET autocommit=0", "START TRANSACTION", sql);
-                } else {
-                    return QueryFlow.executeVoid(client, "START TRANSACTION", sql);
-                }
+                return QueryFlow.executeVoid(client, "BEGIN", sql);
             }
         });
     }
@@ -269,7 +240,7 @@ public final class MySqlConnection implements Connection {
         if (query instanceof SimpleQuery) {
             if (prepare != null && prepare.test(sql)) {
                 logger.debug("Create a simple statement provided by prepare query");
-                return new PrepareSimpleStatement(client, codecs, context, sql, deprecateEof);
+                return new PrepareSimpleStatement(client, codecs, context, sql);
             } else {
                 logger.debug("Create a simple statement provided by text query");
                 return new TextSimpleStatement(client, codecs, context, sql);
@@ -279,7 +250,7 @@ public final class MySqlConnection implements Connection {
             return new TextParametrizedStatement(client, codecs, context, (TextQuery) query);
         } else {
             logger.debug("Create a parametrized statement provided by prepare query");
-            return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) query, deprecateEof);
+            return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) query);
         }
     }
 
@@ -297,17 +268,7 @@ public final class MySqlConnection implements Connection {
                 return Mono.empty();
             }
 
-            Mono<Void> rollback;
-
-            if (isAutoCommit()) {
-                rollback = QueryFlow.executeVoid(client, "ROLLBACK");
-            } else if (batchSupported) {
-                rollback = QueryFlow.executeVoid(client, "ROLLBACK;SET autocommit=1");
-            } else {
-                rollback = QueryFlow.executeVoid(client, "ROLLBACK", "SET autocommit=1");
-            }
-
-            return recoverIsolationLevel(rollback);
+            return recoverIsolationLevel(QueryFlow.executeVoid(client, "ROLLBACK"));
         });
     }
 
@@ -372,16 +333,31 @@ public final class MySqlConnection implements Connection {
 
     @Override
     public boolean isAutoCommit() {
-        return (context.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0;
+        // Within transaction, autocommit remains disabled until end the transaction with COMMIT or ROLLBACK.
+        // The autocommit mode then reverts to its previous state.
+        return !isInTransaction() && isSessionAutoCommit();
     }
 
     @Override
     public Mono<Void> setAutoCommit(boolean autoCommit) {
-        return QueryFlow.executeVoid(client, String.format("SET autocommit=%d", autoCommit ? 1 : 0));
+        return Mono.defer(() -> {
+            if (autoCommit == isSessionAutoCommit()) {
+                return Mono.empty();
+            }
+
+            return QueryFlow.executeVoid(client, String.format("SET autocommit=%d", autoCommit ? 1 : 0));
+        });
     }
 
+    /**
+     * Visible for tests.
+     */
     boolean isInTransaction() {
         return (context.getServerStatuses() & ServerStatuses.IN_TRANSACTION) != 0;
+    }
+
+    boolean isSessionAutoCommit() {
+        return (context.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0;
     }
 
     private Mono<Void> recoverIsolationLevel(Mono<Void> commitOrRollback) {
