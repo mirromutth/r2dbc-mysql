@@ -50,29 +50,32 @@ final class LargeMessageSlicer implements CoreSubscriber<ByteBuf> {
 
     @Override
     public void onNext(ByteBuf buf) {
-        if (!buf.isReadable())  {
-            // Ignore empty buffer.
-            buf.release();
-            return;
-        }
-
-        if (now == null) {
-            onNullNext(buf);
-        } else {
-            int needBytes = Envelopes.MAX_ENVELOPE_SIZE - nowBytes;
-
-            if (buf.readableBytes() < needBytes) {
-                // Must less than sliceBytes
-                nowBytes += buf.readableBytes();
-                now.add(buf);
-            } else {
-                now.add(buf.readRetainedSlice(needBytes));
-                sink.next(mergeNow());
-                now = null;
-                nowBytes = 0;
-
-                onNullNext(buf);
+        try {
+            if (!buf.isReadable())  {
+                // Ignore empty buffer.
+                buf.release();
+                return;
             }
+
+            if (now == null) {
+                onNullNext(buf);
+            } else {
+                int needBytes = Envelopes.MAX_ENVELOPE_SIZE - nowBytes;
+
+                if (buf.readableBytes() < needBytes) {
+                    // Must less than sliceBytes
+                    nowBytes += buf.readableBytes();
+                    now.add(buf);
+                } else {
+                    now.add(buf.readRetainedSlice(needBytes));
+                    sink.next(drainNow());
+
+                    onNullNext(buf);
+                }
+            }
+        } catch (Throwable e) {
+            sink.error(e);
+            releaseNow();
         }
     }
 
@@ -87,18 +90,13 @@ final class LargeMessageSlicer implements CoreSubscriber<ByteBuf> {
 
     @Override
     public void onComplete() {
-        try {
-            if (now == null) {
-                // Complete envelope.
-                sink.next(allocator.buffer(0, 0));
-            } else {
-                sink.next(mergeNow());
-                now = null;
-            }
-            sink.complete();
-        } finally {
-            releaseNow();
+        if (now == null) {
+            // Complete envelope.
+            sink.next(allocator.buffer(0, 0));
+        } else {
+            sink.next(drainNow());
         }
+        sink.complete();
     }
 
     @SuppressWarnings("ForLoopReplaceableByForEach")
@@ -108,14 +106,18 @@ final class LargeMessageSlicer implements CoreSubscriber<ByteBuf> {
             for (int i = 0; i < size; ++i) {
                 ReferenceCountUtil.safeRelease(now.get(i));
             }
+            now = null;
         }
     }
 
-    private ByteBuf mergeNow() {
+    private ByteBuf drainNow() {
         int size = now.size();
 
         if (size == 1) {
-            return now.get(0);
+            ByteBuf buf = now.get(0);
+            now = null;
+            nowBytes = 0;
+            return buf;
         }
 
         int i = 0;
@@ -128,13 +130,16 @@ final class LargeMessageSlicer implements CoreSubscriber<ByteBuf> {
 
             return result;
         } catch (Throwable e) {
-            ReferenceCountUtil.safeRelease(result);
-
             for (; i < size; ++i) {
                 ReferenceCountUtil.safeRelease(now.get(i));
             }
 
+            result.release();
+
             throw e;
+        } finally {
+            now = null;
+            nowBytes = 0;
         }
     }
 

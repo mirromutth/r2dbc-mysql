@@ -43,7 +43,7 @@ abstract class MetadataDecodeContext implements DecodeContext {
 
             if (deprecateEof) {
                 // If EOF has deprecated, has no EOF for complete signal, should check complete always.
-                SyntheticMetadataMessage bundle = checkComplete(index);
+                SyntheticMetadataMessage bundle = checkComplete(index, null);
 
                 if (bundle != null) {
                     logger.debug("Respond a metadata bundle by filled-up");
@@ -61,7 +61,7 @@ abstract class MetadataDecodeContext implements DecodeContext {
 
             // Current columns index is also last index of metadata after put, see `putMetadata`.
             int currentIndex = currentIndex();
-            SyntheticMetadataMessage bundle = checkComplete(currentIndex);
+            SyntheticMetadataMessage bundle = checkComplete(currentIndex, (EofMessage) message);
 
             if (bundle == null) {
                 if (logger.isErrorEnabled()) {
@@ -78,7 +78,7 @@ abstract class MetadataDecodeContext implements DecodeContext {
     }
 
     @Nullable
-    abstract protected SyntheticMetadataMessage checkComplete(int index);
+    abstract protected SyntheticMetadataMessage checkComplete(int index, @Nullable EofMessage eof);
 
     /**
      * @return index of metadata after put
@@ -86,7 +86,7 @@ abstract class MetadataDecodeContext implements DecodeContext {
     abstract protected int putMetadata(DefinitionMetadataMessage metadata);
 
     /**
-     * @return current index, for {@link #checkComplete(int)} on EOF message come
+     * @return current index, for {@link #checkComplete(int, EofMessage)} on EOF message come
      */
     abstract protected int currentIndex();
 

@@ -18,8 +18,7 @@ package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
-import dev.miku.r2dbc.mysql.message.client.ExchangeableMessage;
-import dev.miku.r2dbc.mysql.message.client.SendOnlyMessage;
+import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelOption;
@@ -50,11 +49,9 @@ public interface Client {
      *                 previous, active response streams
      * @return A {@link Flux} of incoming messages that ends with the end of the frame
      */
-    Flux<ServerMessage> exchange(ExchangeableMessage request, Predicate<ServerMessage> complete);
+    Flux<ServerMessage> exchange(ClientMessage request, Predicate<ServerMessage> complete);
 
-    Mono<Void> sendOnly(SendOnlyMessage message);
-
-    Mono<ServerMessage> receiveOnly();
+    Flux<ServerMessage> exchange(Flux<? extends ClientMessage> requests, Predicate<ServerMessage> complete);
 
     Mono<Void> close();
 

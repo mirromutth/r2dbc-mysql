@@ -178,13 +178,6 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
                 setDecodeContext(DecodeContext.preparedMetadata(deprecateEof, columns, parameters));
             } else {
                 setDecodeContext(DecodeContext.command());
-
-                // Prepared OK first, this is also generic handle.
-                ctx.fireChannelRead(msg);
-                // Metadata second, append a synthetic message following Prepare OK.
-                ctx.fireChannelRead(SyntheticMetadataMessage.completedEmpty());
-
-                return; // Done, no need use generic handle.
             }
         } else if (msg instanceof ErrorMessage) {
             setDecodeContext(DecodeContext.command());

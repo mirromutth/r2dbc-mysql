@@ -17,10 +17,7 @@
 package dev.miku.r2dbc.mysql.util;
 
 import reactor.core.Fuseable;
-import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
-
-import java.util.Iterator;
 
 /**
  * Operator utility.
@@ -46,30 +43,6 @@ public final class OperatorUtils {
         }
 
         return new FluxDiscardOnCancel<>(source);
-    }
-
-    /**
-     * Emit next value from an {@link Iterator} to an {@link EmitterProcessor} if it
-     * has not been cancelled or terminated.
-     *
-     * @param processor want to emit next value to this processor.
-     * @param iterator  source values' iterator, can be intermediate state.
-     * @param <T>       the type of values in {@link Iterator} sources.
-     */
-    public static <T> void emitIterator(EmitterProcessor<T> processor, Iterator<T> iterator) {
-        if (processor.isCancelled() || processor.isTerminated()) {
-            return;
-        }
-
-        try {
-            if (iterator.hasNext()) {
-                processor.onNext(iterator.next());
-            } else {
-                processor.onComplete();
-            }
-        } catch (Throwable e) {
-            processor.onError(e);
-        }
     }
 
     private OperatorUtils() {

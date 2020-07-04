@@ -19,7 +19,6 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.Collections;
 import java.util.List;
@@ -33,23 +32,16 @@ final class PrepareSimpleStatement extends SimpleStatementSupport {
 
     private static final List<Binding> BINDINGS = Collections.singletonList(new Binding(0));
 
-    private final boolean deprecateEof;
-
     private int fetchSize = 0;
 
-    PrepareSimpleStatement(Client client, Codecs codecs, ConnectionContext context, String sql, boolean deprecateEof) {
+    PrepareSimpleStatement(Client client, Codecs codecs, ConnectionContext context, String sql) {
         super(client, codecs, context, sql);
-        this.deprecateEof = deprecateEof;
     }
 
     @Override
     public Flux<MySqlResult> execute() {
-        return Flux.defer(() -> QueryFlow.prepare(client, sql)
-            .flatMapMany(it -> QueryFlow.execute(client, context, sql, it, deprecateEof, fetchSize, BINDINGS)
-                .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages))
-                .onErrorResume(e -> it.close().then(Mono.error(e)))
-                .concatWith(it.close().then(Mono.empty()))
-                .doOnCancel(() -> it.close().subscribe())));
+        return QueryFlow.execute(client, sql, BINDINGS, fetchSize)
+            .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
     }
 
     @Override

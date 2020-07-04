@@ -35,6 +35,7 @@ import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
@@ -262,26 +263,23 @@ final class LoginFlow {
     private enum State {
 
         INIT {
+
+            private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof HandshakeRequest;
+
             @Override
             Mono<State> handle(LoginFlow flow) {
                 // Server send first, so no need send anything to server in here.
-                return flow.client.receiveOnly().handle((message, sink) -> {
+                return flow.client.exchange(Flux.empty(), complete).<State>handle((message, sink) -> {
                     if (message instanceof ErrorMessage) {
                         sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
                     } else if (message instanceof HandshakeRequest) {
                         flow.initHandshake((HandshakeRequest) message);
-
-                        if (flow.useSsl()) {
-                            sink.next(SSL);
-                            sink.complete();
-                        } else {
-                            sink.next(HANDSHAKE);
-                            sink.complete();
-                        }
+                        sink.next(flow.useSsl() ? SSL : HANDSHAKE);
+                        sink.complete();
                     } else {
                         sink.error(new IllegalStateException(String.format("Unexpected message type '%s' in handshake init phase", message.getClass().getSimpleName())));
                     }
-                });
+                }).last();
             }
         },
         SSL {

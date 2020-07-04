@@ -16,6 +16,8 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import reactor.util.annotation.Nullable;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
@@ -50,12 +52,12 @@ final class ResultDecodeContext extends MetadataDecodeContext {
     }
 
     @Override
-    protected SyntheticMetadataMessage checkComplete(int index) {
+    protected SyntheticMetadataMessage checkComplete(int index, @Nullable EofMessage eof) {
         if (index == metadataMessages.length) {
             inMetadata = false;
 
             // In results, row metadata has filled-up does not means complete. (has rows or OK/EOF following)
-            return new SyntheticMetadataMessage(false, metadataMessages);
+            return new SyntheticMetadataMessage(false, metadataMessages, eof);
         } else {
             return null;
         }

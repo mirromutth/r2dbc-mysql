@@ -16,6 +16,10 @@
 
 package dev.miku.r2dbc.mysql.client;
 
+import dev.miku.r2dbc.mysql.ConnectionContext;
+import dev.miku.r2dbc.mysql.message.client.ClientMessage;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.IllegalReferenceCountException;
 import org.junit.jupiter.api.Test;
 import reactor.core.Disposable;
@@ -27,9 +31,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Unit tests for {@link RequestQueue}.
@@ -41,16 +45,19 @@ class RequestQueueTest {
         RequestQueue queue = new RequestQueue();
         List<Integer> arr = new AddEventList(queue);
 
-        Mono<Boolean> third = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(3))));
-        Mono<Boolean> second = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(2))));
-        Mono<Boolean> first = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(1))));
+        Mono<Boolean> third = Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(3)))))
+            .flatMap(Function.identity());
+        Mono<Boolean> second = Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(2)))))
+            .flatMap(Function.identity());
+        Mono<Boolean> first = Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(1)))))
+            .flatMap(Function.identity());
 
         Flux.concat(first, second, third)
             .as(StepVerifier::create)
             .expectNext(true, true, true)
             .verifyComplete();
 
-        assertEquals(arr, Arrays.asList(1, 2, 3));
+        assertThat(arr).isEqualTo(Arrays.asList(1, 2, 3));
     }
 
     @Test
@@ -58,23 +65,27 @@ class RequestQueueTest {
         RequestQueue queue = new RequestQueue();
         List<Integer> arr = new AddEventList(queue);
 
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(5))))
+        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(5)))))
+            .flatMap(Function.identity())
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(4))))
+        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(4)))))
+            .flatMap(Function.identity())
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
         queue.dispose();
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(3))))
+        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(3)))))
+            .flatMap(Function.identity())
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(2))))
+        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(2)))))
+            .flatMap(Function.identity())
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
 
-        assertEquals(arr, Arrays.asList(5, 4));
+        assertThat(arr).isEqualTo(Arrays.asList(5, 4));
     }
 
     @Test
@@ -83,44 +94,49 @@ class RequestQueueTest {
         IntegerData[] sources = new IntegerData[]{new IntegerData(1), new IntegerData(2), new IntegerData(3), new IntegerData(4)};
         List<Integer> arr = new AddEventList(queue);
 
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sources[0], sink, () -> arr.add(sources[0].consumeData()))))
+        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sources[0], sink, Mono.fromSupplier(() -> arr.add(sources[0].consumeData())))))
+            .flatMap(Function.identity())
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sources[1], sink, () -> arr.add(sources[1].consumeData()))))
+        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sources[1], sink, Mono.fromSupplier(() -> arr.add(sources[1].consumeData())))))
+            .flatMap(Function.identity())
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
         queue.dispose();
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sources[2], sink, () -> {
-            throw new Error();
-        })))
+        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sources[2], sink, Mono.fromSupplier(() -> true))))
+            .flatMap(Function.identity())
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sources[3], sink, () -> {
-            throw new Error();
-        })))
+        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sources[3], sink, Mono.fromSupplier(() -> true))))
+            .flatMap(Function.identity())
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
 
-        assertEquals(arr, Arrays.asList(1, 2));
+        assertThat(arr).isEqualTo(Arrays.asList(1, 2));
         assertThat(sources).extracting(Disposable::isDisposed).containsOnly(true);
     }
 
     @Test
     void keeping() {
         RequestQueue queue = new RequestQueue();
-        assertEquals(queue.keeping(1), 1L);
-        assertEquals(queue.keeping(-1), -1L);
+        assertThat(queue.keeping(1)).isEqualTo(1L);
+        assertThat(queue.keeping(-1)).isEqualTo(-1L);
     }
 
-    private static final class IntegerData extends AtomicInteger implements Disposable {
+    private static final class IntegerData extends AtomicInteger implements ClientMessage, Disposable {
 
         private final int data;
 
         IntegerData(int data) {
             super(1);
             this.data = data;
+        }
+
+        @Override
+        public Mono<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
+            return Mono.error(IllegalStateException::new);
         }
 
         int consumeData() {

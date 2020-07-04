@@ -16,6 +16,8 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import reactor.util.annotation.Nullable;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -54,18 +56,18 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
     }
 
     @Override
-    protected SyntheticMetadataMessage checkComplete(int index) {
+    protected SyntheticMetadataMessage checkComplete(int index, @Nullable EofMessage eof) {
         if (index == paramMetadata.length) {
             if (colMetadata.length == 0) {
                 // Has no column metadata.
                 inMetadata = false;
-                return new SyntheticMetadataMessage(true, paramMetadata);
+                return new SyntheticMetadataMessage(true, paramMetadata, eof);
             }
 
-            return new SyntheticMetadataMessage(false, paramMetadata);
+            return new SyntheticMetadataMessage(false, paramMetadata, eof);
         } else if (index == paramMetadata.length + colMetadata.length) {
             inMetadata = false;
-            return new SyntheticMetadataMessage(true, colMetadata);
+            return new SyntheticMetadataMessage(true, colMetadata, eof);
         } else {
             return null;
         }
