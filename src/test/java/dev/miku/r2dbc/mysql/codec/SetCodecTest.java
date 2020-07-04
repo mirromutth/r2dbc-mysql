@@ -33,10 +33,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for {@link SetCodec}.
@@ -99,13 +101,21 @@ class SetCodecTest implements CodecTestSupport<String[]> {
         SetCodec codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
         ByteBuf[] binaries = binarySets(CharCollation.clientCharCollation().getCharset());
 
-        assertEquals(sets.length, binaries.length);
+        assertThat(sets).hasSize(binaries.length);
 
         for (int i = 0; i < sets.length; ++i) {
-            merge(Flux.from(codec.encode(sets[i], context()).publishBinary()))
-                .as(StepVerifier::create)
-                .expectNext(sized(binaries[i]))
-                .verifyComplete();
+            AtomicReference<ByteBuf> buf = new AtomicReference<>();
+            ByteBuf sized = sized(binaries[i]);
+            try {
+                merge(Flux.from(codec.encode(sets[i], context()).publishBinary()))
+                    .doOnNext(buf::set)
+                    .as(StepVerifier::create)
+                    .expectNext(sized)
+                    .verifyComplete();
+            } finally {
+                sized.release();
+                Optional.ofNullable(buf.get()).ifPresent(ByteBuf::release);
+            }
         }
     }
 
@@ -114,7 +124,7 @@ class SetCodecTest implements CodecTestSupport<String[]> {
         SetCodec codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
         String[] strings = stringifySets();
 
-        assertEquals(sets.length, strings.length);
+        assertThat(sets).hasSize(strings.length);
 
         for (int i = 0; i < sets.length; ++i) {
             ParameterWriter writer = ParameterWriterHelper.get(1);
@@ -122,7 +132,7 @@ class SetCodecTest implements CodecTestSupport<String[]> {
                 .publishText(writer)
                 .as(StepVerifier::create)
                 .verifyComplete();
-            assertEquals(ParameterWriterHelper.toSql(writer), strings[i]);
+            assertThat(ParameterWriterHelper.toSql(writer)).isEqualTo(strings[i]);
         }
     }
 
