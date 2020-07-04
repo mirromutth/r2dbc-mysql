@@ -33,7 +33,10 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.nio.charset.Charset;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -58,13 +61,21 @@ interface CodecTestSupport<T> {
         T[] origin = originParameters();
         ByteBuf[] binaries = binaryParameters(CharCollation.clientCharCollation().getCharset());
 
-        assertEquals(origin.length, binaries.length);
+        assertThat(origin).hasSize(binaries.length);
 
         for (int i = 0; i < origin.length; ++i) {
-            merge(Flux.from(codec.encode(origin[i], context()).publishBinary()))
-                .as(StepVerifier::create)
-                .expectNext(sized(binaries[i]))
-                .verifyComplete();
+            AtomicReference<ByteBuf> buf = new AtomicReference<>();
+            ByteBuf sized = sized(binaries[i]);
+            try {
+                merge(Flux.from(codec.encode(origin[i], context()).publishBinary()))
+                    .doOnNext(buf::set)
+                    .as(StepVerifier::create)
+                    .expectNext(sized)
+                    .verifyComplete();
+            } finally {
+                sized.release();
+                Optional.ofNullable(buf.get()).ifPresent(ByteBuf::release);
+            }
         }
     }
 
@@ -74,7 +85,7 @@ interface CodecTestSupport<T> {
         T[] origin = originParameters();
         Object[] strings = stringifyParameters();
 
-        assertEquals(origin.length, strings.length);
+        assertThat(origin).hasSize(strings.length);
 
         for (int i = 0; i < origin.length; ++i) {
             ParameterWriter writer = ParameterWriterHelper.get(1);
@@ -90,15 +101,28 @@ interface CodecTestSupport<T> {
      * If encoding no need sized, override it and just return origin value.
      */
     default ByteBuf sized(ByteBuf value) {
-        ByteBuf varInt = Unpooled.buffer();
-        VarIntUtils.writeVarInt(varInt, value.readableBytes());
-        return Unpooled.wrappedBuffer(varInt, value);
+        ByteBuf buf = Unpooled.buffer();
+        try {
+            VarIntUtils.writeVarInt(buf, value.readableBytes());
+            return buf.writeBytes(value);
+        } catch (Throwable e) {
+            buf.release();
+            throw e;
+        } finally {
+            value.release();
+        }
     }
 
     default Mono<ByteBuf> merge(Flux<ByteBuf> buffers) {
         return Mono.create(sink -> {
             ByteBuf buf = Unpooled.buffer();
-            buffers.subscribe(buf::writeBytes, sink::error, () -> {
+            buffers.subscribe(buffer -> {
+                try {
+                    buf.writeBytes(buffer);
+                } finally {
+                    buffer.release();
+                }
+            }, sink::error, () -> {
                 if (buf.isReadable()) {
                     sink.success(buf);
                 } else {
