@@ -20,15 +20,15 @@ import io.r2dbc.spi.test.TestKit;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * An implementation of {@link TestKit}.
+ * Base class considers integration tests of {@link TestKit}.
  */
-class MySqlTestKit extends IntegrationTestSupport implements TestKit<String> {
+abstract class MySqlTestKitSupport extends IntegrationTestSupport implements TestKit<String> {
 
     private final JdbcTemplate jdbcOperations;
 
-    MySqlTestKit() {
-        super(configuration(false, null, null));
-        this.jdbcOperations = jdbc(connectionConfiguration, null);
+    MySqlTestKitSupport(MySqlConnectionConfiguration configuration) {
+        super(configuration);
+        this.jdbcOperations = jdbc(configuration, null);
     }
 
     @Override
