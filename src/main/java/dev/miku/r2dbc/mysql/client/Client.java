@@ -71,8 +71,8 @@ public interface Client {
     void loginSuccess();
 
     static Mono<Client> connect(MySqlSslConfiguration ssl, SocketAddress address, boolean tcpKeepAlive, boolean tcpNoDelay, ConnectionContext context, @Nullable Duration connectTimeout) {
-        requireNonNull(address, "address must not be null");
         requireNonNull(ssl, "ssl must not be null");
+        requireNonNull(address, "address must not be null");
         requireNonNull(context, "context must not be null");
 
         TcpClient tcpClient = TcpClient.newConnection();
@@ -81,7 +81,7 @@ public interface Client {
             tcpClient = tcpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
         }
 
-        if(address instanceof InetSocketAddress) {
+        if (address instanceof InetSocketAddress) {
             tcpClient = tcpClient.option(ChannelOption.SO_KEEPALIVE, tcpKeepAlive);
             tcpClient = tcpClient.option(ChannelOption.TCP_NODELAY, tcpNoDelay);
         }

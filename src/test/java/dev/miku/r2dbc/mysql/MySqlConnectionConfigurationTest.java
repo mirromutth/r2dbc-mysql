@@ -83,15 +83,6 @@ class MySqlConnectionConfigurationTest {
 
     @Test
     void hosted() {
-        for (SslMode mode : SslMode.values()) {
-            if (mode.verifyCertificate()) {
-                assertThatIllegalArgumentException().isThrownBy(() -> hostedSslMode(mode, null)).withMessageContaining("sslCa");
-                assertThat(hostedSslMode(mode, SSL_CA)).isNotNull();
-            } else {
-                assertThat(hostedSslMode(mode, null)).isNotNull();
-            }
-        }
-
         ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(MySqlConnectionConfiguration.builder()
             .host(HOST)
             .user(USER)
@@ -195,6 +186,8 @@ class MySqlConnectionConfigurationTest {
             .port(3306)
             .password("database-password-in-here")
             .database("r2dbc")
+            .tcpKeepAlive(true)
+            .tcpNoDelay(true)
             .connectTimeout(Duration.ofSeconds(3))
             .sslMode(SslMode.VERIFY_IDENTITY)
             .sslCa(SSL_CA)

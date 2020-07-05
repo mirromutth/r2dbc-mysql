@@ -24,9 +24,8 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
 
-import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
-import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
+import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
 
 /**
  * MySQL configuration of SSL.
@@ -157,9 +156,5 @@ public final class MySqlSslConfiguration {
         requireNonNull(tlsVersion, "tlsVersion must not be null");
 
         return new MySqlSslConfiguration(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
-    }
-
-    public String getHostName() {
-        return null;
     }
 }

@@ -75,9 +75,9 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        if(ssl.getSslMode() == SslMode.TUNNEL){
-            userEventTriggered(ctx, SslState.BRIDGING);
+    public void handlerAdded(ChannelHandlerContext ctx) {
+        if (ssl.getSslMode() == SslMode.TUNNEL) {
+            handleSslState(ctx, SslState.BRIDGING);
         }
     }
 
@@ -152,8 +152,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         // Ignore another custom SSL states because they are useless.
     }
 
-    private static SslProvider buildProvider(MySqlSslConfiguration ssl, ServerVersion
-        version) {
+    private static SslProvider buildProvider(MySqlSslConfiguration ssl, ServerVersion version) {
         return SslProvider.builder()
             .sslContext(buildContext(ssl, version))
             .defaultConfiguration(SslProvider.DefaultConfigurationType.TCP)
@@ -182,6 +181,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
             if (sslCa != null) {
                 builder.trustManager(new File(sslCa));
             }
+            // Otherwise use default algorithm with trust manager.
         } else {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }
