@@ -21,6 +21,7 @@ import reactor.core.CoreSubscriber;
 import reactor.core.Fuseable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
+import reactor.util.annotation.Nullable;
 
 /**
  * A decorating operator that replays signals from its source to a {@code CoreSubscriber} and drains the
@@ -33,12 +34,16 @@ import reactor.core.publisher.FluxOperator;
  */
 final class FluxDiscardOnCancelFuseable<T> extends FluxOperator<T, T> implements Fuseable {
 
-    FluxDiscardOnCancelFuseable(Flux<? extends T> source) {
+    @Nullable
+    private final Runnable onCancel;
+
+    FluxDiscardOnCancelFuseable(Flux<? extends T> source, @Nullable Runnable onCancel) {
         super(source);
+        this.onCancel = onCancel;
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super T> actual) {
-        this.source.subscribe(DiscardOnCancelSubscriber.create(actual, true));
+        this.source.subscribe(DiscardOnCancelSubscriber.create(actual, true, onCancel));
     }
 }
