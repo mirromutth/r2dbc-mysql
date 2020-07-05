@@ -85,10 +85,8 @@ final class QueryFlow {
         EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
         PrepareHandler handler = new PrepareHandler(requests, sql, bindings.iterator(), fetchSize);
 
-        // TODO: discardOnCancel should supports cancel hook.
-        return OperatorUtils.discardOnCancel(client.exchange(requests, handler))
+        return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
             .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .doOnCancel(handler::close)
             .doOnError(ignored -> handler.close())
             .handle(handler)
             .windowUntil(RESULT_DONE);
@@ -102,10 +100,8 @@ final class QueryFlow {
         EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
         TextQueryHandler handler = new TextQueryHandler(requests, query, bindings.iterator());
 
-        // TODO: discardOnCancel should supports cancel hook.
-        return OperatorUtils.discardOnCancel(client.exchange(requests, handler))
+        return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
             .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .doOnCancel(handler::close)
             .doOnError(ignored -> handler.close())
             .handle(handler)
             .windowUntil(RESULT_DONE);
@@ -200,11 +196,9 @@ final class QueryFlow {
         EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
         MultiQueryHandler handler = new MultiQueryHandler(requests, statements);
 
-        // TODO: discardOnCancel should supports cancel hook.
-        return OperatorUtils.discardOnCancel(client.exchange(requests, handler))
+        return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
             .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .doOnCancel(requests::onComplete)
-            .doOnError(ignored -> requests.onComplete())
+            .doOnError(ignored -> handler.close())
             .handle(handler);
     }
 
