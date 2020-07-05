@@ -60,22 +60,16 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     @Override
     public void onError(Throwable cause) {
-        try {
-            ctx.flush();
-            ctx.fireExceptionCaught(cause);
-        } finally {
-            // Ignore this cause for this promise because it is channel exception.
-            promise.setSuccess();
-        }
+        // Ignore this cause for this promise because it is channel exception.
+        promise.setSuccess();
+        ctx.flush();
+        ctx.fireExceptionCaught(cause);
     }
 
     @Override
     public void onComplete() {
-        try {
-            ctx.flush();
-        } finally {
-            promise.setSuccess();
-        }
+        promise.setSuccess();
+        ctx.flush();
     }
 
     static WriteSubscriber create(ChannelHandlerContext ctx, ChannelPromise promise, @Nullable SequenceIdProvider provider) {
