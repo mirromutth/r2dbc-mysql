@@ -87,10 +87,10 @@ public final class MySqlConnectionConfiguration {
     private final Extensions extensions;
 
     private MySqlConnectionConfiguration(
-            boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
-            boolean tcpKeepAlive, boolean tcpNoDelay, @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
-            String user, @Nullable CharSequence password, @Nullable String database,
-            @Nullable Predicate<String> preferPrepareStatement, Extensions extensions
+        boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
+        boolean tcpKeepAlive, boolean tcpNoDelay, @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
+        String user, @Nullable CharSequence password, @Nullable String database,
+        @Nullable Predicate<String> preferPrepareStatement, Extensions extensions
     ) {
         this.isHost = isHost;
         this.domain = domain;
@@ -466,7 +466,11 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configure ssl root cert for server certificate validation.
+         * Configure ssl root cert for server certificate validation. It is only used
+         * if {@link #sslMode(SslMode)} is configured for verify server certification.
+         * <p>
+         * Default is {@code null}, which means that the default algorithm is used for
+         * the trust manager.
          *
          * @param sslCa an X.509 certificate chain file in PEM format
          * @return this {@link Builder}
@@ -486,7 +490,7 @@ public final class MySqlConnectionConfiguration {
          * @param sslKey  a PKCS#8 private key file in PEM format, should be not password-protected
          * @return this {@link Builder}
          * @throws IllegalArgumentException if one of {@code sslCert} and {@code sslKey} is {@code null},
-         * and the other is non-{@code null}.
+         *                                  and the other is non-{@code null}.
          */
         public Builder sslKeyAndCert(@Nullable String sslCert, @Nullable String sslKey) {
             return sslKeyAndCert(sslCert, sslKey, null);
@@ -503,7 +507,7 @@ public final class MySqlConnectionConfiguration {
          * @param sslKeyPassword the password of the {@code sslKey}, or {@code null} if it's not password-protected
          * @return this {@link Builder}
          * @throws IllegalArgumentException if one of {@code sslCert} and {@code sslKey} is {@code null},
-         * and the other is non-{@code null}.
+         *                                  and the other is non-{@code null}.
          */
         public Builder sslKeyAndCert(@Nullable String sslCert, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword) {
             require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null), "SSL key and cert must be both null or both non-null");
@@ -611,11 +615,11 @@ public final class MySqlConnectionConfiguration {
          * Configures whether to use {@link ServiceLoader} to discover and register extensions.
          * Defaults to {@code true}.
          *
-         * @param autodetectExtensions to discover and register extensions
+         * @param enabled to discover and register extensions
          * @return this {@link Builder}
          */
-        public Builder autodetectExtensions(boolean autodetectExtensions) {
-            this.autodetectExtensions = autodetectExtensions;
+        public Builder autodetectExtensions(boolean enabled) {
+            this.autodetectExtensions = enabled;
             return this;
         }
 
