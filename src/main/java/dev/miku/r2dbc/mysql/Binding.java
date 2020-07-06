@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import dev.miku.r2dbc.mysql.message.client.TextQueryMessage;
 
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.function.Consumer;
 
 /**
@@ -133,11 +132,5 @@ final class Binding {
         Arrays.fill(this.values, null);
 
         return results;
-    }
-
-    static void clearSubsequent(Iterator<Binding> iterator) {
-        while (iterator.hasNext()) {
-            iterator.next().clear();
-        }
     }
 }

@@ -61,7 +61,7 @@ final class QueryFlow {
 
     private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
 
-    private static final Consumer<Object> SAFE_RELEASE = ReferenceCountUtil::safeRelease;
+    private static final Consumer<Object> OBJ_RELEASE = ReferenceCountUtil::release;
 
     /**
      * Execute multiple bindings of a prepared statement with one-by-one. Query execution terminates with
@@ -87,7 +87,6 @@ final class QueryFlow {
 
         return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
             .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .doOnError(ignored -> handler.close())
             .handle(handler)
             .windowUntil(RESULT_DONE);
     }
@@ -102,7 +101,6 @@ final class QueryFlow {
 
         return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
             .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .doOnError(ignored -> handler.close())
             .handle(handler)
             .windowUntil(RESULT_DONE);
     }
@@ -117,7 +115,7 @@ final class QueryFlow {
      * completed by {@link CompleteMessage} for each statement.
      */
     static Mono<Void> executeVoid(Client client, String sql) {
-        return Mono.defer(() -> execute0(client, sql).doOnNext(SAFE_RELEASE).then());
+        return Mono.defer(() -> execute0(client, sql).doOnNext(OBJ_RELEASE).then());
     }
 
     /**
@@ -132,7 +130,7 @@ final class QueryFlow {
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
         return multiQuery(client, InternalArrays.asIterator(statements))
-            .doOnNext(SAFE_RELEASE)
+            .doOnNext(OBJ_RELEASE)
             .then();
     }
 
@@ -198,7 +196,6 @@ final class QueryFlow {
 
         return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
             .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .doOnError(ignored -> handler.close())
             .handle(handler);
     }
 
@@ -206,21 +203,17 @@ final class QueryFlow {
     }
 }
 
-abstract class BaseHandler<T> implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Predicate<ServerMessage> {
+abstract class BaseHandler implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Predicate<ServerMessage> {
 
     protected final EmitterProcessor<ClientMessage> requests;
 
-    protected final Iterator<T> iterator;
-
-    protected BaseHandler(EmitterProcessor<ClientMessage> requests, Iterator<T> iterator) {
+    protected BaseHandler(EmitterProcessor<ClientMessage> requests) {
         this.requests = requests;
-        this.iterator = iterator;
     }
 
     @Override
     public final boolean test(ServerMessage message) {
         if (message instanceof ErrorMessage) {
-            requests.onComplete();
             return true;
         }
 
@@ -228,43 +221,34 @@ abstract class BaseHandler<T> implements BiConsumer<ServerMessage, SynchronousSi
             return false;
         }
 
-        if (requests.isTerminated()) {
-            close();
+        if (!requests.isTerminated() && hasNext()) {
+            requests.onNext(nextMessage());
+            return false;
+        } else {
             return true;
-        }
-
-        try {
-            if (iterator.hasNext()) {
-                requests.onNext(nextMessage(iterator.next()));
-                return false;
-            } else {
-                requests.onComplete();
-                return true;
-            }
-        } catch (Throwable e) {
-            requests.onComplete();
-            throw e;
         }
     }
 
-    abstract protected void close();
+    abstract protected boolean hasNext();
 
-    abstract protected ClientMessage nextMessage(T element);
+    abstract protected ClientMessage nextMessage();
 }
 
-final class TextQueryHandler extends BaseHandler<Binding> implements Consumer<String> {
+final class TextQueryHandler extends BaseHandler implements Consumer<String> {
 
     private final TextQuery query;
+
+    private final Iterator<Binding> bindings;
 
     private String current;
 
     TextQueryHandler(EmitterProcessor<ClientMessage> requests, TextQuery query, Iterator<Binding> bindings) {
-        super(requests, bindings);
+        super(requests);
+
         Binding binding = bindings.next();
-
         requests.onNext(binding.toTextMessage(query, this));
-
         this.query = query;
+        this.bindings = bindings;
     }
 
     @Override
@@ -282,27 +266,37 @@ final class TextQueryHandler extends BaseHandler<Binding> implements Consumer<St
     }
 
     @Override
-    protected ClientMessage nextMessage(Binding element) {
-        return element.toTextMessage(query, this);
+    protected boolean hasNext() {
+        return bindings.hasNext();
     }
 
     @Override
-    protected void close() {
+    protected ClientMessage nextMessage() {
+        return bindings.next().toTextMessage(query, this);
+    }
+
+    void close() {
         requests.onComplete();
-        Binding.clearSubsequent(iterator);
+
+        while (bindings.hasNext()) {
+            bindings.next().clear();
+        }
     }
 }
 
-final class MultiQueryHandler extends BaseHandler<String> {
+final class MultiQueryHandler extends BaseHandler {
+
+    private final Iterator<String> statements;
 
     private String current;
 
     MultiQueryHandler(EmitterProcessor<ClientMessage> requests, Iterator<String> statements) {
-        super(requests, statements);
+        super(requests);
 
         String current = statements.next();
         requests.onNext(new SimpleQueryMessage(current));
         this.current = current;
+        this.statements = statements;
     }
 
     @Override
@@ -315,13 +309,18 @@ final class MultiQueryHandler extends BaseHandler<String> {
     }
 
     @Override
-    protected ClientMessage nextMessage(String element) {
-        current = element;
-        return new SimpleQueryMessage(element);
+    protected boolean hasNext() {
+        return statements.hasNext();
     }
 
     @Override
-    protected void close() {
+    protected ClientMessage nextMessage() {
+        String sql = statements.next();
+        current = sql;
+        return new SimpleQueryMessage(sql);
+    }
+
+    void close() {
         requests.onComplete();
     }
 }
@@ -387,7 +386,6 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
     @Override
     public boolean test(ServerMessage message) {
         if (message instanceof ErrorMessage) {
-            requests.onComplete();
             return true;
         }
 
@@ -441,11 +439,15 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
     }
 
     void close() {
-        if (preparedOk != null) {
-            requests.onNext(new PreparedCloseMessage(preparedOk.getStatementId()));
+        if (!requests.isTerminated()) {
+            if (preparedOk != null) {
+                requests.onNext(new PreparedCloseMessage(preparedOk.getStatementId()));
+            }
+            requests.onComplete();
         }
-        Binding.clearSubsequent(bindings);
-        requests.onComplete();
+        while (bindings.hasNext()) {
+            bindings.next().clear();
+        }
     }
 
     private void doNextExecute(int statementId) {
@@ -463,33 +465,24 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
     private boolean fetchOrExecDone(ServerMessage message) {
         if (!(message instanceof CompleteMessage) || !((CompleteMessage) message).isDone()) {
             return false;
-        }
-
-        if (requests.isTerminated()) {
-            close();
+        } else if (requests.isTerminated()) {
             return true;
         }
 
-        try {
-            if (message instanceof ServerStatusMessage) {
-                short statuses = ((ServerStatusMessage) message).getServerStatuses();
-                if ((statuses & ServerStatuses.CURSOR_EXISTS) != 0 && (statuses & ServerStatuses.LAST_ROW_SENT) == 0) {
-                    doNextFetch();
-                    return false;
-                }
-                // Otherwise is sent last row or never open cursor.
-            }
-
-            if (bindings.hasNext()) {
-                doNextExecute(preparedOk.getStatementId());
+        if (message instanceof ServerStatusMessage) {
+            short statuses = ((ServerStatusMessage) message).getServerStatuses();
+            if ((statuses & ServerStatuses.CURSOR_EXISTS) != 0 && (statuses & ServerStatuses.LAST_ROW_SENT) == 0) {
+                doNextFetch();
                 return false;
-            } else {
-                close();
-                return true;
             }
-        } catch (Throwable e) {
-            requests.onComplete();
-            throw e;
+            // Otherwise is sent last row or never open cursor.
+        }
+
+        if (bindings.hasNext()) {
+            doNextExecute(preparedOk.getStatementId());
+            return false;
+        } else {
+            return true;
         }
     }
 }

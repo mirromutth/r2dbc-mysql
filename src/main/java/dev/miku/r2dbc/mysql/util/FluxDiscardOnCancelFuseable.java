@@ -35,15 +35,15 @@ import reactor.util.annotation.Nullable;
 final class FluxDiscardOnCancelFuseable<T> extends FluxOperator<T, T> implements Fuseable {
 
     @Nullable
-    private final Runnable onCancel;
+    private final Runnable onDone;
 
-    FluxDiscardOnCancelFuseable(Flux<? extends T> source, @Nullable Runnable onCancel) {
+    FluxDiscardOnCancelFuseable(Flux<? extends T> source, @Nullable Runnable onDone) {
         super(source);
-        this.onCancel = onCancel;
+        this.onDone = onDone;
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super T> actual) {
-        this.source.subscribe(DiscardOnCancelSubscriber.create(actual, true, onCancel));
+        this.source.subscribe(DiscardOnCancelSubscriber.create(actual, true, onDone));
     }
 }

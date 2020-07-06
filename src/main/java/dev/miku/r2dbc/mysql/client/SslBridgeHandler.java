@@ -87,16 +87,19 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
             handleSslState(ctx, (SslState) evt);
             // Ignore event trigger for next handler, because it used only by this handler.
             return;
-        }
-
-        if (SslHandshakeCompletionEvent.SUCCESS == evt) {
-            handleSslCompleted(ctx);
+        } else if (evt instanceof SslHandshakeCompletionEvent) {
+            handleSslCompleted(ctx, (SslHandshakeCompletionEvent) evt);
         }
 
         super.userEventTriggered(ctx, evt);
     }
 
-    private void handleSslCompleted(ChannelHandlerContext ctx) {
+    private void handleSslCompleted(ChannelHandlerContext ctx, SslHandshakeCompletionEvent evt) {
+        if (!evt.isSuccess()) {
+            ctx.fireExceptionCaught(evt.cause());
+            return;
+        }
+
         if (verifyIdentity) {
             SSLEngine sslEngine = this.sslEngine;
             String hostname = ((InetSocketAddress) ctx.channel().remoteAddress()).getHostName();
