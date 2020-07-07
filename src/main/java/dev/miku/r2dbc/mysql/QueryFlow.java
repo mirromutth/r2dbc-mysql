@@ -16,31 +16,49 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import dev.miku.r2dbc.mysql.client.Client;
+import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
+import dev.miku.r2dbc.mysql.constant.SslMode;
+import dev.miku.r2dbc.mysql.message.client.AuthResponse;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
+import dev.miku.r2dbc.mysql.message.client.HandshakeResponse;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedCloseMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
 import dev.miku.r2dbc.mysql.message.client.SimpleQueryMessage;
+import dev.miku.r2dbc.mysql.message.client.SslRequest;
+import dev.miku.r2dbc.mysql.message.server.AuthMoreDataMessage;
+import dev.miku.r2dbc.mysql.message.server.ChangeAuthMessage;
 import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.message.server.EofMessage;
 import dev.miku.r2dbc.mysql.message.server.ErrorMessage;
+import dev.miku.r2dbc.mysql.message.server.HandshakeHeader;
+import dev.miku.r2dbc.mysql.message.server.HandshakeRequest;
+import dev.miku.r2dbc.mysql.message.server.OkMessage;
 import dev.miku.r2dbc.mysql.message.server.PreparedOkMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerStatusMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
+import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
+import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
+import reactor.util.annotation.Nullable;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -63,6 +81,19 @@ final class QueryFlow {
 
     private static final Consumer<Object> OBJ_RELEASE = ReferenceCountUtil::release;
 
+    static Mono<Client> login(Client client, SslMode sslMode, String database, String user, @Nullable CharSequence password, ConnectionContext context) {
+        EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
+        InitHandler handler = new InitHandler(requests, client, sslMode, database, user, password, context);
+
+        return client.exchange(requests, handler)
+            .handle(handler)
+            .onErrorResume(e -> {
+                requests.onComplete();
+                return client.forceClose().then(Mono.error(e));
+            })
+            .then(Mono.just(client));
+    }
+
     /**
      * Execute multiple bindings of a prepared statement with one-by-one. Query execution terminates with
      * the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will emit an
@@ -78,31 +109,35 @@ final class QueryFlow {
      * by {@link CompleteMessage} when it is last result for each binding.
      */
     static Flux<Flux<ServerMessage>> execute(Client client, String sql, List<Binding> bindings, int fetchSize) {
-        if (bindings.isEmpty()) {
-            return Flux.empty();
-        }
+        return Flux.defer(() -> {
+            if (bindings.isEmpty()) {
+                return Flux.empty();
+            }
 
-        EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
-        PrepareHandler handler = new PrepareHandler(requests, sql, bindings.iterator(), fetchSize);
+            EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
+            PrepareHandler handler = new PrepareHandler(requests, sql, bindings.iterator(), fetchSize);
 
-        return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
-            .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .handle(handler)
-            .windowUntil(RESULT_DONE);
+            return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
+                .doOnDiscard(ReferenceCounted.class, RELEASE)
+                .handle(handler)
+                .windowUntil(RESULT_DONE);
+        });
     }
 
     static Flux<Flux<ServerMessage>> execute(Client client, TextQuery query, List<Binding> bindings) {
-        if (bindings.isEmpty()) {
-            return Flux.empty();
-        }
+        return Flux.defer(() -> {
+            if (bindings.isEmpty()) {
+                return Flux.empty();
+            }
 
-        EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
-        TextQueryHandler handler = new TextQueryHandler(requests, query, bindings.iterator());
+            EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
+            TextQueryHandler handler = new TextQueryHandler(requests, query, bindings.iterator());
 
-        return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
-            .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .handle(handler)
-            .windowUntil(RESULT_DONE);
+            return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
+                .doOnDiscard(ReferenceCounted.class, RELEASE)
+                .handle(handler)
+                .windowUntil(RESULT_DONE);
+        });
     }
 
     /**
@@ -484,5 +519,199 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
         } else {
             return true;
         }
+    }
+}
+
+final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Void>>, Predicate<ServerMessage> {
+
+    private static final Logger logger = LoggerFactory.getLogger(InitHandler.class);
+
+    private static final Map<String, String> ATTRIBUTES = Collections.emptyMap();
+
+    private static final String CLI_SPECIFIC = "HY000";
+
+    private static final int HANDSHAKE_VERSION = 10;
+
+    private final EmitterProcessor<ClientMessage> requests;
+
+    private final Client client;
+
+    private final SslMode sslMode;
+
+    private final String database;
+
+    private final String user;
+
+    @Nullable
+    private final CharSequence password;
+
+    private final ConnectionContext context;
+
+    private boolean handshake = true;
+
+    private MySqlAuthProvider authProvider;
+
+    private byte[] salt;
+
+    private boolean sslCompleted = false;
+
+    InitHandler(EmitterProcessor<ClientMessage> requests, Client client, SslMode sslMode, String database,
+        String user, @Nullable CharSequence password, ConnectionContext context) {
+        this.requests = requests;
+        this.client = client;
+        this.sslMode = sslMode;
+        this.database = database;
+        this.user = user;
+        this.password = password;
+        this.context = context;
+    }
+
+    @Override
+    public void accept(ServerMessage message, SynchronousSink<Void> sink) {
+        if (message instanceof ErrorMessage) {
+            sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
+            return;
+        }
+
+        if (handshake) {
+            handshake = false;
+            if (message instanceof HandshakeRequest) {
+                initHandshake((HandshakeRequest) message);
+
+                if ((context.getCapabilities() & Capabilities.SSL) != 0) {
+                    requests.onNext(SslRequest.from(context.getCapabilities(),
+                        context.getClientCollation().getId()));
+                } else {
+                    requests.onNext(createHandshakeResponse());
+                }
+            } else {
+                sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
+                    message.getClass().getSimpleName() + "' in init phase"));
+            }
+
+            return;
+        }
+
+        if (message instanceof OkMessage) {
+            requests.onComplete();
+            client.loginSuccess();
+        } else if (message instanceof SyntheticSslResponseMessage) {
+            sslCompleted = true;
+            requests.onNext(createHandshakeResponse());
+        } else if (message instanceof AuthMoreDataMessage) {
+            if (((AuthMoreDataMessage) message).isFailed()) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", context.getConnectionId());
+                }
+                requests.onNext(createAuthResponse("full authentication"));
+            }
+            // Otherwise success, wait until OK message or Error message.
+        } else if (message instanceof ChangeAuthMessage) {
+            ChangeAuthMessage msg = (ChangeAuthMessage) message;
+            this.authProvider = MySqlAuthProvider.build(msg.getAuthType());
+            this.salt = msg.getSalt();
+            requests.onNext(createAuthResponse("change authentication"));
+        } else {
+            sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
+                message.getClass().getSimpleName() + "' in login phase"));
+        }
+    }
+
+    @Override
+    public boolean test(ServerMessage message) {
+        return message instanceof ErrorMessage || message instanceof OkMessage;
+    }
+
+    private AuthResponse createAuthResponse(String phase) {
+        MySqlAuthProvider authProvider = getAndNextProvider();
+
+        if (authProvider.isSslNecessary() && !sslCompleted) {
+            throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase), CLI_SPECIFIC);
+        }
+
+        return new AuthResponse(authProvider.authentication(password, salt, context.getClientCollation()));
+    }
+
+    private int clientCapabilities(int serverCapabilities) {
+        // Remove unknown flags.
+        int capabilities = serverCapabilities & Capabilities.ALL_SUPPORTED;
+
+        if ((capabilities & Capabilities.SSL) == 0) {
+            // Server unsupported SSL.
+            if (sslMode.requireSsl()) {
+                throw new R2dbcPermissionDeniedException("Server version '" + context.getServerVersion() +
+                    "' does not support SSL but mode '" + sslMode + "' requires SSL", CLI_SPECIFIC);
+            } else if (sslMode.startSsl()) {
+                // SSL has start yet, and client can be disable SSL, disable now.
+                client.sslUnsupported();
+            }
+        } else {
+            // Server supports SSL.
+            if (!sslMode.startSsl()) {
+                // SSL does not start, just remove flag.
+                capabilities &= ~Capabilities.SSL;
+            }
+
+            if (!sslMode.verifyCertificate()) {
+                // No need verify server cert, remove flag.
+                capabilities &= ~Capabilities.SSL_VERIFY_SERVER_CERT;
+            }
+        }
+
+        if (database.isEmpty() && (capabilities & Capabilities.CONNECT_WITH_DB) != 0) {
+            capabilities &= ~Capabilities.CONNECT_WITH_DB;
+        }
+
+        if (ATTRIBUTES.isEmpty() && (capabilities & Capabilities.CONNECT_ATTRS) != 0) {
+            capabilities &= ~Capabilities.CONNECT_ATTRS;
+        }
+
+        return capabilities;
+    }
+
+    private void initHandshake(HandshakeRequest message) {
+        HandshakeHeader header = message.getHeader();
+        int handshakeVersion = header.getProtocolVersion();
+        ServerVersion serverVersion = header.getServerVersion();
+
+        if (handshakeVersion < HANDSHAKE_VERSION) {
+            logger.warn("The MySQL server use old handshake V{}, server version is {}, maybe most features are not available", handshakeVersion, serverVersion);
+        }
+
+        // No need initialize server statuses because it has initialized by read filter.
+        this.context.init(header.getConnectionId(), serverVersion, clientCapabilities(message.getServerCapabilities()));
+
+        this.authProvider = MySqlAuthProvider.build(message.getAuthType());
+        this.salt = message.getSalt();
+    }
+
+    private MySqlAuthProvider getAndNextProvider() {
+        MySqlAuthProvider authProvider = this.authProvider;
+        this.authProvider = authProvider.next();
+        return authProvider;
+    }
+
+    private HandshakeResponse createHandshakeResponse() {
+        MySqlAuthProvider authProvider = getAndNextProvider();
+
+        if (authProvider.isSslNecessary() && !sslCompleted) {
+            throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), "handshake"), CLI_SPECIFIC);
+        }
+
+        byte[] authorization = authProvider.authentication(password, salt, context.getClientCollation());
+        String authType = authProvider.getType();
+
+        if (MySqlAuthProvider.NO_AUTH_PROVIDER.equals(authType)) {
+            // Authentication type is not matter because of it has no authentication type.
+            // Server need send a Change Authentication Message after handshake response.
+            authType = MySqlAuthProvider.CACHING_SHA2_PASSWORD;
+        }
+
+        return HandshakeResponse.from(context.getCapabilities(), context.getClientCollation().getId(),
+            user, authorization, authType, database, ATTRIBUTES);
+    }
+
+    private static String formatAuthFails(String authType, String phase) {
+        return "Authentication type '" + authType + "' must require SSL in " + phase + " phase";
     }
 }
