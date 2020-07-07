@@ -78,7 +78,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             Extensions extensions = configuration.getExtensions();
 
             return Client.connect(ssl, address, configuration.isTcpKeepAlive(), configuration.isTcpNoDelay(), context, configuration.getConnectTimeout())
-                .flatMap(client -> LoginFlow.login(client, sslMode, database, context, user, password))
+                .flatMap(client -> QueryFlow.login(client, sslMode, database, user, password, context))
                 .flatMap(client -> {
                     ByteBufAllocator allocator = client.getByteBufAllocator();
                     CodecsBuilder builder = Codecs.builder(allocator);
@@ -86,7 +86,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
                     extensions.forEach(CodecRegistrar.class, registrar ->
                         registrar.register(allocator, builder));
 
-                    return MySqlConnection.create(client, builder.build(), context, prepare);
+                    return MySqlConnection.init(client, builder.build(), context, prepare);
                 });
         }));
     }

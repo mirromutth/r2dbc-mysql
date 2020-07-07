@@ -65,7 +65,7 @@ public final class MySqlConnection implements Connection {
      * current session isolation level will be {@literal @@transaction_isolation},
      * otherwise it is {@literal @@tx_isolation}.
      *
-     * @see #create judge server version before get the isolation level.
+     * @see #init judge server version before get the isolation level.
      */
     private static final ServerVersion TRAN_LEVEL_8X = ServerVersion.create(8, 0, 3);
 
@@ -381,11 +381,7 @@ public final class MySqlConnection implements Connection {
      * @param context capabilities must be initialized
      * @param prepare judging for prefer use prepare statement to execute simple query
      */
-    static Mono<MySqlConnection> create(Client client, Codecs codecs, ConnectionContext context, @Nullable Predicate<String> prepare) {
-        requireNonNull(client, "client must not be null");
-        requireNonNull(codecs, "codecs must not be null");
-        requireNonNull(context, "context must not be null");
-
+    static Mono<MySqlConnection> init(Client client, Codecs codecs, ConnectionContext context, @Nullable Predicate<String> prepare) {
         ServerVersion version = context.getServerVersion();
         StringBuilder query = new StringBuilder(128);
 
