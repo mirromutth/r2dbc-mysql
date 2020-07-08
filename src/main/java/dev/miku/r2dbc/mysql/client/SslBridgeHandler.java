@@ -62,8 +62,6 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
 
     private final ConnectionContext context;
 
-    private final boolean verifyIdentity;
-
     private final MySqlSslConfiguration ssl;
 
     private SSLEngine sslEngine;
@@ -71,7 +69,6 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     SslBridgeHandler(ConnectionContext context, MySqlSslConfiguration ssl) {
         this.context = requireNonNull(context, "context must not be null");
         this.ssl = requireNonNull(ssl, "ssl must not be null");
-        this.verifyIdentity = ssl.getSslMode().verifyIdentity();
     }
 
     @Override
@@ -100,15 +97,16 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
             return;
         }
 
-        if (verifyIdentity) {
-            SSLEngine sslEngine = this.sslEngine;
-            String hostname = ((InetSocketAddress) ctx.channel().remoteAddress()).getHostName();
+        SslMode mode = ssl.getSslMode();
 
+        if (mode.verifyIdentity()) {
+            SSLEngine sslEngine = this.sslEngine;
             if (sslEngine == null) {
                 ctx.fireExceptionCaught(new IllegalStateException("sslEngine must not be null when verify identity"));
                 return;
             }
 
+            String hostname = ((InetSocketAddress) ctx.channel().remoteAddress()).getHostName();
             try {
                 MySqlHostVerifier.accept(hostname, sslEngine.getSession());
             } catch (Exception e) {
@@ -117,7 +115,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
             }
         }
 
-        if (ssl.getSslMode() != SslMode.TUNNEL) {
+        if (mode != SslMode.TUNNEL) {
             ctx.fireChannelRead(SyntheticSslResponseMessage.getInstance());
         }
 
@@ -130,13 +128,6 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         switch (state) {
             case BRIDGING:
                 logger.debug("SSL event triggered, enable SSL handler to pipeline");
-
-                MySqlSslConfiguration ssl = this.ssl;
-
-                if (ssl == null) {
-                    ctx.fireExceptionCaught(new IllegalStateException("The SSL bridge has used, cannot build SSL handler twice"));
-                    return;
-                }
 
                 SslProvider sslProvider = buildProvider(ssl, context.getServerVersion());
                 SslHandler sslHandler = sslProvider.getSslContext().newHandler(ctx.alloc());
@@ -177,8 +168,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
             builder.keyManager(new File(sslCert), new File(sslKey), keyPassword == null ? null : keyPassword.toString());
         }
 
-        SslMode mode = ssl.getSslMode();
-        if (mode.verifyCertificate()) {
+        if (ssl.getSslMode().verifyCertificate()) {
             String sslCa = ssl.getSslCa();
 
             if (sslCa != null) {
