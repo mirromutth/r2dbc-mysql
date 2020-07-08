@@ -81,6 +81,17 @@ final class QueryFlow {
 
     private static final Consumer<Object> OBJ_RELEASE = ReferenceCountUtil::release;
 
+    /**
+     * Login a {@link Client} and receive the {@link Client} after logon.
+     *
+     * @param client   the {@link Client} to exchange messages with.
+     * @param sslMode  the {@link SslMode} defines SSL capability and behavior.
+     * @param database the database that will be connected.
+     * @param user     the user that will be login.
+     * @param password the password of the {@code user}.
+     * @param context  the {@link ConnectionContext} for initialization.
+     * @return the {@link Client}, or an error/exception received by login failed.
+     */
     static Mono<Client> login(Client client, SslMode sslMode, String database, String user, @Nullable CharSequence password, ConnectionContext context) {
         EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
         InitHandler handler = new InitHandler(requests, client, sslMode, database, user, password, context);
@@ -95,11 +106,9 @@ final class QueryFlow {
     }
 
     /**
-     * Execute multiple bindings of a prepared statement with one-by-one. Query execution terminates with
-     * the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will emit an
-     * exception and cancel subsequent bindings execution.
-     * <p>
-     * It will close this prepared statement.
+     * Execute multiple bindings of a server-preparing statement with one-by-one binary execution.
+     * The execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}.
+     * The {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s.
      *
      * @param client    the {@link Client} to exchange messages with.
      * @param sql       the original statement for exception tracing.
@@ -124,6 +133,17 @@ final class QueryFlow {
         });
     }
 
+    /**
+     * Execute multiple bindings of a client-preparing statement with one-by-one text query.
+     * The execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}.
+     * The {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s.
+     *
+     * @param client   the {@link Client} to exchange messages with.
+     * @param query    the {@link TextQuery} for synthetic client-preparing statement.
+     * @param bindings the data of bindings.
+     * @return the messages received in response to this exchange, and will be completed
+     * by {@link CompleteMessage} when it is last result for each binding.
+     */
     static Flux<Flux<ServerMessage>> execute(Client client, TextQuery query, List<Binding> bindings) {
         return Flux.defer(() -> {
             if (bindings.isEmpty()) {
@@ -553,10 +573,10 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
 
     private byte[] salt;
 
-    private boolean sslCompleted = false;
+    private boolean sslCompleted;
 
     InitHandler(EmitterProcessor<ClientMessage> requests, Client client, SslMode sslMode, String database,
-        String user, @Nullable CharSequence password, ConnectionContext context) {
+                String user, @Nullable CharSequence password, ConnectionContext context) {
         this.requests = requests;
         this.client = client;
         this.sslMode = sslMode;
@@ -564,6 +584,7 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
         this.user = user;
         this.password = password;
         this.context = context;
+        this.sslCompleted = sslMode == SslMode.TUNNEL;
     }
 
     @Override
@@ -576,13 +597,12 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
         if (handshake) {
             handshake = false;
             if (message instanceof HandshakeRequest) {
-                initHandshake((HandshakeRequest) message);
+                int capabilities = initHandshake((HandshakeRequest) message);
 
-                if ((context.getCapabilities() & Capabilities.SSL) != 0) {
-                    requests.onNext(SslRequest.from(context.getCapabilities(),
-                        context.getClientCollation().getId()));
+                if ((capabilities & Capabilities.SSL) == 0) {
+                    requests.onNext(createHandshakeResponse(capabilities));
                 } else {
-                    requests.onNext(createHandshakeResponse());
+                    requests.onNext(SslRequest.from(capabilities, context.getClientCollation().getId()));
                 }
             } else {
                 sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
@@ -597,7 +617,7 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
             client.loginSuccess();
         } else if (message instanceof SyntheticSslResponseMessage) {
             sslCompleted = true;
-            requests.onNext(createHandshakeResponse());
+            requests.onNext(createHandshakeResponse(context.getCapabilities()));
         } else if (message instanceof AuthMoreDataMessage) {
             if (((AuthMoreDataMessage) message).isFailed()) {
                 if (logger.isDebugEnabled()) {
@@ -608,8 +628,8 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
             // Otherwise success, wait until OK message or Error message.
         } else if (message instanceof ChangeAuthMessage) {
             ChangeAuthMessage msg = (ChangeAuthMessage) message;
-            this.authProvider = MySqlAuthProvider.build(msg.getAuthType());
-            this.salt = msg.getSalt();
+            authProvider = MySqlAuthProvider.build(msg.getAuthType());
+            salt = msg.getSalt();
             requests.onNext(createAuthResponse("change authentication"));
         } else {
             sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
@@ -636,7 +656,10 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
         // Remove unknown flags.
         int capabilities = serverCapabilities & Capabilities.ALL_SUPPORTED;
 
-        if ((capabilities & Capabilities.SSL) == 0) {
+        if (sslMode == SslMode.TUNNEL) {
+            // Tunnel does not use MySQL SSL protocol, disable it.
+            capabilities &= ~Capabilities.SSL;
+        } else if ((capabilities & Capabilities.SSL) == 0) {
             // Server unsupported SSL.
             if (sslMode.requireSsl()) {
                 throw new R2dbcPermissionDeniedException("Server version '" + context.getServerVersion() +
@@ -669,7 +692,7 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
         return capabilities;
     }
 
-    private void initHandshake(HandshakeRequest message) {
+    private int initHandshake(HandshakeRequest message) {
         HandshakeHeader header = message.getHeader();
         int handshakeVersion = header.getProtocolVersion();
         ServerVersion serverVersion = header.getServerVersion();
@@ -678,11 +701,14 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
             logger.warn("The MySQL server use old handshake V{}, server version is {}, maybe most features are not available", handshakeVersion, serverVersion);
         }
 
-        // No need initialize server statuses because it has initialized by read filter.
-        this.context.init(header.getConnectionId(), serverVersion, clientCapabilities(message.getServerCapabilities()));
+        int capabilities = clientCapabilities(message.getServerCapabilities());
 
+        // No need initialize server statuses because it has initialized by read filter.
+        this.context.init(header.getConnectionId(), serverVersion, capabilities);
         this.authProvider = MySqlAuthProvider.build(message.getAuthType());
         this.salt = message.getSalt();
+
+        return capabilities;
     }
 
     private MySqlAuthProvider getAndNextProvider() {
@@ -691,7 +717,7 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
         return authProvider;
     }
 
-    private HandshakeResponse createHandshakeResponse() {
+    private HandshakeResponse createHandshakeResponse(int capabilities) {
         MySqlAuthProvider authProvider = getAndNextProvider();
 
         if (authProvider.isSslNecessary() && !sslCompleted) {
@@ -707,8 +733,8 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
             authType = MySqlAuthProvider.CACHING_SHA2_PASSWORD;
         }
 
-        return HandshakeResponse.from(context.getCapabilities(), context.getClientCollation().getId(),
-            user, authorization, authType, database, ATTRIBUTES);
+        return HandshakeResponse.from(capabilities, context.getClientCollation().getId(), user, authorization,
+            authType, database, ATTRIBUTES);
     }
 
     private static String formatAuthFails(String authType, String phase) {
