@@ -16,8 +16,6 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import java.util.Objects;
-
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -66,7 +64,7 @@ final class San {
 
     @Override
     public int hashCode() {
-        return Objects.hash(value, type);
+        return 31 * value.hashCode() + type;
     }
 
     @Override

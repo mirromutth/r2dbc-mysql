@@ -32,7 +32,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.netty.tcp.SslProvider;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLException;
 import java.io.File;
 import java.net.InetSocketAddress;
 
@@ -106,13 +108,15 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                 return;
             }
 
-            String hostname = ((InetSocketAddress) ctx.channel().remoteAddress()).getHostName();
-            try {
-                MySqlHostVerifier.accept(hostname, sslEngine.getSession());
-            } catch (Exception e) {
-                ctx.fireExceptionCaught(e);
+            HostnameVerifier verifier = DefaultHostnameVerifier.INSTANCE;
+            String host = ((InetSocketAddress) ctx.channel().remoteAddress()).getHostName();
+
+            if (!verifier.verify(host, sslEngine.getSession())) {
+                // Verify failed, emit an exception.
+                ctx.fireExceptionCaught(new SSLException("The hostname '" + host + "' could not be verified"));
                 return;
             }
+            // Otherwise verify success, continue subsequence logic.
         }
 
         if (mode != SslMode.TUNNEL) {
