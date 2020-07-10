@@ -31,9 +31,6 @@ public final class AddressUtils {
 
     private static final int IPV6_COLONS = 7;
 
-    private AddressUtils() {
-    }
-
     public static boolean isIpv4(String host) {
         // TODO: Use faster matches instead of regex.
         return IPV4_PATTERN.matcher(host).matches();
@@ -56,5 +53,8 @@ public final class AddressUtils {
 
         // TODO: Use faster matches instead of regex.
         return colons <= IPV6_COLONS && IPV6_COMPRESSED_PATTERN.matcher(host).matches();
+    }
+
+    private AddressUtils() {
     }
 }

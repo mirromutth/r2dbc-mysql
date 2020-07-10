@@ -108,10 +108,9 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                 return;
             }
 
-            HostnameVerifier verifier = DefaultHostnameVerifier.INSTANCE;
             String host = ((InetSocketAddress) ctx.channel().remoteAddress()).getHostName();
 
-            if (!verifier.verify(host, sslEngine.getSession())) {
+            if (!hostnameVerifier().verify(host, sslEngine.getSession())) {
                 // Verify failed, emit an exception.
                 ctx.fireExceptionCaught(new SSLException("The hostname '" + host + "' could not be verified"));
                 return;
@@ -148,6 +147,11 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                 break;
         }
         // Ignore another custom SSL states because they are useless.
+    }
+
+    private HostnameVerifier hostnameVerifier() {
+        HostnameVerifier verifier = ssl.getSslHostnameVerifier();
+        return verifier == null ? DefaultHostnameVerifier.INSTANCE : verifier;
     }
 
     private static SslProvider buildProvider(MySqlSslConfiguration ssl, ServerVersion version) {

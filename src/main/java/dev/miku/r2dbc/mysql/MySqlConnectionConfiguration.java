@@ -22,6 +22,7 @@ import dev.miku.r2dbc.mysql.extension.Extension;
 import io.netty.handler.ssl.SslContextBuilder;
 import reactor.util.annotation.Nullable;
 
+import javax.net.ssl.HostnameVerifier;
 import java.net.Socket;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -265,6 +266,9 @@ public final class MySqlConnectionConfiguration {
         private String[] tlsVersion = EMPTY_STRINGS;
 
         @Nullable
+        private HostnameVerifier sslHostnameVerifier;
+
+        @Nullable
         private String sslCa;
 
         @Nullable
@@ -304,7 +308,7 @@ public final class MySqlConnectionConfiguration {
                 require(!sslMode.startSsl(), "sslMode must be disabled when using unix domain socket");
             }
 
-            MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
+            MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslHostnameVerifier, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
             return new MySqlConnectionConfiguration(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay, connectTimeout, zeroDateOption, serverZoneId,
                 user, password, database, preferPrepareStatement, Extensions.from(extensions, autodetectExtensions));
         }
@@ -462,6 +466,23 @@ public final class MySqlConnectionConfiguration {
             } else {
                 this.tlsVersion = EMPTY_STRINGS;
             }
+            return this;
+        }
+
+        /**
+         * Configure ssl {@link HostnameVerifier}, it will be available only set {@link #sslMode} as
+         * {@link SslMode#VERIFY_IDENTITY}. It is useful when server was using special Certificates
+         * or need special verification.
+         * <p>
+         * Default is builtin {@link HostnameVerifier} which use RFC standards.
+         *
+         * @param sslHostnameVerifier the custom {@link HostnameVerifier}.
+         * @return this {@link Builder}
+         * @throws IllegalArgumentException if {@code sslHostnameVerifier} is {@code null}
+         * @since 0.8.2
+         */
+        public Builder sslHostnameVerifier(HostnameVerifier sslHostnameVerifier) {
+            this.sslHostnameVerifier = requireNonNull(sslHostnameVerifier, "sslHostnameVerifier must not be null");
             return this;
         }
 

@@ -24,6 +24,7 @@ import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
 
+import javax.net.ssl.HostnameVerifier;
 import java.time.ZoneId;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -44,11 +45,18 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public static final Option<Object> SERVER_ZONE_ID = Option.valueOf("serverZoneId");
 
     /**
-     * This option indicates special handling when MySQL server returning "zero date" (aka. "0000-00-00 00:00:00")
+     * Option to configure handling when MySQL server returning "zero date" (aka. "0000-00-00 00:00:00")
      */
-    public static final Option<String> ZERO_DATE = Option.valueOf("zeroDate");
+    public static final Option<Object> ZERO_DATE = Option.valueOf("zeroDate");
 
-    public static final Option<String> SSL_MODE = Option.valueOf("sslMode");
+    public static final Option<Object> SSL_MODE = Option.valueOf("sslMode");
+
+    /**
+     * Option to configure {@link HostnameVerifier}.
+     *
+     * @since 0.8.2
+     */
+    public static final Option<Object> SSL_HOSTNAME_VERIFIER = Option.valueOf("sslHostnameVerifier");
 
     public static final Option<String> TLS_VERSION = Option.valueOf("tlsVersion");
 
@@ -107,14 +115,31 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             builder.sslMode(isSsl ? SslMode.PREFERRED : SslMode.DISABLED);
         }
 
-        String sslMode = options.getValue(SSL_MODE);
+        Object sslMode = options.getValue(SSL_MODE);
         if (sslMode != null) {
-            builder.sslMode(SslMode.valueOf(sslMode.toUpperCase()));
+            if (sslMode instanceof SslMode) {
+                builder.sslMode((SslMode) sslMode);
+            } else if (sslMode instanceof String) {
+                builder.sslMode(SslMode.valueOf(((String) sslMode).toUpperCase()));
+            } else {
+                throw new IllegalArgumentException("sslMode must be SslMode or a string of SslMode");
+            }
         }
 
         String tlsVersion = options.getValue(TLS_VERSION);
         if (tlsVersion != null) {
             builder.tlsVersion(tlsVersion.split(","));
+        }
+
+        Object sslHostnameVerifier = options.getValue(SSL_HOSTNAME_VERIFIER);
+        if (sslHostnameVerifier != null) {
+            if (sslHostnameVerifier instanceof HostnameVerifier) {
+                builder.sslHostnameVerifier((HostnameVerifier) sslHostnameVerifier);
+            } else if (sslHostnameVerifier instanceof String) {
+                builder.sslHostnameVerifier(newInstance((String) sslHostnameVerifier, HostnameVerifier.class));
+            } else {
+                throw new IllegalArgumentException("sslHostnameVerifier must be HostnameVerifier");
+            }
         }
 
         String sslCert = options.getValue(SSL_CERT);
@@ -162,8 +187,18 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
                     .parseBoolean(tcpNoDelay.toString()) : (Boolean) tcpNoDelay);
         }
 
-        Object serverPreparing = options.getValue(USE_SERVER_PREPARE_STATEMENT);
+        Object zeroDate = options.getValue(ZERO_DATE);
+        if (zeroDate != null) {
+            if (zeroDate instanceof ZeroDateOption) {
+                builder.zeroDateOption((ZeroDateOption) zeroDate);
+            } else if (zeroDate instanceof String) {
+                builder.zeroDateOption(ZeroDateOption.valueOf(((String) zeroDate).toUpperCase()));
+            } else {
+                throw new IllegalArgumentException("zeroDate must be ZeroDateOption or a string of ZeroDateOption");
+            }
+        }
 
+        Object serverPreparing = options.getValue(USE_SERVER_PREPARE_STATEMENT);
         if (serverPreparing != null) {
             // Convert stringify option.
             if (serverPreparing instanceof String) {
@@ -216,13 +251,12 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         return MYSQL_DRIVER;
     }
 
-    @SuppressWarnings("unchecked")
     private static <T> T newInstance(String className, Class<T> target) {
         try {
             Class<?> type = Class.forName(className);
 
             if (target.isAssignableFrom(type)) {
-                return (T) type.newInstance();
+                return target.cast(type.getDeclaredConstructor().newInstance());
             }
         } catch (ReflectiveOperationException e) {
             throw new IllegalArgumentException("Cannot instantiate '" + className + "'", e);
