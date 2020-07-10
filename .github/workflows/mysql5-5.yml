@@ -3,7 +3,7 @@ name: MySQL 5.5
 on:
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   build:
