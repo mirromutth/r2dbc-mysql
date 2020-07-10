@@ -195,6 +195,7 @@ class MySqlConnectionConfigurationTest {
             .tlsVersion(TlsVersions.TLS1_1, TlsVersions.TLS1_2, TlsVersions.TLS1_3)
             .serverZoneId(ZoneId.systemDefault())
             .zeroDateOption(ZeroDateOption.USE_NULL)
+            .sslHostnameVerifier((host, s) -> true)
             .autodetectExtensions(false)
             .build();
     }

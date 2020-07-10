@@ -28,11 +28,13 @@ class AddressUtilsTest {
 
     @Test
     void isIpv4() {
+        assertTrue(AddressUtils.isIpv4("1.0.0.0"));
         assertTrue(AddressUtils.isIpv4("127.0.0.1"));
         assertTrue(AddressUtils.isIpv4("10.11.12.13"));
         assertTrue(AddressUtils.isIpv4("192.168.0.0"));
         assertTrue(AddressUtils.isIpv4("255.255.255.255"));
 
+        assertFalse(AddressUtils.isIpv4("0.0.0.0"));
         assertFalse(AddressUtils.isIpv4(" 127.0.0.1 "));
         assertFalse(AddressUtils.isIpv4("01.11.12.13"));
         assertFalse(AddressUtils.isIpv4("092.168.0.1"));
@@ -79,6 +81,8 @@ class AddressUtilsTest {
         assertFalse(AddressUtils.isIpv6("1:2::4:5:6:7:8:9"));
         assertFalse(AddressUtils.isIpv6("1:2:3:4:5:6::8:9"));
 
+        assertFalse(AddressUtils.isIpv6("0.0.0.0"));
+        assertFalse(AddressUtils.isIpv6("1.0.0.0"));
         assertFalse(AddressUtils.isIpv6("127.0.0.1"));
         assertFalse(AddressUtils.isIpv6("10.11.12.13"));
         assertFalse(AddressUtils.isIpv6("192.168.0.0"));
