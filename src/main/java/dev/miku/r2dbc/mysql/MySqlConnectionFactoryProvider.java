@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.MySqlConnectionConfiguration.Builder;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -25,219 +26,162 @@ import io.r2dbc.spi.ConnectionFactoryProvider;
 import io.r2dbc.spi.Option;
 
 import javax.net.ssl.HostnameVerifier;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
-import static io.r2dbc.spi.ConnectionFactoryOptions.*;
+import static io.r2dbc.spi.ConnectionFactoryOptions.CONNECT_TIMEOUT;
+import static io.r2dbc.spi.ConnectionFactoryOptions.DATABASE;
+import static io.r2dbc.spi.ConnectionFactoryOptions.DRIVER;
+import static io.r2dbc.spi.ConnectionFactoryOptions.HOST;
+import static io.r2dbc.spi.ConnectionFactoryOptions.PASSWORD;
+import static io.r2dbc.spi.ConnectionFactoryOptions.PORT;
+import static io.r2dbc.spi.ConnectionFactoryOptions.SSL;
+import static io.r2dbc.spi.ConnectionFactoryOptions.USER;
 
 /**
  * An implementation of {@link ConnectionFactoryProvider} for creating {@link MySqlConnectionFactory}s.
  */
 public final class MySqlConnectionFactoryProvider implements ConnectionFactoryProvider {
 
+    /**
+     * The name of the driver used for discovery, should not be changed.
+     */
     public static final String MYSQL_DRIVER = "mysql";
 
+    /**
+     * Option to set the Unix Domain Socket.
+     *
+     * @since 0.8.1
+     */
     public static final Option<String> UNIX_SOCKET = Option.valueOf("unixSocket");
 
-    public static final Option<Object> SERVER_ZONE_ID = Option.valueOf("serverZoneId");
+    /**
+     * Option to set {@link ZoneId} of server. If it is set, driver will ignore the
+     * real time zone of server-side.
+     *
+     * @since 0.8.2
+     */
+    public static final Option<ZoneId> SERVER_ZONE_ID = Option.valueOf("serverZoneId");
 
     /**
      * Option to configure handling when MySQL server returning "zero date" (aka. "0000-00-00 00:00:00")
+     *
+     * @since 0.8.1
      */
-    public static final Option<Object> ZERO_DATE = Option.valueOf("zeroDate");
-
-    public static final Option<Object> SSL_MODE = Option.valueOf("sslMode");
+    public static final Option<ZeroDateOption> ZERO_DATE = Option.valueOf("zeroDate");
 
     /**
-     * Option to configure {@link HostnameVerifier}.
+     * Option to {@link SslMode}.
+     *
+     * @since 0.8.1
+     */
+    public static final Option<SslMode> SSL_MODE = Option.valueOf("sslMode");
+
+    /**
+     * Option to configure {@link HostnameVerifier}. It will be used only if {@link #SSL_MODE} set
+     * to {@link SslMode#VERIFY_IDENTITY}. It can be an implementation class name of
+     * {@link HostnameVerifier} with a public no-args constructor.
      *
      * @since 0.8.2
      */
-    public static final Option<Object> SSL_HOSTNAME_VERIFIER = Option.valueOf("sslHostnameVerifier");
+    public static final Option<HostnameVerifier> SSL_HOSTNAME_VERIFIER = Option.valueOf("sslHostnameVerifier");
 
-    public static final Option<String> TLS_VERSION = Option.valueOf("tlsVersion");
+    /**
+     * Option to TLS versions for SslContext protocols, see also {@code TlsVersions}. Usually sorted
+     * from higher to lower. It can be a {@code Collection<String>}. It can be a {@link String},
+     * protocols will be split by {@code ,}. e.g. "TLSv1.2,TLSv1.1,TLSv1".
+     *
+     * @since 0.8.1
+     */
+    public static final Option<String[]> TLS_VERSION = Option.valueOf("tlsVersion");
 
+    /**
+     * Option to set a PEM file of server SSL CA. It will be used to verify server certificates. And
+     * it will be used only if {@link #SSL_MODE} set to {@link SslMode#VERIFY_CA} or higher level.
+     *
+     * @since 0.8.1
+     */
     public static final Option<String> SSL_CA = Option.valueOf("sslCa");
 
+    /**
+     * Option to set a PEM file of client SSL key.
+     *
+     * @since 0.8.1
+     */
     public static final Option<String> SSL_KEY = Option.valueOf("sslKey");
 
+    /**
+     * Option to set a PEM file password of client SSL key. It will be used only if {@link #SSL_KEY}
+     * and {@link #SSL_CERT} set.
+     *
+     * @since 0.8.1
+     */
     public static final Option<CharSequence> SSL_KEY_PASSWORD = Option.sensitiveValueOf("sslKeyPassword");
 
+    /**
+     * Option to set a PEM file of client SSL cert.
+     *
+     * @since 0.8.1
+     */
     public static final Option<String> SSL_CERT = Option.valueOf("sslCert");
 
-    public static final Option<Object> SSL_CONTEXT_BUILDER_CUSTOMIZER = Option.valueOf("sslContextBuilderCustomizer");
-
     /**
-     * Enable TCP KeepAlive.
+     * Option to custom {@link SslContextBuilder}. It can be an implementation class name of
+     * {@link Function} with a public no-args constructor.
      *
      * @since 0.8.2
      */
-    public static final Option<Object> TCP_KEEPALIVE = Option.valueOf("tcpKeepAlive");
+    public static final Option<Function<SslContextBuilder, SslContextBuilder>> SSL_CONTEXT_BUILDER_CUSTOMIZER =
+        Option.valueOf("sslContextBuilderCustomizer");
 
     /**
-     * Enable TCP NoDelay.
+     * Enable/Disable TCP KeepAlive.
      *
      * @since 0.8.2
      */
-    public static final Option<Object> TCP_NODELAY = Option.valueOf("tcpNoDelay");
+    public static final Option<Boolean> TCP_KEEP_ALIVE = Option.valueOf("tcpKeepAlive");
 
+    /**
+     * Enable/Disable TCP NoDelay.
+     *
+     * @since 0.8.2
+     */
+    public static final Option<Boolean> TCP_NO_DELAY = Option.valueOf("tcpNoDelay");
+
+    /**
+     * Enable server preparing for parametrized statements and prefer server preparing simple statements.
+     * <p>
+     * The value can be a {@link Boolean}. If it is {@code true}, driver will use server preparing for
+     * parametrized statements and text query for simple statements. If it is {@code false}, driver will
+     * use client preparing for parametrized statements and text query for simple statements.
+     * <p>
+     * The value can be a {@link Predicate<String>}. If it is set, driver will server preparing for
+     * parametrized statements, it configures whether to prefer prepare execution on a statement-by-statement
+     * basis (simple statements). The {@link Predicate<String>} accepts the simple SQL query string and
+     * returns a {@code boolean} flag indicating preference.
+     * <p>
+     * The value can be a {@link String}. If it is set, driver will try to convert it to {@link Boolean}
+     * or an instance of {@link Predicate<String>} which use reflection with a public no-args constructor.
+     *
+     * @since 0.8.1
+     */
     public static final Option<Object> USE_SERVER_PREPARE_STATEMENT = Option.valueOf("useServerPrepareStatement");
 
+    /**
+     * Enable/Disable auto-detect driver extensions.
+     *
+     * @since 0.8.2
+     */
     public static final Option<Boolean> AUTODETECT_EXTENSIONS = Option.valueOf("autodetectExtensions");
 
-    @SuppressWarnings("unchecked")
     @Override
     public ConnectionFactory create(ConnectionFactoryOptions options) {
         requireNonNull(options, "connectionFactoryOptions must not be null");
 
-        MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder();
-
-        String unixSocket = options.getValue(UNIX_SOCKET);
-        String host = options.getValue(HOST);
-        if (unixSocket == null) {
-            requireNonNull(host, "host must not be null when unixSocket is null");
-
-            builder.host(host);
-        } else {
-            builder.unixSocket(unixSocket);
-        }
-
-        Integer port = options.getValue(PORT);
-        if (port != null) {
-            builder.port(port);
-        }
-
-        Boolean isSsl = options.getValue(SSL);
-        if (isSsl != null) {
-            builder.sslMode(isSsl ? SslMode.PREFERRED : SslMode.DISABLED);
-        }
-
-        Object sslMode = options.getValue(SSL_MODE);
-        if (sslMode != null) {
-            if (sslMode instanceof SslMode) {
-                builder.sslMode((SslMode) sslMode);
-            } else if (sslMode instanceof String) {
-                builder.sslMode(SslMode.valueOf(((String) sslMode).toUpperCase()));
-            } else {
-                throw new IllegalArgumentException("sslMode must be SslMode or a string of SslMode");
-            }
-        }
-
-        String tlsVersion = options.getValue(TLS_VERSION);
-        if (tlsVersion != null) {
-            builder.tlsVersion(tlsVersion.split(","));
-        }
-
-        Object sslHostnameVerifier = options.getValue(SSL_HOSTNAME_VERIFIER);
-        if (sslHostnameVerifier != null) {
-            if (sslHostnameVerifier instanceof HostnameVerifier) {
-                builder.sslHostnameVerifier((HostnameVerifier) sslHostnameVerifier);
-            } else if (sslHostnameVerifier instanceof String) {
-                builder.sslHostnameVerifier(newInstance((String) sslHostnameVerifier, HostnameVerifier.class));
-            } else {
-                throw new IllegalArgumentException("sslHostnameVerifier must be HostnameVerifier");
-            }
-        }
-
-        String sslCert = options.getValue(SSL_CERT);
-        String sslKey = options.getValue(SSL_KEY);
-        CharSequence sslKeyPassword = options.getValue(SSL_KEY_PASSWORD);
-        if (sslKey != null || sslCert != null) {
-            require(sslKey != null && sslCert != null, "SSL key and cert must be both null or both non-null");
-
-            builder.sslKeyAndCert(sslCert, sslKey, sslKeyPassword);
-        }
-
-        Object sslContextBuilderCustomizer = options.getValue(SSL_CONTEXT_BUILDER_CUSTOMIZER);
-        if (sslContextBuilderCustomizer != null) {
-            if (sslContextBuilderCustomizer instanceof String) {
-                sslContextBuilderCustomizer = newInstance((String) sslContextBuilderCustomizer, Function.class);
-            }
-
-            require(sslContextBuilderCustomizer instanceof Function<?, ?>, "sslContextBuilderCustomizer must be Function");
-
-            builder.sslContextBuilderCustomizer((Function<SslContextBuilder, SslContextBuilder>) sslContextBuilderCustomizer);
-        }
-
-        Object serverZoneId = options.getValue(SERVER_ZONE_ID);
-        if (serverZoneId != null) {
-            if (serverZoneId instanceof ZoneId) {
-                builder.serverZoneId((ZoneId) serverZoneId);
-            } else if (serverZoneId instanceof String) {
-                builder.serverZoneId(ZoneId.of((String) serverZoneId));
-            } else {
-                throw new IllegalArgumentException("serverZoneId must be ZoneId or a string of ZoneId");
-            }
-        }
-
-        Object tcpKeepAlive = options.getValue(TCP_KEEPALIVE);
-        if (tcpKeepAlive != null) {
-            // Convert stringify option.
-            builder.tcpKeepAlive(tcpKeepAlive instanceof String ? Boolean
-                    .parseBoolean(tcpKeepAlive.toString()) : (Boolean) tcpKeepAlive);
-        }
-
-        Object tcpNoDelay = options.getValue(TCP_NODELAY);
-        if (tcpNoDelay != null) {
-            // Convert stringify option.
-            builder.tcpNoDelay(tcpNoDelay instanceof String ? Boolean
-                    .parseBoolean(tcpNoDelay.toString()) : (Boolean) tcpNoDelay);
-        }
-
-        Object zeroDate = options.getValue(ZERO_DATE);
-        if (zeroDate != null) {
-            if (zeroDate instanceof ZeroDateOption) {
-                builder.zeroDateOption((ZeroDateOption) zeroDate);
-            } else if (zeroDate instanceof String) {
-                builder.zeroDateOption(ZeroDateOption.valueOf(((String) zeroDate).toUpperCase()));
-            } else {
-                throw new IllegalArgumentException("zeroDate must be ZeroDateOption or a string of ZeroDateOption");
-            }
-        }
-
-        Object serverPreparing = options.getValue(USE_SERVER_PREPARE_STATEMENT);
-        if (serverPreparing != null) {
-            // Convert stringify option.
-            if (serverPreparing instanceof String) {
-                String value = (String) serverPreparing;
-
-                if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-                    serverPreparing = Boolean.parseBoolean(value);
-                } else {
-                    serverPreparing = newInstance(value, Predicate.class);
-                }
-            }
-
-            if (serverPreparing instanceof Boolean) {
-                if ((Boolean) serverPreparing) {
-                    builder.useServerPrepareStatement();
-                } else {
-                    builder.useClientPrepareStatement();
-                }
-            } else if (serverPreparing instanceof Predicate<?>) {
-                builder.useServerPrepareStatement((Predicate<String>) serverPreparing);
-            } else {
-                throw new IllegalArgumentException("useServerPrepareStatement must be boolean or Predicate");
-            }
-        }
-
-        Boolean autodetectExtensions = options.getValue(AUTODETECT_EXTENSIONS);
-
-        if (autodetectExtensions != null) {
-            builder.autodetectExtensions(autodetectExtensions);
-        }
-
-        MySqlConnectionConfiguration configuration = builder.user(options.getRequiredValue(USER))
-            .password(options.getValue(PASSWORD))
-            .connectTimeout(options.getValue(CONNECT_TIMEOUT))
-            .database(options.getValue(DATABASE))
-            .sslCa(options.getValue(SSL_CA))
-            .build();
-
-        return MySqlConnectionFactory.from(configuration);
+        return MySqlConnectionFactory.from(setup(options));
     }
 
     @Override
@@ -251,17 +195,76 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         return MYSQL_DRIVER;
     }
 
-    private static <T> T newInstance(String className, Class<T> target) {
-        try {
-            Class<?> type = Class.forName(className);
+    /**
+     * Visible for unit tests.
+     *
+     * @param options the {@link ConnectionFactoryOptions} for setup {@link MySqlConnectionConfiguration}.
+     * @return completed {@link MySqlConnectionConfiguration}.
+     */
+    static MySqlConnectionConfiguration setup(ConnectionFactoryOptions options) {
+        OptionMapper mapper = new OptionMapper(options);
+        Builder builder = MySqlConnectionConfiguration.builder();
 
-            if (target.isAssignableFrom(type)) {
-                return target.cast(type.getDeclaredConstructor().newInstance());
+        mapper.from(UNIX_SOCKET).asString()
+            .into(builder::unixSocket)
+            .otherwise(() -> setupHost(builder, options, mapper));
+        mapper.from(SERVER_ZONE_ID).asInstance(ZoneId.class, id -> ZoneId.of(id, ZoneId.SHORT_IDS))
+            .into(builder::serverZoneId);
+        mapper.from(TCP_KEEP_ALIVE).asBoolean()
+            .into(builder::tcpKeepAlive);
+        mapper.from(TCP_NO_DELAY).asBoolean()
+            .into(builder::tcpNoDelay);
+        mapper.from(ZERO_DATE).asInstance(ZeroDateOption.class, id -> ZeroDateOption.valueOf(id.toUpperCase()))
+            .into(builder::zeroDateOption);
+        mapper.from(USE_SERVER_PREPARE_STATEMENT).servePrepare(enable -> {
+            if (enable) {
+                builder.useServerPrepareStatement();
+            } else {
+                builder.useClientPrepareStatement();
             }
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalArgumentException("Cannot instantiate '" + className + "'", e);
-        }
+        }, builder::useServerPrepareStatement);
+        mapper.from(AUTODETECT_EXTENSIONS).asBoolean()
+            .into(builder::autodetectExtensions);
+        mapper.from(CONNECT_TIMEOUT).asInstance(Duration.class, Duration::parse)
+            .into(builder::connectTimeout);
+        mapper.from(DATABASE).asString()
+            .into(builder::database);
 
-        throw new IllegalArgumentException("Value '" + className + "' must be an instance of " + target.getSimpleName());
+        // Notice for contributors: password is special, should keep it CharSequence,
+        // do NEVER use OptionMapper because it maybe convert password to String.
+        return builder.user(options.getRequiredValue(USER))
+            .password(options.getValue(PASSWORD))
+            .build();
+    }
+
+    /**
+     * Set {@link Builder} for hostname-based address with SSL configurations.
+     * <p>
+     * Notice for contributors: SSL key password is special, should keep it {@link CharSequence},
+     * do NEVER use {@link OptionMapper} because it maybe convert password to {@link String}.
+     *
+     * @param builder the {@link Builder}.
+     * @param options the original {@link ConnectionFactoryOptions}.
+     * @param mapper  the {@link OptionMapper} of {@code options}.
+     */
+    @SuppressWarnings("unchecked")
+    private static void setupHost(Builder builder, ConnectionFactoryOptions options, OptionMapper mapper) {
+        builder.host(options.getRequiredValue(HOST));
+        mapper.from(PORT).asInt()
+            .into(builder::port);
+        mapper.from(SSL).asBoolean()
+            .into(isSsl -> builder.sslMode(isSsl ? SslMode.REQUIRED : SslMode.DISABLED));
+        mapper.from(SSL_MODE).asInstance(SslMode.class, id -> SslMode.valueOf(id.toUpperCase()))
+            .into(builder::sslMode);
+        mapper.from(TLS_VERSION).asStrings()
+            .into(builder::tlsVersion);
+        mapper.from(SSL_HOSTNAME_VERIFIER).asInstance(HostnameVerifier.class)
+            .into(builder::sslHostnameVerifier);
+        mapper.sslCertAndKey()
+            .into((cert, key) -> builder.sslCertAndKey(cert, key, options.getValue(SSL_KEY_PASSWORD)));
+        mapper.from(SSL_CONTEXT_BUILDER_CUSTOMIZER).asInstance(Function.class)
+            .into(customizer -> builder.sslContextBuilderCustomizer((Function<SslContextBuilder, SslContextBuilder>) customizer));
+        mapper.from(SSL_CA).asString()
+            .into(builder::sslCa);
     }
 }

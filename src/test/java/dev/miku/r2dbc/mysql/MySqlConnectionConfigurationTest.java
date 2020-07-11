@@ -191,7 +191,7 @@ class MySqlConnectionConfigurationTest {
             .connectTimeout(Duration.ofSeconds(3))
             .sslMode(SslMode.VERIFY_IDENTITY)
             .sslCa(SSL_CA)
-            .sslKeyAndCert("/path/to/mysql/client-cert.pem", "/path/to/mysql/client-key.pem", "pem-password-in-here")
+            .sslCertAndKey("/path/to/mysql/client-cert.pem", "/path/to/mysql/client-key.pem", "pem-password-in-here")
             .tlsVersion(TlsVersions.TLS1_1, TlsVersions.TLS1_2, TlsVersions.TLS1_3)
             .serverZoneId(ZoneId.systemDefault())
             .zeroDateOption(ZeroDateOption.USE_NULL)

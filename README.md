@@ -96,7 +96,7 @@ ConnectionFactory connectionFactory = ConnectionFactories.get(
     "zeroDate=use_round&" +
     "sslMode=verify_identity&" +
     "useServerPrepareStatement=true&" +
-    "tlsVersion=TLSv1.1%2CTLSv1.2%2CTLSv1.3&" +
+    "tlsVersion=TLSv1.3%2CTLSv1.2%2CTLSv1.1&" +
     "sslCa=%2Fpath%2Fto%2Fmysql%2Fca.pem&" +
     "sslKey=%2Fpath%2Fto%2Fmysql%2Fclient-key.pem&" +
     "sslCert=%2Fpath%2Fto%2Fmysql%2Fclient-cert.pem&" +
@@ -133,7 +133,7 @@ ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
     .option(Option.valueOf("sslKey"), "/path/to/mysql/client-key.pem") // optional, default null, null means has no client key
     .option(Option.valueOf("sslCert"), "/path/to/mysql/client-cert.pem") // optional, default null, null means has no client cert
     .option(Option.valueOf("sslKeyPassword"), "key-pem-password-in-here") // optional, default null, null means has no password for client key (i.e. "sslKey")
-    .option(Option.valueOf("tlsVersion"), "TLSv1.1,TLSv1.2,TLSv1.3") // optional, default is auto-selected by the server
+    .option(Option.valueOf("tlsVersion"), "TLSv1.3,TLSv1.2,TLSv1.1") // optional, default is auto-selected by the server
     .option(Option.valueOf("zeroDate"), "use_null") // optional, default "use_null"
     .option(Option.valueOf("useServerPrepareStatement"), true) // optional, default false
     .build();
@@ -169,8 +169,8 @@ MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builde
     .connectTimeout(Duration.ofSeconds(3)) // optional, default null, null means no timeout
     .sslMode(SslMode.VERIFY_IDENTITY) // optional, default SslMode.PREFERRED
     .sslCa("/path/to/mysql/ca.pem") // required when sslMode is VERIFY_CA or VERIFY_IDENTITY, default null, null means has no server CA cert
-    .sslKeyAndCert("/path/to/mysql/client-cert.pem", "/path/to/mysql/client-key.pem", "key-pem-password-in-here") // optional, default has no client key and cert
-    .tlsVersion(TlsVersions.TLS1_1, TlsVersions.TLS1_2, TlsVersions.TLS1_3) // optional, default is auto-selected by the server
+    .sslCertAndKey("/path/to/mysql/client-cert.pem", "/path/to/mysql/client-key.pem", "key-pem-password-in-here") // optional, default has no client key and cert
+    .tlsVersion(TlsVersions.TLS1_3, TlsVersions.TLS1_2, TlsVersions.TLS1_1) // optional, default is auto-selected by the server
     .zeroDateOption(ZeroDateOption.USE_NULL) // optional, default ZeroDateOption.USE_NULL
     .useServerPrepareStatement() // Use server-preparing statements, default use client-preparing statements
     .build();
@@ -222,7 +222,7 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
   - `VERIFY_CA` I want my data encrypted, and I accept the overhead. I want to be sure I connect to a server that I trust. **Unavailable on Unix Domain Socket**
   - `VERIFY_IDENTITY` (the highest level, most like web browser): I want my data encrypted, and I accept the overhead. I want to be sure I connect to a server I trust, and that it's the one I specify. **Unavailable on Unix Domain Socket**
   - `TUNNEL`: Use a SSL tunnel to connect to MySQL. **Unavailable on Unix Domain Socket**
-- `TlsVersions` Considers TLS version names for SSL, can be **multi-values** in the configuration, make sure the database server supports selected TLS versions. **Unavailable on Unix Domain Socket**
+- `TlsVersions` Considers TLS version names for SSL, can be **multi-values** in the configuration, make sure the database server supports selected TLS versions. Usually sorted from higher to lower. **Unavailable on Unix Domain Socket**
   - `TLS1` (i.e. "TLSv1") Under generic circumstances, MySQL database supports it if database supports SSL
   - `TLS1_1` (i.e. "TLSv1.1") Under generic circumstances, MySQL database supports it if database supports SSL
   - `TLS1_2` (i.e. "TLSv1.2") Supported only in Community Edition `8.0.4` or higher, otherwise in Enterprise Edition `5.6.0` or higher

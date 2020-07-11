@@ -141,7 +141,7 @@ public final class MySqlSslConfiguration {
     @Override
     public String toString() {
         if (sslMode == SslMode.DISABLED) {
-            return "DISABLED";
+            return "MySqlSslConfiguration{sslMode=DISABLED}";
         }
 
         return String.format("MySqlSslConfiguration{sslMode=%s, tlsVersion=%s, sslHostnameVerifier=%s, sslCa='%s', sslKey='%s', sslKeyPassword=REDACTED, sslCert='%s', sslContextBuilderCustomizer=%s}",
