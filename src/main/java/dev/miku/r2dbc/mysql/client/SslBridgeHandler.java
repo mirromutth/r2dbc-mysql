@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.client;
 
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.MySqlSslConfiguration;
 import dev.miku.r2dbc.mysql.ServerVersion;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.TlsVersions;
-import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -196,9 +196,9 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         if (tlsProtocols.length > 0) {
             builder.protocols(tlsProtocols);
         } else if (isEnabledTls1_2(version)) {
-            builder.protocols(TlsVersions.TLS1, TlsVersions.TLS1_1, TlsVersions.TLS1_2);
+            builder.protocols(TlsVersions.TLS1_2, TlsVersions.TLS1_1, TlsVersions.TLS1);
         } else {
-            builder.protocols(TlsVersions.TLS1, TlsVersions.TLS1_1);
+            builder.protocols(TlsVersions.TLS1_1, TlsVersions.TLS1);
         }
 
         return builder;

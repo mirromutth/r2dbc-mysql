@@ -317,7 +317,8 @@ public final class MySqlConnectionConfiguration {
          * Configure the database.  Default no database.
          *
          * @param database the database, or {@code null} if no database want to be login.
-         * @return this {@link Builder}
+         * @return this {@link Builder}.
+         * @since 0.8.1
          */
         public Builder database(@Nullable String database) {
             this.database = database;
@@ -329,7 +330,8 @@ public final class MySqlConnectionConfiguration {
          *
          * @param unixSocket the socket file path.
          * @return this {@link Builder}.
-         * @throws IllegalArgumentException if {@code unixSocket} is {@code null}
+         * @throws IllegalArgumentException if {@code unixSocket} is {@code null}.
+         * @since 0.8.1
          */
         public Builder unixSocket(String unixSocket) {
             this.domain = requireNonNull(unixSocket, "unixSocket must not be null");
@@ -340,9 +342,10 @@ public final class MySqlConnectionConfiguration {
         /**
          * Configure the host.
          *
-         * @param host the host
-         * @return this {@link Builder}
-         * @throws IllegalArgumentException if {@code host} is {@code null}
+         * @param host the host.
+         * @return this {@link Builder}.
+         * @throws IllegalArgumentException if {@code host} is {@code null}.
+         * @since 0.8.1
          */
         public Builder host(String host) {
             this.domain = requireNonNull(host, "host must not be null");
@@ -356,7 +359,8 @@ public final class MySqlConnectionConfiguration {
          * Note: for memory security, should not use intern {@link String} for password.
          *
          * @param password the password, or {@code null} when user has no password.
-         * @return this {@link Builder}
+         * @return this {@link Builder}.
+         * @since 0.8.1
          */
         public Builder password(@Nullable CharSequence password) {
             this.password = password;
@@ -366,9 +370,10 @@ public final class MySqlConnectionConfiguration {
         /**
          * Configure the port.  Defaults to {@code 3306}.
          *
-         * @param port the port
-         * @return this {@link Builder}
+         * @param port the port.
+         * @return this {@link Builder}.
          * @throws IllegalArgumentException if the {@code port} is negative or bigger than {@literal 65535}.
+         * @since 0.8.1
          */
         public Builder port(int port) {
             require(port >= 0 && port <= 0xFFFF, "port must be between 0 and 65535");
@@ -381,7 +386,8 @@ public final class MySqlConnectionConfiguration {
          * Configure the connection timeout.  Default no timeout.
          *
          * @param connectTimeout the connection timeout, or {@code null} if has no timeout.
-         * @return this {@link Builder}
+         * @return this {@link Builder}.
+         * @since 0.8.1
          */
         public Builder connectTimeout(@Nullable Duration connectTimeout) {
             this.connectTimeout = connectTimeout;
@@ -392,8 +398,9 @@ public final class MySqlConnectionConfiguration {
          * Set the user for login the database.
          *
          * @param user the user.
-         * @return this {@link Builder}
-         * @throws IllegalArgumentException if {@code user} is {@code null}
+         * @return this {@link Builder}.
+         * @throws IllegalArgumentException if {@code user} is {@code null}.
+         * @since 0.8.2
          */
         public Builder user(String user) {
             this.user = requireNonNull(user, "user must not be null");
@@ -404,8 +411,9 @@ public final class MySqlConnectionConfiguration {
          * An alias of {@link #user(String)}.
          *
          * @param user the user.
-         * @return this {@link Builder}
-         * @throws IllegalArgumentException if {@code user} is {@code null}
+         * @return this {@link Builder}.
+         * @throws IllegalArgumentException if {@code user} is {@code null}.
+         * @since 0.8.1
          */
         public Builder username(String user) {
             return user(user);
@@ -415,7 +423,8 @@ public final class MySqlConnectionConfiguration {
          * Enforce the time zone of server.  Default to query server time zone in initialization (no enforce).
          *
          * @param serverZoneId the {@link ZoneId}, or {@code null} if query in initialization.
-         * @return this {@link Builder}
+         * @return this {@link Builder}.
+         * @since 0.8.2
          */
         public Builder serverZoneId(@Nullable ZoneId serverZoneId) {
             this.serverZoneId = serverZoneId;
@@ -427,8 +436,9 @@ public final class MySqlConnectionConfiguration {
          * See also {@link ZeroDateOption}.
          *
          * @param zeroDate the {@link ZeroDateOption}.
-         * @return this {@link Builder}
-         * @throws IllegalArgumentException if {@code zeroDate} is {@code null}
+         * @return this {@link Builder}.
+         * @throws IllegalArgumentException if {@code zeroDate} is {@code null}.
+         * @since 0.8.1
          */
         public Builder zeroDateOption(ZeroDateOption zeroDate) {
             this.zeroDateOption = requireNonNull(zeroDate, "zeroDateOption must not be null");
@@ -439,8 +449,9 @@ public final class MySqlConnectionConfiguration {
          * Configure ssl mode.  See also {@link SslMode}.
          *
          * @param sslMode the SSL mode to use.
-         * @return this {@link Builder}
-         * @throws IllegalArgumentException if {@code sslMode} is {@code null}
+         * @return this {@link Builder}.
+         * @throws IllegalArgumentException if {@code sslMode} is {@code null}.
+         * @since 0.8.1
          */
         public Builder sslMode(SslMode sslMode) {
             this.sslMode = requireNonNull(sslMode, "sslMode must not be null");
@@ -450,9 +461,10 @@ public final class MySqlConnectionConfiguration {
         /**
          * Configure TLS versions, see {@link dev.miku.r2dbc.mysql.constant.TlsVersions}.
          *
-         * @param tlsVersion TLS versions
-         * @return this {@link Builder}
+         * @param tlsVersion TLS versions.
+         * @return this {@link Builder}.
          * @throws IllegalArgumentException if the array {@code tlsVersion} is {@code null}.
+         * @since 0.8.1
          */
         public Builder tlsVersion(String... tlsVersion) {
             requireNonNull(tlsVersion, "tlsVersion must not be null");
@@ -493,8 +505,9 @@ public final class MySqlConnectionConfiguration {
          * Default is {@code null}, which means that the default algorithm is used for
          * the trust manager.
          *
-         * @param sslCa an X.509 certificate chain file in PEM format
-         * @return this {@link Builder}
+         * @param sslCa an X.509 certificate chain file in PEM format.
+         * @return this {@link Builder}.
+         * @since 0.8.1
          */
         public Builder sslCa(@Nullable String sslCa) {
             this.sslCa = sslCa;
@@ -507,14 +520,15 @@ public final class MySqlConnectionConfiguration {
          * The {@code sslCert} and {@code sslKey} must be both non-{@code null}
          * or both {@code null}.
          *
-         * @param sslCert an X.509 certificate chain file in PEM format
-         * @param sslKey  a PKCS#8 private key file in PEM format, should be not password-protected
-         * @return this {@link Builder}
+         * @param sslCert an X.509 certificate chain file in PEM format.
+         * @param sslKey  a PKCS#8 private key file in PEM format, should be not password-protected.
+         * @return this {@link Builder}.
          * @throws IllegalArgumentException if one of {@code sslCert} and {@code sslKey} is {@code null},
          *                                  and the other is non-{@code null}.
+         * @since 0.8.1
          */
-        public Builder sslKeyAndCert(@Nullable String sslCert, @Nullable String sslKey) {
-            return sslKeyAndCert(sslCert, sslKey, null);
+        public Builder sslCertAndKey(@Nullable String sslCert, @Nullable String sslKey) {
+            return sslCertAndKey(sslCert, sslKey, null);
         }
 
         /**
@@ -523,14 +537,15 @@ public final class MySqlConnectionConfiguration {
          * The {@code sslCert} and {@code sslKey} must be both non-{@code null}
          * or both {@code null}.
          *
-         * @param sslCert        an X.509 certificate chain file in PEM format
-         * @param sslKey         a PKCS#8 private key file in PEM format
-         * @param sslKeyPassword the password of the {@code sslKey}, or {@code null} if it's not password-protected
-         * @return this {@link Builder}
+         * @param sslCert        an X.509 certificate chain file in PEM format.
+         * @param sslKey         a PKCS#8 private key file in PEM format.
+         * @param sslKeyPassword the password of the {@code sslKey}, or {@code null} if it's not password-protected.
+         * @return this {@link Builder}.
          * @throws IllegalArgumentException if one of {@code sslCert} and {@code sslKey} is {@code null},
          *                                  and the other is non-{@code null}.
+         * @since 0.8.1
          */
-        public Builder sslKeyAndCert(@Nullable String sslCert, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword) {
+        public Builder sslCertAndKey(@Nullable String sslCert, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword) {
             require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null), "SSL key and cert must be both null or both non-null");
 
             this.sslCert = sslCert;
@@ -549,6 +564,7 @@ public final class MySqlConnectionConfiguration {
          * @param customizer customizer function
          * @return this {@link Builder}
          * @throws IllegalArgumentException if {@code customizer} is {@code null}
+         * @since 0.8.1
          */
         public Builder sslContextBuilderCustomizer(Function<SslContextBuilder, SslContextBuilder> customizer) {
             requireNonNull(customizer, "sslContextBuilderCustomizer must not be null");
@@ -563,7 +579,7 @@ public final class MySqlConnectionConfiguration {
          * @param enabled whether to enable TCP KeepAlive
          * @return this {@link Builder}
          * @see Socket#setKeepAlive(boolean)
-         * @since 0.8.1
+         * @since 0.8.2
          */
         public Builder tcpKeepAlive(boolean enabled) {
             this.tcpKeepAlive = enabled;
@@ -576,7 +592,7 @@ public final class MySqlConnectionConfiguration {
          * @param enabled whether to enable TCP NoDelay
          * @return this {@link Builder}
          * @see Socket#setTcpNoDelay(boolean)
-         * @since 0.8.1
+         * @since 0.8.2
          */
         public Builder tcpNoDelay(boolean enabled) {
             this.tcpNoDelay = enabled;
@@ -590,6 +606,7 @@ public final class MySqlConnectionConfiguration {
          * See also MySQL documentations.
          *
          * @return this {@link Builder}
+         * @since 0.8.1
          */
         public Builder useClientPrepareStatement() {
             this.preferPrepareStatement = null;
@@ -602,7 +619,8 @@ public final class MySqlConnectionConfiguration {
          * The binary protocol is compact protocol that's using server-preparing.
          * See also MySQL documentations.
          *
-         * @return this {@link Builder}
+         * @return this {@link Builder}.
+         * @since 0.8.1
          */
         public Builder useServerPrepareStatement() {
             return useServerPrepareStatement(DEFAULT_SERVER_PREPARE);
@@ -622,8 +640,9 @@ public final class MySqlConnectionConfiguration {
          * See also MySQL documentations.
          *
          * @param preferPrepareStatement the above {@link Predicate}.
-         * @return this {@link Builder}
-         * @throws IllegalArgumentException if {@code preferPrepareStatement} is {@code null}
+         * @return this {@link Builder}.
+         * @throws IllegalArgumentException if {@code preferPrepareStatement} is {@code null}.
+         * @since 0.8.1
          */
         public Builder useServerPrepareStatement(Predicate<String> preferPrepareStatement) {
             requireNonNull(preferPrepareStatement, "preferPrepareStatement must not be null");
@@ -636,8 +655,9 @@ public final class MySqlConnectionConfiguration {
          * Configures whether to use {@link ServiceLoader} to discover and register extensions.
          * Defaults to {@code true}.
          *
-         * @param enabled to discover and register extensions
-         * @return this {@link Builder}
+         * @param enabled to discover and register extensions.
+         * @return this {@link Builder}.
+         * @since 0.8.2
          */
         public Builder autodetectExtensions(boolean enabled) {
             this.autodetectExtensions = enabled;
@@ -652,9 +672,10 @@ public final class MySqlConnectionConfiguration {
          * this function and autodetect discovered, it will get two {@link Extension}
          * as same.
          *
-         * @param extension extension to extend driver functionality
-         * @return this {@link Builder}
+         * @param extension extension to extend driver functionality.
+         * @return this {@link Builder}.
          * @throws IllegalArgumentException if {@code extension} is {@code null}.
+         * @since 0.8.2
          */
         public Builder extendWith(Extension extension) {
             this.extensions.add(requireNonNull(extension, "extension must not be null"));
