@@ -192,6 +192,38 @@ class MySqlConnectionFactoryProviderTest {
             .option(Option.valueOf("tcpNoDelay"), "true")
             .build()))
             .withMessageContaining("host");
+
+        assertThatIllegalStateException().isThrownBy(() -> MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(PORT, 3307)
+            .option(PASSWORD, "123456")
+            .build()))
+            .withMessageContaining("user");
+
+        assertThatIllegalArgumentException().isThrownBy(() -> MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(PORT, 3307)
+            .option(USER, "root")
+            .option(PASSWORD, "123456")
+            .option(Option.valueOf("sslMode"), "verify_ca")
+            .option(Option.valueOf("sslCa"), "/path/to/ca.pem")
+            .option(Option.valueOf("sslKey"), "/path/to/client-key.pem")
+            .build()))
+            .withMessageContaining("sslCert and sslKey");
+
+        assertThatIllegalArgumentException().isThrownBy(() -> MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
+            .option(DRIVER, "mysql")
+            .option(HOST, "127.0.0.1")
+            .option(PORT, 3307)
+            .option(USER, "root")
+            .option(PASSWORD, "123456")
+            .option(Option.valueOf("sslMode"), "verify_ca")
+            .option(Option.valueOf("sslCa"), "/path/to/ca.pem")
+            .option(Option.valueOf("sslCert"), "/path/to/client-cert.pem")
+            .build()))
+            .withMessageContaining("sslCert and sslKey");
     }
 
     @Test

@@ -302,7 +302,7 @@ public final class MySqlConnectionConfiguration {
 
             if (isHost) {
                 requireNonNull(domain, "host must not be null when using TCP socket");
-                require(port >= 0 && port <= 0xFFFF, "port must be between 0 and 65535 when using TCP socket");
+                require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null), "sslCert and sslKey must be both null or both non-null");
             } else {
                 requireNonNull(domain, "unixSocket must not be null when using unix domain socket");
                 require(!sslMode.startSsl(), "sslMode must be disabled when using unix domain socket");
@@ -515,41 +515,43 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configure ssl key and ssl cert for client certificate authentication.
+         * Configure client SSL certificate for client authentication.
          * <p>
-         * The {@code sslCert} and {@code sslKey} must be both non-{@code null}
-         * or both {@code null}.
+         * The {@link #sslCert} and {@link #sslKey} must be both non-{@code null} or both {@code null}.
          *
-         * @param sslCert an X.509 certificate chain file in PEM format.
-         * @param sslKey  a PKCS#8 private key file in PEM format, should be not password-protected.
+         * @param sslCert an X.509 certificate chain file in PEM format, or {@code null} if no SSL cert.
          * @return this {@link Builder}.
-         * @throws IllegalArgumentException if one of {@code sslCert} and {@code sslKey} is {@code null},
-         *                                  and the other is non-{@code null}.
-         * @since 0.8.1
+         * @since 0.8.2
          */
-        public Builder sslCertAndKey(@Nullable String sslCert, @Nullable String sslKey) {
-            return sslCertAndKey(sslCert, sslKey, null);
+        public Builder sslCert(@Nullable String sslCert) {
+            this.sslCert = sslCert;
+            return this;
         }
 
         /**
-         * Configure ssl key and ssl cert for client certificate authentication.
+         * Configure client SSL key for client authentication.
          * <p>
-         * The {@code sslCert} and {@code sslKey} must be both non-{@code null}
-         * or both {@code null}.
+         * The {@link #sslCert} and {@link #sslKey} must be both non-{@code null} or both {@code null}.
          *
-         * @param sslCert        an X.509 certificate chain file in PEM format.
-         * @param sslKey         a PKCS#8 private key file in PEM format.
-         * @param sslKeyPassword the password of the {@code sslKey}, or {@code null} if it's not password-protected.
+         * @param sslKey a PKCS#8 private key file in PEM format, or {@code null} if no SSL key.
          * @return this {@link Builder}.
-         * @throws IllegalArgumentException if one of {@code sslCert} and {@code sslKey} is {@code null},
-         *                                  and the other is non-{@code null}.
-         * @since 0.8.1
+         * @since 0.8.2
          */
-        public Builder sslCertAndKey(@Nullable String sslCert, @Nullable String sslKey, @Nullable CharSequence sslKeyPassword) {
-            require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null), "SSL key and cert must be both null or both non-null");
-
-            this.sslCert = sslCert;
+        public Builder sslKey(@Nullable String sslKey) {
             this.sslKey = sslKey;
+            return this;
+        }
+
+        /**
+         * Configure the password of SSL key file for client certificate authentication.
+         * <p>
+         * It will be used only if {@link #sslKey} and {@link #sslCert} non-null.
+         *
+         * @param sslKeyPassword the password of the {@link #sslKey}, or {@code null} if it's not password-protected.
+         * @return this {@link Builder}.
+         * @since 0.8.2
+         */
+        public Builder sslKeyPassword(@Nullable CharSequence sslKeyPassword) {
             this.sslKeyPassword = sslKeyPassword;
             return this;
         }
