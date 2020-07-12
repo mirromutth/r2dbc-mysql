@@ -38,7 +38,7 @@ import java.util.Set;
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
 
 /**
- * Codec for {@link Set<String>}, {@link Set<Enum>} and {@link String[]}.
+ * Codec for {@link Set}{@code <}{@link String}{@code >}, {@link Set}{@code <}{@link Enum}{@code >} and {@link String}{@code []}.
  */
 final class SetCodec implements ParametrizedCodec<String[]> {
 

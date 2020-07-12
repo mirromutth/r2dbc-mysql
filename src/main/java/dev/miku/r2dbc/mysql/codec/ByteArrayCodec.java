@@ -30,7 +30,7 @@ import java.util.Arrays;
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
- * Codec for {@link byte[]}.
+ * Codec for {@code byte[]}.
  */
 final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
 

@@ -157,13 +157,14 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
      * parametrized statements and text query for simple statements. If it is {@code false}, driver will
      * use client preparing for parametrized statements and text query for simple statements.
      * <p>
-     * The value can be a {@link Predicate<String>}. If it is set, driver will server preparing for
-     * parametrized statements, it configures whether to prefer prepare execution on a statement-by-statement
-     * basis (simple statements). The {@link Predicate<String>} accepts the simple SQL query string and
-     * returns a {@code boolean} flag indicating preference.
+     * The value can be a {@link Predicate}{@code <}{@link String}{@code >}. If it is set, driver will server
+     * preparing for parametrized statements, it configures whether to prefer prepare execution on a statement-
+     * by-statement basis (simple statements). The {@link Predicate}{@code <}{@link String}{@code >} accepts
+     * the simple SQL query string and returns a {@code boolean} flag indicating preference.
      * <p>
      * The value can be a {@link String}. If it is set, driver will try to convert it to {@link Boolean}
-     * or an instance of {@link Predicate<String>} which use reflection with a public no-args constructor.
+     * or an instance of {@link Predicate}{@code <}{@link String}{@code >} which use reflection with a public
+     * no-args constructor.
      *
      * @since 0.8.1
      */

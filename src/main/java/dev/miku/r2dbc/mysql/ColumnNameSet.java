@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * An implementation of {@link Set<String>} for {@code RowMetadata.getColumnNames} results.
+ * An implementation of {@link Set}{@code <}{@link String}{@code >} for {@code RowMetadata.getColumnNames} results.
  *
  * @see MySqlNames column name searching rules.
  */
