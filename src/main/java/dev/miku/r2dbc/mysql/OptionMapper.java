@@ -20,13 +20,9 @@ import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.Option;
 
 import java.util.Collection;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import static dev.miku.r2dbc.mysql.MySqlConnectionFactoryProvider.SSL_CERT;
-import static dev.miku.r2dbc.mysql.MySqlConnectionFactoryProvider.SSL_KEY;
 
 /**
  * An utility data parser for {@link Option}.
@@ -46,17 +42,16 @@ final class OptionMapper {
         return new SourceSpec(options, option);
     }
 
-    BiSource sslCertAndKey() {
-        String leftValue = options.getValue(SSL_CERT);
-        String rightValue = options.getValue(SSL_KEY);
+    <T> void consume(Option<T> option, Consumer<T> consumer) {
+        T t = options.getValue(option);
 
-        if (leftValue == null && rightValue == null) {
-            return Source.Nil.INSTANCE;
-        } else if (leftValue == null || rightValue == null) {
-            throw new IllegalArgumentException("SSL cert and key must be both null or both non-null");
+        if (t != null) {
+            consumer.accept(t);
         }
+    }
 
-        return new BiSource.Impl(leftValue, rightValue);
+    <T> void requiredConsume(Option<T> option, Consumer<T> consumer) {
+        consumer.accept(options.getRequiredValue(option));
     }
 }
 
@@ -225,30 +220,6 @@ final class SourceSpec {
 }
 
 @FunctionalInterface
-interface BiSource {
-
-    Otherwise into(BiConsumer<String, String> consumer);
-
-    final class Impl implements BiSource {
-
-        private final String left;
-
-        private final String right;
-
-        Impl(String left, String right) {
-            this.left = left;
-            this.right = right;
-        }
-
-        @Override
-        public Otherwise into(BiConsumer<String, String> consumer) {
-            consumer.accept(left, right);
-            return Otherwise.NOOP;
-        }
-    }
-}
-
-@FunctionalInterface
 interface Source<T> {
 
     Otherwise into(Consumer<T> consumer);
@@ -272,17 +243,12 @@ interface Source<T> {
         }
     }
 
-    enum Nil implements Source<Object>, BiSource {
+    enum Nil implements Source<Object> {
 
         INSTANCE;
 
         @Override
         public Otherwise into(Consumer<Object> consumer) {
-            return Otherwise.FALL;
-        }
-
-        @Override
-        public Otherwise into(BiConsumer<String, String> consumer) {
             return Otherwise.FALL;
         }
     }
@@ -297,7 +263,7 @@ interface Otherwise {
     Otherwise FALL = Runnable::run;
 
     /**
-     * Invoked if the previous {@link Source} or {@link BiSource} outcome did not match.
+     * Invoked if the previous {@link Source} outcome did not match.
      *
      * @param runnable the {@link Runnable} that should be invoked.
      */

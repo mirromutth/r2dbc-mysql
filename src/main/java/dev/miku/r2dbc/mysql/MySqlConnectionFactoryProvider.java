@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.MySqlConnectionConfiguration.Builder;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -203,11 +202,16 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
      */
     static MySqlConnectionConfiguration setup(ConnectionFactoryOptions options) {
         OptionMapper mapper = new OptionMapper(options);
-        Builder builder = MySqlConnectionConfiguration.builder();
+        MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder();
+
+        mapper.requiredConsume(USER, builder::user);
+        // Notice for contributors: password is special, should keep it CharSequence,
+        // do NEVER use OptionMapper.from because it maybe convert password to String.
+        mapper.consume(PASSWORD, builder::password);
 
         mapper.from(UNIX_SOCKET).asString()
             .into(builder::unixSocket)
-            .otherwise(() -> setupHost(builder, options, mapper));
+            .otherwise(() -> setupHost(builder, mapper));
         mapper.from(SERVER_ZONE_ID).asInstance(ZoneId.class, id -> ZoneId.of(id, ZoneId.SHORT_IDS))
             .into(builder::serverZoneId);
         mapper.from(TCP_KEEP_ALIVE).asBoolean()
@@ -230,26 +234,22 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         mapper.from(DATABASE).asString()
             .into(builder::database);
 
-        // Notice for contributors: password is special, should keep it CharSequence,
-        // do NEVER use OptionMapper because it maybe convert password to String.
-        return builder.user(options.getRequiredValue(USER))
-            .password(options.getValue(PASSWORD))
-            .build();
+        return builder.build();
     }
 
     /**
-     * Set {@link Builder} for hostname-based address with SSL configurations.
+     * Set builder of {@link MySqlConnectionConfiguration} for hostname-based address with SSL
+     * configurations.
      * <p>
      * Notice for contributors: SSL key password is special, should keep it {@link CharSequence},
-     * do NEVER use {@link OptionMapper} because it maybe convert password to {@link String}.
+     * do NEVER use {@link OptionMapper#from} because it maybe convert password to {@link String}.
      *
-     * @param builder the {@link Builder}.
-     * @param options the original {@link ConnectionFactoryOptions}.
+     * @param builder the builder of {@link MySqlConnectionConfiguration}.
      * @param mapper  the {@link OptionMapper} of {@code options}.
      */
     @SuppressWarnings("unchecked")
-    private static void setupHost(Builder builder, ConnectionFactoryOptions options, OptionMapper mapper) {
-        builder.host(options.getRequiredValue(HOST));
+    private static void setupHost(MySqlConnectionConfiguration.Builder builder, OptionMapper mapper) {
+        mapper.requiredConsume(HOST, builder::host);
         mapper.from(PORT).asInt()
             .into(builder::port);
         mapper.from(SSL).asBoolean()
@@ -260,8 +260,11 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             .into(builder::tlsVersion);
         mapper.from(SSL_HOSTNAME_VERIFIER).asInstance(HostnameVerifier.class)
             .into(builder::sslHostnameVerifier);
-        mapper.sslCertAndKey()
-            .into((cert, key) -> builder.sslCertAndKey(cert, key, options.getValue(SSL_KEY_PASSWORD)));
+        mapper.from(SSL_CERT).asString()
+            .into(builder::sslCert);
+        mapper.from(SSL_KEY).asString()
+            .into(builder::sslKey);
+        mapper.consume(SSL_KEY_PASSWORD, builder::sslKeyPassword);
         mapper.from(SSL_CONTEXT_BUILDER_CUSTOMIZER).asInstance(Function.class)
             .into(customizer -> builder.sslContextBuilderCustomizer((Function<SslContextBuilder, SslContextBuilder>) customizer));
         mapper.from(SSL_CA).asString()
