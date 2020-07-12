@@ -241,7 +241,7 @@
                 <version>3.2.0</version>
                 <configuration>
                     <excludePackageNames>
-                        dev.miku.r2dbc.mysql.authentication,dev.miku.r2dbc.mysql.client,dev.miku.r2dbc.mysql.util,dev.miku.r2dbc.mysql.codec,dev.miku.r2dbc.mysql.message
+                        dev.miku.r2dbc.mysql.authentication,dev.miku.r2dbc.mysql.client,dev.miku.r2dbc.mysql.util,dev.miku.r2dbc.mysql.codec.lob,dev.miku.r2dbc.mysql.message
                     </excludePackageNames>
                     <links>
                         <link>https://projectreactor.io/docs/core/release/api/</link>
