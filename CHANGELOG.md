@@ -1,5 +1,27 @@
 # R2DBC MySQL Changelog
 
+## 0.8.2.RELEASE
+
+### New features
+
+- Added extensions, supports codec registrar.
+- Added option `sslHostnameVerifier` of configuration.
+- Added `SslContextBuilder` customizer supports.
+- Added the TUNNEL into SSL modes.
+- Added time zone supports, which contains `ZonedDateTime`, `OffsetDateTime`, `Instant` and `OffsetTime` codec supports.
+- Added TCP NoDelay of configuration.
+- Added TCP KeepAlive of configuration.
+
+### Features change
+
+- Changed the SSL key and SSL certificate configuration of client.
+- Changed the `MySqlConnectionFactoryProvider` when `unixSocket` is set, ignore the host and all SSL options.
+
+### Fixed bugs
+
+- Fixed BOOLEAN (TINYINT(1)) decoding supports.
+- Fixed datetime/timestamp microseconds encoding/decoding in text protocol.
+
 ## 0.8.1.RELEASE
 
 ### New features
