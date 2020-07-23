@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.cache.Caches;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.extension.Extension;
@@ -85,13 +86,17 @@ public final class MySqlConnectionConfiguration {
     @Nullable
     private final Predicate<String> preferPrepareStatement;
 
+    private final int queryCacheSize;
+
+    private final int prepareCacheSize;
+
     private final Extensions extensions;
 
     private MySqlConnectionConfiguration(
-        boolean isHost, String domain, int port, @Nullable MySqlSslConfiguration ssl,
-        boolean tcpKeepAlive, boolean tcpNoDelay, @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
+        boolean isHost, String domain, int port, MySqlSslConfiguration ssl, boolean tcpKeepAlive, boolean tcpNoDelay,
+        @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
         String user, @Nullable CharSequence password, @Nullable String database,
-        @Nullable Predicate<String> preferPrepareStatement, Extensions extensions
+        @Nullable Predicate<String> preferPrepareStatement, int queryCacheSize, int prepareCacheSize, Extensions extensions
     ) {
         this.isHost = isHost;
         this.domain = domain;
@@ -99,14 +104,16 @@ public final class MySqlConnectionConfiguration {
         this.tcpKeepAlive = tcpKeepAlive;
         this.tcpNoDelay = tcpNoDelay;
         this.connectTimeout = connectTimeout;
-        this.ssl = requireNonNull(ssl, "ssl must not be null");
+        this.ssl = ssl;
         this.serverZoneId = serverZoneId;
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
         this.user = requireNonNull(user, "user must not be null");
         this.password = password;
         this.database = database == null || database.isEmpty() ? "" : database;
         this.preferPrepareStatement = preferPrepareStatement;
-        this.extensions = requireNonNull(extensions, "extensions must not be null");
+        this.queryCacheSize = queryCacheSize;
+        this.prepareCacheSize = prepareCacheSize;
+        this.extensions = extensions;
     }
 
     public static Builder builder() {
@@ -169,6 +176,14 @@ public final class MySqlConnectionConfiguration {
         return preferPrepareStatement;
     }
 
+    public int getQueryCacheSize() {
+        return queryCacheSize;
+    }
+
+    public int getPrepareCacheSize() {
+        return prepareCacheSize;
+    }
+
     Extensions getExtensions() {
         return extensions;
     }
@@ -195,12 +210,16 @@ public final class MySqlConnectionConfiguration {
             Objects.equals(password, that.password) &&
             database.equals(that.database) &&
             Objects.equals(preferPrepareStatement, that.preferPrepareStatement) &&
+            queryCacheSize == that.queryCacheSize &&
+            prepareCacheSize == that.prepareCacheSize &&
             extensions.equals(that.extensions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay, connectTimeout, serverZoneId, zeroDateOption, user, password, database, preferPrepareStatement, extensions);
+        return Objects.hash(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay,
+            connectTimeout, serverZoneId, zeroDateOption, user, password, database,
+            preferPrepareStatement, queryCacheSize, prepareCacheSize, extensions);
     }
 
     @Override
@@ -219,6 +238,8 @@ public final class MySqlConnectionConfiguration {
                 ", password=" + password +
                 ", database='" + database + '\'' +
                 ", preferPrepareStatement=" + preferPrepareStatement +
+                ", queryCacheSize=" + queryCacheSize +
+                ", prepareCacheSize=" + prepareCacheSize +
                 ", extensions=" + extensions +
                 '}';
         } else {
@@ -231,6 +252,8 @@ public final class MySqlConnectionConfiguration {
                 ", password=" + password +
                 ", database='" + database + '\'' +
                 ", preferPrepareStatement=" + preferPrepareStatement +
+                ", queryCacheSize=" + queryCacheSize +
+                ", prepareCacheSize=" + prepareCacheSize +
                 ", extensions=" + extensions +
                 '}';
         }
@@ -290,6 +313,10 @@ public final class MySqlConnectionConfiguration {
         @Nullable
         private Predicate<String> preferPrepareStatement;
 
+        private int queryCacheSize = 0;
+
+        private int prepareCacheSize = 256;
+
         private boolean autodetectExtensions = true;
 
         private final List<Extension> extensions = new ArrayList<>();
@@ -302,15 +329,20 @@ public final class MySqlConnectionConfiguration {
 
             if (isHost) {
                 requireNonNull(domain, "host must not be null when using TCP socket");
-                require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null), "sslCert and sslKey must be both null or both non-null");
+                require((sslCert == null && sslKey == null) || (sslCert != null && sslKey != null),
+                    "sslCert and sslKey must be both null or both non-null");
             } else {
                 requireNonNull(domain, "unixSocket must not be null when using unix domain socket");
                 require(!sslMode.startSsl(), "sslMode must be disabled when using unix domain socket");
             }
 
-            MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslHostnameVerifier, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
-            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay, connectTimeout, zeroDateOption, serverZoneId,
-                user, password, database, preferPrepareStatement, Extensions.from(extensions, autodetectExtensions));
+            int prepareCacheSize = preferPrepareStatement == null ? 0 : this.prepareCacheSize;
+
+            MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslHostnameVerifier,
+                sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
+            return new MySqlConnectionConfiguration(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay,
+                connectTimeout, zeroDateOption, serverZoneId, user, password, database, preferPrepareStatement,
+                queryCacheSize, prepareCacheSize, Extensions.from(extensions, autodetectExtensions));
         }
 
         /**
@@ -650,6 +682,45 @@ public final class MySqlConnectionConfiguration {
             requireNonNull(preferPrepareStatement, "preferPrepareStatement must not be null");
 
             this.preferPrepareStatement = preferPrepareStatement;
+            return this;
+        }
+
+        /**
+         * Configures the maximum size of the {@link Query} parsing cache. Usually it should be power of
+         * two.  Default to {@code 0}. Driver will use unbounded cache if size is less than {@code 0}.
+         * <p>
+         * Notice: the cache is using EL cache (the PACELC theorem) which provider better performance.
+         * That means it is an elastic cache. So this size is not a hard-limit. It should be over 16 in average.
+         *
+         * @param queryCacheSize the above size, {@code 0} means no cache, {@code -1} means unbounded cache.
+         * @return this {@link Builder}.
+         * @throws IllegalArgumentException if {@code queryCacheSize} is greater than {@link Caches#MAX_CAPACITY}.
+         * @since 0.8.3
+         */
+        public Builder queryCacheSize(int queryCacheSize) {
+            require(queryCacheSize <= Caches.MAX_CAPACITY, "queryCacheSize must not be too large");
+            this.queryCacheSize = queryCacheSize;
+            return this;
+        }
+
+        /**
+         * Configures the maximum size of the server-preparing cache. Usually it should be power of
+         * two.  Default to {@code 256}. Driver will use unbounded cache if size is less than {@code 0}.
+         * <p>
+         * It will be used only if using server-preparing for parametrized statements, i.e. the
+         * {@link #useServerPrepareStatement} is set.
+         * <p>
+         * Notice: the cache is using EL model (the PACELC theorem) which provider better performance.
+         * That means it is an elastic cache. So this size is not a hard-limit. It should be over 16 in average.
+         *
+         * @param prepareCacheSize the above size, {@code 0} means no cache, {@code -1} means unbounded cache.
+         * @return this {@link Builder}.
+         * @throws IllegalArgumentException if {@code prepareCacheSize} is greater than {@link Caches#MAX_CAPACITY}.
+         * @since 0.8.3
+         */
+        public Builder prepareCacheSize(int prepareCacheSize) {
+            require(prepareCacheSize <= Caches.MAX_CAPACITY, "prepareCacheSize must not be too large");
+            this.prepareCacheSize = prepareCacheSize;
             return this;
         }
 

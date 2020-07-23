@@ -171,6 +171,20 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public static final Option<Object> USE_SERVER_PREPARE_STATEMENT = Option.valueOf("useServerPrepareStatement");
 
     /**
+     * Option to set the maximum size of the {@link Query} parsing cache.  Default to {@code 256}.
+     *
+     * @since 0.8.3
+     */
+    public static final Option<Integer> PREPARE_CACHE_SIZE = Option.valueOf("prepareCacheSize");
+
+    /**
+     * Option to set the maximum size of the server-preparing cache.  Default to {@code 0}.
+     *
+     * @since 0.8.3
+     */
+    public static final Option<Integer> QUERY_CACHE_SIZE = Option.valueOf("queryCacheSize");
+
+    /**
      * Enable/Disable auto-detect driver extensions.
      *
      * @since 0.8.2
@@ -228,6 +242,10 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
                 builder.useClientPrepareStatement();
             }
         }, builder::useServerPrepareStatement);
+        mapper.from(QUERY_CACHE_SIZE).asInt()
+            .into(builder::queryCacheSize);
+        mapper.from(PREPARE_CACHE_SIZE).asInt()
+            .into(builder::prepareCacheSize);
         mapper.from(AUTODETECT_EXTENSIONS).asBoolean()
             .into(builder::autodetectExtensions);
         mapper.from(CONNECT_TIMEOUT).asInstance(Duration.class, Duration::parse)

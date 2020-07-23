@@ -51,17 +51,10 @@ abstract class Query {
         // ONLY FOR PREPARE: Parsed SQL builder, if SQL does not contains named-parameter, it will always be null.
         StringBuilder sqlBuilder = null;
         // ONLY FOR TEXT: SQL parts split by parameters.
-        List<String> sqlParts;
-
-        if (prepare) {
-            // Prepare parsing, no need collect parts of SQL.
-            sqlParts = Collections.emptyList();
-        } else {
-            sqlParts = new ArrayList<>();
-        }
+        List<String> sqlParts = prepare ? null : new ArrayList<>();
 
         while (offset >= 0 && offset < length) {
-            if (!prepare) {
+            if (sqlParts != null) {
                 sqlParts.add(subStr(sql, lastParamEnd, offset));
             }
             ++paramCount;
@@ -113,7 +106,7 @@ abstract class Query {
             }
         }
 
-        if (prepare) {
+        if (sqlParts == null) {
             String parsedSql;
 
             if (sqlBuilder == null) {
@@ -233,10 +226,6 @@ abstract class Query {
     }
 
     private static String subStr(String sql, int start, int end) {
-        if (start == end) {
-            return "";
-        } else {
-            return sql.substring(start, end);
-        }
+        return start == end ? "" : sql.substring(start, end);
     }
 }

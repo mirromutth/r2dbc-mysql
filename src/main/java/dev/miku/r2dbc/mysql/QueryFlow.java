@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
+import dev.miku.r2dbc.mysql.cache.PrepareCache;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
@@ -27,6 +28,7 @@ import dev.miku.r2dbc.mysql.message.client.HandshakeResponse;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedCloseMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
+import dev.miku.r2dbc.mysql.message.client.PreparedResetMessage;
 import dev.miku.r2dbc.mysql.message.client.SimpleQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
 import dev.miku.r2dbc.mysql.message.server.AuthMoreDataMessage;
@@ -49,7 +51,8 @@ import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.EmitterProcessor;
+import reactor.core.CoreSubscriber;
+import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
@@ -93,13 +96,12 @@ final class QueryFlow {
      * @return the {@link Client}, or an error/exception received by login failed.
      */
     static Mono<Client> login(Client client, SslMode sslMode, String database, String user, @Nullable CharSequence password, ConnectionContext context) {
-        EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
-        InitHandler handler = new InitHandler(requests, client, sslMode, database, user, password, context);
+        InitHandler handler = new InitHandler(client, sslMode, database, user, password, context);
 
-        return client.exchange(requests, handler)
+        return client.exchange(handler, handler)
             .handle(handler)
             .onErrorResume(e -> {
-                requests.onComplete();
+                handler.onComplete();
                 return client.forceClose().then(Mono.error(e));
             })
             .then(Mono.just(client));
@@ -110,23 +112,25 @@ final class QueryFlow {
      * The execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}.
      * The {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s.
      *
-     * @param client    the {@link Client} to exchange messages with.
-     * @param sql       the original statement for exception tracing.
-     * @param bindings  the data of bindings.
-     * @param fetchSize the size of fetching, if it less than or equal to {@literal 0} means fetch all rows.
+     * @param client       the {@link Client} to exchange messages with.
+     * @param sql          the original statement for exception tracing.
+     * @param bindings     the data of bindings.
+     * @param fetchSize    the size of fetching, if it less than or equal to {@literal 0} means fetch all rows.
+     * @param prepareCache the cache of server-preparing result.
      * @return the messages received in response to this exchange, and will be completed
      * by {@link CompleteMessage} when it is last result for each binding.
      */
-    static Flux<Flux<ServerMessage>> execute(Client client, String sql, List<Binding> bindings, int fetchSize) {
+    static Flux<Flux<ServerMessage>> execute(
+        Client client, String sql, List<Binding> bindings, int fetchSize, PrepareCache<Integer> prepareCache
+    ) {
         return Flux.defer(() -> {
             if (bindings.isEmpty()) {
                 return Flux.empty();
             }
 
-            EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
-            PrepareHandler handler = new PrepareHandler(requests, sql, bindings.iterator(), fetchSize);
+            PrepareHandler handler = new PrepareHandler(prepareCache, sql, bindings.iterator(), fetchSize);
 
-            return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
+            return OperatorUtils.discardOnCancel(client.exchange(handler, handler), handler::close)
                 .doOnDiscard(ReferenceCounted.class, RELEASE)
                 .handle(handler)
                 .windowUntil(RESULT_DONE);
@@ -150,10 +154,9 @@ final class QueryFlow {
                 return Flux.empty();
             }
 
-            EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
-            TextQueryHandler handler = new TextQueryHandler(requests, query, bindings.iterator());
+            TextQueryHandler handler = new TextQueryHandler(query, bindings.iterator());
 
-            return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
+            return OperatorUtils.discardOnCancel(client.exchange(handler, handler), handler::close)
                 .doOnDiscard(ReferenceCounted.class, RELEASE)
                 .handle(handler)
                 .windowUntil(RESULT_DONE);
@@ -246,10 +249,9 @@ final class QueryFlow {
     }
 
     private static Flux<ServerMessage> multiQuery(Client client, Iterator<String> statements) {
-        EmitterProcessor<ClientMessage> requests = EmitterProcessor.create(1, false);
-        MultiQueryHandler handler = new MultiQueryHandler(requests, statements);
+        MultiQueryHandler handler = new MultiQueryHandler(statements);
 
-        return OperatorUtils.discardOnCancel(client.exchange(requests, handler), handler::close)
+        return OperatorUtils.discardOnCancel(client.exchange(handler, handler), handler::close)
             .doOnDiscard(ReferenceCounted.class, RELEASE)
             .handle(handler);
     }
@@ -258,12 +260,15 @@ final class QueryFlow {
     }
 }
 
-abstract class BaseHandler implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Predicate<ServerMessage> {
+abstract class BaseHandler extends Flux<ClientMessage>
+    implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Predicate<ServerMessage> {
 
-    protected final EmitterProcessor<ClientMessage> requests;
+    protected final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
 
-    protected BaseHandler(EmitterProcessor<ClientMessage> requests) {
-        this.requests = requests;
+    @Override
+    public void subscribe(CoreSubscriber<? super ClientMessage> actual) {
+        requests.subscribe(actual);
+        afterSubscribe();
     }
 
     @Override
@@ -284,6 +289,8 @@ abstract class BaseHandler implements BiConsumer<ServerMessage, SynchronousSink<
         }
     }
 
+    abstract protected void afterSubscribe();
+
     abstract protected boolean hasNext();
 
     abstract protected ClientMessage nextMessage();
@@ -297,11 +304,7 @@ final class TextQueryHandler extends BaseHandler implements Consumer<String> {
 
     private String current;
 
-    TextQueryHandler(EmitterProcessor<ClientMessage> requests, TextQuery query, Iterator<Binding> bindings) {
-        super(requests);
-
-        Binding binding = bindings.next();
-        requests.onNext(binding.toTextMessage(query, this));
+    TextQueryHandler(TextQuery query, Iterator<Binding> bindings) {
         this.query = query;
         this.bindings = bindings;
     }
@@ -318,6 +321,12 @@ final class TextQueryHandler extends BaseHandler implements Consumer<String> {
         } else {
             sink.next(message);
         }
+    }
+
+    @Override
+    protected void afterSubscribe() {
+        Binding binding = this.bindings.next();
+        this.requests.onNext(binding.toTextMessage(this.query, this));
     }
 
     @Override
@@ -345,12 +354,7 @@ final class MultiQueryHandler extends BaseHandler {
 
     private String current;
 
-    MultiQueryHandler(EmitterProcessor<ClientMessage> requests, Iterator<String> statements) {
-        super(requests);
-
-        String current = statements.next();
-        requests.onNext(new SimpleQueryMessage(current));
-        this.current = current;
+    MultiQueryHandler(Iterator<String> statements) {
         this.statements = statements;
     }
 
@@ -361,6 +365,13 @@ final class MultiQueryHandler extends BaseHandler {
         } else {
             sink.next(message);
         }
+    }
+
+    @Override
+    protected void afterSubscribe() {
+        String current = this.statements.next();
+        this.requests.onNext(new SimpleQueryMessage(current));
+        this.current = current;
     }
 
     @Override
@@ -380,15 +391,20 @@ final class MultiQueryHandler extends BaseHandler {
     }
 }
 
-final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Predicate<ServerMessage> {
+final class PrepareHandler extends Flux<ClientMessage>
+    implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Predicate<ServerMessage> {
 
-    private static final int PREPARE = 0;
+    private static final Logger logger = LoggerFactory.getLogger(PrepareHandler.class);
 
-    private static final int EXECUTE = 1;
+    private static final int PREPARE = 1;
 
-    private static final int FETCH = 2;
+    private static final int EXECUTE = 2;
 
-    private final EmitterProcessor<ClientMessage> requests;
+    private static final int FETCH = 3;
+
+    private final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
+
+    private final PrepareCache<Integer> cache;
 
     private final String sql;
 
@@ -398,17 +414,40 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
 
     private int mode = PREPARE;
 
-    private PreparedOkMessage preparedOk;
+    @Nullable
+    private Integer statementId;
 
+    @Nullable
     private PreparedFetchMessage fetch;
 
-    PrepareHandler(EmitterProcessor<ClientMessage> requests, String sql, Iterator<Binding> bindings, int fetchSize) {
-        requests.onNext(new PrepareQueryMessage(sql));
+    private boolean shouldReset;
 
-        this.requests = requests;
+    PrepareHandler(PrepareCache<Integer> cache, String sql, Iterator<Binding> bindings, int fetchSize) {
+        this.cache = cache;
         this.sql = sql;
         this.bindings = bindings;
         this.fetchSize = fetchSize;
+    }
+
+    @Override
+    public void subscribe(CoreSubscriber<? super ClientMessage> actual) {
+        // It is also initialization method.
+        requests.subscribe(actual);
+
+        // After subscribe.
+        Integer statementId = cache.getIfPresent(sql);
+        if (statementId == null) {
+            logger.debug("Prepare cache mismatch, try to preparing");
+            this.shouldReset = false;
+            this.mode = PREPARE;
+            this.requests.onNext(new PrepareQueryMessage(sql));
+        } else {
+            logger.debug("Prepare cache matched statement {} when getting", statementId);
+            // Should reset only when it comes from cache.
+            this.shouldReset = true;
+            this.statementId = statementId;
+            doNextExecute(statementId);
+        }
     }
 
     @Override
@@ -452,14 +491,20 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
                     int columns = ok.getTotalColumns();
                     int parameters = ok.getTotalParameters();
 
-                    preparedOk = ok;
+                    this.statementId = statementId;
 
                     // columns + parameters <= 0, has not metadata follow in,
                     if (columns <= -parameters) {
+                        putToCache(statementId);
                         doNextExecute(statementId);
                     }
                 } else if (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted()) {
-                    doNextExecute(preparedOk.getStatementId());
+                    Integer statementId = this.statementId;
+                    if (statementId == null) {
+                        throw new IllegalStateException("Prepared OK message not found");
+                    }
+                    putToCache(statementId);
+                    doNextExecute(statementId);
                 } else {
                     // This message will never be used.
                     ReferenceCountUtil.safeRelease(message);
@@ -495,14 +540,30 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
 
     void close() {
         if (!requests.isTerminated()) {
-            if (preparedOk != null) {
-                requests.onNext(new PreparedCloseMessage(preparedOk.getStatementId()));
+            Integer statementId = this.statementId;
+            if (statementId != null) {
+                if (shouldReset) {
+                    logger.debug("Resetting statement {} after used", statementId);
+                    requests.onNext(new PreparedResetMessage(statementId));
+                } else {
+                    logger.debug("Closing statement {} after used", statementId);
+                    requests.onNext(new PreparedCloseMessage(statementId));
+                }
             }
             requests.onComplete();
         }
         while (bindings.hasNext()) {
             bindings.next().clear();
         }
+    }
+
+    private void putToCache(Integer statementId) {
+        // If put failed, just close it.
+        this.shouldReset = cache.putIfAbsent(sql, statementId, evictId -> {
+            logger.debug("Prepare cache evicts statement {} when putting", evictId);
+            requests.onNext(new PreparedCloseMessage(evictId));
+        });
+        logger.debug("Prepare cache put statement {} is {}", statementId, shouldReset ? "succeed" : "fails");
     }
 
     private void doNextExecute(int statementId) {
@@ -513,8 +574,14 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
     }
 
     private void doNextFetch() {
+        Integer statementId = this.statementId;
+
+        if (statementId == null) {
+            throw new IllegalStateException("Statement ID must not be null when fetching");
+        }
+
         mode = FETCH;
-        requests.onNext(this.fetch == null ? (this.fetch = new PreparedFetchMessage(preparedOk.getStatementId(), fetchSize)) : this.fetch);
+        requests.onNext(this.fetch == null ? (this.fetch = new PreparedFetchMessage(statementId, fetchSize)) : this.fetch);
     }
 
     private boolean fetchOrExecDone(ServerMessage message) {
@@ -534,7 +601,13 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
         }
 
         if (bindings.hasNext()) {
-            doNextExecute(preparedOk.getStatementId());
+            Integer statementId = this.statementId;
+
+            if (statementId == null) {
+                throw new IllegalStateException("Statement ID must not be null when executing");
+            }
+
+            doNextExecute(statementId);
             return false;
         } else {
             return true;
@@ -542,7 +615,8 @@ final class PrepareHandler implements BiConsumer<ServerMessage, SynchronousSink<
     }
 }
 
-final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Void>>, Predicate<ServerMessage> {
+final class InitHandler extends Flux<ClientMessage>
+    implements BiConsumer<ServerMessage, SynchronousSink<Void>>, Predicate<ServerMessage> {
 
     private static final Logger logger = LoggerFactory.getLogger(InitHandler.class);
 
@@ -552,7 +626,7 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
 
     private static final int HANDSHAKE_VERSION = 10;
 
-    private final EmitterProcessor<ClientMessage> requests;
+    private final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
 
     private final Client client;
 
@@ -575,9 +649,10 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
 
     private boolean sslCompleted;
 
-    InitHandler(EmitterProcessor<ClientMessage> requests, Client client, SslMode sslMode, String database,
-                String user, @Nullable CharSequence password, ConnectionContext context) {
-        this.requests = requests;
+    InitHandler(
+        Client client, SslMode sslMode, String database, String user,
+        @Nullable CharSequence password, ConnectionContext context
+    ) {
         this.client = client;
         this.sslMode = sslMode;
         this.database = database;
@@ -585,6 +660,11 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
         this.password = password;
         this.context = context;
         this.sslCompleted = sslMode == SslMode.TUNNEL;
+    }
+
+    @Override
+    public void subscribe(CoreSubscriber<? super ClientMessage> actual) {
+        requests.subscribe(actual);
     }
 
     @Override
@@ -640,6 +720,10 @@ final class InitHandler implements BiConsumer<ServerMessage, SynchronousSink<Voi
     @Override
     public boolean test(ServerMessage message) {
         return message instanceof ErrorMessage || message instanceof OkMessage;
+    }
+
+    void onComplete() {
+        this.requests.onComplete();
     }
 
     private AuthResponse createAuthResponse(String phase) {

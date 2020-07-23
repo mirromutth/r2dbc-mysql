@@ -16,6 +16,8 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.cache.PrepareCache;
+import dev.miku.r2dbc.mysql.cache.QueryCache;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
@@ -127,6 +129,10 @@ public final class MySqlConnection implements Connection {
 
     private final IsolationLevel sessionLevel;
 
+    private final QueryCache<Query> queryCache;
+
+    private final PrepareCache<Integer> prepareCache;
+
     @Nullable
     private final Predicate<String> prepare;
 
@@ -146,14 +152,16 @@ public final class MySqlConnection implements Connection {
      * Visible for unit tests.
      */
     MySqlConnection(
-        Client client, ConnectionContext context, Codecs codecs, IsolationLevel level,
-        @Nullable String product, @Nullable Predicate<String> prepare
+        Client client, ConnectionContext context, Codecs codecs, IsolationLevel level, QueryCache<Query> queryCache,
+        PrepareCache<Integer> prepareCache, @Nullable String product, @Nullable Predicate<String> prepare
     ) {
         this.client = client;
         this.context = context;
         this.sessionLevel = level;
         this.currentLevel = level;
         this.codecs = codecs;
+        this.queryCache = queryCache;
+        this.prepareCache = prepareCache;
         this.metadata = new MySqlConnectionMetadata(context.getServerVersion().toString(), product);
         this.batchSupported = (context.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
         this.prepare = prepare;
@@ -235,12 +243,12 @@ public final class MySqlConnection implements Connection {
     public MySqlStatement createStatement(String sql) {
         requireNonNull(sql, "sql must not be null");
 
-        Query query = Query.parse(sql, prepare != null);
+        Query query = queryCache.get(sql);
 
         if (query instanceof SimpleQuery) {
             if (prepare != null && prepare.test(sql)) {
                 logger.debug("Create a simple statement provided by prepare query");
-                return new PrepareSimpleStatement(client, codecs, context, sql);
+                return new PrepareSimpleStatement(client, codecs, context, sql, prepareCache);
             } else {
                 logger.debug("Create a simple statement provided by text query");
                 return new TextSimpleStatement(client, codecs, context, sql);
@@ -250,7 +258,7 @@ public final class MySqlConnection implements Connection {
             return new TextParametrizedStatement(client, codecs, context, (TextQuery) query);
         } else {
             logger.debug("Create a parametrized statement provided by prepare query");
-            return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) query);
+            return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) query, prepareCache);
         }
     }
 
@@ -376,12 +384,17 @@ public final class MySqlConnection implements Connection {
     }
 
     /**
-     * @param client  must be logged-in
-     * @param codecs  built-in {@link Codecs}
-     * @param context capabilities must be initialized
-     * @param prepare judging for prefer use prepare statement to execute simple query
+     * @param client       must be logged-in
+     * @param codecs       built-in {@link Codecs}
+     * @param context      capabilities must be initialized
+     * @param queryCache   the cache of {@link Query}
+     * @param prepareCache the cache of server-preparing result
+     * @param prepare      judging for prefer use prepare statement to execute simple query
      */
-    static Mono<MySqlConnection> init(Client client, Codecs codecs, ConnectionContext context, @Nullable Predicate<String> prepare) {
+    static Mono<MySqlConnection> init(
+        Client client, Codecs codecs, ConnectionContext context, QueryCache<Query> queryCache,
+        PrepareCache<Integer> prepareCache, @Nullable Predicate<String> prepare
+    ) {
         ServerVersion version = context.getServerVersion();
         StringBuilder query = new StringBuilder(128);
 
@@ -412,7 +425,7 @@ public final class MySqlConnection implements Connection {
                     context.setServerZoneId(serverZoneId);
                 }
 
-                return new MySqlConnection(client, context, codecs, data.level, data.product, prepare);
+                return new MySqlConnection(client, context, codecs, data.level, queryCache, prepareCache, data.product, prepare);
             });
     }
 

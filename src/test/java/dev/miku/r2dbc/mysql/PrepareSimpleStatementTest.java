@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.cache.Caches;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 
@@ -62,7 +63,7 @@ class PrepareSimpleStatementTest implements StatementTestSupport<PrepareSimpleSt
 
     @Override
     public PrepareSimpleStatement makeInstance(String parametrizedSql, String simpleSql) {
-        return new PrepareSimpleStatement(client, codecs, context, simpleSql);
+        return new PrepareSimpleStatement(client, codecs, context, simpleSql, Caches.createPrepareCache(0));
     }
 
     @Override
