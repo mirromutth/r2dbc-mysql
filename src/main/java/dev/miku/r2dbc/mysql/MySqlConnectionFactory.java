@@ -16,19 +16,25 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.cache.Caches;
+import dev.miku.r2dbc.mysql.cache.PrepareCache;
+import dev.miku.r2dbc.mysql.cache.QueryCache;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.codec.CodecsBuilder;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.extension.CodecRegistrar;
+import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryMetadata;
 import reactor.core.publisher.Mono;
+import reactor.util.annotation.Nullable;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -57,6 +63,10 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
     public static MySqlConnectionFactory from(MySqlConnectionConfiguration configuration) {
         requireNonNull(configuration, "configuration must not be null");
 
+        Function<String, Query> parsing = configuration.getPreferPrepareStatement() == null ?
+            (s -> Query.parse(s, false)) : (s -> Query.parse(s, true));
+        LazyQueryCache queryCache = new LazyQueryCache(configuration.getQueryCacheSize(), parsing);
+
         return new MySqlConnectionFactory(Mono.defer(() -> {
             MySqlSslConfiguration ssl;
             SocketAddress address;
@@ -73,21 +83,50 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             String user = configuration.getUser();
             CharSequence password = configuration.getPassword();
             SslMode sslMode = ssl.getSslMode();
-            Predicate<String> prepare = configuration.getPreferPrepareStatement();
             ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption(), configuration.getServerZoneId());
             Extensions extensions = configuration.getExtensions();
+            Predicate<String> prepare = configuration.getPreferPrepareStatement();
+            int prepareCacheSize = configuration.getPrepareCacheSize();
 
             return Client.connect(ssl, address, configuration.isTcpKeepAlive(), configuration.isTcpNoDelay(), context, configuration.getConnectTimeout())
                 .flatMap(client -> QueryFlow.login(client, sslMode, database, user, password, context))
                 .flatMap(client -> {
                     ByteBufAllocator allocator = client.getByteBufAllocator();
                     CodecsBuilder builder = Codecs.builder(allocator);
+                    PrepareCache<Integer> prepareCache = Caches.createPrepareCache(prepareCacheSize);
 
-                    extensions.forEach(CodecRegistrar.class, registrar ->
-                        registrar.register(allocator, builder));
+                    extensions.forEach(CodecRegistrar.class, registrar -> registrar.register(allocator, builder));
 
-                    return MySqlConnection.init(client, builder.build(), context, prepare);
+                    return MySqlConnection.init(client, builder.build(), context, queryCache.get(), prepareCache, prepare);
                 });
         }));
+    }
+
+    private static final class LazyQueryCache {
+
+        private final int capacity;
+
+        private final Function<String, Query> mapping;
+
+        @Nullable
+        private volatile QueryCache<Query> cache;
+
+        private LazyQueryCache(int capacity, Function<String, Query> mapping) {
+            this.capacity = capacity;
+            this.mapping = mapping;
+        }
+
+        public QueryCache<Query> get() {
+            QueryCache<Query> cache = this.cache;
+            if (cache == null) {
+                synchronized (this) {
+                    if ((cache = this.cache) == null) {
+                        this.cache = cache = Caches.createQueryCache(capacity, mapping);
+                    }
+                    return cache;
+                }
+            }
+            return cache;
+        }
     }
 }

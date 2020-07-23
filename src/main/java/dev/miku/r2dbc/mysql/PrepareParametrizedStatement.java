@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.cache.PrepareCache;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import reactor.core.publisher.Flux;
@@ -32,16 +33,22 @@ final class PrepareParametrizedStatement extends ParametrizedStatementSupport {
 
     private final PrepareQuery query;
 
+    private final PrepareCache<Integer> prepareCache;
+
     private int fetchSize = 0;
 
-    PrepareParametrizedStatement(Client client, Codecs codecs, ConnectionContext context, PrepareQuery query) {
+    PrepareParametrizedStatement(
+        Client client, Codecs codecs, ConnectionContext context,
+        PrepareQuery query, PrepareCache<Integer> prepareCache
+    ) {
         super(client, codecs, context, requireNonNull(query, "query must not be null").getParameters());
         this.query = query;
+        this.prepareCache = prepareCache;
     }
 
     @Override
     public Flux<MySqlResult> execute(List<Binding> bindings) {
-        return QueryFlow.execute(client, query.getSql(), bindings, fetchSize)
+        return QueryFlow.execute(client, query.getSql(), bindings, fetchSize, prepareCache)
             .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
     }
 

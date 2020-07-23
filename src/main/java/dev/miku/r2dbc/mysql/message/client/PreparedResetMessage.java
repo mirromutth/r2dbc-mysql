@@ -19,17 +19,17 @@ package dev.miku.r2dbc.mysql.message.client;
 import io.netty.buffer.ByteBuf;
 
 /**
- * A message that close the prepared statement specified by id.
+ * A message that reset the prepared statement specified by id.
  */
-public final class PreparedCloseMessage extends FixedSizeClientMessage implements SendOnlyMessage {
+public final class PreparedResetMessage extends FixedSizeClientMessage {
 
     private static final int SIZE = Byte.BYTES + Integer.BYTES;
 
-    private static final byte CLOSE_FLAG = 0x19;
+    private static final byte RESET_FLAG = 0x1A;
 
     private final int statementId;
 
-    public PreparedCloseMessage(int statementId) {
+    public PreparedResetMessage(int statementId) {
         this.statementId = statementId;
     }
 
@@ -40,31 +40,6 @@ public final class PreparedCloseMessage extends FixedSizeClientMessage implement
 
     @Override
     protected void writeTo(ByteBuf buf) {
-        buf.writeByte(CLOSE_FLAG).writeIntLE(statementId);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof PreparedCloseMessage)) {
-            return false;
-        }
-
-        PreparedCloseMessage that = (PreparedCloseMessage) o;
-
-        return statementId == that.statementId;
-
-    }
-
-    @Override
-    public int hashCode() {
-        return statementId;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("PreparedCloseMessage{statementId=%d}", statementId);
+        buf.writeByte(RESET_FLAG).writeIntLE(statementId);
     }
 }

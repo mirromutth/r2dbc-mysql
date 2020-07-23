@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.cache.Caches;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import io.netty.buffer.UnpooledByteBufAllocator;
@@ -48,7 +49,8 @@ class PrepareParametrizedStatementTest implements StatementTestSupport<PreparePa
 
     @Override
     public PrepareParametrizedStatement makeInstance(String parametrizedSql, String simpleSql) {
-        return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) Query.parse(parametrizedSql, true));
+        return new PrepareParametrizedStatement(client, codecs, context,
+            (PrepareQuery) Query.parse(parametrizedSql, true), Caches.createPrepareCache(0));
     }
 
     @Override

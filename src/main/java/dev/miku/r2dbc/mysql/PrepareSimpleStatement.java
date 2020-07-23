@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.cache.PrepareCache;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import reactor.core.publisher.Flux;
@@ -32,15 +33,21 @@ final class PrepareSimpleStatement extends SimpleStatementSupport {
 
     private static final List<Binding> BINDINGS = Collections.singletonList(new Binding(0));
 
+    private final PrepareCache<Integer> prepareCache;
+
     private int fetchSize = 0;
 
-    PrepareSimpleStatement(Client client, Codecs codecs, ConnectionContext context, String sql) {
+    PrepareSimpleStatement(
+        Client client, Codecs codecs, ConnectionContext context,
+        String sql, PrepareCache<Integer> prepareCache
+    ) {
         super(client, codecs, context, sql);
+        this.prepareCache = prepareCache;
     }
 
     @Override
     public Flux<MySqlResult> execute() {
-        return QueryFlow.execute(client, sql, BINDINGS, fetchSize)
+        return QueryFlow.execute(client, sql, BINDINGS, fetchSize, prepareCache)
             .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
     }
 

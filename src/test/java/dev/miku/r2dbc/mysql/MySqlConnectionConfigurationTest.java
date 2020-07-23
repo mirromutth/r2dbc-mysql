@@ -198,6 +198,8 @@ class MySqlConnectionConfigurationTest {
             .serverZoneId(ZoneId.systemDefault())
             .zeroDateOption(ZeroDateOption.USE_NULL)
             .sslHostnameVerifier((host, s) -> true)
+            .queryCacheSize(128)
+            .prepareCacheSize(0)
             .autodetectExtensions(false)
             .build();
     }
