@@ -42,4 +42,28 @@ public final class PreparedResetMessage extends FixedSizeClientMessage {
     protected void writeTo(ByteBuf buf) {
         buf.writeByte(RESET_FLAG).writeIntLE(statementId);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        PreparedResetMessage that = (PreparedResetMessage) o;
+
+        return statementId == that.statementId;
+    }
+
+    @Override
+    public int hashCode() {
+        return statementId;
+    }
+
+    @Override
+    public String toString() {
+        return "PreparedResetMessage{statementId=" + statementId + '}';
+    }
 }

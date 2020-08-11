@@ -54,7 +54,14 @@ final class Lru<T> {
     }
 
     void refresh(Node<T> node) {
-        Node<T> prev = node.prev, next = node.next, head = this.head;
+        Node<T> head = this.head;
+
+        if (node == head) {
+            // No need refresh.
+            return;
+        }
+
+        Node<T> prev = node.prev, next = node.next;
 
         if (head == null) {
             throw new IllegalStateException("LRU must not be empty");
@@ -69,7 +76,7 @@ final class Lru<T> {
 
         if (node == tail) {
             // Must be pointer compare.
-            tail = prev;
+            this.tail = prev;
         }
 
         node.prev = null;

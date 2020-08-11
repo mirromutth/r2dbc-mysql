@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import dev.miku.r2dbc.mysql.message.client.TextQueryMessage;
 
 import java.util.Arrays;
-import java.util.function.Consumer;
 
 /**
  * A collection of {@link Parameter} for one bind invocation of a parametrized statement.
@@ -70,8 +69,8 @@ final class Binding {
         return new PreparedExecuteMessage(statementId, immediate, drainValues());
     }
 
-    TextQueryMessage toTextMessage(TextQuery query, Consumer<String> sqlProceed) {
-        return new TextQueryMessage(query.getSqlParts(), drainValues(), sqlProceed);
+    TextQueryMessage toTextMessage(TextQuery query) {
+        return new TextQueryMessage(query.getSqlParts(), drainValues());
     }
 
     /**

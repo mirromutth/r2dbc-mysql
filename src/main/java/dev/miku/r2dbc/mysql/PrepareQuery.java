@@ -58,12 +58,12 @@ final class PrepareQuery extends Query {
         return index;
     }
 
-    Set<String> getParameterNames() {
-        return nameKeyedIndex.keySet();
-    }
-
     String getSql() {
         return sql;
+    }
+
+    Set<String> getParameterNames() {
+        return nameKeyedIndex.keySet();
     }
 
     @Override
