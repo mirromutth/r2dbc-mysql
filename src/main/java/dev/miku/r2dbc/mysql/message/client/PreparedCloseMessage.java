@@ -55,7 +55,6 @@ public final class PreparedCloseMessage extends FixedSizeClientMessage implement
         PreparedCloseMessage that = (PreparedCloseMessage) o;
 
         return statementId == that.statementId;
-
     }
 
     @Override
@@ -65,6 +64,6 @@ public final class PreparedCloseMessage extends FixedSizeClientMessage implement
 
     @Override
     public String toString() {
-        return String.format("PreparedCloseMessage{statementId=%d}", statementId);
+        return "PreparedCloseMessage{statementId=" + statementId + '}';
     }
 }

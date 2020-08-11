@@ -48,6 +48,7 @@ import dev.miku.r2dbc.mysql.util.InternalArrays;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
+import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -272,6 +273,15 @@ abstract class BaseHandler extends Flux<ClientMessage>
     }
 
     @Override
+    public final void accept(ServerMessage message, SynchronousSink<ServerMessage> sink) {
+        if (message instanceof ErrorMessage) {
+            sink.error(convertError((ErrorMessage) message));
+        } else {
+            sink.next(message);
+        }
+    }
+
+    @Override
     public final boolean test(ServerMessage message) {
         if (message instanceof ErrorMessage) {
             return true;
@@ -294,15 +304,15 @@ abstract class BaseHandler extends Flux<ClientMessage>
     abstract protected boolean hasNext();
 
     abstract protected ClientMessage nextMessage();
+
+    abstract protected R2dbcException convertError(ErrorMessage message);
 }
 
-final class TextQueryHandler extends BaseHandler implements Consumer<String> {
+final class TextQueryHandler extends BaseHandler {
 
     private final TextQuery query;
 
     private final Iterator<Binding> bindings;
-
-    private String current;
 
     TextQueryHandler(TextQuery query, Iterator<Binding> bindings) {
         this.query = query;
@@ -310,23 +320,9 @@ final class TextQueryHandler extends BaseHandler implements Consumer<String> {
     }
 
     @Override
-    public void accept(String s) {
-        this.current = s;
-    }
-
-    @Override
-    public void accept(ServerMessage message, SynchronousSink<ServerMessage> sink) {
-        if (message instanceof ErrorMessage) {
-            sink.error(ExceptionFactory.createException((ErrorMessage) message, current));
-        } else {
-            sink.next(message);
-        }
-    }
-
-    @Override
     protected void afterSubscribe() {
         Binding binding = this.bindings.next();
-        this.requests.onNext(binding.toTextMessage(this.query, this));
+        this.requests.onNext(binding.toTextMessage(this.query));
     }
 
     @Override
@@ -336,7 +332,12 @@ final class TextQueryHandler extends BaseHandler implements Consumer<String> {
 
     @Override
     protected ClientMessage nextMessage() {
-        return bindings.next().toTextMessage(query, this);
+        return bindings.next().toTextMessage(query);
+    }
+
+    @Override
+    protected R2dbcException convertError(ErrorMessage message) {
+        return ExceptionFactory.createException(message, query.getSql());
     }
 
     void close() {
@@ -359,15 +360,6 @@ final class MultiQueryHandler extends BaseHandler {
     }
 
     @Override
-    public void accept(ServerMessage message, SynchronousSink<ServerMessage> sink) {
-        if (message instanceof ErrorMessage) {
-            sink.error(ExceptionFactory.createException((ErrorMessage) message, current));
-        } else {
-            sink.next(message);
-        }
-    }
-
-    @Override
     protected void afterSubscribe() {
         String current = this.statements.next();
         this.requests.onNext(new SimpleQueryMessage(current));
@@ -386,6 +378,11 @@ final class MultiQueryHandler extends BaseHandler {
         return new SimpleQueryMessage(sql);
     }
 
+    @Override
+    protected R2dbcException convertError(ErrorMessage message) {
+        return ExceptionFactory.createException(message, current);
+    }
+
     void close() {
         requests.onComplete();
     }
@@ -396,7 +393,7 @@ final class PrepareHandler extends Flux<ClientMessage>
 
     private static final Logger logger = LoggerFactory.getLogger(PrepareHandler.class);
 
-    private static final int PREPARE = 1;
+    private static final int PREPARE_OR_RESET = 1;
 
     private static final int EXECUTE = 2;
 
@@ -412,7 +409,7 @@ final class PrepareHandler extends Flux<ClientMessage>
 
     private final int fetchSize;
 
-    private int mode = PREPARE;
+    private int mode = PREPARE_OR_RESET;
 
     @Nullable
     private Integer statementId;
@@ -420,7 +417,7 @@ final class PrepareHandler extends Flux<ClientMessage>
     @Nullable
     private PreparedFetchMessage fetch;
 
-    private boolean shouldReset;
+    private boolean shouldClose;
 
     PrepareHandler(PrepareCache<Integer> cache, String sql, Iterator<Binding> bindings, int fetchSize) {
         this.cache = cache;
@@ -438,15 +435,14 @@ final class PrepareHandler extends Flux<ClientMessage>
         Integer statementId = cache.getIfPresent(sql);
         if (statementId == null) {
             logger.debug("Prepare cache mismatch, try to preparing");
-            this.shouldReset = false;
-            this.mode = PREPARE;
+            this.shouldClose = true;
             this.requests.onNext(new PrepareQueryMessage(sql));
         } else {
             logger.debug("Prepare cache matched statement {} when getting", statementId);
             // Should reset only when it comes from cache.
-            this.shouldReset = true;
+            this.shouldClose = false;
             this.statementId = statementId;
-            doNextExecute(statementId);
+            this.requests.onNext(new PreparedResetMessage(statementId));
         }
     }
 
@@ -458,7 +454,54 @@ final class PrepareHandler extends Flux<ClientMessage>
         }
 
         switch (mode) {
-            case PREPARE:
+            case PREPARE_OR_RESET:
+                if (message instanceof OkMessage) {
+                    // Reset succeed.
+                    Integer statementId = this.statementId;
+                    if (statementId == null) {
+                        logger.error("Reset succeed but statement ID was null");
+                        return;
+                    }
+
+                    doNextExecute(statementId);
+                } else if (message instanceof PreparedOkMessage) {
+                    PreparedOkMessage ok = (PreparedOkMessage) message;
+                    int statementId = ok.getStatementId();
+                    int columns = ok.getTotalColumns();
+                    int parameters = ok.getTotalParameters();
+
+                    this.statementId = statementId;
+
+                    // columns + parameters <= 0, has not metadata follow in,
+                    if (columns <= -parameters) {
+                        try {
+                            putToCache(statementId);
+                        } catch (Throwable e) {
+                            logger.error("Put statement {} to cache failed", statementId, e);
+                            this.shouldClose = true;
+                        }
+
+                        doNextExecute(statementId);
+                    }
+                } else if (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted()) {
+                    Integer statementId = this.statementId;
+                    if (statementId == null) {
+                        logger.error("Prepared OK message not found");
+                        return;
+                    }
+
+                    try {
+                        putToCache(statementId);
+                    } catch (Throwable e) {
+                        logger.error("Put statement {} to cache failed", statementId, e);
+                        this.shouldClose = true;
+                    }
+
+                    doNextExecute(statementId);
+                } else {
+                    // This message will never be used.
+                    ReferenceCountUtil.safeRelease(message);
+                }
                 // Ignore all messages in preparing phase.
                 break;
             case EXECUTE:
@@ -484,36 +527,12 @@ final class PrepareHandler extends Flux<ClientMessage>
         }
 
         switch (mode) {
-            case PREPARE:
-                if (message instanceof PreparedOkMessage) {
-                    PreparedOkMessage ok = (PreparedOkMessage) message;
-                    int statementId = ok.getStatementId();
-                    int columns = ok.getTotalColumns();
-                    int parameters = ok.getTotalParameters();
-
-                    this.statementId = statementId;
-
-                    // columns + parameters <= 0, has not metadata follow in,
-                    if (columns <= -parameters) {
-                        putToCache(statementId);
-                        doNextExecute(statementId);
-                    }
-                } else if (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted()) {
-                    Integer statementId = this.statementId;
-                    if (statementId == null) {
-                        throw new IllegalStateException("Prepared OK message not found");
-                    }
-                    putToCache(statementId);
-                    doNextExecute(statementId);
-                } else {
-                    // This message will never be used.
-                    ReferenceCountUtil.safeRelease(message);
-                }
-
+            case PREPARE_OR_RESET:
                 return false;
             case EXECUTE:
                 if (message instanceof CompleteMessage) {
                     // Complete message means execute phase done or fetch phase done (when cursor is not opened).
+                    // This message may be handled by FETCH phase.
                     return fetchOrExecDone(message);
                 } else if (message instanceof SyntheticMetadataMessage) {
                     EofMessage eof = ((SyntheticMetadataMessage) message).getEof();
@@ -521,6 +540,7 @@ final class PrepareHandler extends Flux<ClientMessage>
                         // Non null.
                         if ((((ServerStatusMessage) eof).getServerStatuses() & ServerStatuses.CURSOR_EXISTS) != 0) {
                             doNextFetch();
+                            // This message will be handled by FETCH phase, it should be emitted.
                             return false;
                         }
                         // Otherwise means cursor does not be opened, wait for end of row EOF message.
@@ -541,14 +561,9 @@ final class PrepareHandler extends Flux<ClientMessage>
     void close() {
         if (!requests.isTerminated()) {
             Integer statementId = this.statementId;
-            if (statementId != null) {
-                if (shouldReset) {
-                    logger.debug("Resetting statement {} after used", statementId);
-                    requests.onNext(new PreparedResetMessage(statementId));
-                } else {
-                    logger.debug("Closing statement {} after used", statementId);
-                    requests.onNext(new PreparedCloseMessage(statementId));
-                }
+            if (shouldClose && statementId != null) {
+                logger.debug("Closing statement {} after used", statementId);
+                requests.onNext(new PreparedCloseMessage(statementId));
             }
             requests.onComplete();
         }
@@ -559,17 +574,18 @@ final class PrepareHandler extends Flux<ClientMessage>
 
     private void putToCache(Integer statementId) {
         // If put failed, just close it.
-        this.shouldReset = cache.putIfAbsent(sql, statementId, evictId -> {
+        boolean putSucceed = cache.putIfAbsent(sql, statementId, evictId -> {
             logger.debug("Prepare cache evicts statement {} when putting", evictId);
             requests.onNext(new PreparedCloseMessage(evictId));
         });
-        logger.debug("Prepare cache put statement {} is {}", statementId, shouldReset ? "succeed" : "fails");
+        this.shouldClose = !putSucceed;
+        logger.debug("Prepare cache put statement {} is {}", statementId, putSucceed ? "succeed" : "fails");
     }
 
     private void doNextExecute(int statementId) {
         Binding binding = bindings.next();
 
-        mode = EXECUTE;
+        setMode(EXECUTE);
         requests.onNext(binding.toExecuteMessage(statementId, fetchSize <= 0));
     }
 
@@ -577,17 +593,24 @@ final class PrepareHandler extends Flux<ClientMessage>
         Integer statementId = this.statementId;
 
         if (statementId == null) {
-            throw new IllegalStateException("Statement ID must not be null when fetching");
+            logger.error("Statement ID must not be null when fetching");
+            return;
         }
 
-        mode = FETCH;
+        setMode(FETCH);
         requests.onNext(this.fetch == null ? (this.fetch = new PreparedFetchMessage(statementId, fetchSize)) : this.fetch);
+    }
+
+    private void setMode(int mode) {
+        logger.debug("Mode is changed to {}", mode == EXECUTE ? "EXECUTE" : "FETCH");
+        this.mode = mode;
     }
 
     private boolean fetchOrExecDone(ServerMessage message) {
         if (!(message instanceof CompleteMessage) || !((CompleteMessage) message).isDone()) {
             return false;
         } else if (requests.isTerminated()) {
+            logger.error("Unexpected terminated on requests");
             return true;
         }
 
@@ -604,7 +627,8 @@ final class PrepareHandler extends Flux<ClientMessage>
             Integer statementId = this.statementId;
 
             if (statementId == null) {
-                throw new IllegalStateException("Statement ID must not be null when executing");
+                logger.error("Statement ID must not be null when executing");
+                return true;
             }
 
             doNextExecute(statementId);

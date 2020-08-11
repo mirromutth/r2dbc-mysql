@@ -121,7 +121,7 @@ abstract class Query {
             return new PrepareQuery(parsedSql, wrap(nameKeyedParams, anyName), paramCount);
         } else {
             sqlParts.add(subStr(sql, lastParamEnd, length));
-            return new TextQuery(wrap(nameKeyedParams, anyName), sqlParts);
+            return new TextQuery(sql, wrap(nameKeyedParams, anyName), sqlParts);
         }
     }
 

@@ -28,15 +28,19 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class TextQuery extends Query {
 
+    private final String sql;
+
     private final Map<String, ParameterIndex> nameKeyedIndex;
 
     private final List<String> sqlParts;
 
-    TextQuery(Map<String, ParameterIndex> nameKeyedIndex, List<String> sqlParts) {
+    TextQuery(String sql, Map<String, ParameterIndex> nameKeyedIndex, List<String> sqlParts) {
+        requireNonNull(sql, "originSql must not be null");
         requireNonNull(nameKeyedIndex, "named parameter map must not be null");
         requireNonNull(sqlParts, "sql parts must not be null");
         require(sqlParts.size() > 1, "sql parts need least 2 parts");
 
+        this.sql = sql;
         this.nameKeyedIndex = nameKeyedIndex;
         this.sqlParts = sqlParts;
     }
@@ -55,6 +59,10 @@ final class TextQuery extends Query {
         }
 
         return index;
+    }
+
+    String getSql() {
+        return sql;
     }
 
     /**
