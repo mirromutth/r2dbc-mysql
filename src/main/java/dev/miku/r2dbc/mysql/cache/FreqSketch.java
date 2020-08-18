@@ -63,6 +63,8 @@ final class FreqSketch {
 
     private static final long ONE_MASK = 0x1111111111111111L;
 
+    private static final int MAX_SIZE = Integer.MIN_VALUE >>> 1;
+
     private final long[] table;
 
     private final int tableMask;
@@ -72,15 +74,14 @@ final class FreqSketch {
     private int size;
 
     /**
-     * Initializes and increases the capacity of this {@code FreqSketch} instance, if necessary,
-     * to ensure that it can accurately estimate the popularity of elements given the maximum size of
-     * the cache. This operation forgets all previous counts when resizing.
+     * Construct {@code FreqSketch} with a fixed size.
      *
-     * @param capacity the maximum size of the cache, between 1 and 1073741824 (inclusive).
+     * @param maxSize the fixed size of the sketch, at least 1.
      */
-    FreqSketch(int capacity) {
-        require(capacity > 0 && capacity <= Caches.MAX_CAPACITY, "capacity must be a valid integer");
+    FreqSketch(int maxSize) {
+        require(maxSize > 0, "maxSize must be a positive integer");
 
+        int capacity = Math.min(maxSize, MAX_SIZE);
         int sampling = capacity * 10;
 
         this.table = new long[Caches.ceilingPowerOfTwo(capacity)];

@@ -26,11 +26,6 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 public final class Caches {
 
     /**
-     * The maximum capacity of bounded caches.
-     */
-    public static final int MAX_CAPACITY = 1073741824; // Integer.MIN_VALUE >>> 1
-
-    /**
      * Create a new {@link QueryCache} by cache configuration.
      *
      * @param capacity the capacity of {@link QueryCache}.
@@ -41,7 +36,7 @@ public final class Caches {
     public static <T> QueryCache<T> createQueryCache(int capacity, Function<String, T> mapping) {
         requireNonNull(mapping, "mapping must not be null");
 
-        if (capacity > 0 && capacity <= MAX_CAPACITY) {
+        if (capacity > 0 && capacity < Integer.MAX_VALUE) {
             return new QueryBoundedCache<>(capacity, mapping);
         } else if (capacity == 0) {
             return new QueryDisabledCache<>(mapping);
@@ -58,7 +53,7 @@ public final class Caches {
      * @return the above {@link PrepareCache}.
      */
     public static <T> PrepareCache<T> createPrepareCache(int capacity) {
-        if (capacity > 0 && capacity <= MAX_CAPACITY) {
+        if (capacity > 0 && capacity < Integer.MAX_VALUE) {
             return new PrepareBoundedCache<>(capacity);
         } else if (capacity == 0) {
             return new PrepareDisabledCache<>();

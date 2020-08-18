@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.cache.Caches;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.extension.Extension;
@@ -689,16 +688,14 @@ public final class MySqlConnectionConfiguration {
          * Configures the maximum size of the {@link Query} parsing cache. Usually it should be power of
          * two.  Default to {@code 0}. Driver will use unbounded cache if size is less than {@code 0}.
          * <p>
-         * Notice: the cache is using EL cache (the PACELC theorem) which provider better performance.
+         * Notice: the cache is using EL model (the PACELC theorem) which provider better performance.
          * That means it is an elastic cache. So this size is not a hard-limit. It should be over 16 in average.
          *
          * @param queryCacheSize the above size, {@code 0} means no cache, {@code -1} means unbounded cache.
          * @return this {@link Builder}.
-         * @throws IllegalArgumentException if {@code queryCacheSize} is greater than {@link Caches#MAX_CAPACITY}.
          * @since 0.8.3
          */
         public Builder queryCacheSize(int queryCacheSize) {
-            require(queryCacheSize <= Caches.MAX_CAPACITY, "queryCacheSize must not be too large");
             this.queryCacheSize = queryCacheSize;
             return this;
         }
@@ -710,16 +707,16 @@ public final class MySqlConnectionConfiguration {
          * It will be used only if using server-preparing for parametrized statements, i.e. the
          * {@link #useServerPrepareStatement} is set.
          * <p>
-         * Notice: the cache is using EL model (the PACELC theorem) which provider better performance.
-         * That means it is an elastic cache. So this size is not a hard-limit. It should be over 16 in average.
+         * Notice: the cache is using EC model (the PACELC theorem) for ensure consistency. Consistency
+         * is very important because MySQL contains a hard limit of all server-prepared statements which
+         * has been opened, see also {@code max_prepared_stmt_count}. And, the cache is one-to-one
+         * connection, which means it will not work on thread-concurrency.
          *
          * @param prepareCacheSize the above size, {@code 0} means no cache, {@code -1} means unbounded cache.
          * @return this {@link Builder}.
-         * @throws IllegalArgumentException if {@code prepareCacheSize} is greater than {@link Caches#MAX_CAPACITY}.
          * @since 0.8.3
          */
         public Builder prepareCacheSize(int prepareCacheSize) {
-            require(prepareCacheSize <= Caches.MAX_CAPACITY, "prepareCacheSize must not be too large");
             this.prepareCacheSize = prepareCacheSize;
             return this;
         }
