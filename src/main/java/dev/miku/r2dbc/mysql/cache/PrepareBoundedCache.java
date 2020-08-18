@@ -70,6 +70,11 @@ final class PrepareBoundedCache<T> extends HashMap<String, Lru.Node<T>> implemen
         return false;
     }
 
+    @Override
+    public String toString() {
+        return window.toString() + probation + protection;
+    }
+
     private void drainRead(Lru.Node<T> node) {
         sketch.increment(node.getKey().hashCode());
 

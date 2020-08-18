@@ -52,6 +52,8 @@ final class RingBuffer<T> extends LeftPad {
 
     private static final int PADDING = (1 << SHIFT) - 1;
 
+    private static final int MAX_SIZE = 256; // 256 * 128 + 127 = 32768 + 127, should not too large
+
     private volatile int head; // p15 1st part
 
     int p15; // p15 2nd part
@@ -75,7 +77,7 @@ final class RingBuffer<T> extends LeftPad {
     private final Consumer<T> consumer;
 
     RingBuffer(int capacity, int retry, Consumer<T> consumer) {
-        require(capacity > 0 && capacity <= Caches.MAX_CAPACITY, "capacity must be a valid integer");
+        require(capacity > 0 && capacity <= MAX_SIZE, "capacity must between 1 and 256");
 
         int maxSize = Caches.ceilingPowerOfTwo(capacity);
 

@@ -24,7 +24,6 @@ import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.codec.CodecsBuilder;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.extension.CodecRegistrar;
-import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.r2dbc.spi.ConnectionFactory;

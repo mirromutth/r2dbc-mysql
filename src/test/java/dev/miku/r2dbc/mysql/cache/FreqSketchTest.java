@@ -44,7 +44,6 @@ class FreqSketchTest {
         typeAssert.isThrownBy(() -> new FreqSketch(-1));
         typeAssert.isThrownBy(() -> new FreqSketch(Integer.MIN_VALUE));
         typeAssert.isThrownBy(() -> new FreqSketch(Integer.MIN_VALUE >> 1));
-        typeAssert.isThrownBy(() -> new FreqSketch(Integer.MAX_VALUE));
     }
 
     @Test
