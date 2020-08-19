@@ -37,6 +37,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
@@ -437,13 +438,15 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     @Test
     void ignoreResult() {
         String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)";
+        List<Integer> values = new ArrayList<>();
         complete(connection -> Mono.from(connection.createStatement(tdl).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .thenMany(Flux.merge(
                 Flux.from(connection.createStatement("SELECT value FROM test WHERE id > ?").bind(0, 0).execute())
-                    .flatMap(r -> r.map((row, meta) -> row.get(0))),
+                    .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
+                    .doOnNext(values::add),
                 connection.createStatement("BAD GRAMMAR").execute()
             ).onErrorResume(ignored -> Flux.empty()))
             .thenMany(connection.createStatement("SELECT value FROM test ORDER BY id DESC LIMIT ?,?")
@@ -453,6 +456,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
             .flatMap(r -> r.map((row, metadata) -> row.get(0, Integer.TYPE)))
             .collectList()
             .doOnNext(it -> assertThat(it).isEqualTo(Arrays.asList(3, 2, 1))));
+        assertThat(values).isEqualTo(Arrays.asList(1, 2, 3, 4, 5));
     }
 
     /**
