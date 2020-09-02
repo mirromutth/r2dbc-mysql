@@ -146,10 +146,11 @@ final class ReactorNettyClient implements Client {
                         response.next(message);
                     }
                 })
+                .doOnTerminate(requestQueue)
                 .doOnCancel(() -> exchangeCancel(completed));
 
             requestQueue.submit(RequestTask.wrap(request, sink, responses));
-        }).flatMapMany(identity()).doAfterTerminate(requestQueue);
+        }).flatMapMany(identity());
     }
 
     @Override
@@ -187,10 +188,11 @@ final class ReactorNettyClient implements Client {
                         response.next(message);
                     }
                 })
+                .doOnTerminate(requestQueue)
                 .doOnCancel(() -> exchangeCancel(completed));
 
             requestQueue.submit(RequestTask.wrap(requests, sink, responses));
-        }).flatMapMany(identity()).doAfterTerminate(requestQueue);
+        }).flatMapMany(identity());
     }
 
     @Override
