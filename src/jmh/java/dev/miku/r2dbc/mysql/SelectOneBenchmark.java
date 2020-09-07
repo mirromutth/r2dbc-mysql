@@ -16,33 +16,39 @@
 
 package dev.miku.r2dbc.mysql;
 
+import io.r2dbc.spi.Statement;
 import org.junit.platform.commons.annotation.Testable;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Timeout;
+import reactor.core.publisher.Flux;
+
+import java.math.BigInteger;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Benchmarks for {@link ServerVersion}.
+ * Benchmark for execute {@code SELECT 1}.
  */
 @State(Scope.Benchmark)
-@Timeout(time = 1)
+@Threads(Threads.MAX)
+@Timeout(time = 10)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Testable
-public class ServerVersionBenchmark extends BenchmarkSupport {
-
-    private static final String VERSION_STR = "8.0.12-some-web-services-1.21.41-community-openssl-1.1.1";
-
-    private static final ServerVersion VERSION = ServerVersion.parse(VERSION_STR);
+public class SelectOneBenchmark extends BenchmarkSupport {
 
     @Benchmark
     @Testable
-    public void parse() {
-        ServerVersion.parse(VERSION_STR);
-    }
-
-    @Benchmark
-    @Testable
-    public boolean isEnterprise() {
-        return VERSION.isEnterprise();
+    public BigInteger selectOne(ConnectionState state) {
+        Statement statement = state.connection.createStatement("SELECT 1");
+        BigInteger val = Flux.from(statement.execute())
+            .flatMap(it -> it.map((row, rowMetadata) -> row.get(0, BigInteger.class)))
+            .blockLast();
+        if (val == null || 1 != val.intValue()) {
+            throw new IllegalStateException("ERROR different to val:" + val);
+        }
+        return val;
     }
 }

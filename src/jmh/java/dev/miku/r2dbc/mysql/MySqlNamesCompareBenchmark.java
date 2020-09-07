@@ -21,12 +21,14 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
+import org.openjdk.jmh.annotations.Timeout;
 
 /**
  * Benchmark between {@link MySqlNames#compare} and {@link String#compareToIgnoreCase}.
  */
 @State(Scope.Benchmark)
 @Threads(1)
+@Timeout(time = 1)
 @Testable
 public class MySqlNamesCompareBenchmark extends BenchmarkSupport {
 
