@@ -22,6 +22,7 @@ import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.ExitMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.WarningMessage;
+import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
@@ -42,8 +43,9 @@ import reactor.netty.FutureMono;
 import reactor.util.context.Context;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -57,6 +59,8 @@ final class ReactorNettyClient implements Client {
     private static final boolean DEBUG_ENABLED = logger.isDebugEnabled();
 
     private static final boolean INFO_ENABLED = logger.isInfoEnabled();
+
+    private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
 
     private final Connection connection;
 
@@ -122,10 +126,10 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
-    public Flux<ServerMessage> exchange(ClientMessage request, Predicate<ServerMessage> complete) {
+    public <T> Flux<T> exchange(ClientMessage request, BiConsumer<ServerMessage, SynchronousSink<T>> handler) {
         requireNonNull(request, "request must not be null");
 
-        return Mono.<Flux<ServerMessage>>create(sink -> {
+        return Mono.<Flux<T>>create(sink -> {
             if (!isConnected()) {
                 if (request instanceof Disposable) {
                     ((Disposable) request).dispose();
@@ -134,32 +138,23 @@ final class ReactorNettyClient implements Client {
                 return;
             }
 
-            boolean[] completed = new boolean[]{false};
-            Flux<ServerMessage> responses = responseProcessor
+            Flux<T> responses = OperatorUtils.discardOnCancel(responseProcessor
                 .doOnSubscribe(ignored -> requestProcessor.onNext(request))
-                .<ServerMessage>handle((message, response) -> {
-                    if (complete.test(message)) {
-                        completed[0] = true;
-                        response.next(message);
-                        response.complete();
-                    } else {
-                        response.next(message);
-                    }
-                })
-                .doOnTerminate(requestQueue)
-                .doOnCancel(() -> exchangeCancel(completed));
+                .handle(handler)
+                .doOnTerminate(requestQueue))
+                .doOnDiscard(ReferenceCounted.class, RELEASE);
 
             requestQueue.submit(RequestTask.wrap(request, sink, responses));
         }).flatMapMany(identity());
     }
 
     @Override
-    public Flux<ServerMessage> exchange(Flux<? extends ClientMessage> requests, Predicate<ServerMessage> complete) {
-        requireNonNull(requests, "requests must not be null");
+    public <T> Flux<T> exchange(FluxExchangeable<T> exchangeable) {
+        requireNonNull(exchangeable, "exchangeable must not be null");
 
-        return Mono.<Flux<ServerMessage>>create(sink -> {
+        return Mono.<Flux<T>>create(sink -> {
             if (!isConnected()) {
-                requests.subscribe(request -> {
+                exchangeable.subscribe(request -> {
                     if (request instanceof Disposable) {
                         ((Disposable) request).dispose();
                     }
@@ -168,9 +163,8 @@ final class ReactorNettyClient implements Client {
                 return;
             }
 
-            boolean[] completed = new boolean[]{false};
-            Flux<ServerMessage> responses = responseProcessor
-                .doOnSubscribe(ignored -> requests.subscribe(request -> {
+            Flux<T> responses = responseProcessor
+                .doOnSubscribe(ignored -> exchangeable.subscribe(request -> {
                     if (isConnected()) {
                         requestProcessor.onNext(request);
                     } else {
@@ -179,19 +173,15 @@ final class ReactorNettyClient implements Client {
                         }
                     }
                 }, requestProcessor::onError))
-                .<ServerMessage>handle((message, response) -> {
-                    if (complete.test(message)) {
-                        completed[0] = true;
-                        response.next(message);
-                        response.complete();
-                    } else {
-                        response.next(message);
-                    }
-                })
-                .doOnTerminate(requestQueue)
-                .doOnCancel(() -> exchangeCancel(completed));
+                .handle(exchangeable)
+                .doOnTerminate(() -> {
+                    exchangeable.dispose();
+                    requestQueue.run();
+                });
 
-            requestQueue.submit(RequestTask.wrap(requests, sink, responses));
+            requestQueue.submit(RequestTask.wrap(exchangeable, sink, OperatorUtils.discardOnCancel(responses)
+                .doOnDiscard(ReferenceCounted.class, RELEASE)
+                .doOnCancel(exchangeable::dispose)));
         }).flatMapMany(identity());
     }
 
@@ -262,12 +252,6 @@ final class ReactorNettyClient implements Client {
             drainError(ClientExceptions.unexpectedClosed());
         } else {
             drainError(ClientExceptions.expectedClosed());
-        }
-    }
-
-    private static void exchangeCancel(boolean[] completed) {
-        if (!completed[0]) {
-            logger.error("Exchange cancelled while exchange is active. This is likely a bug leading to unpredictable outcome.");
         }
     }
 

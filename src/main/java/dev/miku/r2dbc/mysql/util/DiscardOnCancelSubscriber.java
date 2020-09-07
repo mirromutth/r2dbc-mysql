@@ -22,7 +22,6 @@ import reactor.core.Exceptions;
 import reactor.core.Fuseable;
 import reactor.core.Scannable;
 import reactor.core.publisher.Operators;
-import reactor.util.annotation.Nullable;
 import reactor.util.context.Context;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -44,15 +43,11 @@ class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscri
 
     final Context ctx;
 
-    @Nullable
-    final Runnable onDone;
-
     S s;
 
-    DiscardOnCancelSubscriber(A actual, @Nullable Runnable onDone) {
+    DiscardOnCancelSubscriber(A actual) {
         this.actual = actual;
         this.ctx = actual.currentContext();
-        this.onDone = onDone;
     }
 
     @Override
@@ -76,14 +71,6 @@ class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscri
     @Override
     public final void onError(Throwable t) {
         if (compareAndSet(0, TERMINATED)) {
-            Runnable onDone = this.onDone;
-            if (onDone != null) {
-                try {
-                    onDone.run();
-                } catch (Throwable e) {
-                    Operators.onErrorDropped(e, this.ctx);
-                }
-            }
             this.actual.onError(t);
         } else {
             Operators.onErrorDropped(t, this.ctx);
@@ -93,14 +80,6 @@ class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscri
     @Override
     public final void onComplete() {
         if (compareAndSet(0, TERMINATED)) {
-            Runnable onDone = this.onDone;
-            if (onDone != null) {
-                try {
-                    onDone.run();
-                } catch (Throwable e) {
-                    Operators.onErrorDropped(e, this.ctx);
-                }
-            }
             this.actual.onComplete();
         }
     }
@@ -113,14 +92,6 @@ class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscri
     @Override
     public final void cancel() {
         if (compareAndSet(0, CANCELLED)) {
-            Runnable onDone = this.onDone;
-            if (onDone != null) {
-                try {
-                    onDone.run();
-                } catch (Throwable e) {
-                    Operators.onErrorDropped(e, this.ctx);
-                }
-            }
             this.s.request(Long.MAX_VALUE);
         }
     }
@@ -142,18 +113,18 @@ class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscri
     }
 
     @SuppressWarnings("unchecked")
-    static <T> CoreSubscriber<T> create(CoreSubscriber<? super T> s, boolean fuseable, @Nullable Runnable onDone) {
+    static <T> CoreSubscriber<T> create(CoreSubscriber<? super T> s, boolean fuseable) {
         if (fuseable) {
             if (s instanceof Fuseable.ConditionalSubscriber) {
-                return new DiscardOnCancelFuseableConditionalSubscriber<>((Fuseable.ConditionalSubscriber<? super T>) s, onDone);
+                return new DiscardOnCancelFuseableConditionalSubscriber<>((Fuseable.ConditionalSubscriber<? super T>) s);
             }
-            return new DiscardOnCancelFuseableSubscriber<T, CoreSubscriber<? super T>>(s, onDone);
+            return new DiscardOnCancelFuseableSubscriber<T, CoreSubscriber<? super T>>(s);
         }
 
         if (s instanceof Fuseable.ConditionalSubscriber) {
-            return new DiscardOnCancelConditionalSubscriber<>((Fuseable.ConditionalSubscriber<? super T>) s, onDone);
+            return new DiscardOnCancelConditionalSubscriber<>((Fuseable.ConditionalSubscriber<? super T>) s);
         }
-        return new DiscardOnCancelSubscriber<T, Subscription, CoreSubscriber<? super T>>(s, onDone);
+        return new DiscardOnCancelSubscriber<T, Subscription, CoreSubscriber<? super T>>(s);
     }
 }
 
@@ -163,8 +134,8 @@ class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscri
 class DiscardOnCancelFuseableSubscriber<T, A extends CoreSubscriber<? super T>> extends DiscardOnCancelSubscriber<T, Fuseable.QueueSubscription<T>, A>
     implements Fuseable.QueueSubscription<T> {
 
-    DiscardOnCancelFuseableSubscriber(A actual, @Nullable Runnable onDone) {
-        super(actual, onDone);
+    DiscardOnCancelFuseableSubscriber(A actual) {
+        super(actual);
     }
 
     @Override
@@ -207,8 +178,8 @@ class DiscardOnCancelFuseableSubscriber<T, A extends CoreSubscriber<? super T>> 
 final class DiscardOnCancelConditionalSubscriber<T> extends DiscardOnCancelSubscriber<T, Subscription, Fuseable.ConditionalSubscriber<? super T>>
     implements Fuseable.ConditionalSubscriber<T> {
 
-    DiscardOnCancelConditionalSubscriber(Fuseable.ConditionalSubscriber<? super T> actual, @Nullable Runnable onDone) {
-        super(actual, onDone);
+    DiscardOnCancelConditionalSubscriber(Fuseable.ConditionalSubscriber<? super T> actual) {
+        super(actual);
     }
 
     @Override
@@ -228,8 +199,8 @@ final class DiscardOnCancelConditionalSubscriber<T> extends DiscardOnCancelSubsc
 final class DiscardOnCancelFuseableConditionalSubscriber<T> extends DiscardOnCancelFuseableSubscriber<T, Fuseable.ConditionalSubscriber<? super T>>
     implements Fuseable.ConditionalSubscriber<T> {
 
-    DiscardOnCancelFuseableConditionalSubscriber(Fuseable.ConditionalSubscriber<? super T> actual, @Nullable Runnable onDone) {
-        super(actual, onDone);
+    DiscardOnCancelFuseableConditionalSubscriber(Fuseable.ConditionalSubscriber<? super T> actual) {
+        super(actual);
     }
 
     @Override

@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.util;
 
-import org.reactivestreams.Subscription;
 import reactor.core.Fuseable;
 import reactor.core.publisher.Flux;
 
@@ -40,31 +39,10 @@ public final class OperatorUtils {
      */
     public static <T> Flux<T> discardOnCancel(Flux<? extends T> source) {
         if (source instanceof Fuseable) {
-            return new FluxDiscardOnCancelFuseable<>(source, null);
+            return new FluxDiscardOnCancelFuseable<>(source);
         }
 
-        return new FluxDiscardOnCancel<>(source, null);
-    }
-
-    /**
-     * Replay signals from {@link Flux the source} until cancellation. Drains the source for data signals if the subscriber cancels the subscription.
-     * <p>
-     * Draining data is required to complete a particular request/response window and clear the protocol state as client code expects to start a
-     * request/response conversation without leaving previous frames on the stack.
-     * <p>
-     * Propagates the {@link Subscription#cancel()} signal to a {@link Runnable onDone}.
-     *
-     * @param source the source to decorate.
-     * @param onDone the {@link Runnable} notified when the resulting {@link Flux} cancellation or termination.
-     * @param <T>    The type of values in both source and output sequences.
-     * @return decorated {@link Flux}.
-     */
-    public static <T> Flux<T> discardOnCancel(Flux<? extends T> source, Runnable onDone) {
-        if (source instanceof Fuseable) {
-            return new FluxDiscardOnCancelFuseable<>(source, onDone);
-        }
-
-        return new FluxDiscardOnCancel<>(source, onDone);
+        return new FluxDiscardOnCancel<>(source);
     }
 
     private OperatorUtils() {
