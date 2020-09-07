@@ -75,9 +75,6 @@ public final class MySqlConnection implements Connection {
 
     private static final ServerVersion TX_LEVEL_8X = ServerVersion.create(8, 0, 0);
 
-    private static final Predicate<ServerMessage> PING_DONE = message ->
-        message instanceof ErrorMessage || (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
-
     /**
      * Convert initialize result to {@link InitData}.
      */
@@ -110,8 +107,10 @@ public final class MySqlConnection implements Connection {
             ErrorMessage msg = (ErrorMessage) message;
             logger.debug("Remote validate failed: [{}] [{}] {}", msg.getErrorCode(), msg.getSqlState(), msg.getErrorMessage());
             sink.next(false);
+            sink.complete();
         } else if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
             sink.next(true);
+            sink.complete();
         } else {
             ReferenceCountUtil.safeRelease(message);
         }
@@ -327,8 +326,7 @@ public final class MySqlConnection implements Connection {
                 return Mono.just(false);
             }
 
-            return client.exchange(PingMessage.getInstance(), PING_DONE)
-                .handle(PING_HANDLER)
+            return client.exchange(PingMessage.getInstance(), PING_HANDLER)
                 .last()
                 .onErrorResume(e -> {
                     // `last` maybe emit a NoSuchElementException, exchange maybe emit exception by Netty.

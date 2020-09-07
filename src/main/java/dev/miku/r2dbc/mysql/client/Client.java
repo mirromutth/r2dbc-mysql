@@ -24,13 +24,14 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelOption;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SynchronousSink;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.annotation.Nullable;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.time.Duration;
-import java.util.function.Predicate;
+import java.util.function.BiConsumer;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
@@ -40,21 +41,46 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 public interface Client {
 
     /**
-     * Perform an exchange of message. Calling this method while a previous exchange is active will
-     * return a deferred handle and queue the request until the previous exchange terminates.
+     * Perform an exchange of a request message. Calling this method while a previous exchange
+     * is active will return a deferred handle and queue the request until the previous
+     * exchange terminates.
      *
-     * @param request  one request for get server responses
-     * @param complete determining the last response frame to {@code Subscriber#onComplete()}
-     *                 complete the stream and prevent multiple subscribers from consuming
-     *                 previous, active response streams
+     * @param request one and only one request message for get server responses
+     * @param handler response handler, the last response frame should be emitted
+     *                with {@link SynchronousSink#complete()} for complete the
+     *                stream and prevent multiple subscribers from consuming previous,
+     *                active response streams
+     * @param <T>     handling response type
      * @return A {@link Flux} of incoming messages that ends with the end of the frame
      */
-    Flux<ServerMessage> exchange(ClientMessage request, Predicate<ServerMessage> complete);
+    <T> Flux<T> exchange(ClientMessage request, BiConsumer<ServerMessage, SynchronousSink<T>> handler);
 
-    Flux<ServerMessage> exchange(Flux<? extends ClientMessage> requests, Predicate<ServerMessage> complete);
+    /**
+     * Perform an exchange of multi-request messages. Calling this method while a previous
+     * exchange is active will return a deferred handle and queue the request until the
+     * previous exchange terminates.
+     *
+     * @param exchangeable request messages and response handler
+     * @param <T>          handling response type
+     * @return A {@link Flux} of incoming messages that ends with the end of the frame
+     */
+    <T> Flux<T> exchange(FluxExchangeable<T> exchangeable);
 
+    /**
+     * Close the connection of the {@link Client} with close request.
+     * <p>
+     * Notice: should not use it before connection login phase.
+     *
+     * @return A {@link Mono} that will emit a complete signal after connection closed
+     */
     Mono<Void> close();
 
+    /**
+     * Force close the connection of the {@link Client}. It is useful when login phase
+     * emit an error.
+     *
+     * @return A {@link Mono} that will emit a complete signal after connection closed
+     */
     Mono<Void> forceClose();
 
     /**
@@ -64,10 +90,21 @@ public interface Client {
      */
     ByteBufAllocator getByteBufAllocator();
 
+    /**
+     * Local check connection is valid or not.
+     *
+     * @return if connection is valid
+     */
     boolean isConnected();
 
+    /**
+     * Send a signal to {@code this}, which means server does not support SSL.
+     */
     void sslUnsupported();
 
+    /**
+     * Send a signal to {@code this}, which means login has succeed.
+     */
     void loginSuccess();
 
     static Mono<Client> connect(MySqlSslConfiguration ssl, SocketAddress address, boolean tcpKeepAlive, boolean tcpNoDelay, ConnectionContext context, @Nullable Duration connectTimeout) {

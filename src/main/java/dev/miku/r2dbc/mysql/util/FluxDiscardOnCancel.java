@@ -20,7 +20,6 @@ import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
-import reactor.util.annotation.Nullable;
 
 /**
  * A decorating operator that replays signals from its source to a {@link DiscardOnCancelSubscriber} and drains the
@@ -34,16 +33,12 @@ import reactor.util.annotation.Nullable;
  */
 final class FluxDiscardOnCancel<T> extends FluxOperator<T, T> {
 
-    @Nullable
-    private final Runnable onDone;
-
-    FluxDiscardOnCancel(Flux<? extends T> source, @Nullable Runnable onDone) {
+    FluxDiscardOnCancel(Flux<? extends T> source) {
         super(source);
-        this.onDone = onDone;
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super T> actual) {
-        this.source.subscribe(DiscardOnCancelSubscriber.create(actual, false, onDone));
+        this.source.subscribe(DiscardOnCancelSubscriber.create(actual, false));
     }
 }

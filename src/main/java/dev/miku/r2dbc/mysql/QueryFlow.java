@@ -19,6 +19,7 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import dev.miku.r2dbc.mysql.cache.PrepareCache;
 import dev.miku.r2dbc.mysql.client.Client;
+import dev.miku.r2dbc.mysql.client.FluxExchangeable;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.SslMode;
@@ -45,9 +46,7 @@ import dev.miku.r2dbc.mysql.message.server.ServerStatusMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
-import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
@@ -63,7 +62,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -78,15 +77,10 @@ final class QueryFlow {
     // Metadata EOF message will be not receive in here.
     private static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof CompleteMessage;
 
-    private static final Predicate<ServerMessage> FETCH_DONE = message -> message instanceof ErrorMessage ||
-        (message instanceof CompleteMessage && ((CompleteMessage) message).isDone());
-
-    private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
-
     private static final Consumer<Object> OBJ_RELEASE = ReferenceCountUtil::release;
 
     /**
-     * Login a {@link Client} and receive the {@link Client} after logon.
+     * Login a {@link Client} and receive the {@code client} after logon.
      *
      * @param client   the {@link Client} to exchange messages with.
      * @param sslMode  the {@link SslMode} defines SSL capability and behavior.
@@ -97,14 +91,10 @@ final class QueryFlow {
      * @return the {@link Client}, or an error/exception received by login failed.
      */
     static Mono<Client> login(Client client, SslMode sslMode, String database, String user, @Nullable CharSequence password, ConnectionContext context) {
-        InitHandler handler = new InitHandler(client, sslMode, database, user, password, context);
+        LoginExchangeable exchangeable = new LoginExchangeable(client, sslMode, database, user, password, context);
 
-        return client.exchange(handler, handler)
-            .handle(handler)
-            .onErrorResume(e -> {
-                handler.onComplete();
-                return client.forceClose().then(Mono.error(e));
-            })
+        return client.exchange(exchangeable)
+            .onErrorResume(e -> client.forceClose().then(Mono.error(e)))
             .then(Mono.just(client));
     }
 
@@ -129,12 +119,10 @@ final class QueryFlow {
                 return Flux.empty();
             }
 
-            PrepareHandler handler = new PrepareHandler(prepareCache, sql, bindings.iterator(), fetchSize);
+            PrepareExchangeable exchangeable =
+                new PrepareExchangeable(prepareCache, sql, bindings.iterator(), fetchSize);
 
-            return OperatorUtils.discardOnCancel(client.exchange(handler, handler), handler::close)
-                .doOnDiscard(ReferenceCounted.class, RELEASE)
-                .handle(handler)
-                .windowUntil(RESULT_DONE);
+            return client.exchange(exchangeable).windowUntil(RESULT_DONE);
         });
     }
 
@@ -155,12 +143,9 @@ final class QueryFlow {
                 return Flux.empty();
             }
 
-            TextQueryHandler handler = new TextQueryHandler(query, bindings.iterator());
+            TextQueryExchangeable exchangeable = new TextQueryExchangeable(query, bindings.iterator());
 
-            return OperatorUtils.discardOnCancel(client.exchange(handler, handler), handler::close)
-                .doOnDiscard(ReferenceCounted.class, RELEASE)
-                .handle(handler)
-                .windowUntil(RESULT_DONE);
+            return client.exchange(exchangeable).windowUntil(RESULT_DONE);
         });
     }
 
@@ -188,7 +173,7 @@ final class QueryFlow {
      * completed by {@link CompleteMessage} for each statement.
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
-        return multiQuery(client, InternalArrays.asIterator(statements))
+        return client.exchange(new MultiQueryExchangeable(InternalArrays.asIterator(statements)))
             .doOnNext(OBJ_RELEASE)
             .then();
     }
@@ -224,7 +209,8 @@ final class QueryFlow {
                 case 1:
                     return execute0(client, statements.get(0)).windowUntil(RESULT_DONE);
                 default:
-                    return multiQuery(client, statements.iterator()).windowUntil(RESULT_DONE);
+                    return client.exchange(new MultiQueryExchangeable(statements.iterator()))
+                        .windowUntil(RESULT_DONE);
             }
         });
     }
@@ -238,36 +224,32 @@ final class QueryFlow {
      * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
      */
     private static Flux<ServerMessage> execute0(Client client, String sql) {
-        return OperatorUtils.discardOnCancel(client.exchange(new SimpleQueryMessage(sql), FETCH_DONE))
-            .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .handle((message, sink) -> {
-                if (message instanceof ErrorMessage) {
-                    sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
-                } else {
-                    sink.next(message);
+        return client.exchange(new SimpleQueryMessage(sql), (message, sink) -> {
+            if (message instanceof ErrorMessage) {
+                sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+            } else {
+                sink.next(message);
+
+                if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
+                    sink.complete();
                 }
-            });
-    }
-
-    private static Flux<ServerMessage> multiQuery(Client client, Iterator<String> statements) {
-        MultiQueryHandler handler = new MultiQueryHandler(statements);
-
-        return OperatorUtils.discardOnCancel(client.exchange(handler, handler), handler::close)
-            .doOnDiscard(ReferenceCounted.class, RELEASE)
-            .handle(handler);
+            }
+        });
     }
 
     private QueryFlow() {
     }
 }
 
-abstract class BaseHandler extends Flux<ClientMessage>
-    implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Predicate<ServerMessage> {
+/**
+ * An abstraction of {@link FluxExchangeable} that considers multi-queries without binary protocols.
+ */
+abstract class BaseFluxExchangeable extends FluxExchangeable<ServerMessage> {
 
     protected final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
 
     @Override
-    public void subscribe(CoreSubscriber<? super ClientMessage> actual) {
+    public final void subscribe(CoreSubscriber<? super ClientMessage> actual) {
         requests.subscribe(actual);
         afterSubscribe();
     }
@@ -275,27 +257,17 @@ abstract class BaseHandler extends Flux<ClientMessage>
     @Override
     public final void accept(ServerMessage message, SynchronousSink<ServerMessage> sink) {
         if (message instanceof ErrorMessage) {
-            sink.error(convertError((ErrorMessage) message));
+            sink.error(transform((ErrorMessage) message));
         } else {
             sink.next(message);
-        }
-    }
 
-    @Override
-    public final boolean test(ServerMessage message) {
-        if (message instanceof ErrorMessage) {
-            return true;
-        }
-
-        if (!(message instanceof CompleteMessage) || !((CompleteMessage) message).isDone()) {
-            return false;
-        }
-
-        if (!requests.isTerminated() && hasNext()) {
-            requests.onNext(nextMessage());
-            return false;
-        } else {
-            return true;
+            if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
+                if (!requests.isTerminated() && hasNext()) {
+                    requests.onNext(nextMessage());
+                } else {
+                    sink.complete();
+                }
+            }
         }
     }
 
@@ -305,18 +277,39 @@ abstract class BaseHandler extends Flux<ClientMessage>
 
     abstract protected ClientMessage nextMessage();
 
-    abstract protected R2dbcException convertError(ErrorMessage message);
+    abstract protected R2dbcException transform(ErrorMessage message);
 }
 
-final class TextQueryHandler extends BaseHandler {
+/**
+ * An implementation of {@link FluxExchangeable} that considers client-preparing requests.
+ */
+final class TextQueryExchangeable extends BaseFluxExchangeable {
+
+    private final AtomicBoolean disposed = new AtomicBoolean();
 
     private final TextQuery query;
 
     private final Iterator<Binding> bindings;
 
-    TextQueryHandler(TextQuery query, Iterator<Binding> bindings) {
+    TextQueryExchangeable(TextQuery query, Iterator<Binding> bindings) {
         this.query = query;
         this.bindings = bindings;
+    }
+
+    @Override
+    public void dispose() {
+        if (disposed.compareAndSet(false, true)) {
+            requests.onComplete();
+
+            while (bindings.hasNext()) {
+                bindings.next().clear();
+            }
+        }
+    }
+
+    @Override
+    public boolean isDisposed() {
+        return disposed.get();
     }
 
     @Override
@@ -336,27 +329,32 @@ final class TextQueryHandler extends BaseHandler {
     }
 
     @Override
-    protected R2dbcException convertError(ErrorMessage message) {
+    protected R2dbcException transform(ErrorMessage message) {
         return ExceptionFactory.createException(message, query.getSql());
-    }
-
-    void close() {
-        requests.onComplete();
-
-        while (bindings.hasNext()) {
-            bindings.next().clear();
-        }
     }
 }
 
-final class MultiQueryHandler extends BaseHandler {
+/**
+ * An implementation of {@link FluxExchangeable} that considers multiple simple statements.
+ */
+final class MultiQueryExchangeable extends BaseFluxExchangeable {
 
     private final Iterator<String> statements;
 
     private String current;
 
-    MultiQueryHandler(Iterator<String> statements) {
+    MultiQueryExchangeable(Iterator<String> statements) {
         this.statements = statements;
+    }
+
+    @Override
+    public void dispose() {
+        requests.onComplete();
+    }
+
+    @Override
+    public boolean isDisposed() {
+        return requests.isTerminated();
     }
 
     @Override
@@ -379,25 +377,30 @@ final class MultiQueryHandler extends BaseHandler {
     }
 
     @Override
-    protected R2dbcException convertError(ErrorMessage message) {
+    protected R2dbcException transform(ErrorMessage message) {
         return ExceptionFactory.createException(message, current);
-    }
-
-    void close() {
-        requests.onComplete();
     }
 }
 
-final class PrepareHandler extends Flux<ClientMessage>
-    implements BiConsumer<ServerMessage, SynchronousSink<ServerMessage>>, Predicate<ServerMessage> {
+/**
+ * An implementation of {@link FluxExchangeable} that considers server-preparing queries.
+ * Which contains a built-in state machine.
+ * <p>
+ * It will reset a prepared statement if cache has matched it, otherwise it will prepare
+ * statement to a new statement ID and put the ID into the cache. If the statement ID does
+ * not exist in the cache after the last row sent, the ID will be closed.
+ */
+final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 
-    private static final Logger logger = LoggerFactory.getLogger(PrepareHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(PrepareExchangeable.class);
 
     private static final int PREPARE_OR_RESET = 1;
 
     private static final int EXECUTE = 2;
 
     private static final int FETCH = 3;
+
+    private final AtomicBoolean disposed = new AtomicBoolean();
 
     private final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
 
@@ -419,7 +422,7 @@ final class PrepareHandler extends Flux<ClientMessage>
 
     private boolean shouldClose;
 
-    PrepareHandler(PrepareCache<Integer> cache, String sql, Iterator<Binding> bindings, int fetchSize) {
+    PrepareExchangeable(PrepareCache<Integer> cache, String sql, Iterator<Binding> bindings, int fetchSize) {
         this.cache = cache;
         this.sql = sql;
         this.bindings = bindings;
@@ -463,7 +466,7 @@ final class PrepareHandler extends Flux<ClientMessage>
                         return;
                     }
 
-                    doNextExecute(statementId);
+                    doNextExecute(statementId, sink);
                 } else if (message instanceof PreparedOkMessage) {
                     PreparedOkMessage ok = (PreparedOkMessage) message;
                     int statementId = ok.getStatementId();
@@ -474,14 +477,8 @@ final class PrepareHandler extends Flux<ClientMessage>
 
                     // columns + parameters <= 0, has not metadata follow in,
                     if (columns <= -parameters) {
-                        try {
-                            putToCache(statementId);
-                        } catch (Throwable e) {
-                            logger.error("Put statement {} to cache failed", statementId, e);
-                            this.shouldClose = true;
-                        }
-
-                        doNextExecute(statementId);
+                        putToCache(statementId);
+                        doNextExecute(statementId, sink);
                     }
                 } else if (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted()) {
                     Integer statementId = this.statementId;
@@ -490,29 +487,43 @@ final class PrepareHandler extends Flux<ClientMessage>
                         return;
                     }
 
-                    try {
-                        putToCache(statementId);
-                    } catch (Throwable e) {
-                        logger.error("Put statement {} to cache failed", statementId, e);
-                        this.shouldClose = true;
-                    }
-
-                    doNextExecute(statementId);
+                    putToCache(statementId);
+                    doNextExecute(statementId, sink);
                 } else {
-                    // This message will never be used.
                     ReferenceCountUtil.safeRelease(message);
                 }
                 // Ignore all messages in preparing phase.
                 break;
             case EXECUTE:
-                sink.next(message);
+                if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
+                    // Complete message means execute phase done or fetch phase done (when cursor is not opened).
+                    onCompleteMessage((CompleteMessage) message, sink);
+                } else if (message instanceof SyntheticMetadataMessage) {
+                    EofMessage eof = ((SyntheticMetadataMessage) message).getEof();
+                    if (eof instanceof ServerStatusMessage) {
+                        // Otherwise means cursor does not be opened, wait for end of row EOF message.
+                        if ((((ServerStatusMessage) eof).getServerStatuses() & ServerStatuses.CURSOR_EXISTS) != 0) {
+                            if (doNextFetch(sink)) {
+                                sink.next(message);
+                            }
+
+                            break;
+                        }
+                    }
+                    // EOF is deprecated (null) or using EOF without statuses.
+                    // EOF is deprecated: wait for OK message.
+                    // EOF without statuses: means cursor does not be opened, wait for end of row EOF message.
+                    // Metadata message should be always emitted in EXECUTE phase.
+                    setMode(FETCH);
+                    sink.next(message);
+                } else {
+                    sink.next(message);
+                }
+
                 break;
             default:
-                if (message instanceof ServerStatusMessage) {
-                    short statuses = ((ServerStatusMessage) message).getServerStatuses();
-                    if ((statuses & ServerStatuses.LAST_ROW_SENT) != 0 || (statuses & ServerStatuses.CURSOR_EXISTS) == 0) {
-                        sink.next(message);
-                    }
+                if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
+                    onCompleteMessage((CompleteMessage) message, sink);
                 } else {
                     sink.next(message);
                 }
@@ -521,84 +532,76 @@ final class PrepareHandler extends Flux<ClientMessage>
     }
 
     @Override
-    public boolean test(ServerMessage message) {
-        if (message instanceof ErrorMessage) {
-            return true;
-        }
-
-        switch (mode) {
-            case PREPARE_OR_RESET:
-                return false;
-            case EXECUTE:
-                if (message instanceof CompleteMessage) {
-                    // Complete message means execute phase done or fetch phase done (when cursor is not opened).
-                    // This message may be handled by FETCH phase.
-                    return fetchOrExecDone(message);
-                } else if (message instanceof SyntheticMetadataMessage) {
-                    EofMessage eof = ((SyntheticMetadataMessage) message).getEof();
-                    if (eof instanceof ServerStatusMessage) {
-                        // Non null.
-                        if ((((ServerStatusMessage) eof).getServerStatuses() & ServerStatuses.CURSOR_EXISTS) != 0) {
-                            doNextFetch();
-                            // This message will be handled by FETCH phase, it should be emitted.
-                            return false;
-                        }
-                        // Otherwise means cursor does not be opened, wait for end of row EOF message.
-                        return false;
-                    }
-                    // EOF is deprecated (null) or using EOF without statuses.
-                    // EOF is deprecated: wait for OK message.
-                    // EOF without statuses: means cursor does not be opened, wait for end of row EOF message.
-                    return false;
+    public void dispose() {
+        if (disposed.compareAndSet(false, true)) {
+            if (!requests.isTerminated()) {
+                Integer statementId = this.statementId;
+                if (shouldClose && statementId != null) {
+                    logger.debug("Closing statement {} after used", statementId);
+                    requests.onNext(new PreparedCloseMessage(statementId));
                 }
+                requests.onComplete();
+            }
 
-                return false;
-            default:
-                return fetchOrExecDone(message);
+            while (bindings.hasNext()) {
+                bindings.next().clear();
+            }
         }
     }
 
-    void close() {
-        if (!requests.isTerminated()) {
-            Integer statementId = this.statementId;
-            if (shouldClose && statementId != null) {
-                logger.debug("Closing statement {} after used", statementId);
-                requests.onNext(new PreparedCloseMessage(statementId));
-            }
-            requests.onComplete();
-        }
-        while (bindings.hasNext()) {
-            bindings.next().clear();
-        }
+    @Override
+    public boolean isDisposed() {
+        return disposed.get();
     }
 
     private void putToCache(Integer statementId) {
-        // If put failed, just close it.
-        boolean putSucceed = cache.putIfAbsent(sql, statementId, evictId -> {
-            logger.debug("Prepare cache evicts statement {} when putting", evictId);
-            requests.onNext(new PreparedCloseMessage(evictId));
-        });
+        boolean putSucceed;
+
+        try {
+            putSucceed = cache.putIfAbsent(sql, statementId, evictId -> {
+                logger.debug("Prepare cache evicts statement {} when putting", evictId);
+                requests.onNext(new PreparedCloseMessage(evictId));
+            });
+        } catch (Throwable e) {
+            logger.error("Put statement {} to cache failed", statementId, e);
+            putSucceed = false;
+        }
+
+        // If put failed, should close it.
         this.shouldClose = !putSucceed;
         logger.debug("Prepare cache put statement {} is {}", statementId, putSucceed ? "succeed" : "fails");
     }
 
-    private void doNextExecute(int statementId) {
+    private void doNextExecute(int statementId, SynchronousSink<ServerMessage> sink) {
+        if (requests.isTerminated()) {
+            sink.complete();
+            return;
+        }
+
         Binding binding = bindings.next();
 
         setMode(EXECUTE);
         requests.onNext(binding.toExecuteMessage(statementId, fetchSize <= 0));
     }
 
-    private void doNextFetch() {
+    private boolean doNextFetch(SynchronousSink<ServerMessage> sink) {
         Integer statementId = this.statementId;
 
         if (statementId == null) {
-            logger.error("Statement ID must not be null when fetching");
-            return;
+            sink.error(new IllegalStateException("Statement ID must not be null when fetching"));
+            return false;
+        }
+
+        if (requests.isTerminated()) {
+            logger.error("Unexpected terminated on requests");
+            sink.complete();
+            return false;
         }
 
         setMode(FETCH);
         requests.onNext(this.fetch == null ? (this.fetch = new PreparedFetchMessage(statementId, fetchSize)) : this.fetch);
+
+        return true;
     }
 
     private void setMode(int mode) {
@@ -606,43 +609,51 @@ final class PrepareHandler extends Flux<ClientMessage>
         this.mode = mode;
     }
 
-    private boolean fetchOrExecDone(ServerMessage message) {
-        if (!(message instanceof CompleteMessage) || !((CompleteMessage) message).isDone()) {
-            return false;
-        } else if (requests.isTerminated()) {
+    private void onCompleteMessage(CompleteMessage message, SynchronousSink<ServerMessage> sink) {
+        if (requests.isTerminated()) {
             logger.error("Unexpected terminated on requests");
-            return true;
+            sink.next(message);
+            sink.complete();
+            return;
         }
 
         if (message instanceof ServerStatusMessage) {
             short statuses = ((ServerStatusMessage) message).getServerStatuses();
             if ((statuses & ServerStatuses.CURSOR_EXISTS) != 0 && (statuses & ServerStatuses.LAST_ROW_SENT) == 0) {
-                doNextFetch();
-                return false;
+                doNextFetch(sink);
+                // Not last complete message, no need emit.
+                return;
             }
-            // Otherwise is sent last row or never open cursor.
+            // Otherwise is last row sent or did not open cursor.
         }
+
+        // The last row complete message should be emitted, whatever cursor has been opened.
+        sink.next(message);
 
         if (bindings.hasNext()) {
             Integer statementId = this.statementId;
 
             if (statementId == null) {
-                logger.error("Statement ID must not be null when executing");
-                return true;
+                sink.error(new IllegalStateException("Statement ID must not be null when executing"));
+                return;
             }
 
-            doNextExecute(statementId);
-            return false;
+            doNextExecute(statementId, sink);
         } else {
-            return true;
+            sink.complete();
         }
     }
 }
 
-final class InitHandler extends Flux<ClientMessage>
-    implements BiConsumer<ServerMessage, SynchronousSink<Void>>, Predicate<ServerMessage> {
+/**
+ * An implementation of {@link FluxExchangeable} that considers login to the database.
+ * <p>
+ * Not like other {@link FluxExchangeable}s, it is started by a server-side message,
+ * which should be a {@link HandshakeRequest}.
+ */
+final class LoginExchangeable extends FluxExchangeable<Void> {
 
-    private static final Logger logger = LoggerFactory.getLogger(InitHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(LoginExchangeable.class);
 
     private static final Map<String, String> ATTRIBUTES = Collections.emptyMap();
 
@@ -673,7 +684,7 @@ final class InitHandler extends Flux<ClientMessage>
 
     private boolean sslCompleted;
 
-    InitHandler(
+    LoginExchangeable(
         Client client, SslMode sslMode, String database, String user,
         @Nullable CharSequence password, ConnectionContext context
     ) {
@@ -717,8 +728,8 @@ final class InitHandler extends Flux<ClientMessage>
         }
 
         if (message instanceof OkMessage) {
-            requests.onComplete();
             client.loginSuccess();
+            sink.complete();
         } else if (message instanceof SyntheticSslResponseMessage) {
             sslCompleted = true;
             requests.onNext(createHandshakeResponse(context.getCapabilities()));
@@ -742,11 +753,7 @@ final class InitHandler extends Flux<ClientMessage>
     }
 
     @Override
-    public boolean test(ServerMessage message) {
-        return message instanceof ErrorMessage || message instanceof OkMessage;
-    }
-
-    void onComplete() {
+    public void dispose() {
         this.requests.onComplete();
     }
 
