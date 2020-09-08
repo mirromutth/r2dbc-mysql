@@ -25,9 +25,9 @@ import java.util.Map;
 import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 
 /**
- * A message considers handshake response implementations of {@link ExchangeableMessage}.
+ * An abstraction of {@link ClientMessage} considers handshake response.
  */
-public interface HandshakeResponse extends ExchangeableMessage {
+public interface HandshakeResponse extends ClientMessage {
 
     static HandshakeResponse from(
         int capabilities, int collationId, String user, byte[] authentication,

@@ -26,7 +26,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * A message that contains only an authentication, used by full authentication or change authentication response.
  */
-public final class AuthResponse extends EnvelopeClientMessage implements ExchangeableMessage {
+public final class AuthResponse extends EnvelopeClientMessage {
 
     private final byte[] authentication;
 

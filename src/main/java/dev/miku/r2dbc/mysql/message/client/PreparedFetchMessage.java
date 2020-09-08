@@ -23,7 +23,7 @@ import io.netty.buffer.ByteBuf;
  * <p>
  * Note: last request must be {@link PreparedExecuteMessage} and it must be cursored.
  */
-public final class PreparedFetchMessage extends FixedSizeClientMessage implements ExchangeableMessage {
+public final class PreparedFetchMessage extends FixedSizeClientMessage {
 
     private static final int SIZE = Byte.BYTES + Integer.BYTES + Integer.BYTES;
 

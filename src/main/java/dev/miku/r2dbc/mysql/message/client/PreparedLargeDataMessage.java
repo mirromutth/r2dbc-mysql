@@ -30,7 +30,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * <p>
  * Note: it must be sent before {@link PreparedExecuteMessage}.
  */
-public final class PreparedLargeDataMessage extends LargeClientMessage implements SendOnlyMessage {
+public final class PreparedLargeDataMessage extends LargeClientMessage {
 
     private static final int MIN_SIZE = Byte.BYTES + Integer.BYTES + Short.BYTES + Byte.BYTES + Long.BYTES;
 

@@ -21,9 +21,9 @@ import dev.miku.r2dbc.mysql.constant.Capabilities;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * A ssl request for multi-versions.
+ * An abstraction of {@link ClientMessage} that considers SSL request for handshake.
  */
-public interface SslRequest extends ExchangeableMessage {
+public interface SslRequest extends ClientMessage {
 
     int getCapabilities();
 

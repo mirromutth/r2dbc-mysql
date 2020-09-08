@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.message.client;
 /**
  * A plain text SQL query message without any parameter, it could include multi-statements.
  */
-public final class SimpleQueryMessage extends AbstractQueryMessage implements ExchangeableMessage {
+public final class SimpleQueryMessage extends AbstractQueryMessage {
 
     static final byte QUERY_FLAG = 3;
 

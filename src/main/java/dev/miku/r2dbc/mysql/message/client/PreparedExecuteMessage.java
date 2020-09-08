@@ -36,7 +36,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * A message to execute a prepared statement once with parameter.
  */
-public final class PreparedExecuteMessage extends LargeClientMessage implements ExchangeableMessage, Disposable {
+public final class PreparedExecuteMessage extends LargeClientMessage implements Disposable {
 
     /**
      * No cursor, just return entire result without fetch.

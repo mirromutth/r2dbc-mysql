@@ -33,7 +33,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * <p>
  * Note: it use {@link SimpleQueryMessage#QUERY_FLAG} because it is text protocol query.
  */
-public final class TextQueryMessage extends LargeClientMessage implements ExchangeableMessage {
+public final class TextQueryMessage extends LargeClientMessage {
 
     private final List<String> sqlParts;
 
@@ -43,7 +43,6 @@ public final class TextQueryMessage extends LargeClientMessage implements Exchan
         requireNonNull(sqlParts, "sql parts must not be null");
         requireNonNull(values, "values must not be null");
         require(sqlParts.size() - 1 == values.length, "sql parts size must not be parameters size + 1");
-
 
         this.sqlParts = sqlParts;
         this.values = values;

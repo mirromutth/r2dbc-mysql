@@ -29,7 +29,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * Base class considers statement logic of prepared statement and simple statement.
  */
-abstract class AbstractQueryMessage extends LargeClientMessage implements ExchangeableMessage {
+abstract class AbstractQueryMessage extends LargeClientMessage {
 
     private final byte flag;
 
