@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.message.client;
 /**
  * A message of prepare sql query for get prepared statement ID and information.
  */
-public final class PrepareQueryMessage extends AbstractQueryMessage implements ExchangeableMessage {
+public final class PrepareQueryMessage extends AbstractQueryMessage {
 
     private static final byte PREPARE_FLAG = 0x16;
 

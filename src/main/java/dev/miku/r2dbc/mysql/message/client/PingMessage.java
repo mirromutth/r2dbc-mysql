@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBuf;
 /**
  * The request message check alive of MySQL server.
  */
-public final class PingMessage extends FixedSizeClientMessage implements ExchangeableMessage {
+public final class PingMessage extends FixedSizeClientMessage {
 
     private static final int PING_FLAG = 0x0E;
 
