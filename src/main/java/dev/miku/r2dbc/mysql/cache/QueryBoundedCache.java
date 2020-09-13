@@ -16,14 +16,15 @@
 
 package dev.miku.r2dbc.mysql.cache;
 
+import dev.miku.r2dbc.mysql.Query;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
 
 /**
  * A bounded implementation of {@link QueryCache} that supports high expected concurrency.
  */
-final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> implements QueryCache<T> {
+final class QueryBoundedCache extends ConcurrentHashMap<String, Lru.Node<Query>> implements QueryCache {
 
     private static final int READ_BUFFER_SIZE = 16;
 
@@ -31,21 +32,19 @@ final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> 
 
     private final FreqSketch sketch;
 
-    private final RingBuffer<Lru.Node<T>> readBuffer;
+    private final RingBuffer<Lru.Node<Query>> readBuffer;
 
-    private final RingBuffer<Lru.Node<T>> writeBuffer;
+    private final RingBuffer<Lru.Node<Query>> writeBuffer;
 
     private final ReentrantLock lock;
 
-    private final Lru<T> window;
+    private final Lru<Query> window;
 
-    private final Lru<T> probation;
+    private final Lru<Query> probation;
 
-    private final Lru<T> protection;
+    private final Lru<Query> protection;
 
-    private final Function<String, T> mapping;
-
-    QueryBoundedCache(int capacity, Function<String, T> mapping) {
+    QueryBoundedCache(int capacity) {
         int windowSize = Math.max(1, capacity / 100);
         int protectionSize = Math.max(1, (int) ((capacity - windowSize) * 0.8));
         int probationSize = Math.max(1, capacity - protectionSize - windowSize);
@@ -57,13 +56,12 @@ final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> 
         this.window = new Lru<>(windowSize, Lru.WINDOW);
         this.probation = new Lru<>(probationSize, Lru.PROBATION);
         this.protection = new Lru<>(protectionSize, Lru.PROTECTION);
-        this.mapping = mapping;
     }
 
     @Override
-    public T get(String key) {
+    public Query get(String key) {
         // An optimistic fast path to avoid unnecessary locking.
-        Lru.Node<T> node = super.get(key);
+        Lru.Node<Query> node = super.get(key);
         if (node != null) {
             afterRead(node);
             return node.getValue();
@@ -74,7 +72,7 @@ final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> 
         // It always return current (existing or computed) value.
         node = super.computeIfAbsent(key, (k) -> {
             present[0] = false;
-            return new Lru.Node<>(k, mapping.apply(k));
+            return new Lru.Node<>(k, Query.parse(k));
         });
 
         if (present[0]) {
@@ -86,7 +84,7 @@ final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> 
         return node.getValue();
     }
 
-    private void afterRead(Lru.Node<T> node) {
+    private void afterRead(Lru.Node<Query> node) {
         boolean isFailed = !readBuffer.offer(node);
 
         /*
@@ -114,7 +112,7 @@ final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> 
         }
     }
 
-    private void afterAdded(Lru.Node<T> node) {
+    private void afterAdded(Lru.Node<Query> node) {
         /*
          * When a cache miss occurs then the entry must be added to the LRU and maybe
          * an eviction occurs. This must occur, so it has the work has to be processed
@@ -143,22 +141,22 @@ final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> 
         }
     }
 
-    private void drainAdded(Lru.Node<T> node) {
+    private void drainAdded(Lru.Node<Query> node) {
         sketch.increment(node.getKey().hashCode());
 
-        Lru.Node<T> windowEvict = window.push(node);
+        Lru.Node<Query> windowEvict = window.push(node);
         if (windowEvict == null) {
             return;
         }
 
-        Lru.Node<T> probationEvict = probation.nextEviction();
+        Lru.Node<Query> probationEvict = probation.nextEviction();
         if (probationEvict == null) {
             // Probation will be not evict any node, no-one is evicted.
             probation.push(windowEvict);
             return;
         }
 
-        Lru.Node<T> evicted = sketch.frequency(windowEvict.getKey().hashCode()) >
+        Lru.Node<Query> evicted = sketch.frequency(windowEvict.getKey().hashCode()) >
             sketch.frequency(probationEvict.getKey().hashCode()) ?
             probation.push(windowEvict) : windowEvict;
 
@@ -170,7 +168,7 @@ final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> 
         super.remove(evicted.getKey(), evicted);
     }
 
-    private void drainRead(Lru.Node<T> node) {
+    private void drainRead(Lru.Node<Query> node) {
         sketch.increment(node.getKey().hashCode());
 
         switch (node.getLru()) {
@@ -179,7 +177,7 @@ final class QueryBoundedCache<T> extends ConcurrentHashMap<String, Lru.Node<T>> 
                 break;
             case Lru.PROBATION:
                 probation.remove(node);
-                Lru.Node<T> evicted = protection.push(node);
+                Lru.Node<Query> evicted = protection.push(node);
 
                 if (evicted != null) {
                     // This element must be protected.

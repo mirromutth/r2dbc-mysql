@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 /**
- * Integration tests for {@link SimpleQuery}, {@link TextSimpleStatement} and {@link TextParametrizedStatement}.
+ * Integration tests for {@link TextSimpleStatement} and {@link TextParametrizedStatement}.
  */
 class TextQueryIntegrationTest extends QueryIntegrationTestSupport {
 

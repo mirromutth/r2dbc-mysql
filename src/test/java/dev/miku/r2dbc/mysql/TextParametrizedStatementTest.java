@@ -39,8 +39,8 @@ class TextParametrizedStatementTest implements StatementTestSupport<TextParametr
     }
 
     @Override
-    public TextParametrizedStatement makeInstance(String parametrizedSql, String simpleSql) {
-        return new TextParametrizedStatement(client, codecs, context, (TextQuery) Query.parse(parametrizedSql, false));
+    public TextParametrizedStatement makeInstance(String sql, String ignored) {
+        return new TextParametrizedStatement(client, codecs, Query.parse(sql), context);
     }
 
     @Override

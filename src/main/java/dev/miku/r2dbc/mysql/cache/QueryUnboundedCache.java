@@ -16,24 +16,22 @@
 
 package dev.miku.r2dbc.mysql.cache;
 
+import dev.miku.r2dbc.mysql.Query;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
  * An unbounded implementation of {@link QueryCache}.
  */
-final class QueryUnboundedCache<T> extends ConcurrentHashMap<String, T> implements QueryCache<T> {
+final class QueryUnboundedCache extends ConcurrentHashMap<String, Query> implements QueryCache {
 
-    private final Function<String, T> mapping;
-
-    QueryUnboundedCache(Function<String, T> mapping) {
-        this.mapping = mapping;
-    }
+    private static final Function<String, Query> PARSE = Query::parse;
 
     @Override
-    public T get(String key) {
+    public Query get(String key) {
         // An optimistic fast path to avoid unnecessary locking.
-        T value = super.get(key);
-        return value == null ? super.computeIfAbsent(key, mapping) : value;
+        Query value = super.get(key);
+        return value == null ? super.computeIfAbsent(key, PARSE) : value;
     }
 }

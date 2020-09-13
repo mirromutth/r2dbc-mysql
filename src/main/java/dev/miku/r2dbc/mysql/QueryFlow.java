@@ -30,7 +30,7 @@ import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedCloseMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedResetMessage;
-import dev.miku.r2dbc.mysql.message.client.SimpleQueryMessage;
+import dev.miku.r2dbc.mysql.message.client.TextQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
 import dev.miku.r2dbc.mysql.message.server.AuthMoreDataMessage;
 import dev.miku.r2dbc.mysql.message.server.ChangeAuthMessage;
@@ -91,9 +91,7 @@ final class QueryFlow {
      * @return the {@link Client}, or an error/exception received by login failed.
      */
     static Mono<Client> login(Client client, SslMode sslMode, String database, String user, @Nullable CharSequence password, ConnectionContext context) {
-        LoginExchangeable exchangeable = new LoginExchangeable(client, sslMode, database, user, password, context);
-
-        return client.exchange(exchangeable)
+        return client.exchange(new LoginExchangeable(client, sslMode, database, user, password, context))
             .onErrorResume(e -> client.forceClose().then(Mono.error(e)))
             .then(Mono.just(client));
     }
@@ -103,26 +101,24 @@ final class QueryFlow {
      * The execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}.
      * The {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s.
      *
-     * @param client       the {@link Client} to exchange messages with.
-     * @param sql          the original statement for exception tracing.
-     * @param bindings     the data of bindings.
-     * @param fetchSize    the size of fetching, if it less than or equal to {@literal 0} means fetch all rows.
-     * @param prepareCache the cache of server-preparing result.
+     * @param client    the {@link Client} to exchange messages with.
+     * @param sql       the original statement for exception tracing.
+     * @param bindings  the data of bindings.
+     * @param fetchSize the size of fetching, if it less than or equal to {@literal 0} means fetch all rows.
+     * @param cache     the cache of server-preparing result.
      * @return the messages received in response to this exchange, and will be completed
      * by {@link CompleteMessage} when it is last result for each binding.
      */
     static Flux<Flux<ServerMessage>> execute(
-        Client client, String sql, List<Binding> bindings, int fetchSize, PrepareCache<Integer> prepareCache
+        Client client, String sql, List<Binding> bindings, int fetchSize, PrepareCache<Integer> cache
     ) {
         return Flux.defer(() -> {
             if (bindings.isEmpty()) {
                 return Flux.empty();
             }
 
-            PrepareExchangeable exchangeable =
-                new PrepareExchangeable(prepareCache, sql, bindings.iterator(), fetchSize);
-
-            return client.exchange(exchangeable).windowUntil(RESULT_DONE);
+            return client.exchange(new PrepareExchangeable(cache, sql, bindings.iterator(), fetchSize))
+                .windowUntil(RESULT_DONE);
         });
     }
 
@@ -132,20 +128,19 @@ final class QueryFlow {
      * The {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s.
      *
      * @param client   the {@link Client} to exchange messages with.
-     * @param query    the {@link TextQuery} for synthetic client-preparing statement.
+     * @param query    the {@link Query} for synthetic client-preparing statement.
      * @param bindings the data of bindings.
      * @return the messages received in response to this exchange, and will be completed
      * by {@link CompleteMessage} when it is last result for each binding.
      */
-    static Flux<Flux<ServerMessage>> execute(Client client, TextQuery query, List<Binding> bindings) {
+    static Flux<Flux<ServerMessage>> execute(Client client, Query query, List<Binding> bindings) {
         return Flux.defer(() -> {
             if (bindings.isEmpty()) {
                 return Flux.empty();
             }
 
-            TextQueryExchangeable exchangeable = new TextQueryExchangeable(query, bindings.iterator());
-
-            return client.exchange(exchangeable).windowUntil(RESULT_DONE);
+            return client.exchange(new TextQueryExchangeable(query, bindings.iterator()))
+                .windowUntil(RESULT_DONE);
         });
     }
 
@@ -224,7 +219,7 @@ final class QueryFlow {
      * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
      */
     private static Flux<ServerMessage> execute0(Client client, String sql) {
-        return client.exchange(new SimpleQueryMessage(sql), (message, sink) -> {
+        return client.exchange(TextQueryMessage.of(sql), (message, sink) -> {
             if (message instanceof ErrorMessage) {
                 sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
             } else {
@@ -287,11 +282,11 @@ final class TextQueryExchangeable extends BaseFluxExchangeable {
 
     private final AtomicBoolean disposed = new AtomicBoolean();
 
-    private final TextQuery query;
+    private final Query query;
 
     private final Iterator<Binding> bindings;
 
-    TextQueryExchangeable(TextQuery query, Iterator<Binding> bindings) {
+    TextQueryExchangeable(Query query, Iterator<Binding> bindings) {
         this.query = query;
         this.bindings = bindings;
     }
@@ -330,7 +325,7 @@ final class TextQueryExchangeable extends BaseFluxExchangeable {
 
     @Override
     protected R2dbcException transform(ErrorMessage message) {
-        return ExceptionFactory.createException(message, query.getSql());
+        return ExceptionFactory.createException(message, query.getFormattedSql());
     }
 }
 
@@ -360,7 +355,7 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
     @Override
     protected void afterSubscribe() {
         String current = this.statements.next();
-        this.requests.onNext(new SimpleQueryMessage(current));
+        this.requests.onNext(TextQueryMessage.of(current));
         this.current = current;
     }
 
@@ -371,9 +366,9 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
 
     @Override
     protected ClientMessage nextMessage() {
-        String sql = statements.next();
-        current = sql;
-        return new SimpleQueryMessage(sql);
+        String current = statements.next();
+        this.current = current;
+        return TextQueryMessage.of(current);
     }
 
     @Override
@@ -813,7 +808,7 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
         ServerVersion serverVersion = header.getServerVersion();
 
         if (handshakeVersion < HANDSHAKE_VERSION) {
-            logger.warn("The MySQL server use old handshake V{}, server version is {}, maybe most features are not available", handshakeVersion, serverVersion);
+            logger.warn("The MySQL use old handshake V{}, server version is {}, maybe most features are not available", handshakeVersion, serverVersion);
         }
 
         int capabilities = clientCapabilities(message.getServerCapabilities());

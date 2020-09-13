@@ -41,20 +41,20 @@ class MySqlConnectionTest {
     private final String product = "MockConnection";
 
     private final MySqlConnection noPrepare = new MySqlConnection(client, ConnectionContextTest.mock(),
-        codecs, level, Caches.createQueryCache(0, s -> Query.parse(s, false)),
+        codecs, level, Caches.createQueryCache(0),
         Caches.createPrepareCache(0), product, null);
 
     @Test
     void createStatement() {
         String condition = "SELECT * FROM test";
         MySqlConnection allPrepare = new MySqlConnection(client, ConnectionContextTest.mock(),
-            codecs, level, Caches.createQueryCache(0, s -> Query.parse(s, true)),
+            codecs, level, Caches.createQueryCache(0),
             Caches.createPrepareCache(0), product, sql -> true);
         MySqlConnection halfPrepare = new MySqlConnection(client, ConnectionContextTest.mock(),
-            codecs, level, Caches.createQueryCache(0, s -> Query.parse(s, true)),
+            codecs, level, Caches.createQueryCache(0),
             Caches.createPrepareCache(0), product, sql -> false);
         MySqlConnection conditionPrepare = new MySqlConnection(client, ConnectionContextTest.mock(),
-            codecs, level, Caches.createQueryCache(0, s -> Query.parse(s, true)),
+            codecs, level, Caches.createQueryCache(0),
             Caches.createPrepareCache(0), product, sql -> sql.equals(condition));
 
         assertThat(noPrepare.createStatement("SELECT * FROM test WHERE id=1"))

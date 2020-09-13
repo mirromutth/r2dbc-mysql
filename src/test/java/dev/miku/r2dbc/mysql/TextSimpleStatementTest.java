@@ -53,8 +53,8 @@ class TextSimpleStatementTest implements StatementTestSupport<TextSimpleStatemen
     }
 
     @Override
-    public TextSimpleStatement makeInstance(String parametrizedSql, String simpleSql) {
-        return new TextSimpleStatement(client, codecs, context, simpleSql);
+    public TextSimpleStatement makeInstance(String ignored, String sql) {
+        return new TextSimpleStatement(client, codecs, context, sql);
     }
 
     @Override

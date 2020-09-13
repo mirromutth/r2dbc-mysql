@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
+import dev.miku.r2dbc.mysql.Query;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -23,8 +24,7 @@ import reactor.test.StepVerifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -84,41 +84,41 @@ class ParamWriterTest {
 
     @Test
     void appendPart() {
-        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(1);
+        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(parameterOnly(1));
         writer.append("define", 2, 5);
         assertThat(ParameterWriterHelper.toSql(writer)).isEqualTo("'fin'");
     }
 
     @Test
     void writePart() {
-        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(1);
+        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(parameterOnly(1));
         writer.write("define", 2, 3);
         assertThat(ParameterWriterHelper.toSql(writer)).isEqualTo("'fin'");
     }
 
     @Test
     void appendNull() {
-        assertThat(ParameterWriterHelper.toSql(ParameterWriterHelper.get(1).append(null)))
+        assertThat(ParameterWriterHelper.toSql(ParameterWriterHelper.get(parameterOnly(1)).append(null)))
             .isEqualTo("'null'");
-        assertThat(ParameterWriterHelper.toSql(ParameterWriterHelper.get(1).append(null, 1, 3)))
+        assertThat(ParameterWriterHelper.toSql(ParameterWriterHelper.get(parameterOnly(1)).append(null, 1, 3)))
             .isEqualTo("'ul'");
     }
 
     @Test
     void writeNull() {
-        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(1);
+        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(parameterOnly(1));
         writer.write((String) null);
         assertThat(ParameterWriterHelper.toSql(writer)).isEqualTo("'null'");
 
-        writer = (ParamWriter) ParameterWriterHelper.get(1);
+        writer = (ParamWriter) ParameterWriterHelper.get(parameterOnly(1));
         writer.write((String) null, 1, 2);
         assertThat(ParameterWriterHelper.toSql(writer)).isEqualTo("'ul'");
 
-        writer = (ParamWriter) ParameterWriterHelper.get(1);
+        writer = (ParamWriter) ParameterWriterHelper.get(parameterOnly(1));
         writer.write((char[]) null);
         assertThat(ParameterWriterHelper.toSql(writer)).isEqualTo("'null'");
 
-        writer = (ParamWriter) ParameterWriterHelper.get(1);
+        writer = (ParamWriter) ParameterWriterHelper.get(parameterOnly(1));
         writer.write((char[]) null, 1, 2);
         assertThat(ParameterWriterHelper.toSql(writer)).isEqualTo("'ul'");
     }
@@ -131,7 +131,7 @@ class ParamWriterTest {
             values[i] = new MockParameter(true);
         }
 
-        Flux.from(ParamWriter.publish(emptyStrings(), values))
+        Flux.from(ParamWriter.publish(parameterOnly(SIZE), values))
             .as(StepVerifier::create)
             .expectNext(new String(new char[SIZE]).replace("\0", "''"))
             .verifyComplete();
@@ -153,7 +153,7 @@ class ParamWriterTest {
             values[i] = new MockParameter(false);
         }
 
-        Flux.from(ParamWriter.publish(emptyStrings(), values))
+        Flux.from(ParamWriter.publish(parameterOnly(SIZE), values))
             .as(StepVerifier::create)
             .verifyError(MockException.class);
 
@@ -168,43 +168,28 @@ class ParamWriterTest {
             values[i] = new MockParameter(false);
         }
 
-        Flux.from(ParamWriter.publish(emptyStrings(), values))
+        Flux.from(ParamWriter.publish(parameterOnly(SIZE), values))
             .as(StepVerifier::create)
             .verifyError(MockException.class);
 
         assertThat(values).extracting(MockParameter::refCnt).containsOnly(0);
     }
 
-    private static List<String> emptyStrings() {
-        List<String> l = new ArrayList<>(SIZE + 1);
+    private static Query parameterOnly(int parameters) {
+        char[] chars = new char[parameters];
+        Arrays.fill(chars, '?');
 
-        for (int i = 0; i < SIZE + 1; ++i) {
-            l.add("");
-        }
-
-        return l;
-    }
-
-    private static List<String> spaceStrings() {
-        List<String> l = new ArrayList<>(SIZE + 1);
-        l.add("");
-
-        for (int i = 1; i < SIZE; ++i) {
-            l.add(" ");
-        }
-
-        l.add("");
-        return l;
+        return Query.parse(new String(chars));
     }
 
     private static ParamWriter stringWriter() {
-        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(1);
+        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(parameterOnly(1));
         writer.write('0');
         return writer;
     }
 
     private static ParamWriter nullWriter() {
-        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(1);
+        ParamWriter writer = (ParamWriter) ParameterWriterHelper.get(parameterOnly(1));
         writer.writeNull();
         return writer;
     }

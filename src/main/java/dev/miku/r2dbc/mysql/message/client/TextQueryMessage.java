@@ -18,55 +18,77 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.Query;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
-import java.util.List;
 
-import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * Parametrized query with text protocol message.
- * <p>
- * Note: it use {@link SimpleQueryMessage#QUERY_FLAG} because it is text protocol query.
+ * A plain text SQL query message, it could include multi-statements.
  */
 public final class TextQueryMessage extends LargeClientMessage {
 
-    private final List<String> sqlParts;
+    static final byte QUERY_FLAG = 3;
 
-    private final Parameter[] values;
+    private final Mono<String> sql;
 
-    public TextQueryMessage(List<String> sqlParts, Parameter[] values) {
-        requireNonNull(sqlParts, "sql parts must not be null");
-        requireNonNull(values, "values must not be null");
-        require(sqlParts.size() - 1 == values.length, "sql parts size must not be parameters size + 1");
+    private TextQueryMessage(Mono<String> sql) {
+        this.sql = sql;
+    }
 
-        this.sqlParts = sqlParts;
-        this.values = values;
+    @Override
+    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
+        Charset charset = context.getClientCollation().getCharset();
+
+        return sql.map(it -> {
+            ByteBuf buf = allocator.buffer();
+
+            try {
+                buf.writeByte(QUERY_FLAG).writeCharSequence(it, charset);
+                return buf;
+            } catch (Throwable e) {
+                // Maybe IndexOutOfBounds or OOM (too large sql)
+                buf.release();
+                throw e;
+            }
+        });
     }
 
     @Override
     public String toString() {
-        return "TextQueryMessage{sqlParts=REDACTED, values=REDACTED}";
+        return "TextQueryMessage{sql=REDACTED}";
     }
 
-    @Override
-    protected Mono<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
-        try {
-            Charset charset = context.getClientCollation().getCharset();
-            return ParamWriter.publish(sqlParts, values).map(sql -> {
-                ByteBuf buf = allocator.buffer(sql.length(), Integer.MAX_VALUE);
+    /**
+     * Create a {@link TextQueryMessage} without parameter.
+     *
+     * @param sql plain text SQL, should not contain any parameter placeholder.
+     * @return above {@link TextQueryMessage}.
+     * @throws IllegalArgumentException if {@code sql} is {@code null}.
+     */
+    public static TextQueryMessage of(String sql) {
+        requireNonNull(sql, "sql must not be null");
 
-                buf.writeByte(SimpleQueryMessage.QUERY_FLAG)
-                    .writeCharSequence(sql, charset);
+        return new TextQueryMessage(Mono.just(sql));
+    }
 
-                return buf;
-            });
-        } catch (Throwable e) {
-            return Mono.error(e);
-        }
+    /**
+     * Create a {@link TextQueryMessage} with parameters.
+     *
+     * @param query  the parsed {@link Query}.
+     * @param values the parameter values.
+     * @return above {@link TextQueryMessage}.
+     * @throws IllegalArgumentException if {@code query} or {@code values} is {@code null}.
+     */
+    public static TextQueryMessage of(Query query, Parameter[] values) {
+        requireNonNull(query, "query must not be null");
+        requireNonNull(values, "values must not be null");
+
+        return new TextQueryMessage(ParamWriter.publish(query, values));
     }
 }

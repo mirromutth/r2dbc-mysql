@@ -22,28 +22,18 @@ import reactor.core.publisher.Flux;
 
 import java.util.List;
 
-import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
-
 /**
  * An implementation of {@link ParametrizedStatementSupport} based on MySQL text query.
  */
 final class TextParametrizedStatement extends ParametrizedStatementSupport {
 
-    private final TextQuery query;
-
-    TextParametrizedStatement(Client client, Codecs codecs, ConnectionContext context, TextQuery query) {
-        super(client, codecs, context, requireNonNull(query, "query must not be null").getParameters());
-        this.query = query;
+    TextParametrizedStatement(Client client, Codecs codecs, Query query, ConnectionContext context) {
+        super(client, codecs, query, context);
     }
 
     @Override
     protected Flux<MySqlResult> execute(List<Binding> bindings) {
         return QueryFlow.execute(client, query, bindings)
             .map(messages -> new MySqlResult(false, codecs, context, generatedKeyName, messages));
-    }
-
-    @Override
-    protected ParameterIndex getIndexes(String name) {
-        return query.getIndexes(name);
     }
 }

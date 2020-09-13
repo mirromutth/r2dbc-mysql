@@ -42,19 +42,23 @@ abstract class ParametrizedStatementSupport extends MySqlStatementSupport {
 
     protected final Codecs codecs;
 
+    protected final Query query;
+
     protected final ConnectionContext context;
 
     private final Bindings bindings;
 
     private final AtomicBoolean executed = new AtomicBoolean();
 
-    ParametrizedStatementSupport(Client client, Codecs codecs, ConnectionContext context, int parameters) {
-        require(parameters > 0, "parameters must be a positive integer");
+    ParametrizedStatementSupport(Client client, Codecs codecs, Query query, ConnectionContext context) {
+        requireNonNull(query, "query must not be null");
+        require(query.getParameters() > 0, "parameters must be a positive integer");
 
         this.client = requireNonNull(client, "client must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.context = requireNonNull(context, "context must not be null");
-        this.bindings = new Bindings(parameters);
+        this.query = query;
+        this.bindings = new Bindings(query.getParameters());
     }
 
     @Override
@@ -126,7 +130,15 @@ abstract class ParametrizedStatementSupport extends MySqlStatementSupport {
      * @return the {@link ParameterIndex} including an index or multi-indexes
      * @throws IllegalArgumentException if parameter {@code name} not found
      */
-    abstract protected ParameterIndex getIndexes(String name);
+    private ParameterIndex getIndexes(String name) {
+        ParameterIndex index = query.getNamedIndexes().get(name);
+
+        if (index == null) {
+            throw new IllegalArgumentException(String.format("No such parameter with name '%s'", name));
+        }
+
+        return index;
+    }
 
     private void addBinding(int index, Parameter value) {
         assertNotExecuted();
