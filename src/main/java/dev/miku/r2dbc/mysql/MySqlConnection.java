@@ -130,7 +130,7 @@ public final class MySqlConnection implements Connection {
 
     private final QueryCache queryCache;
 
-    private final PrepareCache<Integer> prepareCache;
+    private final PrepareCache prepareCache;
 
     @Nullable
     private final Predicate<String> prepare;
@@ -152,7 +152,7 @@ public final class MySqlConnection implements Connection {
      */
     MySqlConnection(
         Client client, ConnectionContext context, Codecs codecs, IsolationLevel level, QueryCache queryCache,
-        PrepareCache<Integer> prepareCache, @Nullable String product, @Nullable Predicate<String> prepare
+        PrepareCache prepareCache, @Nullable String product, @Nullable Predicate<String> prepare
     ) {
         this.client = client;
         this.context = context;
@@ -393,7 +393,7 @@ public final class MySqlConnection implements Connection {
      */
     static Mono<MySqlConnection> init(
         Client client, Codecs codecs, ConnectionContext context, QueryCache queryCache,
-        PrepareCache<Integer> prepareCache, @Nullable Predicate<String> prepare
+        PrepareCache prepareCache, @Nullable Predicate<String> prepare
     ) {
         ServerVersion version = context.getServerVersion();
         StringBuilder query = new StringBuilder(128);

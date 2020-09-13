@@ -89,7 +89,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
                 .flatMap(client -> {
                     ByteBufAllocator allocator = client.getByteBufAllocator();
                     CodecsBuilder builder = Codecs.builder(allocator);
-                    PrepareCache<Integer> prepareCache = Caches.createPrepareCache(prepareCacheSize);
+                    PrepareCache prepareCache = Caches.createPrepareCache(prepareCacheSize);
 
                     extensions.forEach(CodecRegistrar.class, registrar -> registrar.register(allocator, builder));
 

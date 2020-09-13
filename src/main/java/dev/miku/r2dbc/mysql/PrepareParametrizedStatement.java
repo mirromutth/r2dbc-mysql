@@ -30,14 +30,11 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
  */
 final class PrepareParametrizedStatement extends ParametrizedStatementSupport {
 
-    private final PrepareCache<Integer> prepareCache;
+    private final PrepareCache prepareCache;
 
     private int fetchSize = 0;
 
-    PrepareParametrizedStatement(
-        Client client, Codecs codecs, Query query,
-        ConnectionContext context, PrepareCache<Integer> prepareCache
-    ) {
+    PrepareParametrizedStatement(Client client, Codecs codecs, Query query, ConnectionContext context, PrepareCache prepareCache) {
         super(client, codecs, query, context);
         this.prepareCache = prepareCache;
     }
