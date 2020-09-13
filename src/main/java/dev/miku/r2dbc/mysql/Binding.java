@@ -69,8 +69,8 @@ final class Binding {
         return new PreparedExecuteMessage(statementId, immediate, drainValues());
     }
 
-    TextQueryMessage toTextMessage(TextQuery query) {
-        return new TextQueryMessage(query.getSqlParts(), drainValues());
+    TextQueryMessage toTextMessage(Query query) {
+        return TextQueryMessage.of(query, drainValues());
     }
 
     /**

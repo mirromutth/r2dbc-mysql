@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.Query;
 import org.junit.platform.commons.util.ReflectionUtils;
 
 import java.lang.reflect.Constructor;
@@ -44,13 +45,12 @@ public final class ParameterWriterHelper {
         ReflectionUtils.findMethod(ParamWriter.class, "toSql")
             .orElseThrow(RuntimeException::new);
 
-    public static ParameterWriter get(int parameters) {
-        assertThat(parameters).isGreaterThan(0);
+    public static ParameterWriter get(Query query) {
+        assertThat(query.getPartSize()).isGreaterThan(1);
 
-        return ReflectionUtils.newInstance(CONSTRUCTOR, new StringBuilder(), new Iter(parameters));
+        return ReflectionUtils.newInstance(CONSTRUCTOR, query);
     }
 
-    @SuppressWarnings("ConstantConditions")
     public static String toSql(ParameterWriter writer) {
         ParamWriter w = (ParamWriter) writer;
 

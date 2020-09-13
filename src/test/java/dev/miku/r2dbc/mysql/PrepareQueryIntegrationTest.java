@@ -24,7 +24,7 @@ import java.util.Arrays;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Integration tests for {@link PrepareQuery}, {@link PrepareParametrizedStatement} and {@link PrepareSimpleStatement}.
+ * Integration tests for {@link PrepareParametrizedStatement} and {@link PrepareSimpleStatement}.
  */
 class PrepareQueryIntegrationTest extends QueryIntegrationTestSupport {
 

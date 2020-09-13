@@ -16,6 +16,8 @@
 
 package dev.miku.r2dbc.mysql;
 
+import reactor.util.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,71 +25,155 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Base class for statement parse, parametrize and mapping. It is a sealed class, has
- * implementations {@link SimpleQuery}, {@link PrepareQuery} and {@link TextQuery}.
+ * A data class contains parsed statement and indexes mapping.
  */
-abstract class Query {
+public final class Query {
 
-    abstract int getParameters();
+    private final String sql;
 
-    abstract ParameterIndex getIndexes(String identifier);
+    private final Map<String, ParameterIndex> namedIndexes;
 
-    static Query parse(String sql, boolean prepare) {
+    private final List<Part> parts;
+
+    private final int formattedSize;
+
+    @Nullable
+    private String formattedSql;
+
+    private Query(String sql, Map<String, ParameterIndex> namedIndexes, List<Part> parts, int formattedSize) {
+        this.sql = sql;
+        this.namedIndexes = namedIndexes;
+        this.parts = parts;
+        this.formattedSize = formattedSize;
+    }
+
+    public void partTo(StringBuilder builder, int i) {
+        Part part = parts.get(i);
+        builder.append(sql, part.start, part.end);
+    }
+
+    public int getFormattedSize() {
+        return formattedSize;
+    }
+
+    public int getPartSize() {
+        return parts.size();
+    }
+
+    boolean isSimple() {
+        return parts.isEmpty();
+    }
+
+    int getParameters() {
+        int size = parts.size();
+        return size > 1 ? size - 1 : 0;
+    }
+
+    String getFormattedSql() {
+        String formattedSql = this.formattedSql;
+
+        if (formattedSql == null) {
+            if (namedIndexes.isEmpty()) {
+                this.formattedSql = formattedSql = sql;
+            } else {
+                Part part = parts.get(0);
+                char[] result = new char[formattedSize];
+                int size = parts.size();
+                int length = 0;
+
+                if (part.end > part.start) {
+                    sql.getChars(part.start, part.end, result, 0);
+                    length = part.end - part.start;
+                }
+
+                for (int i = 1; i < size; ++i) {
+                    result[length++] = '?';
+                    part = parts.get(i);
+
+                    if (part.end > part.start) {
+                        sql.getChars(part.start, part.end, result, length);
+                        length += part.end - part.start;
+                    }
+                }
+
+                this.formattedSql = formattedSql = new String(result);
+            }
+        }
+
+        return formattedSql;
+    }
+
+    Map<String, ParameterIndex> getNamedIndexes() {
+        return namedIndexes;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        Query query = (Query) o;
+
+        return formattedSize == query.formattedSize && sql.equals(query.sql) &&
+            namedIndexes.equals(query.namedIndexes) && parts.equals(query.parts);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = sql.hashCode();
+        result = 31 * result + namedIndexes.hashCode();
+        result = 31 * result + parts.hashCode();
+        return 31 * result + formattedSize;
+    }
+
+    @Override
+    public String toString() {
+        return "Query{sql='" + sql + "', namedIndexes=" + namedIndexes +
+            ", parts=" + parts + ", formattedSize=" + formattedSize + '}';
+    }
+
+    public static Query parse(String sql) {
         int offset = findParamMark(sql, 0);
 
         if (offset < 0) {
-            return SimpleQuery.INSTANCE;
+            return new Query(sql, Collections.emptyMap(), Collections.emptyList(), sql.length());
         }
 
         Map<String, ParameterIndex> nameKeyedParams = new HashMap<>();
         // An parameter name, used by singleton map, if SQL does not contains named-parameter, it will always be empty.
         String anyName = "";
-        // The last named parameter end index of sql.
-        int lastNamedEnd = 0;
         // The last parameter end index (whatever named or not) of sql.
         int lastParamEnd = 0;
         int length = sql.length();
         int paramCount = 0;
-        // ONLY FOR PREPARE: Parsed SQL builder, if SQL does not contains named-parameter, it will always be null.
-        StringBuilder sqlBuilder = null;
-        // ONLY FOR TEXT: SQL parts split by parameters.
-        List<String> sqlParts = prepare ? null : new ArrayList<>();
+        int formattedSize = 0;
+        // SQL parts split by parameters.
+        List<Part> parts = new ArrayList<>();
 
         while (offset >= 0 && offset < length) {
-            if (sqlParts != null) {
-                sqlParts.add(subStr(sql, lastParamEnd, offset));
-            }
+            parts.add(Part.of(lastParamEnd, offset));
+            formattedSize += offset - lastParamEnd + 1;
             ++paramCount;
             // Assuming it has no name, then change later if it has, see command #Change.
             lastParamEnd = ++offset;
 
             if (offset < length) {
-                char now = sql.charAt(offset);
-
                 // Java style parameter name follow the '?'.
-                if (Character.isJavaIdentifierStart(now)) {
+                if (Character.isJavaIdentifierStart(sql.charAt(offset))) {
                     int start = offset++;
 
-                    while (offset < length) {
-                        if (!Character.isJavaIdentifierPart(sql.charAt(offset))) {
-                            break;
-                        }
-
+                    while (offset < length && Character.isJavaIdentifierPart(sql.charAt(offset))) {
                         ++offset;
                     }
 
-                    if (prepare) {
-                        if (sqlBuilder == null) {
-                            sqlBuilder = new StringBuilder(sql.length() - offset + start);
-                        }
-
-                        sqlBuilder.append(sql, lastNamedEnd, start);
-                    }
-
                     // #Change: last parameter and last named parameter end index.
-                    lastParamEnd = lastNamedEnd = offset;
+                    lastParamEnd = offset;
 
-                    String name = subStr(sql, start, offset);
+                    String name = sql.substring(start, offset);
                     int paramIndex = paramCount - 1;
                     ParameterIndex value = nameKeyedParams.get(name);
 
@@ -98,31 +184,20 @@ abstract class Query {
                     } else {
                         value.push(paramIndex);
                     }
+
+                    if (offset < length) {
+                        offset = findParamMark(sql, offset);
+                    }
+                } else {
+                    offset = findParamMark(sql, offset);
                 }
             } // offset is length or end of a parameter.
-
-            if (offset < length) {
-                offset = findParamMark(sql, offset);
-            }
         }
 
-        if (sqlParts == null) {
-            String parsedSql;
+        parts.add(Part.of(lastParamEnd, length));
+        formattedSize += length - lastParamEnd;
 
-            if (sqlBuilder == null) {
-                parsedSql = sql;
-            } else if (lastNamedEnd < length) {
-                // Contains more plain sql.
-                parsedSql = sqlBuilder.append(sql, lastNamedEnd, length).toString();
-            } else {
-                parsedSql = sqlBuilder.toString();
-            }
-
-            return new PrepareQuery(parsedSql, wrap(nameKeyedParams, anyName), paramCount);
-        } else {
-            sqlParts.add(subStr(sql, lastParamEnd, length));
-            return new TextQuery(sql, wrap(nameKeyedParams, anyName), sqlParts);
-        }
+        return new Query(sql, wrap(nameKeyedParams, anyName), parts, formattedSize);
     }
 
     /**
@@ -134,7 +209,7 @@ abstract class Query {
      * <li>Literals, enclosed in single quotes ({@literal '}) </li>
      * <li>Literals, enclosed in double quotes ({@literal "}) </li>
      * <li>Literals, enclosed in backtick quotes ({@literal `}) </li>
-     * <li>Escaped escapes or literal delimiters (i.e. {@literal ''}, {@literal ""} or {@literal ``)</li>
+     * <li>Escaped escapes or literal delimiters (i.e. {@literal ''}, {@literal ""} or {@literal ``})</li>
      * <li>Single-line comments beginning with {@literal --}</li>
      * <li>Multi-line comments beginning enclosed</li>
      * </ul>
@@ -225,7 +300,45 @@ abstract class Query {
         }
     }
 
-    private static String subStr(String sql, int start, int end) {
-        return start == end ? "" : sql.substring(start, end);
+    private static final class Part {
+
+        private static final Part EMPTY = new Part(0, 0);
+
+        private final int start;
+
+        private final int end;
+
+        private Part(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            Part part = (Part) o;
+
+            return start == part.start && end == part.end;
+        }
+
+        @Override
+        public int hashCode() {
+            return Integer.reverse(start) ^ end;
+        }
+
+        @Override
+        public String toString() {
+            return start == end ? "()" : "(" + start + ", " + end + ')';
+        }
+
+        static Part of(int start, int end) {
+            return start == end ? EMPTY : new Part(start, end);
+        }
     }
 }

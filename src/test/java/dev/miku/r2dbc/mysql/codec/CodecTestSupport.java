@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.ConnectionContextTest;
 import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.Query;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriterHelper;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
@@ -87,8 +88,10 @@ interface CodecTestSupport<T> {
 
         assertThat(origin).hasSize(strings.length);
 
+        Query query = Query.parse("?");
+
         for (int i = 0; i < origin.length; ++i) {
-            ParameterWriter writer = ParameterWriterHelper.get(1);
+            ParameterWriter writer = ParameterWriterHelper.get(query);
             codec.encode(origin[i], context())
                 .publishText(writer)
                 .as(StepVerifier::create)

@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.Query;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.message.client.ParameterWriterHelper;
 import io.netty.buffer.ByteBuf;
@@ -126,8 +127,10 @@ class SetCodecTest implements CodecTestSupport<String[]> {
 
         assertThat(sets).hasSize(strings.length);
 
+        Query query = Query.parse("?");
+
         for (int i = 0; i < sets.length; ++i) {
-            ParameterWriter writer = ParameterWriterHelper.get(1);
+            ParameterWriter writer = ParameterWriterHelper.get(query);
             codec.encode(sets[i], context())
                 .publishText(writer)
                 .as(StepVerifier::create)

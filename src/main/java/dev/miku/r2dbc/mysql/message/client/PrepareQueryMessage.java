@@ -16,15 +16,40 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
+import dev.miku.r2dbc.mysql.ConnectionContext;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Mono;
+
+import java.nio.charset.Charset;
+
 /**
  * A message of prepare sql query for get prepared statement ID and information.
  */
-public final class PrepareQueryMessage extends AbstractQueryMessage {
+public final class PrepareQueryMessage extends LargeClientMessage {
 
     private static final byte PREPARE_FLAG = 0x16;
 
-    public PrepareQueryMessage(CharSequence sql) {
-        super(PREPARE_FLAG, sql);
+    private final String sql;
+
+    public PrepareQueryMessage(String sql) {
+        this.sql = sql;
+    }
+
+    @Override
+    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
+        Charset charset = context.getClientCollation().getCharset();
+        ByteBuf buf = allocator.buffer();
+
+        try {
+            buf.writeByte(PREPARE_FLAG).writeCharSequence(sql, charset);
+            return Mono.just(buf);
+        } catch (Throwable e) {
+            // Maybe IndexOutOfBounds or OOM (too large sql)
+            buf.release();
+            return Mono.error(e);
+        }
     }
 
     @Override

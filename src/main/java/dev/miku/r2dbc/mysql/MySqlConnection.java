@@ -128,7 +128,7 @@ public final class MySqlConnection implements Connection {
 
     private final IsolationLevel sessionLevel;
 
-    private final QueryCache<Query> queryCache;
+    private final QueryCache queryCache;
 
     private final PrepareCache<Integer> prepareCache;
 
@@ -151,7 +151,7 @@ public final class MySqlConnection implements Connection {
      * Visible for unit tests.
      */
     MySqlConnection(
-        Client client, ConnectionContext context, Codecs codecs, IsolationLevel level, QueryCache<Query> queryCache,
+        Client client, ConnectionContext context, Codecs codecs, IsolationLevel level, QueryCache queryCache,
         PrepareCache<Integer> prepareCache, @Nullable String product, @Nullable Predicate<String> prepare
     ) {
         this.client = client;
@@ -244,20 +244,22 @@ public final class MySqlConnection implements Connection {
 
         Query query = queryCache.get(sql);
 
-        if (query instanceof SimpleQuery) {
-            if (prepare != null && prepare.test(sql)) {
-                logger.debug("Create a simple statement provided by prepare query");
-                return new PrepareSimpleStatement(client, codecs, context, sql, prepareCache);
-            } else {
+        if (query.isSimple()) {
+            if (prepare == null || !prepare.test(sql)) {
                 logger.debug("Create a simple statement provided by text query");
                 return new TextSimpleStatement(client, codecs, context, sql);
+            } else {
+                logger.debug("Create a simple statement provided by prepare query");
+                return new PrepareSimpleStatement(client, codecs, context, sql, prepareCache);
             }
-        } else if (query instanceof TextQuery) {
-            logger.debug("Create a parametrized statement provided by text query");
-            return new TextParametrizedStatement(client, codecs, context, (TextQuery) query);
         } else {
-            logger.debug("Create a parametrized statement provided by prepare query");
-            return new PrepareParametrizedStatement(client, codecs, context, (PrepareQuery) query, prepareCache);
+            if (prepare == null) {
+                logger.debug("Create a parametrized statement provided by text query");
+                return new TextParametrizedStatement(client, codecs, query, context);
+            } else {
+                logger.debug("Create a parametrized statement provided by prepare query");
+                return new PrepareParametrizedStatement(client, codecs, query, context, prepareCache);
+            }
         }
     }
 
@@ -390,7 +392,7 @@ public final class MySqlConnection implements Connection {
      * @param prepare      judging for prefer use prepare statement to execute simple query
      */
     static Mono<MySqlConnection> init(
-        Client client, Codecs codecs, ConnectionContext context, QueryCache<Query> queryCache,
+        Client client, Codecs codecs, ConnectionContext context, QueryCache queryCache,
         PrepareCache<Integer> prepareCache, @Nullable Predicate<String> prepare
     ) {
         ServerVersion version = context.getServerVersion();

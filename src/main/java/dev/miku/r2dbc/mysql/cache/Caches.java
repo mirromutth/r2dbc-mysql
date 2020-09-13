@@ -16,10 +16,6 @@
 
 package dev.miku.r2dbc.mysql.cache;
 
-import java.util.function.Function;
-
-import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
-
 /**
  * An utility for create caches from configuration.
  */
@@ -29,19 +25,15 @@ public final class Caches {
      * Create a new {@link QueryCache} by cache configuration.
      *
      * @param capacity the capacity of {@link QueryCache}.
-     * @param mapping  the parsing function.
-     * @param <T>      the type of cache value, which is usually the type of parsed result.
      * @return the above {@link QueryCache}.
      */
-    public static <T> QueryCache<T> createQueryCache(int capacity, Function<String, T> mapping) {
-        requireNonNull(mapping, "mapping must not be null");
-
+    public static QueryCache createQueryCache(int capacity) {
         if (capacity > 0 && capacity < Integer.MAX_VALUE) {
-            return new QueryBoundedCache<>(capacity, mapping);
+            return new QueryBoundedCache(capacity);
         } else if (capacity == 0) {
-            return new QueryDisabledCache<>(mapping);
+            return new QueryDisabledCache();
         } else {
-            return new QueryUnboundedCache<>(mapping);
+            return new QueryUnboundedCache();
         }
     }
 

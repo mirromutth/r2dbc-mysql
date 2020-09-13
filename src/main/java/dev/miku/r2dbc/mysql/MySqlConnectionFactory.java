@@ -33,7 +33,6 @@ import reactor.util.annotation.Nullable;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -62,9 +61,7 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
     public static MySqlConnectionFactory from(MySqlConnectionConfiguration configuration) {
         requireNonNull(configuration, "configuration must not be null");
 
-        Function<String, Query> parsing = configuration.getPreferPrepareStatement() == null ?
-            (s -> Query.parse(s, false)) : (s -> Query.parse(s, true));
-        LazyQueryCache queryCache = new LazyQueryCache(configuration.getQueryCacheSize(), parsing);
+        LazyQueryCache queryCache = new LazyQueryCache(configuration.getQueryCacheSize());
 
         return new MySqlConnectionFactory(Mono.defer(() -> {
             MySqlSslConfiguration ssl;
@@ -105,22 +102,19 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
 
         private final int capacity;
 
-        private final Function<String, Query> mapping;
-
         @Nullable
-        private volatile QueryCache<Query> cache;
+        private volatile QueryCache cache;
 
-        private LazyQueryCache(int capacity, Function<String, Query> mapping) {
+        private LazyQueryCache(int capacity) {
             this.capacity = capacity;
-            this.mapping = mapping;
         }
 
-        public QueryCache<Query> get() {
-            QueryCache<Query> cache = this.cache;
+        public QueryCache get() {
+            QueryCache cache = this.cache;
             if (cache == null) {
                 synchronized (this) {
                     if ((cache = this.cache) == null) {
-                        this.cache = cache = Caches.createQueryCache(capacity, mapping);
+                        this.cache = cache = Caches.createQueryCache(capacity);
                     }
                     return cache;
                 }

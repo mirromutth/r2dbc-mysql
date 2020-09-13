@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
+import dev.miku.r2dbc.mysql.Query;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -26,8 +27,6 @@ import reactor.util.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.List;
 import java.util.function.Consumer;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -45,14 +44,17 @@ final class ParamWriter extends ParameterWriter {
 
     private final StringBuilder builder;
 
-    private final Iterator<String> sql;
+    private final Query query;
+
+    private int index;
 
     private Mode mode;
 
-    private ParamWriter(StringBuilder builder, Iterator<String> sql) {
-        this.builder = builder;
-        this.sql = sql;
-        this.mode = sql.hasNext() ? Mode.AVAILABLE : Mode.FULL;
+    private ParamWriter(Query query) {
+        this.builder = newBuilder(query);
+        this.query = query;
+        this.index = 1;
+        this.mode = 1 < query.getPartSize() ? Mode.AVAILABLE : Mode.FULL;
     }
 
     @Override
@@ -252,19 +254,21 @@ final class ParamWriter extends ParameterWriter {
 
     private void flushParameter(Void ignored) {
         Mode current = this.mode;
-        if (current == Mode.FULL) {
-            return;
+
+        switch (current) {
+            case FULL:
+                return;
+            case AVAILABLE:
+                // This parameter never be filled, filling with STRING mode by default.
+                this.builder.append('\'').append('\'');
+                break;
+            default:
+                current.end(this.builder);
+                break;
         }
 
-        if (current == Mode.AVAILABLE) {
-            // This parameter never be filled, filling with STRING mode by default.
-            this.builder.append('\'').append('\'');
-        }
-
-        current.end(this.builder);
-
-        this.builder.append(sql.next());
-        this.mode = sql.hasNext() ? Mode.AVAILABLE : Mode.FULL;
+        query.partTo(builder, index++);
+        this.mode = index < query.getPartSize() ? Mode.AVAILABLE : Mode.FULL;
     }
 
     private ParamWriter append0(CharSequence csq, int start, int end) {
@@ -335,14 +339,21 @@ final class ParamWriter extends ParameterWriter {
         }
     }
 
-    static Mono<String> publish(List<String> sqlParts, Parameter[] values) {
-        Iterator<String> iter = sqlParts.iterator();
-        ParamWriter writer = new ParamWriter(new StringBuilder().append(iter.next()), iter);
+    static Mono<String> publish(Query query, Parameter[] values) {
+        ParamWriter writer = new ParamWriter(query);
 
         return OperatorUtils.discardOnCancel(Flux.fromArray(values))
             .doOnDiscard(Parameter.class, DISPOSE)
             .concatMap(it -> it.publishText(writer).doOnSuccess(writer::flushParameter))
             .then(Mono.fromCallable(writer::toSql));
+    }
+
+    private static StringBuilder newBuilder(Query query) {
+        StringBuilder builder = new StringBuilder(Math.min(query.getFormattedSize(), 64));
+
+        query.partTo(builder, 0);
+
+        return builder;
     }
 
     private enum Mode {

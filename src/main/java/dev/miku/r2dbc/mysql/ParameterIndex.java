@@ -18,12 +18,9 @@ package dev.miku.r2dbc.mysql;
 
 import reactor.util.annotation.Nullable;
 
-import java.util.Arrays;
-
 /**
- * A data class considers indexes of a named parameter. Most case of the
- * parameter name to index relation is one-to-one, but one-to-many is
- * possible.
+ * A data class considers indexes of a named parameter. Most case of the relation
+ * between parameter name and index is one-to-one.
  */
 final class ParameterIndex {
 
@@ -72,17 +69,6 @@ final class ParameterIndex {
         }
     }
 
-    /**
-     * Used by unit tests.
-     */
-    int[] toIntArray() {
-        if (values == null) {
-            return new int[]{first};
-        } else {
-            return Arrays.copyOf(values, size);
-        }
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -94,20 +80,39 @@ final class ParameterIndex {
 
         ParameterIndex that = (ParameterIndex) o;
 
-        if (first != that.first) {
-            return false;
-        }
         if (size != that.size) {
             return false;
         }
-        return Arrays.equals(values, that.values);
+
+        if (values == null) {
+            return that.values == null && first == that.first;
+        }
+
+        if (that.values == null) {
+            return false;
+        }
+
+        for (int i = 0; i < size; ++i) {
+            if (values[i] != that.values[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     @Override
     public int hashCode() {
-        int result = first;
-        result = 31 * result + Arrays.hashCode(values);
-        result = 31 * result + size;
+        if (values == null) {
+            return first;
+        }
+
+        int result = 1;
+
+        for (int i = 0; i < size; ++i) {
+            result = 31 * result + values[i];
+        }
+
         return result;
     }
 

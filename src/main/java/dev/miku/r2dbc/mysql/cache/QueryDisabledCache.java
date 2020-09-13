@@ -16,21 +16,15 @@
 
 package dev.miku.r2dbc.mysql.cache;
 
-import java.util.function.Function;
+import dev.miku.r2dbc.mysql.Query;
 
 /**
  * A disabled {@link QueryCache}.
  */
-final class QueryDisabledCache<T> implements QueryCache<T> {
-
-    private final Function<String, T> mapping;
-
-    QueryDisabledCache(Function<String, T> mapping) {
-        this.mapping = mapping;
-    }
+final class QueryDisabledCache implements QueryCache {
 
     @Override
-    public T get(String key) {
-        return mapping.apply(key);
+    public Query get(String key) {
+        return Query.parse(key);
     }
 }

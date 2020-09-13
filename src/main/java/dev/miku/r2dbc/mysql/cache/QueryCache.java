@@ -16,10 +16,12 @@
 
 package dev.miku.r2dbc.mysql.cache;
 
+import dev.miku.r2dbc.mysql.Query;
+
 /**
  * An abstraction that considers cache of query parsed results.
  */
-public interface QueryCache<T> {
+public interface QueryCache {
 
-    T get(String key);
+    Query get(String key);
 }

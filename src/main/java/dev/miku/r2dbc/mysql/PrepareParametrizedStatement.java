@@ -24,31 +24,27 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
-import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * An implementation of {@link ParametrizedStatementSupport} based on MySQL prepare query.
  */
 final class PrepareParametrizedStatement extends ParametrizedStatementSupport {
 
-    private final PrepareQuery query;
-
     private final PrepareCache<Integer> prepareCache;
 
     private int fetchSize = 0;
 
     PrepareParametrizedStatement(
-        Client client, Codecs codecs, ConnectionContext context,
-        PrepareQuery query, PrepareCache<Integer> prepareCache
+        Client client, Codecs codecs, Query query,
+        ConnectionContext context, PrepareCache<Integer> prepareCache
     ) {
-        super(client, codecs, context, requireNonNull(query, "query must not be null").getParameters());
-        this.query = query;
+        super(client, codecs, query, context);
         this.prepareCache = prepareCache;
     }
 
     @Override
     public Flux<MySqlResult> execute(List<Binding> bindings) {
-        return QueryFlow.execute(client, query.getSql(), bindings, fetchSize, prepareCache)
+        return QueryFlow.execute(client, query.getFormattedSql(), bindings, fetchSize, prepareCache)
             .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
     }
 
@@ -58,10 +54,5 @@ final class PrepareParametrizedStatement extends ParametrizedStatementSupport {
 
         this.fetchSize = rows;
         return this;
-    }
-
-    @Override
-    protected ParameterIndex getIndexes(String name) {
-        return query.getIndexes(name);
     }
 }
