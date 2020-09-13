@@ -41,16 +41,15 @@ public final class Caches {
      * Create a new {@link PrepareCache} by cache configuration.
      *
      * @param capacity the capacity of {@link PrepareCache}.
-     * @param <T>      the type of cache value, which is usually the parsed statement ID.
      * @return the above {@link PrepareCache}.
      */
-    public static <T> PrepareCache<T> createPrepareCache(int capacity) {
+    public static PrepareCache createPrepareCache(int capacity) {
         if (capacity > 0 && capacity < Integer.MAX_VALUE) {
-            return new PrepareBoundedCache<>(capacity);
+            return new PrepareBoundedCache(capacity);
         } else if (capacity == 0) {
-            return new PrepareDisabledCache<>();
+            return new PrepareDisabledCache();
         } else {
-            return new PrepareUnboundedCache<>();
+            return new PrepareUnboundedCache();
         }
     }
 

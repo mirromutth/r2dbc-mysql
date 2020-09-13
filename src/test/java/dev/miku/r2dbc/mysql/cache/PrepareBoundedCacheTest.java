@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.cache;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,7 +31,7 @@ class PrepareBoundedCacheTest {
 
     @Test
     void putIfAbsent() {
-        PrepareBoundedCache<Integer> cache = mock();
+        PrepareBoundedCache cache = mock();
 
         assertThat(cache.toString()).isEqualTo("[][][]");
         assertThat(cache.putIfAbsent("SELECT 1", 1, ExceptionConsumer.INSTANCE)).isTrue();
@@ -43,7 +43,7 @@ class PrepareBoundedCacheTest {
 
     @Test
     void getIfPresent() {
-        PrepareBoundedCache<Integer> cache = mock();
+        PrepareBoundedCache cache = mock();
 
         assertThat(cache.toString()).isEqualTo("[][][]");
         assertThat(cache.getIfPresent("SELECT 1")).isNull();
@@ -52,16 +52,16 @@ class PrepareBoundedCacheTest {
         assertThat(cache.getIfPresent("SELECT 1")).isEqualTo(1);
     }
 
-    private static PrepareBoundedCache<Integer> mock() {
-        return new PrepareBoundedCache<>(DEFAULT_CAPACITY);
+    private static PrepareBoundedCache mock() {
+        return new PrepareBoundedCache(DEFAULT_CAPACITY);
     }
 
-    private static final class ExceptionConsumer implements Consumer<Integer> {
+    private static final class ExceptionConsumer implements IntConsumer {
 
         private static final ExceptionConsumer INSTANCE = new ExceptionConsumer();
 
         @Override
-        public void accept(Integer value) {
+        public void accept(int value) {
             throw new RuntimeException("Unexpected value: " + value);
         }
     }

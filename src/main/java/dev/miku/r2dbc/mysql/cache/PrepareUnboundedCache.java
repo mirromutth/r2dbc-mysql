@@ -17,20 +17,20 @@
 package dev.miku.r2dbc.mysql.cache;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 /**
  * An unbounded implementation of {@link PrepareCache}.
  */
-final class PrepareUnboundedCache<T> extends ConcurrentHashMap<String, T> implements PrepareCache<T> {
+final class PrepareUnboundedCache extends ConcurrentHashMap<String, Integer> implements PrepareCache {
 
     @Override
-    public T getIfPresent(String key) {
+    public Integer getIfPresent(String key) {
         return super.get(key);
     }
 
     @Override
-    public boolean putIfAbsent(String key, T value, Consumer<T> evict) {
+    public boolean putIfAbsent(String key, int value, IntConsumer evict) {
         return super.putIfAbsent(key, value) == null;
     }
 }

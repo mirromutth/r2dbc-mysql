@@ -16,20 +16,20 @@
 
 package dev.miku.r2dbc.mysql.cache;
 
-import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 /**
  * A disabled {@link PrepareCache}.
  */
-final class PrepareDisabledCache<T> implements PrepareCache<T> {
+final class PrepareDisabledCache implements PrepareCache {
 
     @Override
-    public T getIfPresent(String key) {
+    public Integer getIfPresent(String key) {
         return null;
     }
 
     @Override
-    public boolean putIfAbsent(String key, T value, Consumer<T> evict) {
+    public boolean putIfAbsent(String key, int value, IntConsumer evict) {
         // Put always fails.
         return false;
     }

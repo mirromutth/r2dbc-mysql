@@ -18,12 +18,12 @@ package dev.miku.r2dbc.mysql.cache;
 
 import reactor.util.annotation.Nullable;
 
-import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 /**
  * An abstraction that considers cache of statement prepared results.
  */
-public interface PrepareCache<T> {
+public interface PrepareCache {
 
     /**
      * Get the value of {@code key} in cache.
@@ -32,7 +32,7 @@ public interface PrepareCache<T> {
      * @return the value of {@code key}, which is usually prepared statement ID.
      */
     @Nullable
-    T getIfPresent(String key);
+    Integer getIfPresent(String key);
 
     /**
      * Put the prepared result to the cache.
@@ -42,5 +42,5 @@ public interface PrepareCache<T> {
      * @param evict eviction value handler.
      * @return {@code true} if {@code value} has been put succeed.
      */
-    boolean putIfAbsent(String key, T value, Consumer<T> evict);
+    boolean putIfAbsent(String key, int value, IntConsumer evict);
 }

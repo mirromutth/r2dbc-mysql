@@ -109,9 +109,7 @@ final class QueryFlow {
      * @return the messages received in response to this exchange, and will be completed
      * by {@link CompleteMessage} when it is last result for each binding.
      */
-    static Flux<Flux<ServerMessage>> execute(
-        Client client, String sql, List<Binding> bindings, int fetchSize, PrepareCache<Integer> cache
-    ) {
+    static Flux<Flux<ServerMessage>> execute(Client client, String sql, List<Binding> bindings, int fetchSize, PrepareCache cache) {
         return Flux.defer(() -> {
             if (bindings.isEmpty()) {
                 return Flux.empty();
@@ -399,7 +397,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 
     private final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
 
-    private final PrepareCache<Integer> cache;
+    private final PrepareCache cache;
 
     private final String sql;
 
@@ -417,7 +415,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 
     private boolean shouldClose;
 
-    PrepareExchangeable(PrepareCache<Integer> cache, String sql, Iterator<Binding> bindings, int fetchSize) {
+    PrepareExchangeable(PrepareCache cache, String sql, Iterator<Binding> bindings, int fetchSize) {
         this.cache = cache;
         this.sql = sql;
         this.bindings = bindings;

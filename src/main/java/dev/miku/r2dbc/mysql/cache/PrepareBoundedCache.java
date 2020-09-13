@@ -17,21 +17,21 @@
 package dev.miku.r2dbc.mysql.cache;
 
 import java.util.HashMap;
-import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 /**
  * A bounded implementation of {@link PrepareCache} that uses synchronized methods to ensure
  * correctness, even it should not be used thread-concurrently.
  */
-final class PrepareBoundedCache<T> extends HashMap<String, Lru.Node<T>> implements PrepareCache<T> {
+final class PrepareBoundedCache extends HashMap<String, Lru.Node<Integer>> implements PrepareCache {
 
     private final FreqSketch sketch;
 
-    private final Lru<T> window;
+    private final Lru<Integer> window;
 
-    private final Lru<T> probation;
+    private final Lru<Integer> probation;
 
-    private final Lru<T> protection;
+    private final Lru<Integer> protection;
 
     PrepareBoundedCache(int capacity) {
         int windowSize = Math.max(1, capacity / 100);
@@ -45,8 +45,8 @@ final class PrepareBoundedCache<T> extends HashMap<String, Lru.Node<T>> implemen
     }
 
     @Override
-    public synchronized T getIfPresent(String key) {
-        Lru.Node<T> node = super.get(key);
+    public synchronized Integer getIfPresent(String key) {
+        Lru.Node<Integer> node = super.get(key);
 
         if (node == null) {
             return null;
@@ -57,9 +57,9 @@ final class PrepareBoundedCache<T> extends HashMap<String, Lru.Node<T>> implemen
     }
 
     @Override
-    public synchronized boolean putIfAbsent(String key, T value, Consumer<T> evict) {
-        Lru.Node<T> wantAdd = new Lru.Node<>(key, value);
-        Lru.Node<T> present = super.putIfAbsent(key, wantAdd);
+    public synchronized boolean putIfAbsent(String key, int value, IntConsumer evict) {
+        Lru.Node<Integer> wantAdd = new Lru.Node<>(key, value);
+        Lru.Node<Integer> present = super.putIfAbsent(key, wantAdd);
 
         if (present == null) {
             drainAdded(wantAdd, evict);
@@ -75,7 +75,7 @@ final class PrepareBoundedCache<T> extends HashMap<String, Lru.Node<T>> implemen
         return window.toString() + probation + protection;
     }
 
-    private void drainRead(Lru.Node<T> node) {
+    private void drainRead(Lru.Node<Integer> node) {
         sketch.increment(node.getKey().hashCode());
 
         switch (node.getLru()) {
@@ -84,7 +84,7 @@ final class PrepareBoundedCache<T> extends HashMap<String, Lru.Node<T>> implemen
                 break;
             case Lru.PROBATION:
                 probation.remove(node);
-                Lru.Node<T> evicted = protection.push(node);
+                Lru.Node<Integer> evicted = protection.push(node);
 
                 if (evicted != null) {
                     // This element must be protected.
@@ -100,22 +100,22 @@ final class PrepareBoundedCache<T> extends HashMap<String, Lru.Node<T>> implemen
         }
     }
 
-    private void drainAdded(Lru.Node<T> node, Consumer<T> evict) {
+    private void drainAdded(Lru.Node<Integer> node, IntConsumer evict) {
         sketch.increment(node.getKey().hashCode());
 
-        Lru.Node<T> windowEvict = window.push(node);
+        Lru.Node<Integer> windowEvict = window.push(node);
         if (windowEvict == null) {
             return;
         }
 
-        Lru.Node<T> probationEvict = probation.nextEviction();
+        Lru.Node<Integer> probationEvict = probation.nextEviction();
         if (probationEvict == null) {
             // Probation will be not evict any node, no-one is evicted.
             probation.push(windowEvict);
             return;
         }
 
-        Lru.Node<T> evicted = sketch.frequency(windowEvict.getKey().hashCode()) >
+        Lru.Node<Integer> evicted = sketch.frequency(windowEvict.getKey().hashCode()) >
             sketch.frequency(probationEvict.getKey().hashCode()) ?
             probation.push(windowEvict) : windowEvict;
 
