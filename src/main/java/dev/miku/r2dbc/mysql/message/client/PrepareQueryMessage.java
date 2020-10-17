@@ -19,15 +19,16 @@ package dev.miku.r2dbc.mysql.message.client;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
 import java.nio.charset.Charset;
+
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A message of prepare sql query for get prepared statement ID and information.
  */
-public final class PrepareQueryMessage extends LargeClientMessage {
+public final class PrepareQueryMessage implements ClientMessage {
 
     private static final byte PREPARE_FLAG = 0x16;
 
@@ -38,18 +39,23 @@ public final class PrepareQueryMessage extends LargeClientMessage {
     }
 
     @Override
-    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
-        Charset charset = context.getClientCollation().getCharset();
-        ByteBuf buf = allocator.buffer();
+    public Flux<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
+        requireNonNull(allocator, "allocator must not be null");
+        requireNonNull(context, "context must not be null");
 
-        try {
-            buf.writeByte(PREPARE_FLAG).writeCharSequence(sql, charset);
-            return Mono.just(buf);
-        } catch (Throwable e) {
-            // Maybe IndexOutOfBounds or OOM (too large sql)
-            buf.release();
-            return Mono.error(e);
-        }
+        return Flux.defer(() -> {
+            Charset charset = context.getClientCollation().getCharset();
+            ByteBuf buf = allocator.buffer();
+
+            try {
+                buf.writeByte(PREPARE_FLAG).writeCharSequence(sql, charset);
+                return Flux.just(buf);
+            } catch (Throwable e) {
+                // Maybe IndexOutOfBounds or OOM (too large sql)
+                buf.release();
+                return Flux.error(e);
+            }
+        });
     }
 
     @Override

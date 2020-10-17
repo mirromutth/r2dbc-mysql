@@ -16,13 +16,13 @@
 
 package dev.miku.r2dbc.mysql.client;
 
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
+import dev.miku.r2dbc.mysql.message.client.ClientMessage;
+import dev.miku.r2dbc.mysql.message.client.LoginClientMessage;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
-import dev.miku.r2dbc.mysql.ConnectionContext;
-import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
-import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
 import dev.miku.r2dbc.mysql.message.server.ColumnCountMessage;
 import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
 import dev.miku.r2dbc.mysql.message.server.DecodeContext;
@@ -32,14 +32,16 @@ import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import dev.miku.r2dbc.mysql.message.server.ServerMessageDecoder;
 import dev.miku.r2dbc.mysql.message.server.ServerStatusMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
+import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.util.annotation.Nullable;
+import reactor.core.publisher.Flux;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -54,10 +56,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageDuplexCodec.class);
 
-    private DecodeContext decodeContext = DecodeContext.connection();
-
-    @Nullable
-    private SequenceIdProvider.Linkable linkableIdProvider;
+    private DecodeContext decodeContext = DecodeContext.login();
 
     private final ConnectionContext context;
 
@@ -74,22 +73,10 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     }
 
     @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        if (evt instanceof Lifecycle) {
-            if (Lifecycle.COMMAND == evt) {
-                // Message sequence id always from 0 in command phase.
-                this.linkableIdProvider = null;
-            }
-        } else {
-            super.userEventTriggered(ctx, evt);
-        }
-    }
-
-    @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ByteBuf) {
             DecodeContext context = this.decodeContext;
-            ServerMessage message = decoder.decode((ByteBuf) msg, this.context, context, this.linkableIdProvider);
+            ServerMessage message = this.decoder.decode((ByteBuf) msg, this.context, context);
 
             if (message != null) {
                 handleDecoded(ctx, message);
@@ -107,8 +94,23 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         if (msg instanceof ClientMessage) {
-            ((ClientMessage) msg).encode(ctx.alloc(), this.context)
-                .subscribe(WriteSubscriber.create(ctx, promise, this.linkableIdProvider));
+            ByteBufAllocator allocator = ctx.alloc();
+
+            Flux<ByteBuf> encoded;
+            int envelopeId;
+
+            if (msg instanceof LoginClientMessage) {
+                LoginClientMessage message = (LoginClientMessage) msg;
+
+                encoded = Flux.from(message.encode(allocator, this.context));
+                envelopeId = message.getEnvelopeId();
+            } else {
+                encoded = Flux.from(((ClientMessage) msg).encode(allocator, this.context));
+                envelopeId = 0;
+            }
+
+            OperatorUtils.cumulateEnvelope(encoded, allocator, envelopeId)
+                .subscribe(new WriteSubscriber(ctx, promise));
 
             if (msg instanceof PrepareQueryMessage) {
                 setDecodeContext(DecodeContext.prepareQuery());
@@ -137,16 +139,6 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
         }
 
         ctx.fireChannelInactive();
-    }
-
-    @Override
-    public void handlerAdded(ChannelHandlerContext ctx) {
-        this.linkableIdProvider = SequenceIdProvider.atomic();
-    }
-
-    @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) {
-        this.linkableIdProvider = null;
     }
 
     private void handleDecoded(ChannelHandlerContext ctx, ServerMessage msg) {

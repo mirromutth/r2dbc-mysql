@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.constant.Envelopes;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -25,13 +24,11 @@ import reactor.core.publisher.Mono;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link ClientMessage} considers the message can be encoded as one envelope.
+ * An implementation of {@link ClientMessage} considers the message can be encoded as a
+ * buffer with a pre-calculated size.
  */
-abstract class FixedSizeClientMessage implements ClientMessage {
+abstract class SizedClientMessage implements ClientMessage {
 
-    /**
-     * @return MUST less than {@link Envelopes#MAX_ENVELOPE_SIZE}
-     */
     abstract protected int size();
 
     abstract protected void writeTo(ByteBuf buf);
@@ -42,8 +39,7 @@ abstract class FixedSizeClientMessage implements ClientMessage {
         requireNonNull(context, "context must not be null");
 
         return Mono.fromSupplier(() -> {
-            int s = size();
-            ByteBuf buf = allocator.buffer(s, s);
+            ByteBuf buf = allocator.buffer(size());
 
             try {
                 writeTo(buf);

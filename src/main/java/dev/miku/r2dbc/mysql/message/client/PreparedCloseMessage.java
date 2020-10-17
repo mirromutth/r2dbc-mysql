@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBuf;
 /**
  * A message that close the prepared statement specified by id.
  */
-public final class PreparedCloseMessage extends FixedSizeClientMessage {
+public final class PreparedCloseMessage extends SizedClientMessage {
 
     private static final int SIZE = Byte.BYTES + Integer.BYTES;
 

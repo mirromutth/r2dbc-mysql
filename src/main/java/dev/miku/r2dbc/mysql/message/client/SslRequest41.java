@@ -25,25 +25,34 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 /**
  * The ssl request message on protocol 4.1. It is also first part of {@link HandshakeResponse41}.
  */
-final class SslRequest41 extends FixedSizeClientMessage implements SslRequest {
+final class SslRequest41 extends SizedClientMessage implements SslRequest {
 
     private static final int FILTER_SIZE = 23;
 
     private static final int BUF_SIZE = Integer.BYTES + Integer.BYTES + Byte.BYTES + FILTER_SIZE;
+
+    private final int envelopeId;
 
     private final int capabilities;
 
     private final int collationId;
 
     /**
-     * @param capabilities client capabilities, see {@link Capabilities}
-     * @param collationId  0 if server not support protocol 41 or has been not give collation
+     * @param envelopeId   the beginning of the envelope ID.
+     * @param capabilities client capabilities, see {@link Capabilities}.
+     * @param collationId  0 if server not support protocol 41 or has been not give collation.
      */
-    SslRequest41(int capabilities, int collationId) {
+    SslRequest41(int envelopeId, int capabilities, int collationId) {
         require(collationId > 0, "collationId must be a positive integer");
 
+        this.envelopeId = envelopeId;
         this.capabilities = capabilities;
         this.collationId = collationId;
+    }
+
+    @Override
+    public int getEnvelopeId() {
+        return envelopeId;
     }
 
     @Override
@@ -51,28 +60,28 @@ final class SslRequest41 extends FixedSizeClientMessage implements SslRequest {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof SslRequest41)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         SslRequest41 that = (SslRequest41) o;
 
-        if (capabilities != that.capabilities) {
-            return false;
-        }
-        return collationId == that.collationId;
+        return envelopeId == that.envelopeId && capabilities == that.capabilities &&
+            collationId == that.collationId;
     }
 
     @Override
     public int hashCode() {
-        int result = capabilities;
-        result = 31 * result + collationId;
-        return result;
+        int result = envelopeId;
+        result = 31 * result + capabilities;
+        return 31 * result + collationId;
     }
 
     @Override
     public String toString() {
-        return String.format("SslRequest41{capabilities=%x, collationId=%d}", capabilities, collationId);
+        return "SslRequest41{envelopeId=" + envelopeId +
+            ", capabilities=" + Integer.toHexString(capabilities) +
+            ", collationId=" + collationId + '}';
     }
 
     @Override

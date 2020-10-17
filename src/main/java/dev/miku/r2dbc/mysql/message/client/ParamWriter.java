@@ -340,12 +340,14 @@ final class ParamWriter extends ParameterWriter {
     }
 
     static Mono<String> publish(Query query, Parameter[] values) {
-        ParamWriter writer = new ParamWriter(query);
+        return Mono.defer(() -> {
+            ParamWriter writer = new ParamWriter(query);
 
-        return OperatorUtils.discardOnCancel(Flux.fromArray(values))
-            .doOnDiscard(Parameter.class, DISPOSE)
-            .concatMap(it -> it.publishText(writer).doOnSuccess(writer::flushParameter))
-            .then(Mono.fromCallable(writer::toSql));
+            return OperatorUtils.discardOnCancel(Flux.fromArray(values))
+                .doOnDiscard(Parameter.class, DISPOSE)
+                .concatMap(it -> it.publishText(writer).doOnSuccess(writer::flushParameter))
+                .then(Mono.fromCallable(writer::toSql));
+        });
     }
 
     private static StringBuilder newBuilder(Query query) {

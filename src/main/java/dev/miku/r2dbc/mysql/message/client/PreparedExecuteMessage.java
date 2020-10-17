@@ -21,10 +21,8 @@ import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,7 +34,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * A message to execute a prepared statement once with parameter.
  */
-public final class PreparedExecuteMessage extends LargeClientMessage implements Disposable {
+public final class PreparedExecuteMessage implements ClientMessage, Disposable {
 
     /**
      * No cursor, just return entire result without fetch.
@@ -92,51 +90,56 @@ public final class PreparedExecuteMessage extends LargeClientMessage implements 
     }
 
     @Override
-    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
-        int size = values.length;
-        ByteBuf buf;
+    public Flux<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
+        requireNonNull(allocator, "allocator must not be null");
+        requireNonNull(context, "context must not be null");
 
-        if (size == 0) {
-            buf = allocator.buffer(NO_PARAM_SIZE, NO_PARAM_SIZE);
-        } else {
-            buf = allocator.buffer();
-        }
-
-        try {
-            buf.writeByte(EXECUTE_FLAG)
-                .writeIntLE(statementId)
-                .writeByte(immediate ? NO_CURSOR : READ_ONLY)
-                .writeIntLE(TIMES);
+        return Flux.defer(() -> {
+            int size = values.length;
+            ByteBuf buf;
 
             if (size == 0) {
-                return Mono.just(buf);
+                buf = allocator.buffer(NO_PARAM_SIZE);
+            } else {
+                buf = allocator.buffer();
             }
 
-            List<Parameter> nonNull = new ArrayList<>(size);
-            byte[] nullMap = fillNullBitmap(size, nonNull);
+            try {
+                buf.writeByte(EXECUTE_FLAG)
+                    .writeIntLE(statementId)
+                    .writeByte(immediate ? NO_CURSOR : READ_ONLY)
+                    .writeIntLE(TIMES);
 
-            // Fill null-bitmap.
-            buf.writeBytes(nullMap);
+                if (size == 0) {
+                    return Flux.just(buf);
+                }
 
-            if (nonNull.isEmpty()) {
-                // No need rebound.
-                buf.writeBoolean(false);
-                return Mono.just(buf);
+                List<Parameter> nonNull = new ArrayList<>(size);
+                byte[] nullMap = fillNullBitmap(size, nonNull);
+
+                // Fill null-bitmap.
+                buf.writeBytes(nullMap);
+
+                if (nonNull.isEmpty()) {
+                    // No need rebound.
+                    buf.writeBoolean(false);
+                    return Flux.just(buf);
+                }
+
+                buf.writeBoolean(true);
+                writeTypes(buf, size);
+
+                Flux<ByteBuf> parameters = OperatorUtils.discardOnCancel(Flux.fromArray(values))
+                    .doOnDiscard(Parameter.class, DISPOSE)
+                    .concatMap(Parameter::publishBinary);
+
+                return Flux.just(buf).concatWith(parameters);
+            } catch (Throwable e) {
+                buf.release();
+                cancelParameters();
+                return Flux.error(e);
             }
-
-            buf.writeBoolean(true);
-            writeTypes(buf, size);
-
-            Flux<ByteBuf> parameters = OperatorUtils.discardOnCancel(Flux.fromArray(values))
-                .doOnDiscard(Parameter.class, DISPOSE)
-                .concatMap(Parameter::publishBinary);
-
-            return Flux.just(buf).concatWith(parameters);
-        } catch (Throwable e) {
-            buf.release();
-            cancelParameters();
-            return Mono.error(e);
-        }
+        });
     }
 
     private byte[] fillNullBitmap(int size, List<Parameter> nonNull) {

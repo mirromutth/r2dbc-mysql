@@ -30,7 +30,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * <p>
  * Note: it must be sent before {@link PreparedExecuteMessage}.
  */
-public final class PreparedLargeDataMessage extends LargeClientMessage {
+public final class PreparedLargeDataMessage implements ClientMessage {
 
     private static final int MIN_SIZE = Byte.BYTES + Integer.BYTES + Short.BYTES + Byte.BYTES + Long.BYTES;
 
@@ -49,7 +49,10 @@ public final class PreparedLargeDataMessage extends LargeClientMessage {
     }
 
     @Override
-    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
+    public Flux<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
+        requireNonNull(allocator, "allocator must not be null");
+        requireNonNull(context, "context must not be null");
+
         return Flux.from(data).collectList().flatMapMany(values -> {
             int i = 0;
             int size = values.size();
@@ -60,7 +63,7 @@ public final class PreparedLargeDataMessage extends LargeClientMessage {
                 bytes += (results[i + 1] = values.get(i)).readableBytes();
             }
 
-            ByteBuf header = allocator.buffer(MIN_SIZE, MIN_SIZE);
+            ByteBuf header = allocator.buffer(MIN_SIZE);
 
             try {
                 header.writeByte(LARGE_DATA_FLAG)

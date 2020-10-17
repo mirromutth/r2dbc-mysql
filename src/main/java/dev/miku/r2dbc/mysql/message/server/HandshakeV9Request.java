@@ -22,6 +22,7 @@ import io.netty.buffer.ByteBufUtil;
 
 import java.util.Arrays;
 
+import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
@@ -32,16 +33,24 @@ final class HandshakeV9Request implements HandshakeRequest {
 
     private final HandshakeHeader header;
 
+    private final int envelopeId;
+
     private final byte[] salt;
 
-    private HandshakeV9Request(HandshakeHeader header, byte[] salt) {
+    private HandshakeV9Request(HandshakeHeader header, int envelopeId, byte[] salt) {
         this.header = requireNonNull(header, "header must not be null");
+        this.envelopeId = envelopeId;
         this.salt = requireNonNull(salt, "salt must not be null");
     }
 
     @Override
     public HandshakeHeader getHeader() {
         return header;
+    }
+
+    @Override
+    public int getEnvelopeId() {
+        return envelopeId;
     }
 
     @Override
@@ -65,45 +74,42 @@ final class HandshakeV9Request implements HandshakeRequest {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof HandshakeV9Request)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         HandshakeV9Request that = (HandshakeV9Request) o;
 
-        if (!header.equals(that.header)) {
-            return false;
-        }
-        return Arrays.equals(salt, that.salt);
+        return envelopeId == that.envelopeId && header.equals(that.header) && Arrays.equals(salt, that.salt);
     }
 
     @Override
     public int hashCode() {
         int result = header.hashCode();
-        result = 31 * result + Arrays.hashCode(salt);
-        return result;
+        result = 31 * result + envelopeId;
+        return 31 * result + Arrays.hashCode(salt);
     }
 
     @Override
     public String toString() {
-        return String.format("HandshakeV9Request{header=%s, salt=REDACTED}", header);
+        return "HandshakeV9Request{header=" + header + ", envelopeId=" + envelopeId + ", salt=REDACTED}";
     }
 
-    static HandshakeV9Request decodeV9(ByteBuf buf, HandshakeHeader header) {
+    static HandshakeV9Request decode(int envelopeId, ByteBuf buf, HandshakeHeader header) {
         int bytes = buf.readableBytes();
 
         if (bytes <= 0) {
-            return new HandshakeV9Request(header, EMPTY_BYTES);
+            return new HandshakeV9Request(header, envelopeId, EMPTY_BYTES);
         }
 
         byte[] salt;
 
-        if (buf.getByte(buf.writerIndex() - 1) == 0) {
+        if (buf.getByte(buf.writerIndex() - 1) == TERMINAL) {
             salt = ByteBufUtil.getBytes(buf, buf.readerIndex(),  bytes - 1);
         } else {
             salt = ByteBufUtil.getBytes(buf);
         }
 
-        return new HandshakeV9Request(header, salt);
+        return new HandshakeV9Request(header, envelopeId, salt);
     }
 }

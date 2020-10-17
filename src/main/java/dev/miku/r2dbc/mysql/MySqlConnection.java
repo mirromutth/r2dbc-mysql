@@ -328,7 +328,7 @@ public final class MySqlConnection implements Connection {
                 return Mono.just(false);
             }
 
-            return client.exchange(PingMessage.getInstance(), PING_HANDLER)
+            return client.exchange(PingMessage.INSTANCE, PING_HANDLER)
                 .last()
                 .onErrorResume(e -> {
                     // `last` maybe emit a NoSuchElementException, exchange maybe emit exception by Netty.

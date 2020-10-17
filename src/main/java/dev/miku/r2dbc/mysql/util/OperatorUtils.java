@@ -16,8 +16,13 @@
 
 package dev.miku.r2dbc.mysql.util;
 
+import dev.miku.r2dbc.mysql.constant.Envelopes;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import reactor.core.Fuseable;
 import reactor.core.publisher.Flux;
+
+import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * Operator utility.
@@ -36,13 +41,23 @@ public final class OperatorUtils {
      * @param source the source to decorate.
      * @param <T>    The type of values in both source and output sequences.
      * @return decorated {@link Flux}.
+     * @throws IllegalArgumentException if {@code source} is {@code null}.
      */
     public static <T> Flux<T> discardOnCancel(Flux<? extends T> source) {
+        requireNonNull(source, "source must not be null");
+
         if (source instanceof Fuseable) {
             return new FluxDiscardOnCancelFuseable<>(source);
         }
 
         return new FluxDiscardOnCancel<>(source);
+    }
+
+    public static Flux<ByteBuf> cumulateEnvelope(Flux<? extends ByteBuf> source, ByteBufAllocator allocator, int envelopeIdStart) {
+        requireNonNull(source, "source must not be null");
+        requireNonNull(allocator, "allocator must not be null");
+
+        return new FluxCumulateEnvelope(source, allocator, Envelopes.MAX_ENVELOPE_SIZE, envelopeIdStart & 0xFF);
     }
 
     private OperatorUtils() {

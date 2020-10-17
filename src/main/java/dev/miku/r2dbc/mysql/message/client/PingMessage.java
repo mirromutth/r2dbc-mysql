@@ -21,18 +21,11 @@ import io.netty.buffer.ByteBuf;
 /**
  * The request message check alive of MySQL server.
  */
-public final class PingMessage extends FixedSizeClientMessage {
+public final class PingMessage extends SizedClientMessage {
 
     private static final int PING_FLAG = 0x0E;
 
-    private static final PingMessage INSTANCE = new PingMessage();
-
-    private PingMessage() {
-    }
-
-    public static PingMessage getInstance() {
-        return INSTANCE;
-    }
+    public static final PingMessage INSTANCE = new PingMessage();
 
     @Override
     protected int size() {
@@ -47,5 +40,8 @@ public final class PingMessage extends FixedSizeClientMessage {
     @Override
     public String toString() {
         return "PingMessage{}";
+    }
+
+    private PingMessage() {
     }
 }

@@ -25,16 +25,24 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 /**
  * The ssl request message on protocol 3.20. It is also first part of {@link HandshakeResponse320}.
  */
-final class SslRequest320 extends FixedSizeClientMessage implements SslRequest {
+final class SslRequest320 extends SizedClientMessage implements SslRequest {
 
     private static final int SIZE = Short.BYTES + Envelopes.SIZE_FIELD_SIZE;
 
+    private final int envelopeId;
+
     private final int capabilities;
 
-    SslRequest320(int capabilities) {
+    SslRequest320(int envelopeId, int capabilities) {
         require((capabilities & Capabilities.PROTOCOL_41) == 0, "protocol 4.1 capability should never be set");
 
+        this.envelopeId = envelopeId;
         this.capabilities = capabilities;
+    }
+
+    @Override
+    public int getEnvelopeId() {
+        return envelopeId;
     }
 
     @Override
@@ -47,23 +55,24 @@ final class SslRequest320 extends FixedSizeClientMessage implements SslRequest {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof SslRequest320)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         SslRequest320 that = (SslRequest320) o;
 
-        return capabilities == that.capabilities;
+        return envelopeId == that.envelopeId && capabilities == that.capabilities;
     }
 
     @Override
     public int hashCode() {
-        return capabilities;
+        return 31 * envelopeId + capabilities;
     }
 
     @Override
     public String toString() {
-        return String.format("SslRequest320{capabilities=%x}", capabilities);
+        return "SslRequest320{envelopeId=" + envelopeId +
+            ", capabilities=" + Integer.toHexString(capabilities) + '}';
     }
 
     @Override

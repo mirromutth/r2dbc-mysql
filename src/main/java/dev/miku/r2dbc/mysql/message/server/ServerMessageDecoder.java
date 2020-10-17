@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
@@ -53,16 +52,17 @@ public final class ServerMessageDecoder {
     private final List<ByteBuf> parts = new ArrayList<>();
 
     @Nullable
-    public ServerMessage decode(ByteBuf envelope, ConnectionContext context, DecodeContext decodeContext, @Nullable SequenceIdProvider.Linkable idProvider) {
+    public ServerMessage decode(ByteBuf envelope, ConnectionContext context, DecodeContext decodeContext) {
         requireNonNull(envelope, "envelope must not be null");
         requireNonNull(context, "context must not be null");
         requireNonNull(decodeContext, "decodeContext must not be null");
 
-        if (readNotFinish(envelope, idProvider)) {
+        Byte id = readNotFinish(envelope);
+        if (id == null) {
             return null;
         }
 
-        return decodeMessage(parts, context, decodeContext);
+        return decodeMessage(parts, id.intValue() & 0xFF, context, decodeContext);
     }
 
     public void dispose() {
@@ -76,7 +76,7 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static ServerMessage decodeMessage(List<ByteBuf> buffers, ConnectionContext context, DecodeContext decodeContext) {
+    private static ServerMessage decodeMessage(List<ByteBuf> buffers, int envelopeId, ConnectionContext context, DecodeContext decodeContext) {
         if (decodeContext instanceof ResultDecodeContext) {
             // Maybe very large.
             return decodeResult(buffers, context, (ResultDecodeContext) decodeContext);
@@ -94,8 +94,8 @@ public final class ServerMessageDecoder {
                 return decodePreparedMetadata(joined, context, (PreparedMetadataDecodeContext) decodeContext);
             } else if (decodeContext instanceof PrepareQueryDecodeContext) {
                 return decodePrepareQuery(joined);
-            } else if (decodeContext instanceof ConnectionDecodeContext) {
-                return decodeConnectionMessage(joined, context);
+            } else if (decodeContext instanceof LoginDecodeContext) {
+                return decodeLogin(envelopeId, joined, context);
             }
         } finally {
             joined.release();
@@ -207,7 +207,7 @@ public final class ServerMessageDecoder {
         throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on command phase", header, buf.readableBytes()));
     }
 
-    private static ServerMessage decodeConnectionMessage(ByteBuf buf, ConnectionContext context) {
+    private static ServerMessage decodeLogin(int envelopeId, ByteBuf buf, ConnectionContext context) {
         short header = buf.getUnsignedByte(buf.readerIndex());
         switch (header) {
             case OK:
@@ -217,46 +217,41 @@ public final class ServerMessageDecoder {
 
                 break;
             case AUTH_MORE_DATA: // Auth more data
-                return AuthMoreDataMessage.decode(buf);
+                return AuthMoreDataMessage.decode(envelopeId, buf);
             case HANDSHAKE_V9:
             case HANDSHAKE_V10: // Handshake V9 (not supported) or V10
-                return HandshakeRequest.decode(buf);
+                return HandshakeRequest.decode(envelopeId, buf);
             case ERROR: // Error
                 return ErrorMessage.decode(buf);
             case EOF: // Auth exchange message or EOF message
                 if (EofMessage.isValidSize(buf.readableBytes())) {
                     return EofMessage.decode(buf);
                 } else {
-                    return ChangeAuthMessage.decode(buf);
+                    return ChangeAuthMessage.decode(envelopeId, buf);
                 }
         }
 
         throw new R2dbcPermissionDeniedException(String.format("Unknown message header 0x%x and readable bytes is %d on connection phase", header, buf.readableBytes()));
     }
 
-    private boolean readNotFinish(ByteBuf envelope, @Nullable SequenceIdProvider.Linkable idProvider) {
+    @Nullable
+    private Byte readNotFinish(ByteBuf envelope) {
         try {
             int size = envelope.readUnsignedMediumLE();
             if (size < Envelopes.MAX_ENVELOPE_SIZE) {
-                if (idProvider == null) {
-                    // Just ignore sequence id because of no need link any message.
-                    envelope.skipBytes(1);
-                } else {
-                    // Link last message.
-                    idProvider.last(envelope.readUnsignedByte());
-                }
+                Byte envelopeId = envelope.readByte();
 
                 parts.add(envelope);
                 // success, no need release
                 envelope = null;
-                return false;
+                return envelopeId;
             } else {
                 // skip the sequence Id
                 envelope.skipBytes(1);
                 parts.add(envelope);
                 // success, no need release
                 envelope = null;
-                return true;
+                return null;
             }
         } finally {
             if (envelope != null) {

@@ -194,7 +194,7 @@ final class ReactorNettyClient implements Client {
                 return;
             }
 
-            requestQueue.submit(RequestTask.wrap(sink, Mono.fromRunnable(() -> requestProcessor.onNext(ExitMessage.getInstance()))));
+            requestQueue.submit(RequestTask.wrap(sink, Mono.fromRunnable(() -> requestProcessor.onNext(ExitMessage.INSTANCE))));
         }).flatMap(identity()).onErrorResume(e -> {
             logger.error("Exit message sending failed, force closing", e);
             return Mono.empty();
