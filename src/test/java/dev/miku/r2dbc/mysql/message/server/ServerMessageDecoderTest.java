@@ -52,7 +52,7 @@ class ServerMessageDecoderTest {
 
     @Nullable
     private static ServerMessage decode(ByteBuf buf, DecodeContext decodeContext) {
-        return new ServerMessageDecoder().decode(buf, ConnectionContextTest.mock(), decodeContext, null);
+        return new ServerMessageDecoder().decode(buf, ConnectionContextTest.mock(), decodeContext);
     }
 
     private static ByteBuf okLike() {

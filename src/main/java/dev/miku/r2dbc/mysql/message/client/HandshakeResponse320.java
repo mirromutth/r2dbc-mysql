@@ -37,7 +37,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  *
  * @see SslRequest320 the head of {@link HandshakeResponse320}.
  */
-final class HandshakeResponse320 extends EnvelopeClientMessage implements HandshakeResponse {
+final class HandshakeResponse320 extends ScalarClientMessage implements HandshakeResponse {
 
     private final SslRequest320 head;
 
@@ -47,11 +47,16 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
 
     private final String database;
 
-    HandshakeResponse320(int capabilities, String user, byte[] authentication, String database) {
-        this.head = new SslRequest320(capabilities);
+    HandshakeResponse320(int envelopeId, int capabilities, String user, byte[] authentication, String database) {
+        this.head = new SslRequest320(envelopeId, capabilities);
         this.user = requireNonNull(user, "user must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
+    }
+
+    @Override
+    public int getEnvelopeId() {
+        return head.getEnvelopeId();
     }
 
     @Override
@@ -59,22 +64,14 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
         if (this == o) {
             return true;
         }
-        if (!(o instanceof HandshakeResponse320)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         HandshakeResponse320 that = (HandshakeResponse320) o;
 
-        if (!head.equals(that.head)) {
-            return false;
-        }
-        if (!user.equals(that.user)) {
-            return false;
-        }
-        if (!Arrays.equals(authentication, that.authentication)) {
-            return false;
-        }
-        return database.equals(that.database);
+        return head.equals(that.head) && user.equals(that.user) &&
+            Arrays.equals(authentication, that.authentication) && database.equals(that.database);
     }
 
     @Override
@@ -82,14 +79,14 @@ final class HandshakeResponse320 extends EnvelopeClientMessage implements Handsh
         int result = head.hashCode();
         result = 31 * result + user.hashCode();
         result = 31 * result + Arrays.hashCode(authentication);
-        result = 31 * result + database.hashCode();
-        return result;
+        return 31 * result + database.hashCode();
     }
 
     @Override
     public String toString() {
-        return String.format("HandshakeResponse320{capabilities=%x, user='%s', authentication=REDACTED, database='%s'}",
-            head.getCapabilities(), user, database);
+        return "HandshakeResponse320{envelopeId=" + head.getEnvelopeId() +
+            ", capabilities=" + Integer.toHexString(head.getCapabilities()) + ", user='" + user +
+            "', authentication=REDACTED, database='" + database + "'}";
     }
 
     @Override

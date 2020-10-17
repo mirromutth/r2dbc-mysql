@@ -16,14 +16,11 @@
 
 package dev.miku.r2dbc.mysql.client;
 
-import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.message.header.SequenceIdProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
-import reactor.util.annotation.Nullable;
 
 /**
  * An implementation of {@link CoreSubscriber} for {@link ChannelHandlerContext} write
@@ -37,12 +34,9 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     private final ChannelPromise promise;
 
-    private final SequenceIdProvider provider;
-
-    private WriteSubscriber(ChannelHandlerContext ctx, ChannelPromise promise, SequenceIdProvider provider) {
+    WriteSubscriber(ChannelHandlerContext ctx, ChannelPromise promise) {
         this.ctx = ctx;
         this.promise = promise;
-        this.provider = provider;
     }
 
     @Override
@@ -52,9 +46,6 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
 
     @Override
     public void onNext(ByteBuf buf) {
-        ctx.write(ctx.alloc().buffer(Envelopes.PART_HEADER_SIZE, Envelopes.PART_HEADER_SIZE)
-            .writeMediumLE(buf.readableBytes())
-            .writeByte(provider.next()));
         ctx.write(buf);
     }
 
@@ -70,14 +61,5 @@ final class WriteSubscriber implements CoreSubscriber<ByteBuf> {
     public void onComplete() {
         promise.setSuccess();
         ctx.flush();
-    }
-
-    static WriteSubscriber create(ChannelHandlerContext ctx, ChannelPromise promise, @Nullable SequenceIdProvider provider) {
-        if (provider == null) {
-            // Used by this message ByteBuf stream only, can be unsafe.
-            provider = SequenceIdProvider.unsafe();
-        }
-
-        return new WriteSubscriber(ctx, promise, provider);
     }
 }

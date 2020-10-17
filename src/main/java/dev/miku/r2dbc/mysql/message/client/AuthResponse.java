@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.util.Arrays;
@@ -26,12 +25,25 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * A message that contains only an authentication, used by full authentication or change authentication response.
  */
-public final class AuthResponse extends EnvelopeClientMessage {
+public final class AuthResponse extends SizedClientMessage implements LoginClientMessage {
+
+    private final int envelopeId;
 
     private final byte[] authentication;
 
-    public AuthResponse(byte[] authentication) {
+    public AuthResponse(int envelopeId, byte[] authentication) {
+        this.envelopeId = envelopeId;
         this.authentication = requireNonNull(authentication, "authentication must not be null");
+    }
+
+    @Override
+    public int getEnvelopeId() {
+        return envelopeId;
+    }
+
+    @Override
+    protected int size() {
+        return authentication.length;
     }
 
     @Override
@@ -39,27 +51,27 @@ public final class AuthResponse extends EnvelopeClientMessage {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof AuthResponse)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         AuthResponse that = (AuthResponse) o;
 
-        return Arrays.equals(authentication, that.authentication);
+        return envelopeId == that.envelopeId && Arrays.equals(authentication, that.authentication);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(authentication);
+        return 31 * envelopeId + Arrays.hashCode(authentication);
     }
 
     @Override
     public String toString() {
-        return "AuthResponse{authentication=REDACTED}";
+        return "AuthResponse{envelopeId=" + envelopeId + ", authentication=REDACTED}";
     }
 
     @Override
-    protected void writeTo(ByteBuf buf, ConnectionContext context) {
+    protected void writeTo(ByteBuf buf) {
         buf.writeBytes(authentication);
     }
 }

@@ -25,20 +25,27 @@ public final class AuthMoreDataMessage implements ServerMessage {
 
     private static final byte AUTH_SUCCEED = 3;
 
+    private final int envelopeId;
+
     private final boolean failed;
 
-    private AuthMoreDataMessage(boolean failed) {
+    private AuthMoreDataMessage(int envelopeId, boolean failed) {
+        this.envelopeId = envelopeId;
         this.failed = failed;
+    }
+
+    public int getEnvelopeId() {
+        return envelopeId;
     }
 
     public boolean isFailed() {
         return failed;
     }
 
-    static AuthMoreDataMessage decode(ByteBuf buf) {
+    static AuthMoreDataMessage decode(int envelopeId, ByteBuf buf) {
         buf.skipBytes(1); // auth more data message header, 0x01
 
-        return new AuthMoreDataMessage(buf.readByte() != AUTH_SUCCEED);
+        return new AuthMoreDataMessage(envelopeId, buf.readByte() != AUTH_SUCCEED);
     }
 
     @Override
@@ -46,22 +53,22 @@ public final class AuthMoreDataMessage implements ServerMessage {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof AuthMoreDataMessage)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         AuthMoreDataMessage that = (AuthMoreDataMessage) o;
 
-        return failed == that.failed;
+        return envelopeId == that.envelopeId && failed == that.failed;
     }
 
     @Override
     public int hashCode() {
-        return Boolean.hashCode(failed);
+        return (envelopeId << 1) | (failed ? 1 : 0);
     }
 
     @Override
     public String toString() {
-        return String.format("AuthMoreDataMessage{failed=%b}", failed);
+        return "AuthMoreDataMessage{envelopeId=" + envelopeId + ", failed=" + failed + '}';
     }
 }

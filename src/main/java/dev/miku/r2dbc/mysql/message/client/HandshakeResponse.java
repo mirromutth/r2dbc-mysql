@@ -25,18 +25,18 @@ import java.util.Map;
 import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 
 /**
- * An abstraction of {@link ClientMessage} considers handshake response.
+ * An abstraction of {@link LoginClientMessage} considers handshake response.
  */
-public interface HandshakeResponse extends ClientMessage {
+public interface HandshakeResponse extends LoginClientMessage {
 
     static HandshakeResponse from(
-        int capabilities, int collationId, String user, byte[] authentication,
+        int envelopeId, int capabilities, int collationId, String user, byte[] authentication,
         String authType, String database, Map<String, String> attributes
     ) {
         if ((capabilities & Capabilities.PROTOCOL_41) == 0) {
-            return new HandshakeResponse320(capabilities, user, authentication, database);
+            return new HandshakeResponse320(envelopeId, capabilities, user, authentication, database);
         } else {
-            return new HandshakeResponse41(capabilities, collationId, user, authentication, authType, database, attributes);
+            return new HandshakeResponse41(envelopeId, capabilities, collationId, user, authentication, authType, database, attributes);
         }
     }
 

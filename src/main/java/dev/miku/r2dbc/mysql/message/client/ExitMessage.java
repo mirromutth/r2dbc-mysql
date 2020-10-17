@@ -21,18 +21,11 @@ import io.netty.buffer.ByteBuf;
 /**
  * The request message tells the MySQL client to exit.
  */
-public final class ExitMessage extends FixedSizeClientMessage {
+public final class ExitMessage extends SizedClientMessage {
 
     private static final int EXIT_FLAG = 0x01;
 
-    private static final ExitMessage INSTANCE = new ExitMessage();
-
-    private ExitMessage() {
-    }
-
-    public static ExitMessage getInstance() {
-        return INSTANCE;
-    }
+    public static final ExitMessage INSTANCE = new ExitMessage();
 
     @Override
     protected int size() {
@@ -47,5 +40,8 @@ public final class ExitMessage extends FixedSizeClientMessage {
     @Override
     public String toString() {
         return "ExitMessage{}";
+    }
+
+    private ExitMessage() {
     }
 }

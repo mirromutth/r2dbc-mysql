@@ -14,20 +14,12 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.message.server;
+package dev.miku.r2dbc.mysql.message.client;
 
 /**
- * An implementation of {@link DecodeContext} in connection phase.
+ * An abstraction of {@link ClientMessage} considers login phase messages.
  */
-final class ConnectionDecodeContext implements DecodeContext {
+public interface LoginClientMessage extends ClientMessage {
 
-    static final ConnectionDecodeContext INSTANCE = new ConnectionDecodeContext();
-
-    private ConnectionDecodeContext() {
-    }
-
-    @Override
-    public String toString() {
-        return "DecodeContext-Connection";
-    }
+    int getEnvelopeId();
 }

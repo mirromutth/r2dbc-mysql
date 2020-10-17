@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import dev.miku.r2dbc.mysql.constant.Capabilities;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
-import io.netty.buffer.CompositeByteBuf;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -35,32 +34,27 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
     private static final int RESERVED_SIZE = 10;
 
+    private static final int SALT_FIRST_PART_SIZE = 8;
+
     private static final int MIN_SALT_SECOND_PART_SIZE = 12;
 
     private final HandshakeHeader header;
+
+    private final int envelopeId;
 
     private final byte[] salt;
 
     private final int serverCapabilities;
 
-    /**
-     * Character collation, MySQL give lower 8-bits only.
-     * Try NOT use this.
-     */
-    private final byte collationLow8Bits;
-
     private final short serverStatuses;
 
     private final String authType; // default is mysql_native_password
 
-    private HandshakeV10Request(
-        HandshakeHeader header, byte[] salt, int serverCapabilities,
-        byte collationLow8Bits, short serverStatuses, String authType
-    ) {
+    private HandshakeV10Request(HandshakeHeader header, int envelopeId, byte[] salt, int serverCapabilities, short serverStatuses, String authType) {
         this.header = requireNonNull(header, "header must not be null");
+        this.envelopeId = envelopeId;
         this.salt = requireNonNull(salt, "salt must not be null");
         this.serverCapabilities = serverCapabilities;
-        this.collationLow8Bits = collationLow8Bits;
         this.serverStatuses = serverStatuses;
         this.authType = requireNonNull(authType, "authType must not be null");
     }
@@ -68,6 +62,11 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
     @Override
     public HandshakeHeader getHeader() {
         return header;
+    }
+
+    @Override
+    public int getEnvelopeId() {
+        return envelopeId;
     }
 
     @Override
@@ -95,153 +94,101 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         if (this == o) {
             return true;
         }
-        if (!(o instanceof HandshakeV10Request)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         HandshakeV10Request that = (HandshakeV10Request) o;
 
-        if (serverCapabilities != that.serverCapabilities) {
-            return false;
-        }
-        if (collationLow8Bits != that.collationLow8Bits) {
-            return false;
-        }
-        if (serverStatuses != that.serverStatuses) {
-            return false;
-        }
-        if (!header.equals(that.header)) {
-            return false;
-        }
-        if (!Arrays.equals(salt, that.salt)) {
-            return false;
-        }
-        return authType.equals(that.authType);
+        return envelopeId == that.envelopeId && serverCapabilities == that.serverCapabilities &&
+            serverStatuses == that.serverStatuses && header.equals(that.header) &&
+            Arrays.equals(salt, that.salt) && authType.equals(that.authType);
     }
 
     @Override
     public int hashCode() {
         int result = header.hashCode();
+        result = 31 * result + envelopeId;
         result = 31 * result + Arrays.hashCode(salt);
         result = 31 * result + serverCapabilities;
-        result = 31 * result + (int) collationLow8Bits;
         result = 31 * result + (int) serverStatuses;
-        result = 31 * result + authType.hashCode();
-        return result;
+        return 31 * result + authType.hashCode();
     }
 
     @Override
     public String toString() {
-        return String.format("HandshakeV10Request{header=%s, salt=REDACTED, serverCapabilities=%x, collationLow8Bits=%d, serverStatuses=%x, authType=%s}",
-            header, serverCapabilities, collationLow8Bits, serverStatuses, authType);
+        return "HandshakeV10Request{header=" + header + ", envelopeId=" + envelopeId +
+            ", salt=REDACTED, serverCapabilities=" + serverCapabilities +
+            ", serverStatuses=" + serverStatuses + ", authType='" + authType + "'}";
     }
 
-    static HandshakeV10Request decodeV10(ByteBuf buf, HandshakeHeader header) {
-        Builder builder = new Builder().header(header);
-        CompositeByteBuf salt = buf.alloc().compositeBuffer(2);
+    static HandshakeV10Request decode(int envelopeId, ByteBuf buf, HandshakeHeader header) {
+        Builder builder = new Builder(envelopeId, header);
+        ByteBuf salt = buf.alloc().buffer();
 
         try {
-            // After handshake header, MySQL give salt first part (should be 8-bytes always).
-            salt.addComponent(true, readCStringRetainedSlice(buf));
+            // The salt first part after handshake header, always 8 bytes.
+            salt.writeBytes(buf, buf.readerIndex(), SALT_FIRST_PART_SIZE);
+            // Skip slat first part and terminal.
+            buf.skipBytes(SALT_FIRST_PART_SIZE + 1);
 
-            int serverCapabilities;
-            CompositeByteBuf capabilities = buf.alloc().compositeBuffer(2);
+            // The Server Capabilities first part following the salt first part. (always lower 2-bytes)
+            int serverCapabilities = buf.readShortLE();
 
-            try {
-                // After salt first part, MySQL give the Server Capabilities first part (always 2-bytes).
-                capabilities.addComponent(true, buf.readRetainedSlice(2));
+            // MySQL is using 16 bytes to identify server character. There has lower 8-bits only, skip it.
+            buf.skipBytes(1);
+            builder.serverStatuses(buf.readShortLE());
 
-                // New protocol with 16 bytes to describe server character, but MySQL give lower 8-bits only.
-                builder.collationLow8Bits(buf.readByte())
-                    .serverStatuses(buf.readShortLE());
+            // The Server Capabilities second part following the server statuses. (always upper 2-bytes)
+            serverCapabilities |= buf.readShortLE() << Short.SIZE;
+            builder.serverCapabilities(serverCapabilities);
 
-                // No need release `capabilities` second part, it will release with `capabilities`
-                serverCapabilities = capabilities.addComponent(true, buf.readRetainedSlice(2))
-                    .readIntLE();
+            // If PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
+            short saltSize = buf.readUnsignedByte();
 
-                builder.serverCapabilities(serverCapabilities);
-            } finally {
-                capabilities.release();
+            // Reserved field, all bytes are 0x00.
+            buf.skipBytes(RESERVED_SIZE);
+
+            if ((serverCapabilities & Capabilities.SECURE_CONNECTION) != 0) {
+                int saltSecondPartSize = Math.max(MIN_SALT_SECOND_PART_SIZE, saltSize - SALT_FIRST_PART_SIZE - 1);
+
+                salt.writeBytes(buf, buf.readerIndex(), saltSecondPartSize);
+                // Skip salt second part and terminal.
+                buf.skipBytes(saltSecondPartSize + 1);
             }
 
-            return afterCapabilities(builder, buf, serverCapabilities, salt);
+            builder.salt(ByteBufUtil.getBytes(salt));
+
+            if ((serverCapabilities & Capabilities.PLUGIN_AUTH) == 0) {
+                builder.authType(MySqlAuthProvider.NO_AUTH_PROVIDER);
+            } else {
+                // See also MySQL bug 59453, auth type native name has no terminal character in
+                // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
+                // And MySQL only support "mysql_native_password" in those versions that has the
+                // bug, maybe just use constant "mysql_native_password" without read?
+                int length = buf.bytesBefore(TERMINAL);
+
+                if (length < 0) {
+                    builder.authType(buf.toString(StandardCharsets.US_ASCII));
+                } else {
+                    builder.authType(length == 0 ? MySqlAuthProvider.NO_AUTH_PROVIDER :
+                        buf.toString(buf.readerIndex(), length, StandardCharsets.US_ASCII));
+                }
+            }
+
+            return builder.build();
         } finally {
             salt.release();
         }
     }
 
-    private static ByteBuf readCStringRetainedSlice(ByteBuf buf) {
-        int bytes = buf.bytesBefore(TERMINAL);
-
-        if (bytes < 0) {
-            throw new IllegalArgumentException("buf has no C-style string");
-        }
-
-        if (bytes == 0) {
-            // skip terminal
-            buf.skipBytes(1);
-            // use EmptyByteBuf
-            return buf.alloc().buffer(0, 0);
-        }
-
-        ByteBuf result = buf.readSlice(bytes);
-        buf.skipBytes(1);
-        return result.retain();
-    }
-
-    private static HandshakeV10Request afterCapabilities(
-        Builder builder, ByteBuf buf, int serverCapabilities, CompositeByteBuf salt
-    ) {
-        short saltSize;
-        boolean isPluginAuth = (serverCapabilities & Capabilities.PLUGIN_AUTH) != 0;
-
-        if (isPluginAuth) {
-            saltSize = buf.readUnsignedByte();
-        } else {
-            saltSize = 0;
-            // If PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
-            buf.skipBytes(1);
-        }
-
-        // Reserved field, all bytes are 0x00.
-        buf.skipBytes(RESERVED_SIZE);
-
-        if ((serverCapabilities & Capabilities.SECURE_CONNECTION) != 0) {
-            int saltSecondPartSize = Math.max(MIN_SALT_SECOND_PART_SIZE, saltSize - salt.readableBytes() - 1);
-            ByteBuf saltSecondPart = buf.readSlice(saltSecondPartSize);
-            // Always 0x00, and it is not the part of salt, ignore.
-            buf.skipBytes(1);
-
-            // No need release salt second part, it will release with `salt`.
-            salt.addComponent(true, saltSecondPart.retain());
-        }
-
-        builder.salt(ByteBufUtil.getBytes(salt));
-
-        if (isPluginAuth) {
-            // See also MySQL bug 59453, auth type native name has no terminal character in
-            // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
-            // And MySQL only support "mysql_native_password" in those versions that has the
-            // bug, maybe just use constant "mysql_native_password" without read?
-            int length = buf.bytesBefore(TERMINAL);
-            String authType = length < 0 ? buf.toString(StandardCharsets.US_ASCII) :
-                (length == 0 ? "" : buf.toString(buf.readerIndex(), length, StandardCharsets.US_ASCII));
-
-            builder.authType(authType);
-        } else {
-            builder.authType(MySqlAuthProvider.NO_AUTH_PROVIDER);
-        }
-
-        return builder.build();
-    }
-
     private static final class Builder {
 
-        private HandshakeHeader header;
+        private final int envelopeId;
+
+        private final HandshakeHeader header;
 
         private String authType; // null if PLUGIN_AUTH flag not exists in serverCapabilities
-
-        private byte collationLow8Bits;
 
         private byte[] salt;
 
@@ -249,22 +196,17 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
         private short serverStatuses;
 
+        private Builder(int envelopeId, HandshakeHeader header) {
+            this.envelopeId = envelopeId;
+            this.header = header;
+        }
+
         HandshakeV10Request build() {
-            return new HandshakeV10Request(header, salt, serverCapabilities, collationLow8Bits, serverStatuses, authType);
+            return new HandshakeV10Request(header, envelopeId, salt, serverCapabilities, serverStatuses, authType);
         }
 
         void authType(String authType) {
             this.authType = authType;
-        }
-
-        Builder collationLow8Bits(byte collationLow8Bits) {
-            this.collationLow8Bits = collationLow8Bits;
-            return this;
-        }
-
-        Builder header(HandshakeHeader header) {
-            this.header = header;
-            return this;
         }
 
         void salt(byte[] salt) {

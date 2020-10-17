@@ -21,8 +21,8 @@ package dev.miku.r2dbc.mysql.message.server;
  */
 public interface DecodeContext {
 
-    static DecodeContext connection() {
-        return ConnectionDecodeContext.INSTANCE;
+    static DecodeContext login() {
+        return LoginDecodeContext.INSTANCE;
     }
 
     static DecodeContext command() {

@@ -26,6 +26,7 @@ import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.message.client.AuthResponse;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.HandshakeResponse;
+import dev.miku.r2dbc.mysql.message.client.LoginClientMessage;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedCloseMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
@@ -654,7 +655,7 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
 
     private static final int HANDSHAKE_VERSION = 10;
 
-    private final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
+    private final DirectProcessor<LoginClientMessage> requests = DirectProcessor.create();
 
     private final Client client;
 
@@ -676,6 +677,8 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
     private byte[] salt;
 
     private boolean sslCompleted;
+
+    private int lastEnvelopeId;
 
     LoginExchangeable(
         Client client, SslMode sslMode, String database, String user,
@@ -702,15 +705,19 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
             return;
         }
 
+        // Ensures it will be initialized only once.
         if (handshake) {
             handshake = false;
             if (message instanceof HandshakeRequest) {
-                int capabilities = initHandshake((HandshakeRequest) message);
+                HandshakeRequest request = (HandshakeRequest) message;
+                int capabilities = initHandshake(request);
+
+                lastEnvelopeId = request.getEnvelopeId() + 1;
 
                 if ((capabilities & Capabilities.SSL) == 0) {
-                    requests.onNext(createHandshakeResponse(capabilities));
+                    requests.onNext(createHandshakeResponse(lastEnvelopeId, capabilities));
                 } else {
-                    requests.onNext(SslRequest.from(capabilities, context.getClientCollation().getId()));
+                    requests.onNext(SslRequest.from(lastEnvelopeId, capabilities, context.getClientCollation().getId()));
                 }
             } else {
                 sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
@@ -725,20 +732,25 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
             sink.complete();
         } else if (message instanceof SyntheticSslResponseMessage) {
             sslCompleted = true;
-            requests.onNext(createHandshakeResponse(context.getCapabilities()));
+            requests.onNext(createHandshakeResponse(++lastEnvelopeId, context.getCapabilities()));
         } else if (message instanceof AuthMoreDataMessage) {
-            if (((AuthMoreDataMessage) message).isFailed()) {
+            AuthMoreDataMessage msg = (AuthMoreDataMessage) message;
+            lastEnvelopeId = msg.getEnvelopeId() + 1;
+
+            if (msg.isFailed()) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", context.getConnectionId());
                 }
-                requests.onNext(createAuthResponse("full authentication"));
+
+                requests.onNext(createAuthResponse(lastEnvelopeId, "full authentication"));
             }
             // Otherwise success, wait until OK message or Error message.
         } else if (message instanceof ChangeAuthMessage) {
             ChangeAuthMessage msg = (ChangeAuthMessage) message;
+            lastEnvelopeId = msg.getEnvelopeId() + 1;
             authProvider = MySqlAuthProvider.build(msg.getAuthType());
             salt = msg.getSalt();
-            requests.onNext(createAuthResponse("change authentication"));
+            requests.onNext(createAuthResponse(lastEnvelopeId,"change authentication"));
         } else {
             sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
                 message.getClass().getSimpleName() + "' in login phase"));
@@ -750,14 +762,14 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
         this.requests.onComplete();
     }
 
-    private AuthResponse createAuthResponse(String phase) {
+    private AuthResponse createAuthResponse(int envelopeId, String phase) {
         MySqlAuthProvider authProvider = getAndNextProvider();
 
         if (authProvider.isSslNecessary() && !sslCompleted) {
             throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase), CLI_SPECIFIC);
         }
 
-        return new AuthResponse(authProvider.authentication(password, salt, context.getClientCollation()));
+        return new AuthResponse(envelopeId, authProvider.authentication(password, salt, context.getClientCollation()));
     }
 
     private int clientCapabilities(int serverCapabilities) {
@@ -825,7 +837,7 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
         return authProvider;
     }
 
-    private HandshakeResponse createHandshakeResponse(int capabilities) {
+    private HandshakeResponse createHandshakeResponse(int envelopeId, int capabilities) {
         MySqlAuthProvider authProvider = getAndNextProvider();
 
         if (authProvider.isSslNecessary() && !sslCompleted) {
@@ -841,8 +853,8 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
             authType = MySqlAuthProvider.CACHING_SHA2_PASSWORD;
         }
 
-        return HandshakeResponse.from(capabilities, context.getClientCollation().getId(), user, authorization,
-            authType, database, ATTRIBUTES);
+        return HandshakeResponse.from(envelopeId, capabilities, context.getClientCollation().getId(),
+            user, authorization, authType, database, ATTRIBUTES);
     }
 
     private static String formatAuthFails(String authType, String phase) {

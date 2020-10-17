@@ -23,7 +23,7 @@ import io.netty.buffer.ByteBuf;
  * <p>
  * Note: last request must be {@link PreparedExecuteMessage} and it must be cursored.
  */
-public final class PreparedFetchMessage extends FixedSizeClientMessage {
+public final class PreparedFetchMessage extends SizedClientMessage {
 
     private static final int SIZE = Byte.BYTES + Integer.BYTES + Integer.BYTES;
 
@@ -62,21 +62,17 @@ public final class PreparedFetchMessage extends FixedSizeClientMessage {
 
         PreparedFetchMessage that = (PreparedFetchMessage) o;
 
-        if (statementId != that.statementId) {
-            return false;
-        }
-        return fetchSize == that.fetchSize;
+        return statementId == that.statementId && fetchSize == that.fetchSize;
     }
 
     @Override
     public int hashCode() {
-        int result = statementId;
-        result = 31 * result + fetchSize;
-        return result;
+        return 31 * statementId + fetchSize;
     }
 
     @Override
     public String toString() {
-        return String.format("PreparedFetchMessage{statementId=%d, fetchSize=%d}", statementId, Integer.toUnsignedLong(fetchSize));
+        return "PreparedFetchMessage{statementId=" + statementId +
+            ", fetchSize=" + Integer.toUnsignedLong(fetchSize) + '}';
     }
 }

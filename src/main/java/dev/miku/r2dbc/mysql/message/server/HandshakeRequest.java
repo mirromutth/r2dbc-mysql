@@ -26,23 +26,25 @@ public interface HandshakeRequest extends ServerMessage {
 
     HandshakeHeader getHeader();
 
+    int getEnvelopeId();
+
     int getServerCapabilities();
 
     String getAuthType();
 
     byte[] getSalt();
 
-    static HandshakeRequest decode(ByteBuf buf) {
+    static HandshakeRequest decode(int envelopeId, ByteBuf buf) {
         HandshakeHeader header = HandshakeHeader.decode(buf);
         int version = header.getProtocolVersion();
 
         switch (version) {
             case 10:
-                return HandshakeV10Request.decodeV10(buf, header);
+                return HandshakeV10Request.decode(envelopeId, buf, header);
             case 9:
-                return HandshakeV9Request.decodeV9(buf, header);
+                return HandshakeV9Request.decode(envelopeId, buf, header);
             default:
-                throw new R2dbcPermissionDeniedException(String.format("Handshake protocol version %d not support.", version));
+                throw new R2dbcPermissionDeniedException("Does not support handshake protocol version " + version);
         }
     }
 }

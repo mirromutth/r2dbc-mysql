@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-package dev.miku.r2dbc.mysql.message.header;
+package dev.miku.r2dbc.mysql.message.server;
 
 /**
- * An implementation of {@link SequenceIdProvider} based on unsafe increment.
- * <p>
- * It is NOT thread-safety, used only for temporary use of a single message.
+ * An implementation of {@link DecodeContext} in connection phase.
  */
-final class UnsafeSequenceIdProvider implements SequenceIdProvider {
+final class LoginDecodeContext implements DecodeContext {
 
-    private int i = 0;
+    static final LoginDecodeContext INSTANCE = new LoginDecodeContext();
+
+    private LoginDecodeContext() {
+    }
 
     @Override
-    public byte next() {
-        return (byte) ((i++) & 0xFF);
+    public String toString() {
+        return "DecodeContext-Login";
     }
 }

@@ -19,7 +19,8 @@ package dev.miku.r2dbc.mysql.message.client;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.reactivestreams.Publisher;
+import reactor.core.CorePublisher;
+import reactor.core.publisher.Flux;
 
 /**
  * A message sent from a MySQL client to a MySQL server.
@@ -27,11 +28,12 @@ import org.reactivestreams.Publisher;
 public interface ClientMessage {
 
     /**
-     * Encode a message into a {@link ByteBuf} data buffer without envelope header.
+     * Encode a message into {@link ByteBuf}s.
      *
-     * @param allocator the {@link ByteBufAllocator} to use to get a {@link ByteBuf} data buffer to write into.
+     * @param allocator the {@link ByteBufAllocator} that use to get {@link ByteBuf} to write into.
      * @param context   current MySQL connection context
-     * @return a {@link Publisher} that produces {@link ByteBuf}s sliced by {@code Envelopes.MAX_ENVELOPE_SIZE}, which containing the encoded message.
+     * @return a {@link Flux} that's produces the encoded {@link ByteBuf}s.
+     * @throws IllegalArgumentException if {@code allocator} or {@code context} is {@code null}.
      */
-    Publisher<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context);
+    CorePublisher<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context);
 }

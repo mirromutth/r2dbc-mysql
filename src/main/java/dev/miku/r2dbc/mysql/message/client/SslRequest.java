@@ -23,17 +23,17 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 /**
  * An abstraction of {@link ClientMessage} that considers SSL request for handshake.
  */
-public interface SslRequest extends ClientMessage {
+public interface SslRequest extends LoginClientMessage {
 
     int getCapabilities();
 
-    static SslRequest from(int capabilities, int collationId) {
+    static SslRequest from(int envelopeId, int capabilities, int collationId) {
         require((capabilities & Capabilities.SSL) != 0, "capabilities must be SSL enabled");
 
         if ((capabilities & Capabilities.PROTOCOL_41) == 0) {
-            return new SslRequest320(capabilities);
+            return new SslRequest320(envelopeId, capabilities);
         } else {
-            return new SslRequest41(capabilities, collationId);
+            return new SslRequest41(envelopeId, capabilities, collationId);
         }
     }
 }

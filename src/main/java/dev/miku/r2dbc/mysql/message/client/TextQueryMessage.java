@@ -21,7 +21,7 @@ import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.Query;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
@@ -31,7 +31,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * A plain text SQL query message, it could include multi-statements.
  */
-public final class TextQueryMessage extends LargeClientMessage {
+public final class TextQueryMessage implements ClientMessage {
 
     static final byte QUERY_FLAG = 3;
 
@@ -42,10 +42,13 @@ public final class TextQueryMessage extends LargeClientMessage {
     }
 
     @Override
-    protected Publisher<ByteBuf> fragments(ByteBufAllocator allocator, ConnectionContext context) {
+    public Flux<ByteBuf> encode(ByteBufAllocator allocator, ConnectionContext context) {
+        requireNonNull(allocator, "allocator must not be null");
+        requireNonNull(context, "context must not be null");
+
         Charset charset = context.getClientCollation().getCharset();
 
-        return sql.map(it -> {
+        return Flux.from(sql.map(it -> {
             ByteBuf buf = allocator.buffer();
 
             try {
@@ -56,7 +59,7 @@ public final class TextQueryMessage extends LargeClientMessage {
                 buf.release();
                 throw e;
             }
-        });
+        }));
     }
 
     @Override

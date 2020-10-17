@@ -40,7 +40,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  *
  * @see SslRequest41 the head of {@link HandshakeResponse41}.
  */
-final class HandshakeResponse41 extends EnvelopeClientMessage implements HandshakeResponse {
+final class HandshakeResponse41 extends ScalarClientMessage implements HandshakeResponse {
 
     private static final int ONE_BYTE_MAX_INT = 0xFF;
 
@@ -58,9 +58,8 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
 
     // private final byte zStdCompressionLevel; // When Z-Standard compression supporting
 
-    HandshakeResponse41(int capabilities, int collationId, String user, byte[] authentication, String authType, String database, Map<String, String> attributes) {
-        this.head = new SslRequest41(capabilities, collationId);
-
+    HandshakeResponse41(int envelopeId, int capabilities, int collationId, String user, byte[] authentication, String authType, String database, Map<String, String> attributes) {
+        this.head = new SslRequest41(envelopeId, capabilities, collationId);
         this.user = requireNonNull(user, "user must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
@@ -69,32 +68,24 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
     }
 
     @Override
+    public int getEnvelopeId() {
+        return head.getEnvelopeId();
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof HandshakeResponse41)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
 
         HandshakeResponse41 that = (HandshakeResponse41) o;
 
-        if (!head.equals(that.head)) {
-            return false;
-        }
-        if (!user.equals(that.user)) {
-            return false;
-        }
-        if (!Arrays.equals(authentication, that.authentication)) {
-            return false;
-        }
-        if (!authType.equals(that.authType)) {
-            return false;
-        }
-        if (!database.equals(that.database)) {
-            return false;
-        }
-        return attributes.equals(that.attributes);
+        return head.equals(that.head) && user.equals(that.user) &&
+            Arrays.equals(authentication, that.authentication) && authType.equals(that.authType) &&
+            database.equals(that.database) && attributes.equals(that.attributes);
     }
 
     @Override
@@ -104,14 +95,16 @@ final class HandshakeResponse41 extends EnvelopeClientMessage implements Handsha
         result = 31 * result + Arrays.hashCode(authentication);
         result = 31 * result + authType.hashCode();
         result = 31 * result + database.hashCode();
-        result = 31 * result + attributes.hashCode();
-        return result;
+        return 31 * result + attributes.hashCode();
     }
 
     @Override
     public String toString() {
-        return String.format("HandshakeResponse41{capabilities=%x, collationId=%d, user='%s', authentication=REDACTED, authType='%s', database='%s', attributes=%s}",
-            head.getCapabilities(), head.getCollationId(), user, authType, database, attributes);
+        return "HandshakeResponse41{envelopeId=" + head.getEnvelopeId() +
+            ", capabilities=" + Integer.toHexString(head.getCapabilities()) +
+            ", collationId=" + head.getCollationId() + ", user='" + user +
+            "', authentication=REDACTED, authType='" + authType +
+            "', database='" + database + "', attributes=" + attributes + '}';
     }
 
     @Override
