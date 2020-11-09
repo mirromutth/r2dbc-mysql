@@ -133,14 +133,14 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
             buf.skipBytes(SALT_FIRST_PART_SIZE + 1);
 
             // The Server Capabilities first part following the salt first part. (always lower 2-bytes)
-            int serverCapabilities = buf.readShortLE();
+            int serverCapabilities = buf.readUnsignedShortLE();
 
             // MySQL is using 16 bytes to identify server character. There has lower 8-bits only, skip it.
             buf.skipBytes(1);
             builder.serverStatuses(buf.readShortLE());
 
             // The Server Capabilities second part following the server statuses. (always upper 2-bytes)
-            serverCapabilities |= buf.readShortLE() << Short.SIZE;
+            serverCapabilities |= buf.readUnsignedShortLE() << Short.SIZE;
             builder.serverCapabilities(serverCapabilities);
 
             // If PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
