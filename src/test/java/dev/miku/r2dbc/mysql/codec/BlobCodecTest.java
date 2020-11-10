@@ -88,7 +88,7 @@ class BlobCodecTest implements CodecTestSupport<Blob> {
     public Object[] stringifyParameters() {
         return Arrays.stream(blob)
             .map(it -> Arrays.stream(it.values)
-                .map(v -> v.length == 0 ? "" : Hex.toHexString(v).toUpperCase())
+                .map(v -> v.length == 0 ? "" : Hex.toHexString(v))
                 .collect(Collectors.joining("", "x'", "'")))
             .toArray();
     }

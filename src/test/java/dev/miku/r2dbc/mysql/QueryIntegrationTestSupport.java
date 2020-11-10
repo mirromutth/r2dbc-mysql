@@ -198,10 +198,9 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     @Test
     void bit() {
         testType(Boolean.class, true, "BIT(1)", null, false, true);
-        testType(byte[].class, false, "BIT(16)", null, new byte[]{(byte) 0xCD, (byte) 0xEF});
-        testType(BitSet.class, false, "BIT(16)", null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}));
-        testType(BitSet.class, true, "BIT(16)", BitSet.valueOf(new byte[0]));
-        testType(ByteBuffer.class, false, "BIT(16)", null, ByteBuffer.wrap(new byte[]{1, 2}));
+        testType(BitSet.class, true, "BIT(16)", null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}), BitSet.valueOf(new byte[0]), BitSet.valueOf(new byte[] {0, 0}));
+        testType(byte[].class, false, "BIT(16)", null, new byte[]{(byte) 0xCD, (byte) 0xEF}, new byte[]{0, 0});
+        testType(ByteBuffer.class, false, "BIT(16)", null, ByteBuffer.wrap(new byte[]{1, 2}), ByteBuffer.wrap(new byte[]{0, 0}));
     }
 
     @Test

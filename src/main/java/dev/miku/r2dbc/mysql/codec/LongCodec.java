@@ -76,13 +76,9 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
         if ((byte) v == v) {
             return new ByteCodec.ByteParameter(allocator, (byte) v);
-        }
-
-        if ((short) v == v) {
+        } else if ((short) v == v) {
             return new ShortCodec.ShortParameter(allocator, (short) v);
-        }
-
-        if ((int) v == v) {
+        } else if ((int) v == v) {
             return new IntegerCodec.IntParameter(allocator, (int) v);
         }
 
@@ -174,15 +170,7 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
         @Override
         public Mono<ByteBuf> publishBinary() {
-            return Mono.fromSupplier(() -> {
-                ByteBuf buf = allocator.buffer(Long.BYTES);
-                try {
-                    return buf.writeLongLE(value);
-                } catch (Throwable e) {
-                    buf.release();
-                    throw e;
-                }
-            });
+            return Mono.fromSupplier(() -> allocator.buffer(Long.BYTES).writeLongLE(value));
         }
 
         @Override

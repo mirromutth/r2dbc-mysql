@@ -42,6 +42,8 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         if (!value.isReadable()) {
             return BitSet.valueOf(EMPTY_BYTES);
         }
+
+        // Result with big-endian, BitSet is using little-endian, need reverse.
         return BitSet.valueOf(reverse(ByteBufUtil.getBytes(value)));
     }
 
@@ -52,7 +54,33 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        return new BitSetParameter(allocator, (BitSet) value);
+        BitSet set = (BitSet) value;
+        long bits;
+        if (set.isEmpty()) {
+            bits = 0;
+        } else {
+            long[] array = set.toLongArray();
+
+            // The max precision of BIT is 64, so just use the first Long.
+            if (array.length == 0) {
+                bits = 0;
+            } else {
+                bits = array[0];
+            }
+        }
+
+        short type;
+        if ((byte) bits == bits) {
+            type = DataTypes.TINYINT;
+        } else if ((short) bits == bits) {
+            type = DataTypes.SMALLINT;
+        } else if ((int) bits == bits) {
+            type = DataTypes.INT;
+        } else {
+            type = DataTypes.BIGINT;
+        }
+
+        return new BitSetParameter(allocator, bits, type);
     }
 
     @Override
@@ -78,34 +106,46 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
         private final ByteBufAllocator allocator;
 
-        private final BitSet set;
+        private final long value;
 
-        private BitSetParameter(ByteBufAllocator allocator, BitSet set) {
+        private final short type;
+
+        private BitSetParameter(ByteBufAllocator allocator, long value, short type) {
             this.allocator = allocator;
-            this.set = set;
+            this.value = value;
+            this.type = type;
         }
 
         @Override
         public Mono<ByteBuf> publishBinary() {
-            return Mono.fromSupplier(() -> ByteArrayCodec.encodeBytes(allocator, reverse(set.toByteArray())));
+            switch (type) {
+                case DataTypes.TINYINT:
+                    return Mono.fromSupplier(() -> allocator.buffer(Byte.BYTES).writeByte((int) value));
+                case DataTypes.SMALLINT:
+                    return Mono.fromSupplier(() -> allocator.buffer(Short.BYTES).writeShortLE((int) value));
+                case DataTypes.INT:
+                    return Mono.fromSupplier(() -> allocator.buffer(Integer.BYTES).writeIntLE((int) value));
+                default:
+                    return Mono.fromSupplier(() -> allocator.buffer(Long.BYTES).writeLongLE(value));
+            }
         }
 
         @Override
         public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> {
-                if (set.isEmpty()) {
+                if (value == 0) {
                     // Must filled by 0 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer on type BIT (i.e. unsafe allocate).
                     // So if we do not fill the buffer, it will use last content which is an undefined behavior. A classic bug, right?
                     writer.writeBinary(false);
                 } else {
-                    writer.writeHex(reverse(set.toByteArray()));
+                    writer.writeHex(value);
                 }
             });
         }
 
         @Override
         public short getType() {
-            return DataTypes.BIT;
+            return type;
         }
 
         @Override
@@ -119,12 +159,12 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
             BitSetParameter that = (BitSetParameter) o;
 
-            return set.equals(that.set);
+            return value == that.value;
         }
 
         @Override
         public int hashCode() {
-            return set.hashCode();
+            return (int) (value ^ (value >>> 32));
         }
     }
 }

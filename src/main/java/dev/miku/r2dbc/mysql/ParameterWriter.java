@@ -67,6 +67,8 @@ public abstract class ParameterWriter extends Writer {
 
     public abstract void writeHex(byte[] bytes);
 
+    public abstract void writeHex(long bits);
+
     /**
      * Mark the following parameter is a string, prepare and wrap the
      * placeholder with {@code '}.
