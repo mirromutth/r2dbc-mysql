@@ -141,16 +141,7 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
         @Override
         public Mono<ByteBuf> publishBinary() {
-            return Mono.fromSupplier(() -> {
-                ByteBuf buf = allocator.buffer(Integer.BYTES);
-
-                try {
-                    return buf.writeIntLE(value);
-                } catch (Throwable e) {
-                    buf.release();
-                    throw e;
-                }
-            });
+            return Mono.fromSupplier(() -> allocator.buffer(Integer.BYTES).writeIntLE(value));
         }
 
         @Override

@@ -36,6 +36,7 @@ class BitSetCodecTest implements CodecTestSupport<BitSet> {
         BitSet.valueOf(new byte[]{0}), // It is also empty
         BitSet.valueOf(new byte[]{4, 5, 6}),
         BitSet.valueOf(new long[]{0x8D567C913B4F61A2L}),
+        BitSet.valueOf(new long[]{0x8D56700000F61A2L}),
         BitSet.valueOf(new byte[]{(byte) 0xFE, (byte) 0xDC, (byte) 0xBA})
     };
 
@@ -57,17 +58,26 @@ class BitSetCodecTest implements CodecTestSupport<BitSet> {
             } else {
                 byte[] bytes = it.toByteArray();
                 ArrayUtils.reverse(bytes);
-                return String.format("x'%s'", Hex.toHexString(bytes).toUpperCase());
+                String content = Hex.toHexString(bytes);
+                return String.format("x'%s'", content.startsWith("0") ? content.substring(1) : content);
             }
         }).toArray();
     }
 
     @Override
     public ByteBuf[] binaryParameters(Charset charset) {
-        return Arrays.stream(sets).map(it -> {
-            byte[] bytes = it.toByteArray();
-            ArrayUtils.reverse(bytes);
-            return Unpooled.wrappedBuffer(bytes);
-        }).toArray(ByteBuf[]::new);
+        return Arrays.stream(sets).map(BitSetCodecTest::encode).toArray(ByteBuf[]::new);
+    }
+
+    @Override
+    public ByteBuf sized(ByteBuf value) {
+        return value;
+    }
+
+    static ByteBuf encode(BitSet value) {
+        if (value.isEmpty()) {
+            return Unpooled.wrappedBuffer(new byte[]{0});
+        }
+        return LongCodecTest.encode(value.toLongArray()[0]);
     }
 }

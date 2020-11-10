@@ -53,7 +53,7 @@ class ByteBufferCodecTest implements CodecTestSupport<ByteBuffer> {
     @Override
     public Object[] stringifyParameters() {
         return Arrays.stream(buffers)
-            .map(it -> String.format("x'%s'", Hex.toHexString(it.array()).toUpperCase()))
+            .map(it -> String.format("x'%s'", Hex.toHexString(it.array())))
             .toArray();
     }
 

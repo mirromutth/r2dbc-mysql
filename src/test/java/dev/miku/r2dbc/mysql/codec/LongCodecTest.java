@@ -73,11 +73,11 @@ class LongCodecTest implements CodecTestSupport<Long> {
         if (value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE) {
             return Unpooled.wrappedBuffer(new byte[]{(byte) value});
         } else if (value >= Short.MIN_VALUE && value <= Short.MAX_VALUE) {
-            return Unpooled.buffer(Short.BYTES, Short.BYTES).writeShortLE((short) value);
+            return Unpooled.buffer(Short.BYTES).writeShortLE((short) value);
         } else if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
-            return Unpooled.buffer(Integer.BYTES, Integer.BYTES).writeIntLE((int) value);
+            return Unpooled.buffer(Integer.BYTES).writeIntLE((int) value);
         } else {
-            return Unpooled.buffer(Long.BYTES, Long.BYTES).writeLongLE(value);
+            return Unpooled.buffer(Long.BYTES).writeLongLE(value);
         }
     }
 }

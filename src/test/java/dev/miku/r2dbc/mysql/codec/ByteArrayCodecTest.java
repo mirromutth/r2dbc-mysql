@@ -52,7 +52,7 @@ class ByteArrayCodecTest implements CodecTestSupport<byte[]> {
     @Override
     public Object[] stringifyParameters() {
         return Arrays.stream(bytes)
-            .map(it -> String.format("x'%s'", Hex.toHexString(it).toUpperCase()))
+            .map(it -> String.format("x'%s'", Hex.toHexString(it)))
             .toArray();
     }
 
