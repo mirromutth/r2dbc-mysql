@@ -16,14 +16,14 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.miku.r2dbc.mysql.json.JacksonCodec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
-import org.testcontainers.shaded.com.fasterxml.jackson.annotation.JsonCreator;
-import org.testcontainers.shaded.com.fasterxml.jackson.annotation.JsonProperty;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -93,7 +93,7 @@ class JacksonCodecTest implements CodecTestSupport<Object> {
         return Arrays.stream(everything)
             .map(it -> {
                 try {
-                     return Unpooled.wrappedBuffer(MAPPER.writeValueAsBytes(it));
+                    return Unpooled.wrappedBuffer(MAPPER.writeValueAsBytes(it));
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }

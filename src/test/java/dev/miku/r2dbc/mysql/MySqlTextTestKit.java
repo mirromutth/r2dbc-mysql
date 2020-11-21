@@ -17,11 +17,11 @@
 package dev.miku.r2dbc.mysql;
 
 /**
- * Integration tests for TestKit.
+ * Integration tests for {@link MySqlTestKitSupport} with text protocol.
  */
 class MySqlTextTestKit extends MySqlTestKitSupport {
 
     MySqlTextTestKit() {
-        super(configuration(false, null, null));
+        super(IntegrationTestSupport.configuration(false, null, null));
     }
 }
