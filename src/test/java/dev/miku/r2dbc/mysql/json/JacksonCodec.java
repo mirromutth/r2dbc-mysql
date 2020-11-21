@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.json;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.CodecContext;
@@ -28,7 +29,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;

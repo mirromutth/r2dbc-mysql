@@ -17,12 +17,12 @@
 package dev.miku.r2dbc.mysql;
 
 /**
- * Integration tests for TestKit.
+ * Integration tests for {@link MySqlTestKitSupport} with binary protocol.
  */
 class MySqlPrepareTestKit extends MySqlTestKitSupport {
 
     MySqlPrepareTestKit() {
-        super(configuration(false, null, sql -> true));
+        super(IntegrationTestSupport.configuration(false, null, sql -> true));
     }
 
     public void compoundStatement() {

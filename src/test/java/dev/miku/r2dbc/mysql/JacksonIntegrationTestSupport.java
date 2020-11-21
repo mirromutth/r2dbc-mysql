@@ -16,14 +16,14 @@
 
 package dev.miku.r2dbc.mysql;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.miku.r2dbc.mysql.json.JacksonCodecRegistrar;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.reactivestreams.Publisher;
-import org.testcontainers.shaded.com.fasterxml.jackson.annotation.JsonCreator;
-import org.testcontainers.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 

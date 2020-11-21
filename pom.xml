@@ -56,23 +56,24 @@
     </scm>
 
     <properties>
-        <assertj.version>3.17.0</assertj.version>
+        <assertj.version>3.18.0</assertj.version>
         <java.version>1.8</java.version>
         <mbr.version>0.2.0.RELEASE</mbr.version>
-        <jmh.version>1.25.1</jmh.version>
+        <jmh.version>1.26</jmh.version>
         <jsr305.version>3.0.2</jsr305.version>
-        <junit.version>5.6.2</junit.version>
+        <junit.version>5.7.0</junit.version>
         <logback.version>1.2.3</logback.version>
-        <mockito.version>3.5.7</mockito.version>
-        <mysql.version>8.0.21</mysql.version>
+        <mockito.version>3.6.0</mockito.version>
+        <mysql.version>8.0.22</mysql.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <r2dbc-spi.version>0.8.2.RELEASE</r2dbc-spi.version>
-        <reactor.version>Dysprosium-SR11</reactor.version>
+        <r2dbc-spi.version>0.8.3.RELEASE</r2dbc-spi.version>
+        <reactor.version>Dysprosium-SR14</reactor.version>
         <slf4j.version>1.7.30</slf4j.version>
-        <testcontainers.version>1.14.3</testcontainers.version>
+        <testcontainers.version>1.15.0</testcontainers.version>
         <hikari-cp.version>3.4.5</hikari-cp.version>
-        <spring-framework.version>5.2.8.RELEASE</spring-framework.version>
+        <spring-framework.version>5.3.1</spring-framework.version>
+        <jackson.version>2.11.3</jackson.version>
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.surefire.skip>false</maven.surefire.skip>
     </properties>
@@ -97,6 +98,13 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
                 <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -194,6 +202,21 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

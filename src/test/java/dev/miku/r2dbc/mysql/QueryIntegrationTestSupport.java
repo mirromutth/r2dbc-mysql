@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.Result;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
