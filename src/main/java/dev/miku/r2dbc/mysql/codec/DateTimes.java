@@ -25,6 +25,7 @@ import reactor.util.annotation.Nullable;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
 import java.time.temporal.Temporal;
+import java.util.Date;
 
 /**
  * An utility considers date/time generic logic for {@link Codec} implementations.
@@ -136,6 +137,11 @@ final class DateTimes {
     static boolean canDecodeDateTime(short type, Class<?> target, Class<? extends Temporal> temporal) {
         return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
             target.isAssignableFrom(temporal);
+    }
+
+    static boolean canDecodeLegacyDate(short type, Class<?> target, Class<? extends Date> date) {
+        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
+                target.isAssignableFrom(date);
     }
 
     private DateTimes() {
