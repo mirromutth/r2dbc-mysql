@@ -27,7 +27,7 @@ import reactor.util.annotation.Nullable;
  *
  * @param <T> the type that is handled by this codec.
  */
-interface Codec<T> {
+public interface Codec<T> {
 
     @Nullable
     T decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context);
