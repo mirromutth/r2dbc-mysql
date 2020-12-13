@@ -17,10 +17,11 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.constant.Envelopes;
-import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
+import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
+import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
@@ -120,9 +121,7 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
 
     @Override
     protected void deallocate() {
-        for (ByteBuf buffer : buffers) {
-            ReferenceCountUtil.safeRelease(buffer);
-        }
+        NettyBufferUtils.releaseAll(buffers);
     }
 
     /**
@@ -181,12 +180,11 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
     }
 
     private static FieldValue retainedLargeField(List<ByteBuf> parts) {
-        int i;
-        int successSentinel = 0;
         int size = parts.size();
+        int successSentinel = 0;
 
         try {
-            for (i = 0; i < size; ++i) {
+            for (int i = 0; i < size; ++i) {
                 parts.get(i).retain();
                 successSentinel = i + 1;
             }
@@ -198,9 +196,7 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
                 // So release all retained buffers.
                 // Of course, this still does not solve call-stack
                 // overflow when calling `FieldValue.of`.
-                for (i = 0; i < successSentinel; ++i) {
-                    ReferenceCountUtil.safeRelease(parts.get(i));
-                }
+                NettyBufferUtils.releaseAll(parts, successSentinel);
             }
 
             throw e;
@@ -208,13 +204,12 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
     }
 
     private static ByteBuf retainedMerge(ByteBufAllocator allocator, List<ByteBuf> parts) {
-        int i;
         int successSentinel = 0;
         int size = parts.size();
         CompositeByteBuf byteBuf = allocator.compositeBuffer(size);
 
         try {
-            for (i = 0; i < size; ++i) {
+            for (int i = 0; i < size; ++i) {
                 parts.get(i).retain();
                 successSentinel = i + 1;
             }
@@ -230,9 +225,7 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
                 // So release all retained buffers.
                 // Of course, this still does not solve call-stack
                 // overflow when calling addComponents.
-                for (i = 0; i < successSentinel; ++i) {
-                    ReferenceCountUtil.safeRelease(parts.get(i));
-                }
+                NettyBufferUtils.releaseAll(parts, successSentinel);
             }
 
             throw e;

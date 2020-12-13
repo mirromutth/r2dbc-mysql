@@ -223,7 +223,7 @@ final class CumulateEnvelopeSubscriber implements CoreSubscriber<ByteBuf>, Scann
      * @param alloc     the allocator for expand cumulated buffer.
      * @param cumulated the previous cumulated buffer.
      * @param buf       the upstream inbounded buffer.
-     * @return the cumulated buffer that's joined by {@code cumulated} and {@code buf}.
+     * @return the cumulated buffer that's combined by current {@code cumulated} and {@code buf}.
      */
     private static ByteBuf cumulate(ByteBufAllocator alloc, @Nullable ByteBuf cumulated, ByteBuf buf) {
         if (cumulated == null) {

@@ -17,13 +17,11 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.message.FieldValue;
+import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 
 import java.util.List;
-
-import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
  * A field reader considers read {@link FieldValue}s from {@link ByteBuf}(s).
@@ -54,10 +52,7 @@ interface FieldReader extends ReferenceCounted {
     FieldValue readVarIntSizedField();
 
     @SuppressWarnings("ForLoopReplaceableByForEach")
-    static FieldReader of(ByteBufJoiner joiner, List<ByteBuf> buffers) {
-        requireNonNull(joiner, "joiner must not be null");
-        requireNonNull(buffers, "buffers must not be null");
-
+    static FieldReader of(List<ByteBuf> buffers) {
         int size = buffers.size();
         long totalSize = 0;
 
@@ -65,37 +60,31 @@ interface FieldReader extends ReferenceCounted {
             for (int i = 0; i < size; ++i) {
                 totalSize += buffers.get(i).readableBytes();
 
+                // Netty ByteBuf max length is Integer.MAX_VALUE.
                 if (totalSize > Integer.MAX_VALUE) {
                     break;
                 }
             }
         } catch (Throwable e) {
-            for (int i = 0; i < size; ++i) {
-                ReferenceCountUtil.safeRelease(buffers.get(i));
-            }
+            NettyBufferUtils.releaseAll(buffers, size);
             buffers.clear();
             throw e;
         }
 
         if (totalSize <= Integer.MAX_VALUE) {
-            // Netty ByteBuf max length is Integer.MAX_VALUE.
-            ByteBuf joined = joiner.join(buffers);
+            // The buffers will be cleared by ByteBufCombiner.composite().
+            ByteBuf combined = ByteBufCombiner.composite(buffers);
             try {
-                // Reader will release `joined` by close if create succeed.
-                return new NormalFieldReader(joined);
+                return new NormalFieldReader(combined);
             } catch (Throwable e) {
-                joined.release();
+                combined.release();
                 throw e;
-            } finally {
-                buffers.clear();
             }
         } else {
             try {
                 return new LargeFieldReader(buffers.toArray(new ByteBuf[0]));
             } catch (Throwable e) {
-                for (int i = 0; i < size; ++i) {
-                    ReferenceCountUtil.safeRelease(buffers.get(i));
-                }
+                NettyBufferUtils.releaseAll(buffers, size);
                 throw e;
             } finally {
                 buffers.clear();
