@@ -16,9 +16,9 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
+import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.ReferenceCountUtil;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -58,9 +58,7 @@ abstract class MultiLob<T> {
             List<ByteBuf> buffers = this.buffers.getAndSet(null);
 
             if (buffers != null) {
-                for (ByteBuf buf : buffers) {
-                    ReferenceCountUtil.safeRelease(buf);
-                }
+                NettyBufferUtils.releaseAll(buffers);
             }
         });
     }

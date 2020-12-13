@@ -17,8 +17,8 @@
 package dev.miku.r2dbc.mysql.codec.lob;
 
 import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Blob;
 import io.r2dbc.spi.Clob;
 
@@ -50,10 +50,7 @@ public final class LobUtils {
 
             return new MultiBlob(value);
         } catch (Throwable e) {
-            for (int j = 0; j < i; ++j) {
-                ReferenceCountUtil.safeRelease(value.get(j));
-            }
-
+            NettyBufferUtils.releaseAll(value, i);
             throw e;
         }
     }
@@ -79,10 +76,7 @@ public final class LobUtils {
 
             return new MultiClob(buffers, collationId, version);
         } catch (Throwable e) {
-            for (int j = 0; j < i; ++j) {
-                ReferenceCountUtil.safeRelease(buffers.get(j));
-            }
-
+            NettyBufferUtils.releaseAll(buffers, i);
             throw e;
         }
     }

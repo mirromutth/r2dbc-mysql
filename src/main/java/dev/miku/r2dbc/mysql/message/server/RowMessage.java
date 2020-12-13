@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.message.server;
 import dev.miku.r2dbc.mysql.codec.FieldInformation;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.message.FieldValue;
-import io.netty.util.ReferenceCountUtil;
+import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
 import io.netty.util.ReferenceCounted;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
@@ -58,7 +58,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
 
             return fields;
         } catch (Throwable e) {
-            clearFields(fields, size);
+            NettyBufferUtils.releaseAll(fields, size);
             throw e;
         }
     }
@@ -99,7 +99,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
 
             return fields;
         } catch (Throwable e) {
-            clearFields(fields, size);
+            NettyBufferUtils.releaseAll(fields, size);
             throw e;
         }
     }
@@ -186,17 +186,6 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
                 return Long.BYTES;
             default:
                 return 0;
-        }
-    }
-
-    private static void clearFields(FieldValue[] fields, int size) {
-        FieldValue field;
-
-        for (int i = 0; i < size; ++i) {
-            field = fields[i];
-            if (field != null && !field.isNull()) {
-                ReferenceCountUtil.safeRelease(field);
-            }
         }
     }
 }

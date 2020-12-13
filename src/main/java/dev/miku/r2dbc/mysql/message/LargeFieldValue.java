@@ -17,9 +17,9 @@
 package dev.miku.r2dbc.mysql.message;
 
 import dev.miku.r2dbc.mysql.util.InternalArrays;
+import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.AbstractReferenceCounted;
-import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 
 import java.util.List;
@@ -71,8 +71,6 @@ public final class LargeFieldValue extends AbstractReferenceCounted implements F
             return;
         }
 
-        for (ByteBuf buf : this.buffers) {
-            ReferenceCountUtil.safeRelease(buf);
-        }
+        NettyBufferUtils.releaseAll(this.buffers);
     }
 }

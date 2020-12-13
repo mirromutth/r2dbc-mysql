@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql.message.server;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
+import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
@@ -47,8 +48,6 @@ public final class ServerMessageDecoder {
 
     private static final short ERROR = 0xFF;
 
-    private static final ByteBufJoiner JOINER = ByteBufJoiner.wrapped();
-
     private final List<ByteBuf> parts = new ArrayList<>();
 
     @Nullable
@@ -57,48 +56,46 @@ public final class ServerMessageDecoder {
         requireNonNull(context, "context must not be null");
         requireNonNull(decodeContext, "decodeContext must not be null");
 
-        Byte id = readNotFinish(envelope);
+        List<ByteBuf> buffers = this.parts;
+        Byte id = readNotFinish(buffers, envelope);
         if (id == null) {
             return null;
         }
 
-        return decodeMessage(parts, id.intValue() & 0xFF, context, decodeContext);
+        return decodeMessage(buffers, id.intValue() & 0xFF, context, decodeContext);
     }
 
     public void dispose() {
-        try {
-            for (ByteBuf part : parts) {
-                ReferenceCountUtil.safeRelease(part);
-            }
-        } finally {
-            parts.clear();
+        if (parts.isEmpty()) {
+            return;
         }
+
+        NettyBufferUtils.releaseAll(parts);
+        parts.clear();
     }
 
     @Nullable
     private static ServerMessage decodeMessage(List<ByteBuf> buffers, int envelopeId, ConnectionContext context, DecodeContext decodeContext) {
         if (decodeContext instanceof ResultDecodeContext) {
-            // Maybe very large.
             return decodeResult(buffers, context, (ResultDecodeContext) decodeContext);
         } else if (decodeContext instanceof FetchDecodeContext) {
-            // Maybe very large.
             return decodeFetch(buffers, context);
         }
 
-        ByteBuf joined = JOINER.join(buffers);
+        ByteBuf combined = ByteBufCombiner.composite(buffers);
 
         try {
             if (decodeContext instanceof CommandDecodeContext) {
-                return decodeCommandMessage(joined, context);
+                return decodeCommandMessage(combined, context);
             } else if (decodeContext instanceof PreparedMetadataDecodeContext) {
-                return decodePreparedMetadata(joined, context, (PreparedMetadataDecodeContext) decodeContext);
+                return decodePreparedMetadata(combined, context, (PreparedMetadataDecodeContext) decodeContext);
             } else if (decodeContext instanceof PrepareQueryDecodeContext) {
-                return decodePrepareQuery(joined);
+                return decodePrepareQuery(combined);
             } else if (decodeContext instanceof LoginDecodeContext) {
-                return decodeLogin(envelopeId, joined, context);
+                return decodeLogin(envelopeId, combined, context);
             }
         } finally {
-            joined.release();
+            combined.release();
         }
 
         throw new IllegalStateException("unknown decode context type: " + decodeContext.getClass());
@@ -145,11 +142,11 @@ public final class ServerMessageDecoder {
         }
 
         if (decodeContext.isInMetadata()) {
-            ByteBuf joined = JOINER.join(buffers);
+            ByteBuf combined = ByteBufCombiner.composite(buffers);
             try {
-                return decodeInMetadata(joined, header, context, decodeContext);
+                return decodeInMetadata(combined, header, context, decodeContext);
             } finally {
-                joined.release();
+                combined.release();
             }
             // Should not has other messages when metadata reading.
         }
@@ -235,20 +232,20 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private Byte readNotFinish(ByteBuf envelope) {
+    private static Byte readNotFinish(List<ByteBuf> buffers, ByteBuf envelope) {
         try {
             int size = envelope.readUnsignedMediumLE();
             if (size < Envelopes.MAX_ENVELOPE_SIZE) {
                 Byte envelopeId = envelope.readByte();
 
-                parts.add(envelope);
+                buffers.add(envelope);
                 // success, no need release
                 envelope = null;
                 return envelopeId;
             } else {
                 // skip the sequence Id
                 envelope.skipBytes(1);
-                parts.add(envelope);
+                buffers.add(envelope);
                 // success, no need release
                 envelope = null;
                 return null;
@@ -289,11 +286,11 @@ public final class ServerMessageDecoder {
             // 0xFF is not header of var integer,
             // not header of text result null (0xFB) and
             // not header of column metadata (0x03 + "def")
-            ByteBuf joined = JOINER.join(buffers);
+            ByteBuf combined = ByteBufCombiner.composite(buffers);
             try {
-                return ErrorMessage.decode(joined);
+                return ErrorMessage.decode(combined);
             } finally {
-                joined.release();
+                combined.release();
             }
         }
 
@@ -302,25 +299,26 @@ public final class ServerMessageDecoder {
 
     private static ServerMessage decodeRow(List<ByteBuf> buffers, ByteBuf firstBuf, short header, ConnectionContext context, String phase) {
         if (isRow(buffers, firstBuf, header)) {
-            return new RowMessage(FieldReader.of(JOINER, buffers));
+            // FieldReader will clear the buffers.
+            return new RowMessage(FieldReader.of(buffers));
         } else if (header == EOF) {
             int byteSize = firstBuf.readableBytes();
 
             if (OkMessage.isValidSize(byteSize)) {
-                ByteBuf joined = JOINER.join(buffers);
+                ByteBuf combined = ByteBufCombiner.composite(buffers);
 
                 try {
-                    return OkMessage.decode(joined, context);
+                    return OkMessage.decode(combined, context);
                 } finally {
-                    joined.release();
+                    combined.release();
                 }
             } else if (EofMessage.isValidSize(byteSize)) {
-                ByteBuf joined = JOINER.join(buffers);
+                ByteBuf combined = ByteBufCombiner.composite(buffers);
 
                 try {
-                    return EofMessage.decode(joined);
+                    return EofMessage.decode(combined);
                 } finally {
-                    joined.release();
+                    combined.release();
                 }
             }
         }
@@ -328,8 +326,10 @@ public final class ServerMessageDecoder {
         long totalBytes = 0;
         try {
             for (ByteBuf buffer : buffers) {
-                totalBytes += buffer.readableBytes();
-                ReferenceCountUtil.safeRelease(buffer);
+                if (buffer != null) {
+                    totalBytes += buffer.readableBytes();
+                    ReferenceCountUtil.safeRelease(buffer);
+                }
             }
         } finally {
             buffers.clear();
