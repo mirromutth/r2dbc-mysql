@@ -54,7 +54,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
         // lastInsertId may be negative if key is BIGINT UNSIGNED and value overflow than signed int64.
         this.lastInsertId = lastInsertId;
         // Singleton name must be sorted.
-        this.nameSet = new ColumnNameSet(keyName);
+        this.nameSet = ColumnNameSet.of(keyName);
     }
 
     @Override

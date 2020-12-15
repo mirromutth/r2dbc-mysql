@@ -38,59 +38,74 @@ final class MySqlRowMetadata implements RowMetadata {
     private static final Comparator<MySqlColumnMetadata> NAME_COMPARATOR = (left, right) ->
         MySqlNames.compare(left.getName(), right.getName());
 
-    private final MySqlColumnMetadata[] idSorted;
+    private final MySqlColumnMetadata[] originMetadata;
 
-    private final MySqlColumnMetadata[] nameSorted;
+    private final MySqlColumnMetadata[] sortedMetadata;
 
     /**
-     * Copied column names from {@link #nameSorted}.
+     * Copied column names from {@link #sortedMetadata}.
      */
-    private final String[] names;
+    private final String[] sortedNames;
 
     private final ColumnNameSet nameSet;
 
-    private MySqlRowMetadata(MySqlColumnMetadata[] idSorted) {
-        int size = idSorted.length;
+    private MySqlRowMetadata(MySqlColumnMetadata[] metadata) {
+        int size = metadata.length;
 
-        if (size <= 0) {
-            throw new IllegalArgumentException("least 1 column metadata");
+        switch (size) {
+            case 0:
+                throw new IllegalArgumentException("Least 1 column metadata");
+            case 1:
+                String name = metadata[0].getName();
+
+                this.originMetadata = metadata;
+                this.sortedMetadata = metadata;
+                this.sortedNames = new String[]{name};
+                this.nameSet = ColumnNameSet.of(name);
+
+                break;
+            default:
+                MySqlColumnMetadata[] sortedMetadata = new MySqlColumnMetadata[size];
+                System.arraycopy(metadata, 0, sortedMetadata, 0, size);
+                Arrays.sort(sortedMetadata, NAME_COMPARATOR);
+
+                String[] originNames = getNames(metadata);
+                String[] sortedNames = getNames(sortedMetadata);
+
+                this.originMetadata = metadata;
+                this.sortedMetadata = sortedMetadata;
+                this.sortedNames = sortedNames;
+                this.nameSet = ColumnNameSet.of(originNames, sortedNames);
+
+                break;
         }
-
-        MySqlColumnMetadata[] nameSorted = new MySqlColumnMetadata[size];
-        System.arraycopy(idSorted, 0, nameSorted, 0, size);
-        Arrays.sort(nameSorted, NAME_COMPARATOR);
-
-        this.idSorted = idSorted;
-        this.nameSorted = nameSorted;
-        this.names = getNames(nameSorted);
-        this.nameSet = new ColumnNameSet(this.names);
     }
 
     @Override
     public MySqlColumnMetadata getColumnMetadata(int index) {
-        if (index < 0 || index >= idSorted.length) {
-            throw new ArrayIndexOutOfBoundsException(String.format("column index %d is invalid, total %d", index, idSorted.length));
+        if (index < 0 || index >= originMetadata.length) {
+            throw new ArrayIndexOutOfBoundsException("Column index " + index + " (total " + originMetadata.length + ')');
         }
 
-        return idSorted[index];
+        return originMetadata[index];
     }
 
     @Override
     public MySqlColumnMetadata getColumnMetadata(String name) {
         requireNonNull(name, "name must not be null");
 
-        int index = MySqlNames.nameSearch(this.names, name);
+        int index = MySqlNames.nameSearch(this.sortedNames, name);
 
         if (index < 0) {
-            throw new NoSuchElementException(String.format("column name '%s' does not exist in %s", name, Arrays.toString(this.names)));
+            throw new NoSuchElementException("Column name '" + name + "' does not exist");
         }
 
-        return nameSorted[index];
+        return sortedMetadata[index];
     }
 
     @Override
     public List<MySqlColumnMetadata> getColumnMetadatas() {
-        return InternalArrays.asImmutableList(idSorted);
+        return InternalArrays.asImmutableList(originMetadata);
     }
 
     @Override
@@ -100,11 +115,11 @@ final class MySqlRowMetadata implements RowMetadata {
 
     @Override
     public String toString() {
-        return String.format("MySqlRowMetadata{metadata=%s, sortedNames=%s}", Arrays.toString(idSorted), nameSet);
+        return String.format("MySqlRowMetadata{metadata=%s, sortedNames=%s}", Arrays.toString(originMetadata), Arrays.toString(sortedNames));
     }
 
     MySqlColumnMetadata[] unwrap() {
-        return idSorted;
+        return originMetadata;
     }
 
     static MySqlRowMetadata create(DefinitionMetadataMessage[] columns) {
