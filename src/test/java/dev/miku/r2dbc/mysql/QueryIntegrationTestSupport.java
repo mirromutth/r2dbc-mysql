@@ -198,7 +198,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     @Test
     void bit() {
         testType(Boolean.class, true, "BIT(1)", null, false, true);
-        testType(BitSet.class, true, "BIT(16)", null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}), BitSet.valueOf(new byte[0]), BitSet.valueOf(new byte[] {0, 0}));
+        testType(BitSet.class, true, "BIT(16)", null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}), BitSet.valueOf(new byte[0]), BitSet.valueOf(new byte[]{0, 0}));
         testType(byte[].class, false, "BIT(16)", null, new byte[]{(byte) 0xCD, (byte) 0xEF}, new byte[]{0, 0});
         testType(ByteBuffer.class, false, "BIT(16)", null, ByteBuffer.wrap(new byte[]{1, 2}), ByteBuffer.wrap(new byte[]{0, 0}));
     }
@@ -476,12 +476,65 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
             .doOnNext(it -> assertThat(it).isEqualTo(1)));
     }
 
-    static Flux<Integer> extractId(Result result) {
+    /**
+     * See https://github.com/mirromutth/r2dbc-mysql/issues/156 and https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html .
+     * <p>
+     * And, we enabled {@code Capabilities.FOUND_ROWS} by default, see also https://github.com/mirromutth/r2dbc-mysql/issues/90 .
+     * <p>
+     * So, the first number of affected rows is 1, the second one is 2, and the third is 1 (found/touched 1, changed 0).
+     */
+    @Test
+    void insertOnDuplicate() {
+        complete(connection -> Flux.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY,value INT)")
+            .execute())
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) ON DUPLICATE KEY UPDATE value=?")
+                .bind(0, 1)
+                .bind(1, 10)
+                .bind(2, 20)
+                .execute())
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .doOnNext(it -> assertThat(it).isOne())
+            .thenMany(connection.createStatement("SELECT value FROM test WHERE id=?")
+                .bind(0, 1)
+                .execute())
+            .flatMap(QueryIntegrationTestSupport::extractFirstInteger)
+            .collectList()
+            .doOnNext(it -> assertThat(it).isEqualTo(Collections.singletonList(10)))
+            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) ON DUPLICATE KEY UPDATE value=?")
+                .bind(0, 1)
+                .bind(1, 10)
+                .bind(2, 20)
+                .execute())
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .doOnNext(it -> assertThat(it).isEqualTo(2))
+            .thenMany(connection.createStatement("SELECT value FROM test WHERE id=?")
+                .bind(0, 1)
+                .execute())
+            .flatMap(QueryIntegrationTestSupport::extractFirstInteger)
+            .collectList()
+            .doOnNext(it -> assertThat(it).isEqualTo(Collections.singletonList(20)))
+            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) ON DUPLICATE KEY UPDATE value=?")
+                .bind(0, 1)
+                .bind(1, 10)
+                .bind(2, 20)
+                .execute())
+            .flatMap(IntegrationTestSupport::extractRowsUpdated)
+            .doOnNext(it -> assertThat(it).isOne()) // TODO: check capability flag
+            .thenMany(connection.createStatement("SELECT value FROM test WHERE id=?")
+                .bind(0, 1)
+                .execute())
+            .flatMap(QueryIntegrationTestSupport::extractFirstInteger)
+            .collectList()
+            .doOnNext(it -> assertThat(it).isEqualTo(Collections.singletonList(20))));
+    }
+
+    private static Flux<Integer> extractFirstInteger(Result result) {
         return Flux.from(result.map((row, metadata) -> row.get(0, Integer.class)));
     }
 
     @SuppressWarnings("unchecked")
-    static <T> Flux<Optional<T>> extractOptionalField(Result result, Type type) {
+    private static <T> Flux<Optional<T>> extractOptionalField(Result result, Type type) {
         if (type instanceof Class<?>) {
             return Flux.from(result.map((row, metadata) -> Optional.ofNullable(row.get(0, (Class<T>) type))));
         }
@@ -493,7 +546,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
             .bind(0, origin)
             .returnGeneratedValues("id")
             .execute())
-            .flatMapMany(QueryIntegrationTestSupport::extractId)
+            .flatMapMany(QueryIntegrationTestSupport::extractFirstInteger)
             .concatMap(id -> connection.createStatement("SELECT value FROM test WHERE id=?")
                 .bind(0, id)
                 .execute())
@@ -531,7 +584,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
             .execute())
             .flatMap(result -> extractRowsUpdated(result)
                 .doOnNext(u -> assertThat(u).isEqualTo(1))
-                .thenMany(extractId(result))
+                .thenMany(extractFirstInteger(result))
                 .collectList()
                 .map(ids -> {
                     assertThat(ids).hasSize(1);
