@@ -39,8 +39,8 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
 
     private volatile boolean inMetadata = true;
 
-    PreparedMetadataDecodeContext(boolean deprecateEof, int totalColumns, int totalParameters) {
-        super(deprecateEof);
+    PreparedMetadataDecodeContext(boolean eofDeprecated, int totalColumns, int totalParameters) {
+        super(eofDeprecated);
         this.paramMetadata = createArray(totalParameters);
         this.colMetadata = createArray(totalColumns);
     }

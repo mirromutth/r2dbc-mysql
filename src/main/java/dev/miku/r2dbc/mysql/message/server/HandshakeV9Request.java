@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import dev.miku.r2dbc.mysql.Capability;
 import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -27,9 +28,11 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
- * MySQL Handshake Message for protocol version 9.
+ * MySQL Handshake Message for handshake protocol version 9.
  */
 final class HandshakeV9Request implements HandshakeRequest {
+
+    private static final Capability SERVER_CAPABILITY = Capability.of(0);
 
     private final HandshakeHeader header;
 
@@ -54,9 +57,8 @@ final class HandshakeV9Request implements HandshakeRequest {
     }
 
     @Override
-    public int getServerCapabilities() {
-        // Unsupported anything.
-        return 0;
+    public Capability getServerCapability() {
+        return SERVER_CAPABILITY;
     }
 
     @Override

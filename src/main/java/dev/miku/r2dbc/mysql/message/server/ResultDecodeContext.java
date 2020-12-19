@@ -33,8 +33,8 @@ final class ResultDecodeContext extends MetadataDecodeContext {
 
     private boolean inMetadata = true;
 
-    ResultDecodeContext(boolean deprecateEof, int totalColumns) {
-        super(deprecateEof);
+    ResultDecodeContext(boolean eofDeprecated, int totalColumns) {
+        super(eofDeprecated);
 
         require(totalColumns > 0, "result must has least 1 column");
 
@@ -84,14 +84,6 @@ final class ResultDecodeContext extends MetadataDecodeContext {
 
     @Override
     protected Object loggingPoints() {
-        return metadataMessages.length;
-    }
-
-    short getType(int index) {
-        return metadataMessages[index].getType();
-    }
-
-    int getTotalColumns() {
         return metadataMessages.length;
     }
 }

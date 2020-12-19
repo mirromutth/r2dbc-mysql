@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
+import dev.miku.r2dbc.mysql.Capability;
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
-import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -27,9 +27,11 @@ import java.nio.charset.Charset;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * OK message, it maybe a complete signal of command, or a succeed signal for the Connection Phase of connection lifecycle.
+ * OK message, it may be a complete signal of command, or a succeed signal for
+ * the Connection Phase of connection lifecycle.
  * <p>
- * Note: OK message are also used to indicate EOF and EOF message are deprecated as of MySQL 5.7.5.
+ * Note: OK message are also used to indicate EOF and EOF message are deprecated
+ * as of MySQL 5.7.5.
  */
 public final class OkMessage implements WarningMessage, ServerStatusMessage, CompleteMessage {
 
@@ -48,7 +50,10 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
 
     private final String information;
 
-    private OkMessage(long affectedRows, long lastInsertId, short serverStatuses, int warnings, String information) {
+    private OkMessage(
+        long affectedRows, long lastInsertId, short serverStatuses,
+        int warnings, String information
+    ) {
         this.affectedRows = affectedRows;
         this.lastInsertId = lastInsertId;
         this.serverStatuses = serverStatuses;
@@ -90,19 +95,11 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
 
         OkMessage okMessage = (OkMessage) o;
 
-        if (affectedRows != okMessage.affectedRows) {
-            return false;
-        }
-        if (lastInsertId != okMessage.lastInsertId) {
-            return false;
-        }
-        if (serverStatuses != okMessage.serverStatuses) {
-            return false;
-        }
-        if (warnings != okMessage.warnings) {
-            return false;
-        }
-        return information.equals(okMessage.information);
+        return affectedRows == okMessage.affectedRows &&
+            lastInsertId == okMessage.lastInsertId &&
+            serverStatuses == okMessage.serverStatuses &&
+            warnings == okMessage.warnings &&
+            information.equals(okMessage.information);
     }
 
     @Override
@@ -133,16 +130,16 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
     static OkMessage decode(ByteBuf buf, ConnectionContext context) {
         buf.skipBytes(1); // OK message header, 0x00 or 0xFE
 
-        int capabilities = context.getCapabilities();
+        Capability capability = context.getCapability();
         long affectedRows = VarIntUtils.readVarInt(buf);
         long lastInsertId = VarIntUtils.readVarInt(buf);
         short serverStatuses;
         int warnings;
 
-        if ((capabilities & Capabilities.PROTOCOL_41) != 0) {
+        if (capability.isProtocol41()) {
             serverStatuses = buf.readShortLE();
             warnings = buf.readUnsignedShortLE();
-        } else if ((capabilities & Capabilities.TRANSACTIONS) != 0) {
+        } else if (capability.isTransactionAllowed()) {
             serverStatuses = buf.readShortLE();
             warnings = 0;
         } else {

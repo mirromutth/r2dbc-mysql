@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
+import dev.miku.r2dbc.mysql.Capability;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
@@ -25,15 +25,15 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
  */
 public interface SslRequest extends LoginClientMessage {
 
-    int getCapabilities();
+    Capability getCapability();
 
-    static SslRequest from(int envelopeId, int capabilities, int collationId) {
-        require((capabilities & Capabilities.SSL) != 0, "capabilities must be SSL enabled");
+    static SslRequest from(int envelopeId, Capability capability, int collationId) {
+        require(capability.isSslEnabled(), "capability must be SSL enabled");
 
-        if ((capabilities & Capabilities.PROTOCOL_41) == 0) {
-            return new SslRequest320(envelopeId, capabilities);
+        if (capability.isProtocol41()) {
+            return new SslRequest41(envelopeId, capability, collationId);
         } else {
-            return new SslRequest41(envelopeId, capabilities, collationId);
+            return new SslRequest320(envelopeId, capability);
         }
     }
 }

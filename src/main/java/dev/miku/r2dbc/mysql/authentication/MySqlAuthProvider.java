@@ -56,7 +56,7 @@ public interface MySqlAuthProvider {
 
     /**
      * Try use empty string to represent has no authentication provider
-     * when {@code Capabilities.PLUGIN_AUTH} does not set.
+     * when {@code Capability.PLUGIN_AUTH} does not set.
      */
     String NO_AUTH_PROVIDER = "";
 

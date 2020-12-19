@@ -37,11 +37,11 @@ public interface DecodeContext {
         return FetchDecodeContext.INSTANCE;
     }
 
-    static DecodeContext result(boolean deprecateEof, int totalColumns) {
-        return new ResultDecodeContext(deprecateEof, totalColumns);
+    static DecodeContext result(boolean eofDeprecated, int totalColumns) {
+        return new ResultDecodeContext(eofDeprecated, totalColumns);
     }
 
-    static DecodeContext preparedMetadata(boolean deprecateEof, int totalColumns, int totalParameters) {
-        return new PreparedMetadataDecodeContext(deprecateEof, totalColumns, totalParameters);
+    static DecodeContext preparedMetadata(boolean eofDeprecated, int totalColumns, int totalParameters) {
+        return new PreparedMetadataDecodeContext(eofDeprecated, totalColumns, totalParameters);
     }
 }

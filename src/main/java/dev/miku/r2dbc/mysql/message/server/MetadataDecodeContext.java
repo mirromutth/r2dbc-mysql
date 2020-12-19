@@ -27,10 +27,10 @@ abstract class MetadataDecodeContext implements DecodeContext {
 
     private static final Logger logger = LoggerFactory.getLogger(MetadataDecodeContext.class);
 
-    private final boolean deprecateEof;
+    private final boolean eofDeprecated;
 
-    MetadataDecodeContext(boolean deprecateEof) {
-        this.deprecateEof = deprecateEof;
+    MetadataDecodeContext(boolean eofDeprecated) {
+        this.eofDeprecated = eofDeprecated;
     }
 
     abstract boolean isInMetadata();
@@ -41,7 +41,7 @@ abstract class MetadataDecodeContext implements DecodeContext {
             // Index of metadata after put, see `putMetadata`.
             int index = putMetadata((DefinitionMetadataMessage) message);
 
-            if (deprecateEof) {
+            if (eofDeprecated) {
                 // If EOF has deprecated, has no EOF for complete signal, should check complete always.
                 SyntheticMetadataMessage bundle = checkComplete(index, null);
 
@@ -55,7 +55,7 @@ abstract class MetadataDecodeContext implements DecodeContext {
                 return null;
             }
         } else if (message instanceof EofMessage) {
-            if (deprecateEof) {
+            if (eofDeprecated) {
                 throw new IllegalStateException(String.format("Unexpected %s because server has deprecated EOF", message));
             }
 

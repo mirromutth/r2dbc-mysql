@@ -16,8 +16,8 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
+import dev.miku.r2dbc.mysql.Capability;
 import dev.miku.r2dbc.mysql.ConnectionContext;
-import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 
@@ -29,22 +29,15 @@ import java.util.Map;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A handshake response message sent by clients those supporting
- * {@link Capabilities#PROTOCOL_41} if the server announced it in
- * it's {@code HandshakeV10Message}, otherwise sending to an old
- * server should use the {@link HandshakeResponse320}.
- * <p>
- * Should make sure {@code clientCapabilities} is right before
- * construct this instance, i.e. {@link Capabilities#CONNECT_ATTRS},
- * {@link Capabilities#CONNECT_WITH_DB} or other capabilities.
+ * A handshake response message for protocol version 4.1.
  *
- * @see SslRequest41 the head of {@link HandshakeResponse41}.
+ * @see SslRequest41 the header of {@link HandshakeResponse41}.
  */
 final class HandshakeResponse41 extends ScalarClientMessage implements HandshakeResponse {
 
     private static final int ONE_BYTE_MAX_INT = 0xFF;
 
-    private final SslRequest41 head;
+    private final SslRequest41 header;
 
     private final String user;
 
@@ -58,8 +51,8 @@ final class HandshakeResponse41 extends ScalarClientMessage implements Handshake
 
     // private final byte zStdCompressionLevel; // When Z-Standard compression supporting
 
-    HandshakeResponse41(int envelopeId, int capabilities, int collationId, String user, byte[] authentication, String authType, String database, Map<String, String> attributes) {
-        this.head = new SslRequest41(envelopeId, capabilities, collationId);
+    HandshakeResponse41(int envelopeId, Capability capability, int collationId, String user, byte[] authentication, String authType, String database, Map<String, String> attributes) {
+        this.header = new SslRequest41(envelopeId, capability, collationId);
         this.user = requireNonNull(user, "user must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
@@ -69,7 +62,7 @@ final class HandshakeResponse41 extends ScalarClientMessage implements Handshake
 
     @Override
     public int getEnvelopeId() {
-        return head.getEnvelopeId();
+        return header.getEnvelopeId();
     }
 
     @Override
@@ -83,14 +76,14 @@ final class HandshakeResponse41 extends ScalarClientMessage implements Handshake
 
         HandshakeResponse41 that = (HandshakeResponse41) o;
 
-        return head.equals(that.head) && user.equals(that.user) &&
+        return header.equals(that.header) && user.equals(that.user) &&
             Arrays.equals(authentication, that.authentication) && authType.equals(that.authType) &&
             database.equals(that.database) && attributes.equals(that.attributes);
     }
 
     @Override
     public int hashCode() {
-        int result = head.hashCode();
+        int result = header.hashCode();
         result = 31 * result + user.hashCode();
         result = 31 * result + Arrays.hashCode(authentication);
         result = 31 * result + authType.hashCode();
@@ -100,23 +93,23 @@ final class HandshakeResponse41 extends ScalarClientMessage implements Handshake
 
     @Override
     public String toString() {
-        return "HandshakeResponse41{envelopeId=" + head.getEnvelopeId() +
-            ", capabilities=" + Integer.toHexString(head.getCapabilities()) +
-            ", collationId=" + head.getCollationId() + ", user='" + user +
+        return "HandshakeResponse41{envelopeId=" + header.getEnvelopeId() +
+            ", capability=" + header.getCapability() +
+            ", collationId=" + header.getCollationId() + ", user='" + user +
             "', authentication=REDACTED, authType='" + authType +
             "', database='" + database + "', attributes=" + attributes + '}';
     }
 
     @Override
     protected void writeTo(ByteBuf buf, ConnectionContext context) {
-        head.writeTo(buf);
+        header.writeTo(buf);
 
-        int capabilities = head.getCapabilities();
+        Capability capability = header.getCapability();
         Charset charset = context.getClientCollation().getCharset();
 
         HandshakeResponse.writeCString(buf, user, charset);
 
-        if ((capabilities & Capabilities.PLUGIN_AUTH_VAR_INT_SIZED_DATA) != 0) {
+        if (capability.isVarIntSizedAuthAllowed()) {
             writeVarIntSizedBytes(buf, authentication);
         } else if (authentication.length <= ONE_BYTE_MAX_INT) {
             buf.writeByte(authentication.length).writeBytes(authentication);
@@ -125,16 +118,16 @@ final class HandshakeResponse41 extends ScalarClientMessage implements Handshake
             buf.writeByte(0);
         }
 
-        if ((capabilities & Capabilities.CONNECT_WITH_DB) != 0) {
+        if (capability.isConnectWithDatabase()) {
             HandshakeResponse.writeCString(buf, database, charset);
         }
 
-        if ((capabilities & Capabilities.PLUGIN_AUTH) != 0) {
+        if (capability.isPluginAuthAllowed()) {
             // This must be an UTF-8 string.
             HandshakeResponse.writeCString(buf, authType, StandardCharsets.UTF_8);
         }
 
-        if ((capabilities & Capabilities.CONNECT_ATTRS) != 0) {
+        if (capability.isConnectionAttributesAllowed()) {
             writeAttrs(buf, charset);
         }
     }

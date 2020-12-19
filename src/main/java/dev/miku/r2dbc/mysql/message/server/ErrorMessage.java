@@ -59,11 +59,11 @@ public final class ErrorMessage implements ServerMessage {
 
     public static ErrorMessage decode(ByteBuf buf) {
         buf.skipBytes(1); // 0xFF, error message header
-        int errorCode = buf.readUnsignedShortLE(); // error code should be unsigned
 
+        int errorCode = buf.readUnsignedShortLE(); // error code should be unsigned
         String sqlState;
 
-        // capabilities & PROTOCOL_41, only exists under protocol 4.1
+        // Exists only under the protocol 4.1
         if ('#' == buf.getByte(buf.readerIndex())) {
             buf.skipBytes(1); // constant '#'
             sqlState = buf.toString(buf.readerIndex(), SQL_STATE_SIZE, StandardCharsets.US_ASCII);

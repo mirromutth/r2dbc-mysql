@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
+import dev.miku.r2dbc.mysql.Capability;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -30,13 +30,13 @@ import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 public interface HandshakeResponse extends LoginClientMessage {
 
     static HandshakeResponse from(
-        int envelopeId, int capabilities, int collationId, String user, byte[] authentication,
+        int envelopeId, Capability capability, int collationId, String user, byte[] authentication,
         String authType, String database, Map<String, String> attributes
     ) {
-        if ((capabilities & Capabilities.PROTOCOL_41) == 0) {
-            return new HandshakeResponse320(envelopeId, capabilities, user, authentication, database);
+        if (capability.isProtocol41()) {
+            return new HandshakeResponse41(envelopeId, capability, collationId, user, authentication, authType, database, attributes);
         } else {
-            return new HandshakeResponse41(envelopeId, capabilities, collationId, user, authentication, authType, database, attributes);
+            return new HandshakeResponse320(envelopeId, capability, user, authentication, database);
         }
     }
 
