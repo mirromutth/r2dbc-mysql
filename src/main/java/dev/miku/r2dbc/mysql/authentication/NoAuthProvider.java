@@ -22,7 +22,7 @@ import reactor.util.annotation.Nullable;
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_BYTES;
 
 /**
- * A special authentication provider when server capabilities does not set {@code Capabilities.PLUGIN_AUTH}.
+ * A special authentication provider when server does not set {@code Capability.PLUGIN_AUTH}.
  * And {@code ChangeAuthMessage} will be sent by server after handshake response.
  */
 final class NoAuthProvider implements MySqlAuthProvider {

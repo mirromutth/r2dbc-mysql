@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
+import dev.miku.r2dbc.mysql.Capability;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
 import io.netty.buffer.ByteBuf;
 
@@ -31,13 +31,13 @@ final class SslRequest320 extends SizedClientMessage implements SslRequest {
 
     private final int envelopeId;
 
-    private final int capabilities;
+    private final Capability capability;
 
-    SslRequest320(int envelopeId, int capabilities) {
-        require((capabilities & Capabilities.PROTOCOL_41) == 0, "protocol 4.1 capability should never be set");
+    SslRequest320(int envelopeId, Capability capability) {
+        require(!capability.isProtocol41(), "protocol 4.1 capability should never be set");
 
         this.envelopeId = envelopeId;
-        this.capabilities = capabilities;
+        this.capability = capability;
     }
 
     @Override
@@ -46,8 +46,8 @@ final class SslRequest320 extends SizedClientMessage implements SslRequest {
     }
 
     @Override
-    public int getCapabilities() {
-        return capabilities;
+    public Capability getCapability() {
+        return capability;
     }
 
     @Override
@@ -61,18 +61,18 @@ final class SslRequest320 extends SizedClientMessage implements SslRequest {
 
         SslRequest320 that = (SslRequest320) o;
 
-        return envelopeId == that.envelopeId && capabilities == that.capabilities;
+        return envelopeId == that.envelopeId && capability.equals(that.capability);
     }
 
     @Override
     public int hashCode() {
-        return 31 * envelopeId + capabilities;
+        return 31 * envelopeId + capability.hashCode();
     }
 
     @Override
     public String toString() {
         return "SslRequest320{envelopeId=" + envelopeId +
-            ", capabilities=" + Integer.toHexString(capabilities) + '}';
+            ", capability=" + capability + '}';
     }
 
     @Override
@@ -82,7 +82,8 @@ final class SslRequest320 extends SizedClientMessage implements SslRequest {
 
     @Override
     protected void writeTo(ByteBuf buf) {
-        buf.writeShortLE(capabilities & 0xFFFF) // only low 16-bits
+        // Protocol 3.20 only allows low 16-bits capabilities.
+        buf.writeShortLE(capability.getBitmap() & 0xFFFF)
             .writeMediumLE(Envelopes.MAX_ENVELOPE_SIZE);
     }
 }

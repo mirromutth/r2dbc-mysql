@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
+import dev.miku.r2dbc.mysql.Capability;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
 import io.netty.buffer.ByteBuf;
 
@@ -33,20 +33,20 @@ final class SslRequest41 extends SizedClientMessage implements SslRequest {
 
     private final int envelopeId;
 
-    private final int capabilities;
+    private final Capability capability;
 
     private final int collationId;
 
     /**
      * @param envelopeId   the beginning of the envelope ID.
-     * @param capabilities client capabilities, see {@link Capabilities}.
+     * @param capability client {@link Capability capability}.
      * @param collationId  0 if server not support protocol 41 or has been not give collation.
      */
-    SslRequest41(int envelopeId, int capabilities, int collationId) {
+    SslRequest41(int envelopeId, Capability capability, int collationId) {
         require(collationId > 0, "collationId must be a positive integer");
 
         this.envelopeId = envelopeId;
-        this.capabilities = capabilities;
+        this.capability = capability;
         this.collationId = collationId;
     }
 
@@ -66,27 +66,27 @@ final class SslRequest41 extends SizedClientMessage implements SslRequest {
 
         SslRequest41 that = (SslRequest41) o;
 
-        return envelopeId == that.envelopeId && capabilities == that.capabilities &&
-            collationId == that.collationId;
+        return envelopeId == that.envelopeId &&
+            collationId == that.collationId &&
+            capability.equals(that.capability);
     }
 
     @Override
     public int hashCode() {
-        int result = envelopeId;
-        result = 31 * result + capabilities;
+        int result = 31 * envelopeId + capability.hashCode();
         return 31 * result + collationId;
     }
 
     @Override
     public String toString() {
         return "SslRequest41{envelopeId=" + envelopeId +
-            ", capabilities=" + Integer.toHexString(capabilities) +
+            ", capability=" + capability +
             ", collationId=" + collationId + '}';
     }
 
     @Override
-    public int getCapabilities() {
-        return capabilities;
+    public Capability getCapability() {
+        return capability;
     }
 
     @Override
@@ -96,7 +96,7 @@ final class SslRequest41 extends SizedClientMessage implements SslRequest {
 
     @Override
     protected void writeTo(ByteBuf buf) {
-        buf.writeIntLE(capabilities)
+        buf.writeIntLE(capability.getBitmap())
             .writeIntLE(Envelopes.MAX_ENVELOPE_SIZE)
             .writeByte(collationId & 0xFF) // only low 8-bits
             .writeZero(FILTER_SIZE);

@@ -52,7 +52,7 @@ public final class ConnectionContext implements CodecContext {
      */
     private volatile short serverStatuses = ServerStatuses.AUTO_COMMIT;
 
-    private volatile int capabilities = 0;
+    private volatile Capability capability = null;
 
     ConnectionContext(ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId) {
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
@@ -63,10 +63,10 @@ public final class ConnectionContext implements CodecContext {
         return connectionId;
     }
 
-    public void init(int connectionId, ServerVersion version, int capabilities) {
+    public void init(int connectionId, ServerVersion version, Capability capability) {
         this.connectionId = connectionId;
         this.serverVersion = version;
-        this.capabilities = capabilities;
+        this.capability = capability;
     }
 
     @Override
@@ -111,7 +111,7 @@ public final class ConnectionContext implements CodecContext {
         this.serverStatuses = serverStatuses;
     }
 
-    public int getCapabilities() {
-        return capabilities;
+    public Capability getCapability() {
+        return capability;
     }
 }

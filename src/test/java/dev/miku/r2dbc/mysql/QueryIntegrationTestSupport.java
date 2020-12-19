@@ -479,7 +479,7 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     /**
      * See https://github.com/mirromutth/r2dbc-mysql/issues/156 and https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html .
      * <p>
-     * And, we enabled {@code Capabilities.FOUND_ROWS} by default, see also https://github.com/mirromutth/r2dbc-mysql/issues/90 .
+     * And, we enabled {@code Capability.FOUND_ROWS} by default, see also https://github.com/mirromutth/r2dbc-mysql/issues/90 .
      * <p>
      * So, the first number of affected rows is 1, the second one is 2, and the third is 1 (found/touched 1, changed 0).
      */

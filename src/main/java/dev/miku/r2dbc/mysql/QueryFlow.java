@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
 import dev.miku.r2dbc.mysql.cache.PrepareCache;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.client.FluxExchangeable;
-import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.SslMode;
 import dev.miku.r2dbc.mysql.message.client.AuthResponse;
@@ -710,14 +709,14 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
             handshake = false;
             if (message instanceof HandshakeRequest) {
                 HandshakeRequest request = (HandshakeRequest) message;
-                int capabilities = initHandshake(request);
+                Capability capability = initHandshake(request);
 
                 lastEnvelopeId = request.getEnvelopeId() + 1;
 
-                if ((capabilities & Capabilities.SSL) == 0) {
-                    requests.onNext(createHandshakeResponse(lastEnvelopeId, capabilities));
+                if (capability.isSslEnabled()) {
+                    requests.onNext(SslRequest.from(lastEnvelopeId, capability, context.getClientCollation().getId()));
                 } else {
-                    requests.onNext(SslRequest.from(lastEnvelopeId, capabilities, context.getClientCollation().getId()));
+                    requests.onNext(createHandshakeResponse(lastEnvelopeId, capability));
                 }
             } else {
                 sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
@@ -732,7 +731,7 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
             sink.complete();
         } else if (message instanceof SyntheticSslResponseMessage) {
             sslCompleted = true;
-            requests.onNext(createHandshakeResponse(++lastEnvelopeId, context.getCapabilities()));
+            requests.onNext(createHandshakeResponse(++lastEnvelopeId, context.getCapability()));
         } else if (message instanceof AuthMoreDataMessage) {
             AuthMoreDataMessage msg = (AuthMoreDataMessage) message;
             lastEnvelopeId = msg.getEnvelopeId() + 1;
@@ -772,14 +771,19 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
         return new AuthResponse(envelopeId, authProvider.authentication(password, salt, context.getClientCollation()));
     }
 
-    private int clientCapabilities(int serverCapabilities) {
-        // Remove unknown flags.
-        int capabilities = serverCapabilities & Capabilities.ALL_SUPPORTED;
+    private Capability clientCapability(Capability serverCapability) {
+        Capability.Builder builder = serverCapability.mutate();
+
+        builder.disableDatabasePinned();
+        builder.disableCompression();
+        builder.disableLoadDataInfile();
+        builder.disableIgnoreAmbiguitySpace();
+        builder.disableInteractiveTimeout();
 
         if (sslMode == SslMode.TUNNEL) {
             // Tunnel does not use MySQL SSL protocol, disable it.
-            capabilities &= ~Capabilities.SSL;
-        } else if ((capabilities & Capabilities.SSL) == 0) {
+            builder.disableSsl();
+        } else if (!serverCapability.isSslEnabled()) {
             // Server unsupported SSL.
             if (sslMode.requireSsl()) {
                 throw new R2dbcPermissionDeniedException("Server version '" + context.getServerVersion() +
@@ -789,30 +793,24 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
                 client.sslUnsupported();
             }
         } else {
-            // Server supports SSL.
+            // The server supports SSL, but the user does not want to use SSL, disable it.
             if (!sslMode.startSsl()) {
-                // SSL does not start, just remove flag.
-                capabilities &= ~Capabilities.SSL;
-            }
-
-            if (!sslMode.verifyCertificate()) {
-                // No need verify server cert, remove flag.
-                capabilities &= ~Capabilities.SSL_VERIFY_SERVER_CERT;
+                builder.disableSsl();
             }
         }
 
-        if (database.isEmpty() && (capabilities & Capabilities.CONNECT_WITH_DB) != 0) {
-            capabilities &= ~Capabilities.CONNECT_WITH_DB;
+        if (database.isEmpty()) {
+            builder.disableConnectWithDatabase();
         }
 
-        if (ATTRIBUTES.isEmpty() && (capabilities & Capabilities.CONNECT_ATTRS) != 0) {
-            capabilities &= ~Capabilities.CONNECT_ATTRS;
+        if (ATTRIBUTES.isEmpty()) {
+            builder.disableConnectAttributes();
         }
 
-        return capabilities;
+        return builder.build();
     }
 
-    private int initHandshake(HandshakeRequest message) {
+    private Capability initHandshake(HandshakeRequest message) {
         HandshakeHeader header = message.getHeader();
         int handshakeVersion = header.getProtocolVersion();
         ServerVersion serverVersion = header.getServerVersion();
@@ -821,14 +819,14 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
             logger.warn("The MySQL use old handshake V{}, server version is {}, maybe most features are not available", handshakeVersion, serverVersion);
         }
 
-        int capabilities = clientCapabilities(message.getServerCapabilities());
+        Capability capability = clientCapability(message.getServerCapability());
 
         // No need initialize server statuses because it has initialized by read filter.
-        this.context.init(header.getConnectionId(), serverVersion, capabilities);
+        this.context.init(header.getConnectionId(), serverVersion, capability);
         this.authProvider = MySqlAuthProvider.build(message.getAuthType());
         this.salt = message.getSalt();
 
-        return capabilities;
+        return capability;
     }
 
     private MySqlAuthProvider getAndNextProvider() {
@@ -837,7 +835,7 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
         return authProvider;
     }
 
-    private HandshakeResponse createHandshakeResponse(int envelopeId, int capabilities) {
+    private HandshakeResponse createHandshakeResponse(int envelopeId, Capability capability) {
         MySqlAuthProvider authProvider = getAndNextProvider();
 
         if (authProvider.isSslNecessary() && !sslCompleted) {
@@ -853,7 +851,7 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
             authType = MySqlAuthProvider.CACHING_SHA2_PASSWORD;
         }
 
-        return HandshakeResponse.from(envelopeId, capabilities, context.getClientCollation().getId(),
+        return HandshakeResponse.from(envelopeId, capability, context.getClientCollation().getId(),
             user, authorization, authType, database, ATTRIBUTES);
     }
 

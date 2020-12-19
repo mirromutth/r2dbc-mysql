@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.cache.PrepareCache;
 import dev.miku.r2dbc.mysql.cache.QueryCache;
 import dev.miku.r2dbc.mysql.client.Client;
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.message.client.PingMessage;
 import dev.miku.r2dbc.mysql.message.server.CompleteMessage;
@@ -162,7 +161,7 @@ public final class MySqlConnection implements Connection {
         this.queryCache = queryCache;
         this.prepareCache = prepareCache;
         this.metadata = new MySqlConnectionMetadata(context.getServerVersion().toString(), product);
-        this.batchSupported = (context.getCapabilities() & Capabilities.MULTI_STATEMENTS) != 0;
+        this.batchSupported = context.getCapability().isMultiStatementsAllowed();
         this.prepare = prepare;
 
         if (this.batchSupported) {
@@ -386,7 +385,7 @@ public final class MySqlConnection implements Connection {
     /**
      * @param client       must be logged-in
      * @param codecs       built-in {@link Codecs}
-     * @param context      capabilities must be initialized
+     * @param context      must be initialized
      * @param queryCache   the cache of {@link Query}
      * @param prepareCache the cache of server-preparing result
      * @param prepare      judging for prefer use prepare statement to execute simple query

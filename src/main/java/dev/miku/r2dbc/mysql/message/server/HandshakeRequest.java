@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import dev.miku.r2dbc.mysql.Capability;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 
@@ -28,7 +29,7 @@ public interface HandshakeRequest extends ServerMessage {
 
     int getEnvelopeId();
 
-    int getServerCapabilities();
+    Capability getServerCapability();
 
     String getAuthType();
 

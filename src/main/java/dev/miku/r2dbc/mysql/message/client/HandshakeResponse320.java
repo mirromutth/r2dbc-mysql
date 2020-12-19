@@ -16,8 +16,8 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
+import dev.miku.r2dbc.mysql.Capability;
 import dev.miku.r2dbc.mysql.ConnectionContext;
-import dev.miku.r2dbc.mysql.constant.Capabilities;
 import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -27,19 +27,13 @@ import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A handshake response message sent by clients those do not supporting
- * {@link Capabilities#PROTOCOL_41} if the server announced it in
- * it's {@code HandshakeV10Message}, otherwise sending to an old
- * server should use the {@link HandshakeResponse41}.
- * <p>
- * Should make sure {@code clientCapabilities} is right before
- * construct this instance, i.e. {@link Capabilities#CONNECT_WITH_DB}.
+ * A handshake response message for protocol version 3.20.
  *
- * @see SslRequest320 the head of {@link HandshakeResponse320}.
+ * @see SslRequest320 the header of {@link HandshakeResponse320}.
  */
 final class HandshakeResponse320 extends ScalarClientMessage implements HandshakeResponse {
 
-    private final SslRequest320 head;
+    private final SslRequest320 header;
 
     private final String user;
 
@@ -47,8 +41,8 @@ final class HandshakeResponse320 extends ScalarClientMessage implements Handshak
 
     private final String database;
 
-    HandshakeResponse320(int envelopeId, int capabilities, String user, byte[] authentication, String database) {
-        this.head = new SslRequest320(envelopeId, capabilities);
+    HandshakeResponse320(int envelopeId, Capability capability, String user, byte[] authentication, String database) {
+        this.header = new SslRequest320(envelopeId, capability);
         this.user = requireNonNull(user, "user must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");
         this.database = requireNonNull(database, "database must not be null");
@@ -56,7 +50,7 @@ final class HandshakeResponse320 extends ScalarClientMessage implements Handshak
 
     @Override
     public int getEnvelopeId() {
-        return head.getEnvelopeId();
+        return header.getEnvelopeId();
     }
 
     @Override
@@ -70,13 +64,13 @@ final class HandshakeResponse320 extends ScalarClientMessage implements Handshak
 
         HandshakeResponse320 that = (HandshakeResponse320) o;
 
-        return head.equals(that.head) && user.equals(that.user) &&
+        return header.equals(that.header) && user.equals(that.user) &&
             Arrays.equals(authentication, that.authentication) && database.equals(that.database);
     }
 
     @Override
     public int hashCode() {
-        int result = head.hashCode();
+        int result = header.hashCode();
         result = 31 * result + user.hashCode();
         result = 31 * result + Arrays.hashCode(authentication);
         return 31 * result + database.hashCode();
@@ -84,23 +78,20 @@ final class HandshakeResponse320 extends ScalarClientMessage implements Handshak
 
     @Override
     public String toString() {
-        return "HandshakeResponse320{envelopeId=" + head.getEnvelopeId() +
-            ", capabilities=" + Integer.toHexString(head.getCapabilities()) + ", user='" + user +
+        return "HandshakeResponse320{envelopeId=" + header.getEnvelopeId() +
+            ", capability=" + header.getCapability() + ", user='" + user +
             "', authentication=REDACTED, database='" + database + "'}";
     }
 
     @Override
     protected void writeTo(ByteBuf buf, ConnectionContext context) {
-        head.writeTo(buf);
+        header.writeTo(buf);
 
         Charset charset = context.getClientCollation().getCharset();
 
         HandshakeResponse.writeCString(buf, user, charset);
 
-        if ((head.getCapabilities() & Capabilities.CONNECT_WITH_DB) == 0) {
-            // Write to end-of-buffer because has no database following.
-            buf.writeBytes(authentication);
-        } else {
+        if (header.getCapability().isConnectWithDatabase()) {
             if (authentication.length == 0) {
                 buf.writeByte(TERMINAL);
             } else {
@@ -113,6 +104,9 @@ final class HandshakeResponse320 extends ScalarClientMessage implements Handshak
             }
 
             HandshakeResponse.writeCString(buf, database, charset);
+        } else {
+            // Write to end-of-buffer because has no database following.
+            buf.writeBytes(authentication);
         }
     }
 }

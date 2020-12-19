@@ -16,12 +16,11 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
 import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
-import dev.miku.r2dbc.mysql.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.Nullable;
 
@@ -136,10 +135,10 @@ public final class DefinitionMetadataMessage implements ServerMessage {
     }
 
     static DefinitionMetadataMessage decode(ByteBuf buf, ConnectionContext context) {
-        if ((context.getCapabilities() & Capabilities.PROTOCOL_41) == 0) {
-            return decode320(buf, context);
-        } else {
+        if (context.getCapability().isProtocol41()) {
             return decode41(buf, context);
+        } else {
+            return decode320(buf, context);
         }
     }
 

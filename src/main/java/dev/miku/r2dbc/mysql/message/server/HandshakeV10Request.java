@@ -16,8 +16,8 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import dev.miku.r2dbc.mysql.Capability;
 import dev.miku.r2dbc.mysql.authentication.MySqlAuthProvider;
-import dev.miku.r2dbc.mysql.constant.Capabilities;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
@@ -44,17 +44,17 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
     private final byte[] salt;
 
-    private final int serverCapabilities;
+    private final Capability serverCapability;
 
     private final short serverStatuses;
 
-    private final String authType; // default is mysql_native_password
+    private final String authType;
 
-    private HandshakeV10Request(HandshakeHeader header, int envelopeId, byte[] salt, int serverCapabilities, short serverStatuses, String authType) {
+    private HandshakeV10Request(HandshakeHeader header, int envelopeId, byte[] salt, Capability serverCapability, short serverStatuses, String authType) {
         this.header = requireNonNull(header, "header must not be null");
         this.envelopeId = envelopeId;
         this.salt = requireNonNull(salt, "salt must not be null");
-        this.serverCapabilities = serverCapabilities;
+        this.serverCapability = requireNonNull(serverCapability, "serverCapability must not be null");
         this.serverStatuses = serverStatuses;
         this.authType = requireNonNull(authType, "authType must not be null");
     }
@@ -75,8 +75,8 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
     }
 
     @Override
-    public int getServerCapabilities() {
-        return serverCapabilities;
+    public Capability getServerCapability() {
+        return serverCapability;
     }
 
     @Override
@@ -100,9 +100,9 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
         HandshakeV10Request that = (HandshakeV10Request) o;
 
-        return envelopeId == that.envelopeId && serverCapabilities == that.serverCapabilities &&
-            serverStatuses == that.serverStatuses && header.equals(that.header) &&
-            Arrays.equals(salt, that.salt) && authType.equals(that.authType);
+        return envelopeId == that.envelopeId && serverStatuses == that.serverStatuses &&
+            header.equals(that.header) && Arrays.equals(salt, that.salt) &&
+            serverCapability.equals(that.serverCapability) && authType.equals(that.authType);
     }
 
     @Override
@@ -110,7 +110,7 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         int result = header.hashCode();
         result = 31 * result + envelopeId;
         result = 31 * result + Arrays.hashCode(salt);
-        result = 31 * result + serverCapabilities;
+        result = 31 * result + serverCapability.hashCode();
         result = 31 * result + (int) serverStatuses;
         return 31 * result + authType.hashCode();
     }
@@ -118,7 +118,7 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
     @Override
     public String toString() {
         return "HandshakeV10Request{header=" + header + ", envelopeId=" + envelopeId +
-            ", salt=REDACTED, serverCapabilities=" + serverCapabilities +
+            ", salt=REDACTED, serverCapability=" + serverCapability +
             ", serverStatuses=" + serverStatuses + ", authType='" + authType + "'}";
     }
 
@@ -133,15 +133,17 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
             buf.skipBytes(SALT_FIRST_PART_SIZE + 1);
 
             // The Server Capabilities first part following the salt first part. (always lower 2-bytes)
-            int serverCapabilities = buf.readUnsignedShortLE();
+            int loCapabilities = buf.readUnsignedShortLE();
 
             // MySQL is using 16 bytes to identify server character. There has lower 8-bits only, skip it.
             buf.skipBytes(1);
             builder.serverStatuses(buf.readShortLE());
 
             // The Server Capabilities second part following the server statuses. (always upper 2-bytes)
-            serverCapabilities |= buf.readUnsignedShortLE() << Short.SIZE;
-            builder.serverCapabilities(serverCapabilities);
+            int hiCapabilities = buf.readUnsignedShortLE() << Short.SIZE;
+            Capability capability = Capability.of(loCapabilities | hiCapabilities);
+
+            builder.serverCapability(capability);
 
             // If PLUGIN_AUTH flag not exists, MySQL server will return 0x00 always.
             short saltSize = buf.readUnsignedByte();
@@ -149,7 +151,9 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
             // Reserved field, all bytes are 0x00.
             buf.skipBytes(RESERVED_SIZE);
 
-            if ((serverCapabilities & Capabilities.SECURE_CONNECTION) != 0) {
+            if (capability.isSaltSecured()) {
+                // If it has not this part, means it is using mysql_old_password,
+                // that salt and authentication is not secure.
                 int saltSecondPartSize = Math.max(MIN_SALT_SECOND_PART_SIZE, saltSize - SALT_FIRST_PART_SIZE - 1);
 
                 salt.writeBytes(buf, buf.readerIndex(), saltSecondPartSize);
@@ -159,9 +163,7 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
             builder.salt(ByteBufUtil.getBytes(salt));
 
-            if ((serverCapabilities & Capabilities.PLUGIN_AUTH) == 0) {
-                builder.authType(MySqlAuthProvider.NO_AUTH_PROVIDER);
-            } else {
+            if (capability.isPluginAuthAllowed()) {
                 // See also MySQL bug 59453, auth type native name has no terminal character in
                 // version less than 5.5.10, or version greater than 5.6.0 and less than 5.6.2
                 // And MySQL only support "mysql_native_password" in those versions that has the
@@ -174,6 +176,8 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
                     builder.authType(length == 0 ? MySqlAuthProvider.NO_AUTH_PROVIDER :
                         buf.toString(buf.readerIndex(), length, StandardCharsets.US_ASCII));
                 }
+            } else {
+                builder.authType(MySqlAuthProvider.NO_AUTH_PROVIDER);
             }
 
             return builder.build();
@@ -188,11 +192,11 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
         private final HandshakeHeader header;
 
-        private String authType; // null if PLUGIN_AUTH flag not exists in serverCapabilities
+        private String authType;
 
         private byte[] salt;
 
-        private int serverCapabilities;
+        private Capability serverCapability;
 
         private short serverStatuses;
 
@@ -202,7 +206,7 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         }
 
         HandshakeV10Request build() {
-            return new HandshakeV10Request(header, envelopeId, salt, serverCapabilities, serverStatuses, authType);
+            return new HandshakeV10Request(header, envelopeId, salt, serverCapability, serverStatuses, authType);
         }
 
         void authType(String authType) {
@@ -213,8 +217,8 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
             this.salt = salt;
         }
 
-        void serverCapabilities(int serverCapabilities) {
-            this.serverCapabilities = serverCapabilities;
+        void serverCapability(Capability serverCapability) {
+            this.serverCapability = serverCapability;
         }
 
         void serverStatuses(short serverStatuses) {

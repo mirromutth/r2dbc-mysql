@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import org.junit.jupiter.api.Test;
@@ -75,7 +74,7 @@ public class ConnectionContextTest {
     public static ConnectionContext mock(ZoneId zoneId) {
         ConnectionContext context = new ConnectionContext(ZeroDateOption.USE_NULL, zoneId);
 
-        context.init(1, ServerVersion.parse("8.0.11.MOCKED"), Capabilities.ALL_SUPPORTED);
+        context.init(1, ServerVersion.parse("8.0.11.MOCKED"), Capability.of(-1));
         context.setServerStatuses(ServerStatuses.AUTO_COMMIT);
 
         return context;
