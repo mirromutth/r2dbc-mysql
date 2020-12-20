@@ -12,3 +12,10 @@ target/
 
 *.iml
 .idea/
+
+### VS Code
+
+.vscode/
+.settings/
+.classpath
+.project
