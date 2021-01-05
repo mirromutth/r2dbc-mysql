@@ -155,10 +155,12 @@ final class ArrItr<E> implements ListIterator<E>, Iterator<E> {
         return a[--i];
     }
 
+    @Override
     public int nextIndex() {
         return i;
     }
 
+    @Override
     public int previousIndex() {
         return i - 1;
     }

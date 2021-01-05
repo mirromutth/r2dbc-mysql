@@ -100,10 +100,12 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         return index;
     }
 
+    @Override
     public short getType() {
         return type;
     }
 
+    @Override
     public short getDefinitions() {
         return definitions;
     }
@@ -188,6 +190,7 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         return name;
     }
 
+    @Override
     public Integer getNativeTypeMetadata() {
         return (int) type;
     }
@@ -222,6 +225,7 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         return null;
     }
 
+    @Override
     public int getCollationId() {
         return collationId;
     }

@@ -25,6 +25,7 @@ class MySqlPrepareTestKit extends MySqlTestKitSupport {
         super(IntegrationTestSupport.configuration(false, null, sql -> true));
     }
 
+    @Override
     public void compoundStatement() {
         // MySQL does not support multiple preparing results.
     }

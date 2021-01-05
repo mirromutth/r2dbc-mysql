@@ -37,9 +37,9 @@ final class Sha256AuthProvider implements MySqlAuthProvider {
     }
 
     @Override
-    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
-            return new byte[]{TERMINAL};
+            return new byte[] { TERMINAL };
         }
 
         requireNonNull(collation, "collation must not be null when password exists");

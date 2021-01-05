@@ -15,7 +15,7 @@
  */
 
 /**
- * Handlers for the various styles of MySQL authentication.
+ * Handlers for the various types of MySQL authentication.
  */
 
 @NonNullApi

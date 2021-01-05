@@ -68,7 +68,7 @@ class FluxDiscardOnCancelTest {
         assertThat(es).hasSize(1)
             .element(0)
             .isExactlyInstanceOf(IllegalStateException.class)
-            .extracting(Throwable::getMessage)
+            .extracting(Throwable::getLocalizedMessage)
             .isEqualTo(message);
     }
 

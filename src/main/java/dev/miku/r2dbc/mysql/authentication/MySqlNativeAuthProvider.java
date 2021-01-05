@@ -39,12 +39,12 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
     }
 
     /**
-     * SHA1(password) all bytes xor SHA1( "random data from MySQL server" + SHA1(SHA1(password)) )
+     * SHA1(password) `all bytes xor` SHA1( salt + SHA1( SHA1(password) ) )
      * <p>
      * {@inheritDoc}
      */
     @Override
-    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
             return EMPTY_BYTES;
         }
@@ -52,7 +52,7 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
         requireNonNull(salt, "salt must not be null when password exists");
         requireNonNull(collation, "collation must not be null when password exists");
 
-        return AuthUtils.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
+        return AuthUtils.hash(ALGORITHM, IS_LEFT_SALT, password, salt, collation.getCharset());
     }
 
     @Override

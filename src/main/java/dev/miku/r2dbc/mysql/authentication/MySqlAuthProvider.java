@@ -23,18 +23,16 @@ import reactor.util.annotation.Nullable;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * MySQL authorization provider for connection phase.
+ * An abstraction of the MySQL authorization plugin provider for connection phase. More information for MySQL
+ * authentication type:
  * <p>
- * More information for MySQL authentication type:
- * <p>
- * Connect a MySQL server those test database, execute
- * {@code SELECT * FROM `information_schema`.`PLUGINS` where `plugin_type` = 'AUTHENTICATION'}
- * could see what authentication plugin types those this MySQL server supports.
+ * Execute {@code SELECT * FROM `information_schema`.`PLUGINS` WHERE `plugin_type` = 'AUTHENTICATION'} to
+ * obtain more information about the authentication plugins supported by a MySQL server.
  */
 public interface MySqlAuthProvider {
 
     /**
-     * The new authentication type in MySQL 8.0+.
+     * The new authentication plugin type under MySQL 8.0+. It is also the default type of MySQL 8.0.x.
      */
     String CACHING_SHA2_PASSWORD = "caching_sha2_password";
 
@@ -43,23 +41,32 @@ public interface MySqlAuthProvider {
      */
     String MYSQL_NATIVE_PASSWORD = "mysql_native_password";
 
+    /**
+     * The new authentication plugin type under MySQL 8.0+.
+     */
     String SHA256_PASSWORD = "sha256_password";
 
     /**
-     * The Old Password Authentication, it is also the only type of
-     * authentication in handshake V9.
+     * The Old Password Authentication, it is also the only type of authentication in handshake V9.
      * <p>
-     * WARNING: The hashing algorithm has broken that is used for the
-     * Old Password Authentication (as shown in CVE-2000-0981).
+     * WARNING: The hashing algorithm has broken that is used for the Old Password Authentication (as shown in
+     * CVE-2000-0981).
      */
     String MYSQL_OLD_PASSWORD = "mysql_old_password";
 
     /**
-     * Try use empty string to represent has no authentication provider
-     * when {@code Capability.PLUGIN_AUTH} does not set.
+     * Try use empty string to represent has no authentication provider when {@code Capability.PLUGIN_AUTH}
+     * does not set.
      */
     String NO_AUTH_PROVIDER = "";
 
+    /**
+     * Get the built-in authentication plugin provider through the specified {@code type}.
+     *
+     * @param type the type name of a authentication plugin provider
+     * @return the authentication plugin provider
+     * @throws R2dbcPermissionDeniedException the {@code type} name not found
+     */
     static MySqlAuthProvider build(String type) {
         requireNonNull(type, "type must not be null");
 
@@ -76,13 +83,20 @@ public interface MySqlAuthProvider {
                 return NoAuthProvider.INSTANCE;
         }
 
-        throw new R2dbcPermissionDeniedException(String.format("Authentication type '%s' not supported", type));
+        throw new R2dbcPermissionDeniedException("Authentication plugin '" + type + "' not found");
     }
 
+    /**
+     * The type name of the authentication plugin provider.
+     *
+     * @return type name
+     */
     String getType();
 
     /**
-     * @return true if the authentication type should be used on SSL for next authentication.
+     * Check if the authentication type should be used on SSL.
+     *
+     * @return {@code true} if SSL necessary
      */
     boolean isSslNecessary();
 
@@ -94,10 +108,13 @@ public interface MySqlAuthProvider {
      * @param collation password character collation
      * @return fast authentication phase must not be null.
      */
-    byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation);
+    byte[] authentication(@Nullable CharSequence password, byte[] salt, CharCollation collation);
 
     /**
-     * @return next authentication provider for same authentication type, or {@code this} if has not next provider.
+     * Get the next authentication plugin provider for same authentication type, or {@code this} if has not
+     * next provider.
+     *
+     * @return the next provider
      */
     MySqlAuthProvider next();
 }
