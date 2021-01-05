@@ -237,6 +237,7 @@ interface Source<T> {
             this.value = value;
         }
 
+        @Override
         public Otherwise into(Consumer<T> consumer) {
             consumer.accept(value);
             return Otherwise.NOOP;

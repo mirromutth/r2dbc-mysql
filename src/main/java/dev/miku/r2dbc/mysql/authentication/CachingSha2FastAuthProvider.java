@@ -23,7 +23,8 @@ import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in fast authentication phase.
+ * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in fast authentication
+ * phase.
  */
 final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
 
@@ -40,20 +41,20 @@ final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
     }
 
     /**
-     * SHA256(password) `all bytes xor` SHA256( SHA256( ~SHA256(password) ) + "random data from MySQL server" )
+     * SHA256(password) `all bytes xor` SHA256( SHA256( SHA256(password) ) + salt )
      * <p>
      * {@inheritDoc}
      */
     @Override
-    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
-            return new byte[]{TERMINAL};
+            return new byte[] { TERMINAL };
         }
 
         requireNonNull(salt, "salt must not be null when password exists");
         requireNonNull(collation, "collation must not be null when password exists");
 
-        return AuthUtils.generalHash(ALGORITHM, IS_LEFT_SALT, password, salt, collation);
+        return AuthUtils.hash(ALGORITHM, IS_LEFT_SALT, password, salt, collation.getCharset());
     }
 
     @Override

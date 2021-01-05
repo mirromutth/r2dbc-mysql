@@ -59,7 +59,7 @@ final class OldAuthProvider implements MySqlAuthProvider {
     }
 
     @Override
-    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
             return EMPTY_BYTES;
         }
@@ -68,26 +68,28 @@ final class OldAuthProvider implements MySqlAuthProvider {
 
         Charset charset = collation.getCharset();
         String saltString;
+        byte[] challenge;
 
-        if (salt == null) {
+        if (salt.length == 0) {
             saltString = "";
-            salt = EMPTY_BYTES;
+            challenge = EMPTY_BYTES;
         } else {
             String newString = new String(salt, charset);
 
             if (newString.length() > MAX_SALT_LENGTH) {
                 saltString = newString.substring(0, MAX_SALT_LENGTH);
-                salt = saltString.getBytes(charset);
+                challenge = saltString.getBytes(charset);
             } else {
                 saltString = newString;
+                challenge = salt;
             }
         }
 
         // Authentication results
-        long authentications = hashing(salt);
+        long authentications = hashing(challenge);
 
         // Messages results
-        long messages = hashing(encodePurely(password, charset));
+        long messages = hashing(encodeNoWhitespace(password, charset));
 
         long firstSeed = (firstPart(authentications) ^ firstPart(messages)) % MOD;
         long secondSeed = (secondPart(authentications) ^ secondPart(messages)) % MOD;
@@ -97,7 +99,8 @@ final class OldAuthProvider implements MySqlAuthProvider {
         for (int i = 0; i < stringSize; ++i) {
             firstSeed = ((firstSeed * SEED_MULTIPLIER) + secondSeed) % MOD;
             secondSeed = (firstSeed + secondSeed + SEED_INC) % MOD;
-            results[i] = (char) (byte) Math.floor(((((double) firstSeed) / MOD) * RESULT_MULTIPLIER) + RESULT_INC);
+            results[i] = (char) (byte)
+                Math.floor(((((double) firstSeed) / MOD) * RESULT_MULTIPLIER) + RESULT_INC);
         }
 
         long lastSeed = ((firstSeed * SEED_MULTIPLIER) + secondSeed) % MOD;
@@ -120,8 +123,7 @@ final class OldAuthProvider implements MySqlAuthProvider {
         return MYSQL_OLD_PASSWORD;
     }
 
-    private static byte[] encodePurely(CharSequence password, Charset charset) {
-        // Encoding without whitespace, so call it "purely".
+    private static byte[] encodeNoWhitespace(CharSequence password, Charset charset) {
         int size = password.length();
         StringBuilder builder = new StringBuilder(size);
 
@@ -142,17 +144,21 @@ final class OldAuthProvider implements MySqlAuthProvider {
     }
 
     private static long firstPart(long results) {
-        // First bit must be 0, so mark with 0x7FFF... same as mark with 0xFFF...
+        // The first bit must be 0, so a mask of 0x7FFF has the same result as 0xFFFF
         return (results >>> Integer.SIZE) & Integer.MAX_VALUE;
     }
 
     private static long secondPart(long results) {
-        // First bit must be 0, so mark with 0x7FFF... same as mark with 0xFFF...
+        // The first bit must be 0, so a mask of 0x7FFF has the same result as 0xFFFF
         return results & Integer.MAX_VALUE;
     }
 
     /**
-     * @return pairs of hashing results, high 32-bits is first part, low 32-bits is second part.
+     * Hash the content to a 64-bits result, with the upper 32-bits being the first part and the lower 32-bits
+     * being the second part.
+     *
+     * @param plaintext the plain text content
+     * @return the 64-bits result contains 2 parts
      */
     private static long hashing(byte[] plaintext) {
         long firstPart = FIRST_HASHING;

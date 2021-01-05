@@ -27,6 +27,7 @@ import reactor.util.annotation.NonNull;
 interface PrimitiveCodec<T> extends Codec<T> {
 
     @NonNull
+    @Override
     T decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context);
 
     boolean canPrimitiveDecode(FieldInformation info);

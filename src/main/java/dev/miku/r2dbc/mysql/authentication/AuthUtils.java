@@ -16,8 +16,6 @@
 
 package dev.miku.r2dbc.mysql.authentication;
 
-import dev.miku.r2dbc.mysql.collation.CharCollation;
-
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -31,18 +29,29 @@ import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
  */
 final class AuthUtils {
 
-    static byte[] generalHash(String algorithm, boolean leftSalt, CharSequence password, byte[] salt, CharCollation collation) {
-        Charset charset = collation.getCharset();
+    /**
+     * Common hashing process of "caching_sha2_password" and "mysql_native_password".
+     *
+     * <ul><li>The hashing process is HASH(plain) `all bytes xor` HASH( salt + HASH( HASH(plain) ) ) if the
+     * {@code left} is {@code true}.</li>
+     * <li>Otherwise, the process is HASH(plain) `all bytes xor` HASH( HASH( HASH(plain) ) + salt )</li></ul>
+     * The {@code HASH} is the basic hash algorithm provided by {@link MessageDigest}.
+     *
+     * @param algorithm the name of the basic hash algorithm
+     * @param left      load salt as left challenge
+     * @param plain     plain text for hash
+     * @param salt      the salt of challenge
+     * @param charset   encoding {@code plain} as byte array
+     * @return hash result
+     * @throws IllegalArgumentException if {@code algorithm} not found
+     */
+    static byte[] hash(String algorithm, boolean left, CharSequence plain, byte[] salt, Charset charset) {
         MessageDigest digest = loadDigest(algorithm);
 
-        byte[] oneRound = digestBuffer(digest, charset.encode(CharBuffer.wrap(password)));
+        byte[] oneRound = digestBuffer(digest, charset.encode(CharBuffer.wrap(plain)));
         byte[] twoRounds = finalDigests(digest, oneRound);
 
-        if (leftSalt) {
-            return allBytesXor(finalDigests(digest, salt, twoRounds), oneRound);
-        } else {
-            return allBytesXor(finalDigests(digest, twoRounds, salt), oneRound);
-        }
+        return allBytesXor(finalDigests(digest, left, salt, twoRounds), oneRound);
     }
 
     static byte[] encodeTerminal(CharBuffer chars, Charset charset) {
@@ -60,15 +69,26 @@ final class AuthUtils {
         try {
             return MessageDigest.getInstance(name);
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalArgumentException(String.format("%s not support of MessageDigest", name), e);
+            throw new IllegalArgumentException(e.getLocalizedMessage(), e);
         }
     }
 
-    private static byte[] finalDigests(MessageDigest digest, byte[]... plains) {
+    private static byte[] finalDigests(MessageDigest digest, byte[] plain) {
+        digest.reset();
+        digest.update(plain);
+
+        return digest.digest();
+    }
+
+    private static byte[] finalDigests(MessageDigest digest, boolean leftFirst, byte[] left, byte[] right) {
         digest.reset();
 
-        for (byte[] plain : plains) {
-            digest.update(plain);
+        if (leftFirst) {
+            digest.update(left);
+            digest.update(right);
+        } else {
+            digest.update(right);
+            digest.update(left);
         }
 
         return digest.digest();
@@ -83,7 +103,7 @@ final class AuthUtils {
         int size = left.length;
 
         if (size != right.length) {
-            throw new IllegalArgumentException(String.format("can not xor different sizes %d and %d", size, right.length));
+            throw new IllegalArgumentException("Cannot xor different sizes " + size + " and " + right.length);
         }
 
         for (int i = 0; i < size; ++i) {

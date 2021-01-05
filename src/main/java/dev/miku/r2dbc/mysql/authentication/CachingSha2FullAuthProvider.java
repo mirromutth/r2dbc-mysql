@@ -25,7 +25,8 @@ import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in full authentication phase.
+ * An implementation of {@link MySqlAuthProvider} for type "caching_sha2_password" in full authentication
+ * phase.
  */
 final class CachingSha2FullAuthProvider implements MySqlAuthProvider {
 
@@ -38,9 +39,9 @@ final class CachingSha2FullAuthProvider implements MySqlAuthProvider {
     }
 
     @Override
-    public byte[] authentication(@Nullable CharSequence password, @Nullable byte[] salt, CharCollation collation) {
+    public byte[] authentication(@Nullable CharSequence password, byte[] salt, CharCollation collation) {
         if (password == null || password.length() <= 0) {
-            return new byte[]{TERMINAL};
+            return new byte[] { TERMINAL };
         }
 
         requireNonNull(collation, "collation must not be null when password exists");

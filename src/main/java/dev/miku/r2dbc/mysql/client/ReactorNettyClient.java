@@ -206,7 +206,7 @@ final class ReactorNettyClient implements Client {
         drainError(ClientExceptions.wrap(e));
         this.requestProcessor.onComplete();
 
-        logger.error("Error: {}", e.getMessage(), e);
+        logger.error("Error: {}", e.getLocalizedMessage(), e);
 
         return (Mono<T>) close();
     }
