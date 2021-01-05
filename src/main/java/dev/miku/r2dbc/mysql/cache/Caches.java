@@ -54,8 +54,8 @@ public final class Caches {
     }
 
     /**
-     * Returns the smallest power of two greater than or equal to {@code x}. This
-     * is equivalent to {@code pow(2, ceil(log2(x)))}.
+     * Returns the smallest power of two greater than or equal to {@code x}. This function is equivalent to
+     * {@code pow(2, ceil(log2(x)))}.
      * <p>
      * From Hacker's Delight, Chapter 3, Harry S. Warren Jr.
      *

@@ -20,8 +20,8 @@ import java.util.HashMap;
 import java.util.function.IntConsumer;
 
 /**
- * A bounded implementation of {@link PrepareCache} that uses synchronized methods to ensure
- * correctness, even it should not be used thread-concurrently.
+ * A bounded implementation of {@link PrepareCache} that uses synchronized methods to ensure correctness, even
+ * it should not be used thread concurrently.
  */
 final class PrepareBoundedCache extends HashMap<String, Lru.Node<Integer>> implements PrepareCache {
 

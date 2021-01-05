@@ -23,5 +23,12 @@ import dev.miku.r2dbc.mysql.Query;
  */
 public interface QueryCache {
 
+    /**
+     * Get {@link Query} if specified {@code key} has been cached, or cache the new {@link Query} parsed from
+     * {@code key}.
+     *
+     * @param key the {@link Query} association key
+     * @return the existing or parsed value associated with the {@code key}
+     */
     Query get(String key);
 }

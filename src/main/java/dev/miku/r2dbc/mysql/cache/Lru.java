@@ -24,6 +24,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
  * A minimal implementation of LRU without hashing map.
  * <p>
  * If want to use, should take with a external hash map.
+ *
+ * @param <T> the type of elements in cache
  */
 final class Lru<T> {
 
@@ -110,7 +112,7 @@ final class Lru<T> {
         Node<T> tail;
 
         if (unlink == null || (tail = unlink.prev) == null) {
-            throw new IllegalStateException("LRU must be contains least 2 elements when choose an unlink element");
+            throw new IllegalStateException("LRU must be contains least 2 elements when unlinking");
         }
 
         tail.next = null;
