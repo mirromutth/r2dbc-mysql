@@ -32,6 +32,8 @@ abstract class LeftPad {
 
 /**
  * A non-blocking bounded ring buffer.
+ *
+ * @param <T> the type of elements in buffer
  */
 final class RingBuffer<T> extends LeftPad {
 
@@ -48,7 +50,8 @@ final class RingBuffer<T> extends LeftPad {
      */
     private static final int SCALE = 4;
 
-    private static final int SHIFT = Integer.numberOfTrailingZeros(128) - Integer.numberOfTrailingZeros(SCALE);
+    private static final int SHIFT = Integer.numberOfTrailingZeros(128) -
+        Integer.numberOfTrailingZeros(SCALE);
 
     private static final int PADDING = (1 << SHIFT) - 1;
 
@@ -89,8 +92,8 @@ final class RingBuffer<T> extends LeftPad {
     }
 
     /**
-     * Should NEVER use &lt; or &gt; to compare {@link #head} and {@link #tail} directly,
-     * because they may overflow. Calculate {@code tail - head} to check current buffer size.
+     * Should NEVER use &lt; or &gt; to compare {@link #head} and {@link #tail} directly, because they may
+     * overflow. Calculate {@code tail - head} to check current buffer size.
      *
      * @param value the element to be offered.
      * @return {@code true} if succeed, otherwise failed.
@@ -121,8 +124,8 @@ final class RingBuffer<T> extends LeftPad {
     }
 
     /**
-     * Should NEVER use &lt; or &gt; to compare {@link #head} and {@link #tail} directly,
-     * because they may overflow. Calculate {@code tail - head} to check current buffer size.
+     * Should NEVER use &lt; or &gt; to compare {@link #head} and {@link #tail} directly, because they may
+     * overflow. Calculate {@code tail - head} to check current buffer size.
      */
     void drainAll() {
         // Consume to current tail, do NOT extract tail in each loop to avoid inf loop.
@@ -151,10 +154,10 @@ final class RingBuffer<T> extends LeftPad {
                 if (nullCount++ < maxNullCount) {
                     // Try again.
                     continue;
-                } else {
-                    // An intense race condition, quit.
-                    break;
                 }
+
+                // An intense race condition, quit.
+                break;
             }
 
             if (HEAD.compareAndSet(this, head, head + 1)) {

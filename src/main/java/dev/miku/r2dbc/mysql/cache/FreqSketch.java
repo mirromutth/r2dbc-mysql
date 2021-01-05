@@ -19,9 +19,9 @@ package dev.miku.r2dbc.mysql.cache;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * A probabilistic set for estimating the popularity (frequency) of an element within an
- * access frequency based time window. The maximum frequency of an element is limited
- * to 15 (4-bits) and an aging process periodically halves the popularity of all elements.
+ * A probabilistic set for estimating the popularity (frequency) of an element within an access frequency
+ * based time window. The maximum frequency of an element is limited to 15 (4-bits) and an aging process
+ * periodically halves the popularity of all elements.
  * <p>
  * Notice: it's using lots of magic numbers, and should not to change these numbers.
  */
@@ -31,20 +31,20 @@ final class FreqSketch {
      * This is a SLIGHTLY altered version of Caffeine's [1] implementation.
      *
      * This class maintains a 4-bit CountMinSketch [2] with periodic aging to provide the popularity
-     * history for the TinyLfu admission policy [3]. The time and space efficiency of the sketch
-     * allows it to cheaply estimate the frequency of an entry in a stream of cache access events.
+     * history for the TinyLfu admission policy [3]. The time and space efficiency of the sketch allows it
+     * to cheaply estimate the frequency of an entry in a stream of cache access events.
      *
      * The counter matrix is represented as a single dimensional array holding 16 counters per slot. A
-     * fixed depth of four balances the accuracy and cost, resulting in a width of four times the
-     * length of the array. To retain an accurate estimation the array's length equals the maximum
-     * number of entries in the cache, increased to the closest power-of-two to exploit more efficient
-     * bit masking. This configuration results in a confidence of 93.75% and error bound of e / width.
+     * fixed depth of four balances the accuracy and cost, resulting in a width of four times the length of
+     * the array. To retain an accurate estimation the array's length equals the maximum number of entries
+     * in the cache, increased to the closest power-of-two to exploit more efficient bit masking. This
+     * configuration results in a confidence of 93.75% and error bound of e / width.
      *
      * The frequency of all entries is aged periodically using a sampling window based on the maximum
-     * number of entries in the cache. This is referred to as the reset operation by TinyLfu and keeps
-     * the sketch fresh by dividing all counters by two and subtracting based on the number of odd
-     * counters found. The O(n) cost of aging is amortized, ideal for hardware pre-fetching, and uses
-     * inexpensive bit manipulations per array location.
+     * number of entries in the cache. This is referred to as the reset operation by TinyLfu and keeps the
+     * sketch fresh by dividing all counters by two and subtracting based on the number of odd counters
+     * found. The O(n) cost of aging is amortized, ideal for hardware pre-fetching, and uses inexpensive
+     * bit manipulations per array location.
      *
      * [1] Caffeine: a high performance, near optimal caching library based on Java 8.
      * https://github.com/ben-manes/caffeine
@@ -57,7 +57,8 @@ final class FreqSketch {
     /**
      * A mixture of seeds from FNV-1a, CityHash, and Murmur3.
      */
-    private static final long[] SEED = {0xc3a5c85c97cb3127L, 0xb492b66fbe98f273L, 0x9ae16a3b2f90404fL, 0xcbf29ce484222325L};
+    private static final long[] SEED = { 0xc3a5c85c97cb3127L, 0xb492b66fbe98f273L,
+        0x9ae16a3b2f90404fL, 0xcbf29ce484222325L };
 
     private static final long RESET_MASK = 0x7777777777777777L;
 
@@ -83,18 +84,20 @@ final class FreqSketch {
 
         int capacity = Math.min(maxSize, MAX_SIZE);
         int sampling = capacity * 10;
+        int length = Caches.ceilingPowerOfTwo(capacity);
 
-        this.table = new long[Caches.ceilingPowerOfTwo(capacity)];
-        this.tableMask = table.length - 1;
+        this.table = new long[length];
+        this.tableMask = length - 1;
         this.sampling = sampling > 0 ? sampling : Integer.MAX_VALUE;
         this.size = 0;
     }
 
     /**
-     * Returns the estimated number of occurrences of an element, up to the maximum (15).
+     * Returns the estimated number of occurrences of an element, possibly zero but never negative, up to the
+     * maximum (15).
      *
-     * @param hashCode the hashCode of element to count occurrences of
-     * @return the estimated number of occurrences of the element; possibly zero but never negative
+     * @param hashCode the hash code of element to count occurrences of
+     * @return the estimated number
      */
     int frequency(int hashCode) {
         int hash = spread(hashCode);
@@ -109,11 +112,11 @@ final class FreqSketch {
     }
 
     /**
-     * Increments the popularity of the element if it does not exceed the maximum (15). The popularity
-     * of all elements will be periodically down sampled when the observed events exceeds a threshold.
-     * This process provides a frequency aging to allow expired long term entries to fade away.
+     * Increments the popularity of the element if it does not exceed the maximum (15). The popularity of all
+     * elements will be periodically down sampled when the observed events exceeds a threshold. This process
+     * provides a frequency aging to allow expired long term entries to fade away.
      *
-     * @param hashCode the hashCode of element to add
+     * @param hashCode the hash code of element to add
      */
     void increment(int hashCode) {
         int hash = spread(hashCode);
@@ -177,8 +180,11 @@ final class FreqSketch {
     }
 
     /**
-     * Applies a supplemental hash function to a given hashCode, which defends against poor quality
-     * hash functions.
+     * Applies a supplemental hash function to a given hash code, which defends against poor quality hash
+     * functions.
+     *
+     * @param x the hash code of element to supplement
+     * @return supplemented hash code
      */
     private static int spread(int x) {
         x = ((x >>> 16) ^ x) * 0x45d9f3b;

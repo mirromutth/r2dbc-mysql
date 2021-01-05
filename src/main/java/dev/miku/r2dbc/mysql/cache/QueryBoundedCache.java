@@ -67,7 +67,7 @@ final class QueryBoundedCache extends ConcurrentHashMap<String, Lru.Node<Query>>
             return node.getValue();
         }
 
-        boolean[] present = new boolean[]{true};
+        boolean[] present = new boolean[] { true };
 
         // It always return current (existing or computed) value.
         node = super.computeIfAbsent(key, (k) -> {
@@ -90,12 +90,11 @@ final class QueryBoundedCache extends ConcurrentHashMap<String, Lru.Node<Query>>
         /*
          * Inspired by Caffeine:
          *
-         * When a cache hit occurs then processing the node is a policy hint, e.g. to LRU reorder.
-         * This is best-effort and the work could be dropped, e.g. if the buffer is full (or CAS fails).
-         * This favors concurrent throughput and likely the same popular entries are being accessed.
-         * If so, the eviction policy is already going to favor them so being strict won't change
-         * the hit rate substantially. Being lossy can improve the system throughput, so generally a
-         * favorable tradeoff.
+         * When a cache hit occurs then processing the node is a policy hint, e.g. to LRU reorder. This is
+         * best-effort and the work could be dropped, e.g. if the buffer is full (or CAS fails). This
+         * favors concurrent throughput and likely the same popular entries are being accessed. If so, the
+         * eviction policy is already going to favor them so being strict won't change the hit rate
+         * substantially. Being lossy can improve the system throughput, so generally a favorable tradeoff.
          *
          * So there is using tryLock instead of lock for performance, even offer fails.
          */
@@ -114,9 +113,8 @@ final class QueryBoundedCache extends ConcurrentHashMap<String, Lru.Node<Query>>
 
     private void afterAdded(Lru.Node<Query> node) {
         /*
-         * When a cache miss occurs then the entry must be added to the LRU and maybe
-         * an eviction occurs. This must occur, so it has the work has to be processed
-         * and not dropped.
+         * When a cache miss occurs then the entry must be added to the LRU and maybe an eviction occurs.
+         * This must occur, so it has the work has to be processed and not dropped.
          *
          * So there is using lock when offer fails.
          */
