@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.collation;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * Generic properties and logic for {@link CharCollation}.
+ * An abstraction of {@link CharCollation}.
  */
 abstract class AbstractCharCollation implements CharCollation {
 
@@ -61,20 +61,12 @@ abstract class AbstractCharCollation implements CharCollation {
 
         AbstractCharCollation that = (AbstractCharCollation) o;
 
-        if (id != that.id) {
-            return false;
-        }
-        if (!name.equals(that.name)) {
-            return false;
-        }
-        return target.equals(that.target);
+        return id == that.id && name.equals(that.name) && target.equals(that.target);
     }
 
     @Override
     public int hashCode() {
-        int result = id;
-        result = 31 * result + name.hashCode();
-        result = 31 * result + target.hashCode();
-        return result;
+        int hash = 31 * id + name.hashCode();
+        return 31 * hash + target.hashCode();
     }
 }

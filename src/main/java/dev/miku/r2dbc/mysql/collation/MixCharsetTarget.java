@@ -48,11 +48,7 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
 
     @Override
     public Charset getCharset() {
-        if (fallbackCharset == null) {
-            return getCharsetFallible();
-        } else {
-            return getCharsetNonFail(fallbackCharset);
-        }
+        return fallbackCharset == null ? getCharsetFallible() : getCharsetNonFail(fallbackCharset);
     }
 
     @Override
@@ -78,9 +74,9 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
 
         if (err == null) {
             throw new UnsupportedCharsetException("Charset target not found in MixCharsetTarget");
-        } else {
-            throw err;
         }
+
+        throw err;
     }
 
     @Override
@@ -97,23 +93,19 @@ final class MixCharsetTarget extends AbstractCharsetTarget {
 
         MixCharsetTarget that = (MixCharsetTarget) o;
 
-        if (!Objects.equals(fallbackCharset, that.fallbackCharset)) {
-            return false;
-        }
-        return Arrays.equals(targets, that.targets);
+        return Objects.equals(fallbackCharset, that.fallbackCharset) && Arrays.equals(targets, that.targets);
     }
 
     @Override
     public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + (fallbackCharset != null ? fallbackCharset.hashCode() : 0);
-        result = 31 * result + Arrays.hashCode(targets);
-        return result;
+        int hash = 31 * super.hashCode() + (fallbackCharset != null ? fallbackCharset.hashCode() : 0);
+        return 31 * hash + Arrays.hashCode(targets);
     }
 
     @Override
     public String toString() {
-        return String.format("MixCharsetTarget{fallbackCharset=%s, targets=%s, byteSize=%d}", fallbackCharset, Arrays.toString(targets), byteSize);
+        return String.format("MixCharsetTarget{fallbackCharset=%s, targets=%s, byteSize=%d}", fallbackCharset,
+            Arrays.toString(targets), byteSize);
     }
 
     private Charset getCharsetNonFail(Charset fallback) {

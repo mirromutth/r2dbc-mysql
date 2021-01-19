@@ -63,13 +63,12 @@ final class NamedCharsetTarget extends AbstractCharsetTarget {
 
     @Override
     public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + charsetName.hashCode();
-        return result;
+        int hash = super.hashCode();
+        return 31 * hash + charsetName.hashCode();
     }
 
     @Override
     public String toString() {
-        return String.format("NamedCharsetTarget{charsetName='%s', byteSize=%d}", charsetName, byteSize);
+        return "NamedCharsetTarget{charsetName='" + charsetName + "', byteSize=" + byteSize + '}';
     }
 }

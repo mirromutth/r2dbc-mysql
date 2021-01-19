@@ -19,8 +19,8 @@ package dev.miku.r2dbc.mysql.collation;
 import java.nio.charset.Charset;
 
 /**
- * Character collation those NOT use cached {@link CharsetTarget} of MySQL,
- * it will be initialized in {@link #getCharset()} at the first call.
+ * Character collation those NOT use cached {@link CharsetTarget} of MySQL, it will be initialized and cached
+ * the target charset in {@link #getCharset()} at the first call.
  * <p>
  * It is thread-safe.
  */
@@ -54,6 +54,6 @@ final class LazyInitCharCollation extends AbstractCharCollation {
 
     @Override
     public String toString() {
-        return String.format("LazyInitCharCollation{id=%d, name='%s', target=%s}", id, name, target);
+        return "LazyInitCharCollation{id=" + id + ", name='" + name + "', target=" + target + '}';
     }
 }

@@ -36,8 +36,8 @@ final class CharCollations {
     private static final CharCollation[] COSMOS;
 
     /**
-     * The universe extra character collations, they have special IDs
-     * which maybe causing unnecessary memory waste.
+     * The universe extra character collations, they have special IDs which maybe causing unnecessary memory
+     * waste.
      * <p>
      * Note: all IDs must bigger than the max ID of universe.
      *
@@ -64,8 +64,7 @@ final class CharCollations {
         }
     }
 
-    private CharCollations() {
-    }
+    private CharCollations() { }
 
     static CharCollation fromId(int id, ServerVersion version) {
         if (id < 0 || id >= COSMOS.length) {
@@ -116,13 +115,13 @@ final class CharCollations {
     private static CharCollation createCollation(int id, String name, CharsetTarget target) {
         if (target.isCached()) {
             return new CachedCharCollation(id, name, target);
-        } else {
-            return new LazyInitCharCollation(id, name, target);
         }
+
+        return new LazyInitCharCollation(id, name, target);
     }
 
     private static CharCollation[] universeBigBang() {
-        return new CharCollation[]{
+        return new CharCollation[] {
             createCollation(1, "big5_chinese_ci", CharsetTargets.BIG5),
             createCollation(2, "latin2_czech_cs", CharsetTargets.LATIN2),
             createCollation(3, "dec8_swedish_ci", CharsetTargets.DEC8),
@@ -414,7 +413,7 @@ final class CharCollations {
 
     private static CharCollation[] universeExtra() {
         // Note: all IDs must bigger than the max ID of universe.
-        return new CharCollation[]{
+        return new CharCollation[] {
             createCollation(391, "utf32_test_ci", CharsetTargets.UTF32),
             createCollation(2047, "utf8_maxuserid_ci", CharsetTargets.UTF8)
         };

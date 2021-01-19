@@ -37,7 +37,7 @@ final class ClientExceptions {
     }
 
     static R2dbcException unsupportedProtocol(String type) {
-        return new MySqlProtocolException(String.format("Unexpected protocol message: [%s]", type));
+        return new MySqlProtocolException("Unexpected protocol message: [" + type + ']');
     }
 
     static R2dbcException wrap(Throwable e) {
