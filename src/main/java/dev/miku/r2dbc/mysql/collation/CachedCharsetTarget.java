@@ -62,13 +62,12 @@ final class CachedCharsetTarget extends AbstractCharsetTarget {
 
     @Override
     public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + charset.hashCode();
-        return result;
+        int hash = super.hashCode();
+        return 31 * hash + charset.hashCode();
     }
 
     @Override
     public String toString() {
-        return String.format("CachedCharsetTarget{charset=%s, byteSize=%d}", charset, byteSize);
+        return "CachedCharsetTarget{charset=" + charset + ", byteSize=" + byteSize + '}';
     }
 }

@@ -19,7 +19,7 @@ package dev.miku.r2dbc.mysql.collation;
 import java.nio.charset.Charset;
 
 /**
- * Character collation those use already cached {@link CharsetTarget} of MySQL
+ * Character collation those use already cached {@link CharsetTarget} of MySQL.
  */
 final class CachedCharCollation extends AbstractCharCollation {
 
@@ -34,6 +34,6 @@ final class CachedCharCollation extends AbstractCharCollation {
 
     @Override
     public String toString() {
-        return String.format("CachedCharCollation{id=%d, name='%s', target=%s}", id, name, target);
+        return "CachedCharCollation{id=" + id + ", name='" + name + "', target=" + target + '}';
     }
 }

@@ -20,8 +20,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 
 /**
- * A special implementation of {@link AbstractCharsetTarget} which considers LOB field is BLOB field,
- * can not convert to CLOB.
+ * A special implementation of {@link AbstractCharsetTarget} which considers LOB field is BLOB field, can not
+ * convert to CLOB.
  */
 final class BinaryTarget extends AbstractCharsetTarget {
 

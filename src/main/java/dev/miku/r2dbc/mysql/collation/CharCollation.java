@@ -23,20 +23,52 @@ import java.nio.charset.Charset;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * Character collation of MySQL
+ * Character collation of MySQL.
  */
 public interface CharCollation {
 
+    /**
+     * Get the character collation identifier.
+     *
+     * @return the identifier.
+     */
     int getId();
 
+    /**
+     * Get the name of the character collation.
+     *
+     * @return the name.
+     */
     String getName();
 
+    /**
+     * Get the maximum byte width/size of the character collation.
+     *
+     * @return the maximum byte width/size.
+     */
     int getByteSize();
 
+    /**
+     * Get the most suitable character set.
+     *
+     * @return the most suitable {@link Charset}.
+     */
     Charset getCharset();
 
+    /**
+     * The binary collation. It means that no character set or collation is contained.
+     */
     int BINARY_ID = CharCollations.BINARY.getId();
 
+    /**
+     * Obtain an instance of {@link CharCollation} from the identifier and server version, if not found, it
+     * will fallback to UTF-8. (i.e. utf8mb4)
+     *
+     * @param id      character collation identifier.
+     * @param version the version of MySQL server.
+     * @return the {@link CharCollation}.
+     * @throws IllegalArgumentException if {@code version} is {@code null}.
+     */
     static CharCollation fromId(int id, ServerVersion version) {
         requireNonNull(version, "version must not be null");
 

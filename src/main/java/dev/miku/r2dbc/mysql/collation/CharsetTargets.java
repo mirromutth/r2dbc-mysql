@@ -25,7 +25,8 @@ final class CharsetTargets {
 
     static final CharsetTarget ASCII = new CachedCharsetTarget(1, StandardCharsets.US_ASCII);
 
-    // Windows-1252 is a superset of ISO 8859-1 (also real Latin 1), which by standards should be considered the same encoding
+    // Windows-1252 is a superset of ISO 8859-1 (also real Latin 1), which by standards should be
+    // considered the same encoding
     static final CharsetTarget LATIN1 = new MixCharsetTarget(
         1,
         StandardCharsets.ISO_8859_1,
@@ -38,7 +39,8 @@ final class CharsetTargets {
 
     static final CharsetTarget UTF16 = new CachedCharsetTarget(4, StandardCharsets.UTF_16);
 
-    // UCS2 is 2-bytes encoded by MySQL, but it may 4-bytes encoded by JVM because of it is also `UTF-16` in JVM.
+    // UCS2 is 2-bytes encoded by MySQL, but it may 4-bytes encoded by JVM because of it is also `UTF-16`
+    // in JVM.
     static final CharsetTarget UCS2 = UTF16;
 
     static final CharsetTarget UTF16LE = new CachedCharsetTarget(4, StandardCharsets.UTF_16LE);
@@ -82,8 +84,9 @@ final class CharsetTargets {
     /**
      * Looks like JVM not support "Cp895" (also KAMENICKY, KEYBCS2), but it has some close to "Cp852".
      * <p>
-     * see: https://en.wikipedia.org/wiki/Kamenick%C3%BD_encoding
-     * see: https://en.wikipedia.org/wiki/Code_page_852
+     * See also:
+     * <ul><li>https://en.wikipedia.org/wiki/Kamenick%C3%BD_encoding</li><li>
+     * https://en.wikipedia.org/wiki/Code_page_852</li></ul>
      */
     static final CharsetTarget KEYBCS2 = CP852;
 
@@ -113,8 +116,8 @@ final class CharsetTargets {
     static final CharsetTarget KOI8_R = new NamedCharsetTarget(1, "KOI8-R");
 
     /**
-     * Note: MySQL maybe refer to KOI8-R as koi8u, but they are different charsets.
-     * But yet, they are very close, should keep looking. Truly name is "KOI8-U".
+     * Note: MySQL maybe refer to KOI8-R as koi8u, but they are different charsets. But yet, they are very
+     * close, should keep looking. Truly name is "KOI8-U".
      */
     static final CharsetTarget KOI8_U = KOI8_R;
 
@@ -136,6 +139,5 @@ final class CharsetTargets {
 
     static final CharsetTarget MAC_CE = new NamedCharsetTarget(1, "MacCentralEurope");
 
-    private CharsetTargets() {
-    }
+    private CharsetTargets() { }
 }

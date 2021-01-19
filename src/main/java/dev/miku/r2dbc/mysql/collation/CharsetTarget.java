@@ -25,15 +25,24 @@ import java.nio.charset.UnsupportedCharsetException;
 interface CharsetTarget {
 
     /**
-     * @return The maximum number of bytes by a character
+     * Get the maximum number of bytes by a character.
+     *
+     * @return the maximum number.
      */
     int getByteSize();
 
     /**
-     * @return Target default charset
-     * @throws UnsupportedCharsetException throw if default charset unsupported on this JVM
+     * Get the default charset.
+     *
+     * @return the default charset.
+     * @throws UnsupportedCharsetException throw if default charset unsupported on this JVM.
      */
     Charset getCharset() throws UnsupportedCharsetException;
 
+    /**
+     * Get if the target has been cached the default charset.
+     *
+     * @return if cached.
+     */
     boolean isCached();
 }

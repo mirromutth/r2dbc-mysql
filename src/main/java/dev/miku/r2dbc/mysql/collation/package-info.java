@@ -15,7 +15,7 @@
  */
 
 /**
- * Character collations of MySQL
+ * Character collations of MySQL.
  */
 
 @NonNullApi
