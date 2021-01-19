@@ -26,8 +26,11 @@ import java.util.function.BiConsumer;
 
 /**
  * An entity contains response handler and request messages, and should be disposed idempotent.
+ *
+ * @param <T> the type of response/inbound.
  */
 public abstract class FluxExchangeable<T> extends Flux<ClientMessage>
     implements BiConsumer<ServerMessage, SynchronousSink<T>>, Disposable {
 
+    // It is an empty abstraction.
 }

@@ -78,7 +78,8 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
         }
 
         if (!(certs[0] instanceof X509Certificate)) {
-            logger.warn("Certificate for '{}' must be X509Certificate (not javax) rather than {}", host, certs[0].getClass());
+            logger.warn("Certificate for '{}' must be X509Certificate (not javax) instead of {}", host,
+                certs[0].getClass());
             return false;
         }
 
@@ -106,13 +107,14 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
             // IP must be case sensitive.
             if (San.IP == san.getType() && ip.equals(san.getValue())) {
                 if (LOG_DEBUG) {
-                    logger.debug("Certificate for '{}' matched by IPv4 value '{}' of the Subject Alternative Names", ip, san.getValue());
+                    logger.debug("Certificate for '{}' matched IPv4 '{}' of the Subject Alternative Names",
+                        ip, san.getValue());
                 }
                 return true;
             }
         }
 
-        logger.warn("Certificate for '{}' does not match any of the Subject Alternative Names: {}", ip, sans);
+        logger.warn("Certificate for '{}' does not match any Subject Alternative Names: {}", ip, sans);
 
         return false;
     }
@@ -124,33 +126,35 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
             // IP must be case sensitive.
             if (San.IP == san.getType() && host.equals(normaliseIpv6(san.getValue()))) {
                 if (LOG_DEBUG) {
-                    logger.debug("Certificate for '{}' matched by IPv6 value '{}' of the Subject Alternative Names", ip, san.getValue());
+                    logger.debug("Certificate for '{}' matched IPv6 '{}' of the Subject Alternative Names",
+                        ip, san.getValue());
                 }
                 return true;
             }
         }
 
-        logger.warn("Certificate for '{}' does not match any of the Subject Alternative Names: {}", ip, sans);
+        logger.warn("Certificate for '{}' does not match any Subject Alternative Names: {}", ip, sans);
 
         return false;
     }
 
     private static boolean matchDns(String host, List<San> sans) {
         if (host.isEmpty() || host.charAt(0) == '.' || host.endsWith("..")) {
-            logger.warn("Certificate for '{}' cannot match the Subject Alternative Names because it is invalid", host);
+            logger.warn("Certificate for '{}' cannot match because it is invalid", host);
             return false;
         }
 
         for (San san : sans) {
             if (San.DNS == san.getType() && matchHost(host, san.getValue())) {
                 if (LOG_DEBUG) {
-                    logger.debug("Certificate for '{}' matched by DNS name '{}' of the Subject Alternative Names", host, san.getValue());
+                    logger.debug("Certificate for '{}' matched DNS '{}' of the Subject Alternative Names",
+                        host, san.getValue());
                 }
                 return true;
             }
         }
 
-        logger.warn("Certificate for '{}' does not match any of the Subject Alternative Names: {}", host, sans);
+        logger.warn("Certificate for '{}' does not match any Subject Alternative Names: {}", host, sans);
 
         return false;
     }
@@ -193,9 +197,11 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
     }
 
     /**
-     * @param host    a validated hostname.
-     * @param pattern a pattern of RFC SAN DNS.
-     * @return {@code true} if {@code pattern} matching the {@code host}.
+     * Check if a validated hostname match a pattern of RFC SAN DNS.
+     *
+     * @param host    the validated hostname.
+     * @param pattern the pattern.
+     * @return if matched.
      */
     private static boolean matchHost(String host, String pattern) {
         if (pattern.isEmpty() || pattern.charAt(0) == '.' || pattern.endsWith("..")) {
@@ -203,7 +209,8 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
         }
 
         // RFC 2818, 3.1. Server Identity
-        // "...Names may contain the wildcard character * which is considered to match any single domain name component or component fragment..."
+        // "...Names may contain the wildcard character * which is considered to match any single domain
+        // name component or component fragment..."
         // According to this statement, assume that only a single wildcard is legal
         int asteriskIndex = pattern.indexOf('*');
 
@@ -275,7 +282,7 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
             } else {
                 try {
                     type = Integer.parseInt(left.toString());
-                } catch (NumberFormatException e) {
+                } catch (NumberFormatException ignored) {
                     logger.info("Unknown SAN type {}", left);
                     continue;
                 }
@@ -288,9 +295,10 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
                     sans.add(new San((String) value, type));
                 } else if (value instanceof byte[]) {
                     // TODO: decode ASN.1 DER form.
-                    logger.warn("Certificate contains an ASN.1 DER encoded form in Subject Alternative Names, but DER is unsupported now");
+                    logger.warn("Certificate contains an ASN.1 DER encoded form but DER is unsupported now");
                 } else if (logger.isWarnEnabled()) {
-                    logger.warn("Certificate contains an unknown value of Subject Alternative Names: {}", value.getClass());
+                    logger.warn("Certificate contains an unknown value of Subject Alternative Names: {}",
+                        value.getClass());
                 }
             } else {
                 logger.warn("Certificate contains an unknown type of Subject Alternative Names: {}", type);
@@ -303,7 +311,7 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
     private static String normaliseIpv6(String ip) {
         try {
             return InetAddress.getByName(ip).getHostAddress();
-        } catch (UnknownHostException unexpected) {
+        } catch (UnknownHostException ignored) {
             return ip;
         }
     }

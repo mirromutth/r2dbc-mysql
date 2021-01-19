@@ -22,8 +22,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * Subject Alternative Name (aka. SAN, subjectAltName) in SSL.
  * <p>
- * RFC 5280, Section 4.1.2.6
- * The subject name maybe carried in the subject field and/or the subjectAltName extension
+ * RFC 5280, Section 4.1.2.6 The subject name maybe carried in the subject field and/or the subjectAltName
+ * extension
  */
 final class San {
 

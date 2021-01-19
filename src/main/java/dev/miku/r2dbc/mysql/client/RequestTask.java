@@ -26,6 +26,8 @@ import reactor.util.annotation.Nullable;
  * A task for execute, propagate errors and release resources.
  * <p>
  * If task executed, resources should been released by {@code supplier} instead of task self.
+ *
+ * @param <T> the task result type.
  */
 final class RequestTask<T> {
 

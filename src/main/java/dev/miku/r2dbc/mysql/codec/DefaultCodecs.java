@@ -76,17 +76,18 @@ final class DefaultCodecs implements Codecs {
         }
 
         this.primitiveCodecs = primitiveCodecs;
-        this.massiveCodecs = massiveCodecs.toArray(new MassiveCodec<?>[0]);
-        this.massiveParametrizedCodecs = massiveParametrizedCodecs.toArray(new MassiveParametrizedCodec<?>[0]);
-        this.parametrizedCodecs = parametrizedCodecs.toArray(new ParametrizedCodec<?>[0]);
+        this.massiveCodecs = massiveCodecs.toArray(new MassiveCodec[0]);
+        this.massiveParametrizedCodecs = massiveParametrizedCodecs.toArray(new MassiveParametrizedCodec[0]);
+        this.parametrizedCodecs = parametrizedCodecs.toArray(new ParametrizedCodec[0]);
     }
 
     /**
-     * Note: this method should NEVER release {@code buf} because of
-     * it come from {@code MySqlRow} which will release this buffer.
+     * Note: this method should NEVER release {@code buf} because of it come from {@code MySqlRow} which will
+     * release this buffer.
      */
     @Override
-    public <T> T decode(FieldValue value, FieldInformation info, Class<?> type, boolean binary, CodecContext context) {
+    public <T> T decode(FieldValue value, FieldInformation info, Class<?> type, boolean binary,
+        CodecContext context) {
         requireNonNull(value, "value must not be null");
         requireNonNull(info, "info must not be null");
         requireNonNull(context, "context must not be null");
@@ -96,7 +97,7 @@ final class DefaultCodecs implements Codecs {
 
         // Fast map for primitive classes.
         if (target.isPrimitive()) {
-            // If value is null field, then primitive codec should throw an exception rather than return null.
+            // If value is null field, then primitive codec should throw an exception instead of return null.
             return decodePrimitive(value, info, target, binary, context);
         } else if (value.isNull()) {
             // Not primitive classes and value is null field, return null.
@@ -111,7 +112,8 @@ final class DefaultCodecs implements Codecs {
     }
 
     @Override
-    public <T> T decode(FieldValue value, FieldInformation info, ParameterizedType type, boolean binary, CodecContext context) {
+    public <T> T decode(FieldValue value, FieldInformation info, ParameterizedType type, boolean binary,
+        CodecContext context) {
         requireNonNull(value, "value must not be null");
         requireNonNull(info, "info must not be null");
         requireNonNull(context, "context must not be null");
@@ -175,7 +177,7 @@ final class DefaultCodecs implements Codecs {
             }
         }
 
-        throw new IllegalArgumentException(String.format("Cannot encode value of type '%s'", value.getClass()));
+        throw new IllegalArgumentException("Cannot encode value of type '" + value.getClass() + '\'');
     }
 
     @Override
@@ -183,9 +185,10 @@ final class DefaultCodecs implements Codecs {
         return NullParameter.INSTANCE;
     }
 
-    private <T> T decodePrimitive(FieldValue value, FieldInformation info, Class<?> type, boolean binary, CodecContext context) {
+    private <T> T decodePrimitive(FieldValue value, FieldInformation info, Class<?> type, boolean binary,
+        CodecContext context) {
         if (value.isNull()) {
-            throw new IllegalArgumentException(String.format("Cannot decode null for type %d", info.getType()));
+            throw new IllegalArgumentException("Cannot decode null for type " + info.getType());
         }
 
         @SuppressWarnings("unchecked")
@@ -195,12 +198,14 @@ final class DefaultCodecs implements Codecs {
             return codec.decode(((NormalFieldValue) value).getBufferSlice(), info, type, binary, context);
         } else {
             // Mismatch, no one else can support this primitive class.
-            throw new IllegalArgumentException(String.format("Cannot decode %s of %s for type %d", value.getClass().getSimpleName(), type, info.getType()));
+            throw new IllegalArgumentException("Cannot decode " + value.getClass().getSimpleName() + " of " +
+                type + " for type " + info.getType());
         }
     }
 
     @Nullable
-    private <T> T decodeNormal(NormalFieldValue value, FieldInformation info, Class<?> type, boolean binary, CodecContext context) {
+    private <T> T decodeNormal(NormalFieldValue value, FieldInformation info, Class<?> type, boolean binary,
+        CodecContext context) {
         for (Codec<?> codec : codecs) {
             if (codec.canDecode(info, type)) {
                 @SuppressWarnings("unchecked")
@@ -209,11 +214,13 @@ final class DefaultCodecs implements Codecs {
             }
         }
 
-        throw new IllegalArgumentException("Cannot decode value of type " + type + " for " + info.getType() + " with collation " + info.getCollationId());
+        throw new IllegalArgumentException("Cannot decode value of type " + type + " for " + info.getType() +
+            " with collation " + info.getCollationId());
     }
 
     @Nullable
-    private <T> T decodeNormal(NormalFieldValue value, FieldInformation info, ParameterizedType type, boolean binary, CodecContext context) {
+    private <T> T decodeNormal(NormalFieldValue value, FieldInformation info, ParameterizedType type,
+        boolean binary, CodecContext context) {
         for (ParametrizedCodec<?> codec : parametrizedCodecs) {
             if (codec.canDecode(info, type)) {
                 @SuppressWarnings("unchecked")
@@ -222,11 +229,13 @@ final class DefaultCodecs implements Codecs {
             }
         }
 
-        throw new IllegalArgumentException("Cannot decode value of type " + type + " for " + info.getType() + " with collation " + info.getCollationId());
+        throw new IllegalArgumentException("Cannot decode value of type " + type + " for " + info.getType() +
+            " with collation " + info.getCollationId());
     }
 
     @Nullable
-    private <T> T decodeMassive(LargeFieldValue value, FieldInformation info, Class<?> type, boolean binary, CodecContext context) {
+    private <T> T decodeMassive(LargeFieldValue value, FieldInformation info, Class<?> type, boolean binary,
+        CodecContext context) {
         for (MassiveCodec<?> codec : massiveCodecs) {
             if (codec.canDecode(info, type)) {
                 @SuppressWarnings("unchecked")
@@ -235,11 +244,13 @@ final class DefaultCodecs implements Codecs {
             }
         }
 
-        throw new IllegalArgumentException("Cannot decode massive value of type " + type + " for " + info.getType() + " with collation " + info.getCollationId());
+        throw new IllegalArgumentException("Cannot decode massive value of type " + type + " for " +
+            info.getType() + " with collation " + info.getCollationId());
     }
 
     @Nullable
-    private <T> T decodeMassive(LargeFieldValue value, FieldInformation info, ParameterizedType type, boolean binary, CodecContext context) {
+    private <T> T decodeMassive(LargeFieldValue value, FieldInformation info, ParameterizedType type,
+        boolean binary, CodecContext context) {
         for (MassiveParametrizedCodec<?> codec : massiveParametrizedCodecs) {
             if (codec.canDecode(info, type)) {
                 @SuppressWarnings("unchecked")
@@ -248,7 +259,8 @@ final class DefaultCodecs implements Codecs {
             }
         }
 
-        throw new IllegalArgumentException("Cannot decode massive value of type " + type + " for " + info.getType() + " with collation " + info.getCollationId());
+        throw new IllegalArgumentException("Cannot decode massive value of type " + type + " for " +
+            info.getType() + " with collation " + info.getCollationId());
     }
 
     private static Class<?> chooseClass(FieldInformation info, Class<?> type) {
@@ -267,7 +279,7 @@ final class DefaultCodecs implements Codecs {
     }
 
     private static Codec<?>[] defaultCodecs(ByteBufAllocator allocator) {
-        return new Codec<?>[]{
+        return new Codec<?>[] {
             new ByteCodec(allocator),
             new ShortCodec(allocator),
             new IntegerCodec(allocator),
