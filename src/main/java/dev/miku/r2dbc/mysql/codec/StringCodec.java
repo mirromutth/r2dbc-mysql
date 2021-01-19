@@ -37,12 +37,14 @@ final class StringCodec extends AbstractClassedCodec<String> {
     }
 
     @Override
-    public String decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public String decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (!value.isReadable()) {
             return "";
         }
 
-        return value.toString(CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset());
+        return value.toString(CharCollation.fromId(info.getCollationId(), context.getServerVersion())
+            .getCharset());
     }
 
     @Override
@@ -59,7 +61,8 @@ final class StringCodec extends AbstractClassedCodec<String> {
     protected boolean doCanDecode(FieldInformation info) {
         short type = info.getType();
         // Note: TEXT is also BLOB with char collation in MySQL.
-        return (TypePredicates.isString(type) || TypePredicates.isLob(type)) && info.getCollationId() != CharCollation.BINARY_ID;
+        return (TypePredicates.isString(type) || TypePredicates.isLob(type)) &&
+            info.getCollationId() != CharCollation.BINARY_ID;
     }
 
     static ByteBuf encodeCharSequence(ByteBufAllocator allocator, CharSequence value, CodecContext context) {

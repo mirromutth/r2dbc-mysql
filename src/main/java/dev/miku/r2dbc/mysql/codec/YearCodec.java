@@ -35,7 +35,8 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     }
 
     @Override
-    public Year decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Year decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return binary ? Year.of(value.readShortLE()) : Year.of(IntegerCodec.parse(value));
     }
 

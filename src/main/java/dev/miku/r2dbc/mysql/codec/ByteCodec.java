@@ -25,7 +25,7 @@ import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
- * Codec for {@link byte}.
+ * Codec for {@code byte}.
  */
 final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
@@ -34,7 +34,8 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    public Byte decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Byte decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return binary ? value.readByte() : (byte) IntegerCodec.parse(value);
     }
 
@@ -50,7 +51,8 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
 
     @Override
     protected boolean doCanDecode(FieldInformation info) {
-        return DataTypes.TINYINT == info.getType() && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
+        return DataTypes.TINYINT == info.getType() &&
+            (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
     }
 
     static final class ByteParameter extends AbstractParameter {

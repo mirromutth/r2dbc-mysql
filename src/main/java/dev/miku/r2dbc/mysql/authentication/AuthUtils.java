@@ -113,6 +113,5 @@ final class AuthUtils {
         return left;
     }
 
-    private AuthUtils() {
-    }
+    private AuthUtils() { }
 }

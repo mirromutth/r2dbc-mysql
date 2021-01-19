@@ -39,7 +39,8 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    public byte[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public byte[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (!value.isReadable()) {
             return EMPTY_BYTES;
         }

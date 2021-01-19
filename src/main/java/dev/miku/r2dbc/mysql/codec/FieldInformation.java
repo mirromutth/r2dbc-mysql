@@ -24,25 +24,38 @@ import reactor.util.annotation.Nullable;
 public interface FieldInformation {
 
     /**
-     * @return the id of MySQL data types, see {@code DataTypes}.
+     * Get the type identifier of the field data, see {@code DataTypes}.
+     *
+     * @return the type.
      */
     short getType();
 
+    /**
+     * Get the field definition, see {@code ColumnDefinitions}.
+     *
+     * @return the definition bitmap.
+     */
     short getDefinitions();
 
     /**
+     * Get the character collation id.
+     *
      * @return the id of {@code CharCollation}.
      */
     int getCollationId();
 
     /**
-     * @return the field max size that is defined by the table, unsigned int32.
+     * Get the field max size that's defined by the table, it is an unsigned int32.
+     *
+     * @return the field max size.
      */
     long getSize();
 
     /**
-     * @return default java type, {@code null} if this data type is unknown
-     * for the driver, never be primitive types or {@code Object.class}.
+     * Get the default java type, {@code null} if this data type is unknown for the driver, never return
+     * primitive types or {@link Object}{@code .class}.
+     *
+     * @return the default java type.
      */
     @Nullable
     Class<?> getJavaType();

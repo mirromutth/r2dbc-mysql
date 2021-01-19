@@ -38,7 +38,8 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
     }
 
     @Override
-    public ByteBuffer decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public ByteBuffer decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (!value.isReadable()) {
             return ByteBuffer.wrap(EMPTY_BYTES);
         }

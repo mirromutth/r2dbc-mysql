@@ -44,12 +44,14 @@ final class ZonedDateTimeCodec implements ParametrizedCodec<ZonedDateTime> {
     }
 
     @Override
-    public ZonedDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public ZonedDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return decode0(value, binary, context);
     }
 
     @Override
-    public ChronoZonedDateTime<LocalDate> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
+    public ChronoZonedDateTime<LocalDate> decode(ByteBuf value, FieldInformation info,
+        ParameterizedType target, boolean binary, CodecContext context) {
         return decode0(value, binary, context);
     }
 
@@ -74,8 +76,8 @@ final class ZonedDateTimeCodec implements ParametrizedCodec<ZonedDateTime> {
     }
 
     @Nullable
-    private ZonedDateTime decode0(ByteBuf value, boolean binary, CodecContext context) {
-        LocalDateTime origin =  LocalDateTimeCodec.decodeOrigin(value, binary, context);
+    private static ZonedDateTime decode0(ByteBuf value, boolean binary, CodecContext context) {
+        LocalDateTime origin = LocalDateTimeCodec.decodeOrigin(value, binary, context);
         return origin == null ? null : ZonedDateTime.of(origin, context.getServerZoneId());
     }
 
@@ -87,7 +89,8 @@ final class ZonedDateTimeCodec implements ParametrizedCodec<ZonedDateTime> {
 
         private final CodecContext context;
 
-        private ZonedDateTimeParameter(ByteBufAllocator allocator, ZonedDateTime value, CodecContext context) {
+        private ZonedDateTimeParameter(ByteBufAllocator allocator, ZonedDateTime value,
+            CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;

@@ -20,6 +20,8 @@ import io.netty.buffer.ByteBufAllocator;
 
 /**
  * Codec for classed type when field bytes less or equals than {@link Integer#MAX_VALUE}.
+ *
+ * @param <T> the type of handling data.
  */
 abstract class AbstractClassedCodec<T> implements Codec<T> {
 

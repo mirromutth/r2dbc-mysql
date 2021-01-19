@@ -23,9 +23,22 @@ import java.util.List;
 
 /**
  * An interface considers massive data for {@link Codec}.
+ *
+ * @param <T> the type that is handled by this codec.
  */
 public interface MassiveCodec<T> extends Codec<T> {
 
+    /**
+     * Decode a massive value as specified {@link Class}.
+     *
+     * @param value   {@link ByteBuf}s list.
+     * @param info    the information of this value.
+     * @param target  the specified {@link Class}.
+     * @param binary  if the value should be decoded by binary protocol.
+     * @param context the codec context.
+     * @return the decoded result.
+     */
     @Nullable
-    T decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, CodecContext context);
+    T decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context);
 }

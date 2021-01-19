@@ -25,7 +25,7 @@ import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
- * Codec for {@link short}.
+ * Codec for {@code short}.
  */
 final class ShortCodec extends AbstractPrimitiveCodec<Short> {
 
@@ -34,7 +34,8 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public Short decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Short decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (binary) {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
 
@@ -45,13 +46,13 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
                 default: // TINYINT
                     if (isUnsigned) {
                         return value.readUnsignedByte();
-                    } else {
-                        return (short) value.readByte();
                     }
+
+                    return (short) value.readByte();
             }
-        } else {
-            return (short) IntegerCodec.parse(value);
         }
+
+        return (short) IntegerCodec.parse(value);
     }
 
     @Override

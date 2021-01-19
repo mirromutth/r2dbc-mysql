@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Base class considers single {@link ByteBuf} and drains/disposes the {@link ByteBuf} on cancellation.
+ *
+ * @param <T> the emit data type, it should be {@code ByteBuffer} or {@link CharSequence}.
  */
 abstract class SingletonLob<T> {
 

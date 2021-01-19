@@ -50,12 +50,14 @@ final class BlobCodec implements MassiveCodec<Blob> {
     }
 
     @Override
-    public Blob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Blob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return LobUtils.createBlob(value);
     }
 
     @Override
-    public Blob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Blob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return LobUtils.createBlob(value);
     }
 

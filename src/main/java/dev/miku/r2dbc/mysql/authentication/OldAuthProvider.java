@@ -177,6 +177,5 @@ final class OldAuthProvider implements MySqlAuthProvider {
         return ((firstPart & Integer.MAX_VALUE) << Integer.SIZE) | (secondPart & Integer.MAX_VALUE);
     }
 
-    private OldAuthProvider() {
-    }
+    private OldAuthProvider() { }
 }

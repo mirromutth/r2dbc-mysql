@@ -27,14 +27,44 @@ import reactor.util.annotation.Nullable;
  *
  * @param <T> the type that is handled by this codec.
  */
-interface Codec<T> {
+public interface Codec<T> {
 
+    /**
+     * Decode a {@link ByteBuf} as specified {@link Class}.
+     *
+     * @param value   the {@link ByteBuf}.
+     * @param info    the information of this value.
+     * @param target  the specified {@link Class}.
+     * @param binary  if the value should be decoded by binary protocol.
+     * @param context the codec context.
+     * @return the decoded result.
+     */
     @Nullable
     T decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context);
 
+    /**
+     * Check if can decode the field value as specified {@link Class}.
+     *
+     * @param info   the information of this value.
+     * @param target the specified {@link Class}.
+     * @return if can decode.
+     */
     boolean canDecode(FieldInformation info, Class<?> target);
 
+    /**
+     * Check if can encode the specified value.
+     *
+     * @param value the specified value.
+     * @return if can encode.
+     */
     boolean canEncode(Object value);
 
+    /**
+     * Encode a value to a {@link Parameter}.
+     *
+     * @param value   the specified value.
+     * @param context the codec context.
+     * @return encoded {@link Parameter}.
+     */
     Parameter encode(Object value, CodecContext context);
 }

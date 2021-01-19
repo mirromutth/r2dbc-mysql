@@ -58,8 +58,8 @@ final class DateTimes {
     private static final int MICRO_DIGITS = 6;
 
     /**
-     * Read microseconds part, it is not like {@link #readIntInDigits(ByteBuf)}。
-     * For example, 3:45:59.1, should format microseconds as 100000 instead of 1.
+     * Read microseconds part, it is not like {@link #readIntInDigits(ByteBuf)}。 For example, 3:45:59.1,
+     * should format microseconds as 100000 instead of 1.
      *
      * @param buf the buffer that want to be decoded.
      * @return the value of microseconds, from 0 to 999999.
@@ -124,11 +124,12 @@ final class DateTimes {
                 return round;
         }
 
-        String message = (binary ? "Binary" : "Text") + " value is zero date and ZeroDateOption is " + ZeroDateOption.EXCEPTION;
-        throw new R2dbcNonTransientResourceException(message, ILLEGAL_ARGUMENT);
+        throw new R2dbcNonTransientResourceException((binary ? "Binary" : "Text") +
+            " value is zero date and ZeroDateOption is " + ZeroDateOption.EXCEPTION, ILLEGAL_ARGUMENT);
     }
 
-    static boolean canDecodeChronology(short type, ParameterizedType target, Class<? extends Temporal> chronology) {
+    static boolean canDecodeChronology(short type, ParameterizedType target,
+        Class<? extends Temporal> chronology) {
         return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
             LocalDate.class == ParametrizedUtils.getTypeArgument(target, chronology);
     }
@@ -138,6 +139,5 @@ final class DateTimes {
             target.isAssignableFrom(temporal);
     }
 
-    private DateTimes() {
-    }
+    private DateTimes() { }
 }

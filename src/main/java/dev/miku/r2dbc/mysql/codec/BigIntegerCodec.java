@@ -39,7 +39,8 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     }
 
     @Override
-    public BigInteger decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public BigInteger decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return binary ? decodeBinary(value, info) : decodeText(value, info);
     }
 
@@ -97,13 +98,13 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
             // Why Java has not BigInteger.parseBigInteger(String)?
             if (isGreaterThanMaxValue(num)) {
                 return new BigInteger(num);
-            } else {
-                // valueOf can use constant pool.
-                return BigInteger.valueOf(parseUnsigned(num));
             }
-        } else {
-            return BigInteger.valueOf(LongCodec.parse(value));
+
+            // valueOf can use constant pool.
+            return BigInteger.valueOf(parseUnsigned(num));
         }
+
+        return BigInteger.valueOf(LongCodec.parse(value));
     }
 
     private static BigInteger decodeBinary(ByteBuf value, FieldInformation info) {
@@ -120,26 +121,26 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
             case DataTypes.INT:
                 if (isUnsigned) {
                     return BigInteger.valueOf(value.readUnsignedIntLE());
-                } else {
-                    return BigInteger.valueOf(value.readIntLE());
                 }
+
+                return BigInteger.valueOf(value.readIntLE());
             case DataTypes.MEDIUMINT:
                 // Note: MySQL return 32-bits two's complement for 24-bits integer
                 return BigInteger.valueOf(value.readIntLE());
             case DataTypes.SMALLINT:
                 if (isUnsigned) {
                     return BigInteger.valueOf(value.readUnsignedShortLE());
-                } else {
-                    return BigInteger.valueOf(value.readShortLE());
                 }
+
+                return BigInteger.valueOf(value.readShortLE());
             case DataTypes.YEAR:
                 return BigInteger.valueOf(value.readShortLE());
             default: // TINYINT
                 if (isUnsigned) {
                     return BigInteger.valueOf(value.readUnsignedByte());
-                } else {
-                    return BigInteger.valueOf(value.readByte());
                 }
+
+                return BigInteger.valueOf(value.readByte());
         }
     }
 

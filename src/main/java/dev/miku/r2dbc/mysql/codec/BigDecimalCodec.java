@@ -37,7 +37,8 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    public BigDecimal decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public BigDecimal decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (binary) {
             short type = info.getType();
 

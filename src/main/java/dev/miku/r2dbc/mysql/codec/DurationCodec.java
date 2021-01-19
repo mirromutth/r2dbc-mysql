@@ -37,7 +37,8 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     }
 
     @Override
-    public Duration decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Duration decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return binary ? decodeBinary(value) : decodeText(value);
     }
 
@@ -56,7 +57,8 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         return DataTypes.TIME == info.getType();
     }
 
-    static void encodeTime(ParameterWriter writer, boolean isNegative, int hours, int minutes, int seconds, int micros) {
+    static void encodeTime(ParameterWriter writer, boolean isNegative, int hours, int minutes, int seconds,
+        int micros) {
         if (isNegative) {
             writer.append('-');
         } else {
@@ -88,19 +90,22 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         // Sure, micros will never less than 0, but need to check for avoid inf loop.
         if (micros > 0) {
             writer.append('.');
-            // WATCH OUT for inf loop: i from 100000 to 1, micros is greater than 0,
-            // 0 < micros < 1 is impossible, so micros < 1 will be false finally,
-            // then loop done. Safe.
+
+            // WATCH OUT for inf loop: i from 100000 to 1, micros is greater than 0, 0 < micros < 1 is
+            // impossible, so micros < 1 will be false finally, then loop done.Safe.
             for (int i = 100000; micros < i; i /= 10) {
                 writer.append('0');
             }
-            // WATCH OUT for inf loop: micros is greater than 0, that means it least
-            // contains one digit which is not 0, so micros % 10 == 0 will be false
-            // finally, then loop done. Safe.
-            while (micros % 10 == 0) {
-                micros /= 10;
+
+            int m = micros;
+
+            // WATCH OUT for inf loop: micros is greater than 0, that means it least contains one digit
+            // which is not 0, so micros % 10 == 0 will be false finally, then loop done. Safe.
+            while (m % 10 == 0) {
+                m /= 10;
             }
-            writer.writeInt(micros);
+
+            writer.writeInt(m);
         }
     }
 
@@ -114,9 +119,9 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         if (buf.isReadable()) {
             int nano = readMicroInDigits(buf) * NANOS_OF_MICRO;
             return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds, isNegative ? -nano : nano);
-        } else {
-            return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
         }
+
+        return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
     }
 
     private static Duration decodeBinary(ByteBuf buf) {
@@ -133,7 +138,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         byte minute = buf.readByte();
         byte second = buf.readByte();
         long totalSeconds = day * SECONDS_OF_DAY + ((long) hour) * SECONDS_OF_HOUR +
-            ((long) minute) * SECONDS_OF_MINUTE + ((long) second);
+            ((long) minute) * SECONDS_OF_MINUTE + second;
 
         if (bytes < MICRO_TIME_SIZE) {
             return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds);
@@ -170,7 +175,8 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
                 if (isNegative) {
                     if (nanos > 0) {
                         // Note: nanos should always be a positive integer or 0, see Duration.getNano().
-                        // So if duration is negative, seconds should be humanity seconds - 1, so +1 then negate.
+                        // So if duration is negative, seconds should be humanity seconds - 1, so +1 then
+                        // negate.
                         seconds = -(seconds + 1);
                         nanos = NANOS_OF_SECOND - nanos;
                     } else {
@@ -241,7 +247,9 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             int micros = abs.getNano() / NANOS_OF_MICRO;
 
             if (hours < 0 || minutes < 0 || seconds < 0 || micros < 0) {
-                throw new IllegalStateException(String.format("Too large duration %s, abs value overflowing to %02d:%02d:%02d.%06d", value, hours, minutes, seconds, micros));
+                throw new IllegalStateException(String.format(
+                    "Too large duration %s, abs value overflowing to %d:%02d:%02d.%06d", value, hours,
+                    minutes, seconds, micros));
             }
 
             encodeTime(writer, isNegative, hours, minutes, seconds, micros);

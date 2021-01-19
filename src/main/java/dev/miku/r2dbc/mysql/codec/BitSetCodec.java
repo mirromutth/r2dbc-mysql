@@ -38,7 +38,8 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
     }
 
     @Override
-    public BitSet decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public BitSet decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (!value.isReadable()) {
             return BitSet.valueOf(EMPTY_BYTES);
         }
@@ -134,8 +135,10 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         public Mono<Void> publishText(ParameterWriter writer) {
             return Mono.fromRunnable(() -> {
                 if (value == 0) {
-                    // Must filled by 0 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer on type BIT (i.e. unsafe allocate).
-                    // So if we do not fill the buffer, it will use last content which is an undefined behavior. A classic bug, right?
+                    // Must filled by 0 for MySQL 5.5.x, because MySQL 5.5.x does not clear its buffer on type
+                    // BIT (i.e. unsafe allocate).
+                    // So if we do not fill the buffer, it will use last content which is an undefined
+                    // behavior. A classic bug, right?
                     writer.writeBinary(false);
                 } else {
                     writer.writeHex(value);

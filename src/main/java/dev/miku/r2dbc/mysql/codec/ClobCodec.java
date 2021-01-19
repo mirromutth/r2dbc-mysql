@@ -42,8 +42,8 @@ import java.util.concurrent.atomic.AtomicReference;
 final class ClobCodec implements MassiveCodec<Clob> {
 
     /**
-     * It should less than {@link BlobCodec}'s, because we can only
-     * make a minimum estimate before writing the string.
+     * It should less than {@link BlobCodec}'s, because we can only make a minimum estimate before writing the
+     * string.
      */
     private static final int MAX_MERGE = 1 << 13;
 
@@ -54,12 +54,14 @@ final class ClobCodec implements MassiveCodec<Clob> {
     }
 
     @Override
-    public Clob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Clob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
     }
 
     @Override
-    public Clob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Clob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
     }
 

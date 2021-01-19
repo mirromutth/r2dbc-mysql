@@ -19,16 +19,27 @@ package dev.miku.r2dbc.mysql.codec;
 /**
  * The builder for {@link Codecs}.
  * <p>
- * Note: user should not remove/change any built-in {@link Codec} because it will
- * cause the driver to not work, so now this interface has only functions of "add".
+ * Note: user should not remove/change any built-in {@link Codec} because it will cause the driver to not
+ * work, so now this interface has only functions of "add".
  */
 public interface CodecsBuilder extends CodecRegistry {
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     CodecsBuilder addFirst(Codec<?> codec);
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     CodecsBuilder addLast(Codec<?> codec);
 
+    /**
+     * Build a {@link Codecs} from current codecs.
+     *
+     * @return a {@link Codecs}.
+     */
     Codecs build();
 }

@@ -337,6 +337,5 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
         return DNS;
     }
 
-    private DefaultHostnameVerifier() {
-    }
+    private DefaultHostnameVerifier() { }
 }

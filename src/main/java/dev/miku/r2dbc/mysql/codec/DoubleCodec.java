@@ -26,7 +26,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Codec for {@link double}.
+ * Codec for {@code double}.
  */
 final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
 
@@ -35,7 +35,8 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    public Double decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Double decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (binary) {
             switch (info.getType()) {
                 case DataTypes.DOUBLE:
@@ -61,7 +62,8 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     @Override
     protected boolean doCanDecode(FieldInformation info) {
         short type = info.getType();
-        return DataTypes.DOUBLE == type || DataTypes.FLOAT == type || (info.getSize() < 16 && TypePredicates.isDecimal(type));
+        return DataTypes.DOUBLE == type || DataTypes.FLOAT == type ||
+            (info.getSize() < 16 && TypePredicates.isDecimal(type));
     }
 
     private static final class DoubleParameter extends AbstractParameter {

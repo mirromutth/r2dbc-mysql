@@ -39,6 +39,5 @@ final class ParametrizedUtils {
         return type.getRawType() == rawClass && result instanceof Class<?> ? (Class<?>) result : null;
     }
 
-    private ParametrizedUtils() {
-    }
+    private ParametrizedUtils() { }
 }

@@ -40,7 +40,8 @@ final class OffsetDateTimeCodec implements Codec<OffsetDateTime> {
     }
 
     @Override
-    public OffsetDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public OffsetDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         LocalDateTime origin = LocalDateTimeCodec.decodeOrigin(value, binary, context);
 
         if (origin == null) {
@@ -49,7 +50,8 @@ final class OffsetDateTimeCodec implements Codec<OffsetDateTime> {
 
         ZoneId zone = context.getServerZoneId();
 
-        return OffsetDateTime.of(origin, zone instanceof ZoneOffset ? (ZoneOffset) zone : zone.getRules().getOffset(origin));
+        return OffsetDateTime.of(origin, zone instanceof ZoneOffset ? (ZoneOffset) zone : zone.getRules()
+            .getOffset(origin));
     }
 
     @Override
@@ -75,7 +77,8 @@ final class OffsetDateTimeCodec implements Codec<OffsetDateTime> {
 
         private final CodecContext context;
 
-        private OffsetDateTimeParameter(ByteBufAllocator allocator, OffsetDateTime value, CodecContext context) {
+        private OffsetDateTimeParameter(ByteBufAllocator allocator, OffsetDateTime value,
+            CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
@@ -115,7 +118,8 @@ final class OffsetDateTimeCodec implements Codec<OffsetDateTime> {
 
         private LocalDateTime serverValue() {
             ZoneId zone = context.getServerZoneId();
-            return zone instanceof ZoneOffset ? value.withOffsetSameInstant((ZoneOffset) zone).toLocalDateTime() :
+            return zone instanceof ZoneOffset ?
+                value.withOffsetSameInstant((ZoneOffset) zone).toLocalDateTime() :
                 value.toZonedDateTime().withZoneSameInstant(zone).toLocalDateTime();
         }
     }

@@ -28,22 +28,30 @@ import java.time.ZoneId;
 public interface CodecContext {
 
     /**
-     * @return the {@link ZoneId} of server-side.
+     * Get the {@link ZoneId} of server-side.
+     *
+     * @return the {@link ZoneId}.
      */
     ZoneId getServerZoneId();
 
     /**
-     * @return the option for zero date handling which is set by connection configuration.
+     * Get the option for zero date handling which is set by connection configuration.
+     *
+     * @return the {@link ZeroDateOption}.
      */
     ZeroDateOption getZeroDateOption();
 
     /**
-     * @return the MySQL server version, which is available after database user logon.
+     * Get the MySQL server version, which is available after database user logon.
+     *
+     * @return the {@link ServerVersion}.
      */
     ServerVersion getServerVersion();
 
     /**
-     * @return the {@link CharCollation} that client now use.
+     * Get the {@link CharCollation} that the client is using.
+     *
+     * @return the {@link CharCollation}.
      */
     CharCollation getClientCollation();
 }
