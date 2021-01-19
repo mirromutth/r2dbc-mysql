@@ -25,7 +25,7 @@ import io.r2dbc.spi.R2dbcNonTransientResourceException;
 final class ClientExceptions {
 
     static R2dbcException exchangeClosed() {
-        return new MySqlConnectionClosedException("Cannot exchange messages because the connection is closed");
+        return new MySqlConnectionClosedException("Cannot exchange because the connection is closed");
     }
 
     static R2dbcException unexpectedClosed() {
@@ -44,6 +44,7 @@ final class ClientExceptions {
         if (e instanceof R2dbcException) {
             return (R2dbcException) e;
         }
+
         return new MySqlConnectionException(e);
     }
 

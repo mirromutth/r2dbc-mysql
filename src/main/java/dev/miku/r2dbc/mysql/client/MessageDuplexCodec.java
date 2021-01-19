@@ -153,7 +153,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
                 setDecodeContext(DecodeContext.command());
             }
         } else if (msg instanceof ColumnCountMessage) {
-            setDecodeContext(DecodeContext.result(this.context.getCapability().isEofDeprecated(), ((ColumnCountMessage) msg).getTotalColumns()));
+            setDecodeContext(DecodeContext.result(this.context.getCapability().isEofDeprecated(),
+                ((ColumnCountMessage) msg).getTotalColumns()));
             return; // Done, no need use generic handle.
         } else if (msg instanceof PreparedOkMessage) {
             PreparedOkMessage message = (PreparedOkMessage) msg;
@@ -164,7 +165,8 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
             // parameters may all be 0. All is 0 means no EOF message following.
             // columns + parameters > 0
             if (columns > -parameters) {
-                setDecodeContext(DecodeContext.preparedMetadata(this.context.getCapability().isEofDeprecated(), columns, parameters));
+                setDecodeContext(DecodeContext.preparedMetadata(this.context.getCapability()
+                    .isEofDeprecated(), columns, parameters));
             } else {
                 setDecodeContext(DecodeContext.command());
             }

@@ -31,10 +31,7 @@ final class EnvelopeSlicer extends LengthFieldBasedFrameDecoder {
     static final String NAME = "R2dbcMySqlEnvelopeSlicer";
 
     EnvelopeSlicer() {
-        super(
-            ByteOrder.LITTLE_ENDIAN,
-            Envelopes.MAX_ENVELOPE_SIZE + Envelopes.PART_HEADER_SIZE,
-            0,
+        super(ByteOrder.LITTLE_ENDIAN, Envelopes.MAX_ENVELOPE_SIZE + Envelopes.PART_HEADER_SIZE, 0,
             Envelopes.SIZE_FIELD_SIZE,
             1, // byte size of sequence Id field
             0, // do NOT strip header
@@ -43,16 +40,17 @@ final class EnvelopeSlicer extends LengthFieldBasedFrameDecoder {
     }
 
     /**
-     * Override this method because {@code ByteBuf.order(order)} is likely to create temporary
-     * {@code SwappedByteBuf}, and {@code ByteBuf.order(order)} has also been deprecated.
-     *
+     * Override this method because {@code ByteBuf.order(order)} will create temporary {@code SwappedByteBuf},
+     * and {@code ByteBuf.order(order)} has also been deprecated.
+     * <p>
      * {@inheritDoc}
      */
     @Override
     protected long getUnadjustedFrameLength(ByteBuf buf, int offset, int length, ByteOrder order) {
         if (length != Envelopes.SIZE_FIELD_SIZE || order != ByteOrder.LITTLE_ENDIAN) {
             // impossible length or order, only BUG or hack of reflect
-            throw new DecoderException(String.format("unsupported lengthFieldLength: %d (only 3) or byteOrder: %s (only LITTLE_ENDIAN)", length, order));
+            throw new DecoderException("Unsupported lengthFieldLength: " + length +
+                " (only 3) or byteOrder: " + order + " (only LITTLE_ENDIAN)");
         }
 
         return buf.getUnsignedMediumLE(offset);

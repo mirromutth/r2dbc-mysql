@@ -57,8 +57,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     private static final ServerVersion TLS1_2_COMMUNITY_VER = ServerVersion.create(8, 0, 4);
 
     /**
-     * Lowest version of enterprise edition for TLSv1.2 support. Should be
-     * judged in conjunction with {@link ServerVersion#isEnterprise()}.
+     * Lowest version of enterprise edition for TLSv1.2 support. See {@link ServerVersion#isEnterprise()}.
      */
     private static final ServerVersion TLS1_2_ENTERPRISE_VER = ServerVersion.create(5, 6, 0);
 
@@ -104,7 +103,8 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         if (mode.verifyIdentity()) {
             SSLEngine sslEngine = this.sslEngine;
             if (sslEngine == null) {
-                ctx.fireExceptionCaught(new IllegalStateException("sslEngine must not be null when verify identity"));
+                ctx.fireExceptionCaught(new IllegalStateException(
+                    "sslEngine must not be null when verify identity"));
                 return;
             }
 
@@ -112,7 +112,8 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
 
             if (!hostnameVerifier().verify(host, sslEngine.getSession())) {
                 // Verify failed, emit an exception.
-                ctx.fireExceptionCaught(new SSLException("The hostname '" + host + "' could not be verified"));
+                ctx.fireExceptionCaught(new SSLException("The hostname '" + host +
+                    "' could not be verified"));
                 return;
             }
             // Otherwise verify success, continue subsequence logic.
@@ -173,7 +174,8 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                 throw new IllegalStateException("SSL key param requires but SSL cert param to be present");
             }
 
-            builder.keyManager(new File(sslCert), new File(sslKey), keyPassword == null ? null : keyPassword.toString());
+            builder.keyManager(new File(sslCert), new File(sslKey), keyPassword == null ? null :
+                keyPassword.toString());
         }
 
         if (ssl.getSslMode().verifyCertificate()) {
@@ -190,7 +192,8 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         return ssl.customizeSslContext(builder);
     }
 
-    private static SslContextBuilder withTlsVersion(SslContextBuilder builder, MySqlSslConfiguration ssl, ServerVersion version) {
+    private static SslContextBuilder withTlsVersion(SslContextBuilder builder, MySqlSslConfiguration ssl,
+        ServerVersion version) {
         String[] tlsProtocols = ssl.getTlsVersion();
 
         if (tlsProtocols.length > 0) {
@@ -205,6 +208,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     }
 
     private static boolean isEnabledTls1_2(ServerVersion version) {
-        return version.isGreaterThanOrEqualTo(TLS1_2_COMMUNITY_VER) || (version.isGreaterThanOrEqualTo(TLS1_2_ENTERPRISE_VER) && version.isEnterprise());
+        return version.isGreaterThanOrEqualTo(TLS1_2_COMMUNITY_VER) ||
+            (version.isGreaterThanOrEqualTo(TLS1_2_ENTERPRISE_VER) && version.isEnterprise());
     }
 }

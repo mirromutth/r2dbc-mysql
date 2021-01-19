@@ -23,8 +23,8 @@ import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 
 /**
- * An implementation of {@link CoreSubscriber} for {@link ChannelHandlerContext} write
- * and flush subscribed by streaming {@link ByteBuf}s.
+ * An implementation of {@link CoreSubscriber} for {@link ChannelHandlerContext} write and flush subscribed by
+ * streaming {@link ByteBuf}s.
  * <p>
  * It ensures {@link #promise} will be complete.
  */

@@ -84,7 +84,8 @@ final class ReactorNettyClient implements Client {
 
         // Note: encoder/decoder should before reactor bridge.
         connection.addHandlerLast(EnvelopeSlicer.NAME, new EnvelopeSlicer())
-            .addHandlerLast(MessageDuplexCodec.NAME, new MessageDuplexCodec(context, this.closing, this.requestQueue));
+            .addHandlerLast(MessageDuplexCodec.NAME,
+                new MessageDuplexCodec(context, this.closing, this.requestQueue));
 
         if (ssl.getSslMode().startSsl()) {
             connection.addHandlerFirst(SslBridgeHandler.NAME, new SslBridgeHandler(context, ssl));
@@ -93,7 +94,9 @@ final class ReactorNettyClient implements Client {
         if (InternalLoggerFactory.getInstance(ReactorNettyClient.class).isTraceEnabled()) {
             // Or just use logger.isTraceEnabled()?
             logger.debug("Connection tracking logging is enabled");
-            connection.addHandlerFirst(LoggingHandler.class.getSimpleName(), new LoggingHandler(ReactorNettyClient.class, LogLevel.TRACE));
+
+            connection.addHandlerFirst(LoggingHandler.class.getSimpleName(),
+                new LoggingHandler(ReactorNettyClient.class, LogLevel.TRACE));
         }
 
         ResponseSink sink = new ResponseSink();
@@ -126,7 +129,8 @@ final class ReactorNettyClient implements Client {
     }
 
     @Override
-    public <T> Flux<T> exchange(ClientMessage request, BiConsumer<ServerMessage, SynchronousSink<T>> handler) {
+    public <T> Flux<T> exchange(ClientMessage request,
+        BiConsumer<ServerMessage, SynchronousSink<T>> handler) {
         requireNonNull(request, "request must not be null");
 
         return Mono.<Flux<T>>create(sink -> {
@@ -194,7 +198,8 @@ final class ReactorNettyClient implements Client {
                 return;
             }
 
-            requestQueue.submit(RequestTask.wrap(sink, Mono.fromRunnable(() -> requestProcessor.onNext(ExitMessage.INSTANCE))));
+            requestQueue.submit(RequestTask.wrap(sink, Mono.fromRunnable(() ->
+                requestProcessor.onNext(ExitMessage.INSTANCE))));
         }).flatMap(identity()).onErrorResume(e -> {
             logger.error("Exit message sending failed, force closing", e);
             return Mono.empty();
@@ -238,7 +243,8 @@ final class ReactorNettyClient implements Client {
 
     @Override
     public String toString() {
-        return String.format("ReactorNettyClient(%s){connectionId=%d}", this.closing.get() ? "closing or closed" : "activating", context.getConnectionId());
+        return String.format("ReactorNettyClient(%s){connectionId=%d}",
+            this.closing.get() ? "closing or closed" : "activating", context.getConnectionId());
     }
 
     private void drainError(R2dbcException e) {
@@ -280,6 +286,7 @@ final class ReactorNettyClient implements Client {
 
         @Override
         public void onNext(Object message) {
+            // The message is already used, see also constructor.
         }
 
         @Override

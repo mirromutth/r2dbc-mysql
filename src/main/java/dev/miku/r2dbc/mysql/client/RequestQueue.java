@@ -35,7 +35,8 @@ abstract class ActiveStatus extends LeftPadding {
 
     static final int ACTIVE = 1;
 
-    static final AtomicIntegerFieldUpdater<ActiveStatus> STATUS_UPDATER = AtomicIntegerFieldUpdater.newUpdater(ActiveStatus.class, "status");
+    static final AtomicIntegerFieldUpdater<ActiveStatus> STATUS_UPDATER =
+        AtomicIntegerFieldUpdater.newUpdater(ActiveStatus.class, "status");
 
     protected volatile int status = IDLE; // p8 first part
 
@@ -82,10 +83,11 @@ final class RequestQueue extends ActiveStatus implements Runnable {
     }
 
     /**
-     * Submit an exchange task. If the queue is inactive, it will execute directly rather than queuing.
+     * Submit an exchange task. If the queue is inactive, it will execute directly instead of queuing.
      * Otherwise it will be queuing.
      *
      * @param task the exchange task includes request messages sending and response messages processor.
+     * @param <T> the type argument of {@link RequestTask}.
      */
     <T> void submit(RequestTask<T> task) {
         if (STATUS_UPDATER.compareAndSet(this, IDLE, ACTIVE)) {
@@ -124,8 +126,8 @@ final class RequestQueue extends ActiveStatus implements Runnable {
     }
 
     /**
-     * Keep padding, maybe useful, maybe useless, whatever we should make sure padding
-     * would not be reduced by compiler.
+     * Keep padding, maybe useful, maybe useless, whatever we should make sure padding would not be reduced by
+     * compiler.
      *
      * @param v any value, because it is not matter
      * @return {@code v} self which type is {@code long}

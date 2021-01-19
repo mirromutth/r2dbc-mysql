@@ -59,7 +59,7 @@ final class DateTimes {
 
     /**
      * Read microseconds part, it is not like {@link #readIntInDigits(ByteBuf)}。
-     * For example, 3:45:59.1, should format microseconds as 100000 rather than 1.
+     * For example, 3:45:59.1, should format microseconds as 100000 instead of 1.
      *
      * @param buf the buffer that want to be decoded.
      * @return the value of microseconds, from 0 to 999999.
