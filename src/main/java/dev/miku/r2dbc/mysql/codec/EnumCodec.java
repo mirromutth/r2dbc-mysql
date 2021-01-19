@@ -37,10 +37,13 @@ final class EnumCodec implements Codec<Enum<?>> {
         this.allocator = allocator;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public Enum<?> decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
+    public Enum<?> decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
+        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion())
+            .getCharset();
+
         return Enum.valueOf((Class<Enum>) target, value.toString(charset));
     }
 

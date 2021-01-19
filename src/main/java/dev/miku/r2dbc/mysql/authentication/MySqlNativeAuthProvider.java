@@ -65,6 +65,5 @@ final class MySqlNativeAuthProvider implements MySqlAuthProvider {
         return MYSQL_NATIVE_PASSWORD;
     }
 
-    private MySqlNativeAuthProvider() {
-    }
+    private MySqlNativeAuthProvider() { }
 }

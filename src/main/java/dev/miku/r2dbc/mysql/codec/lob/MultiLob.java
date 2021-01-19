@@ -28,6 +28,8 @@ import java.util.function.Consumer;
 
 /**
  * Base class considers multiple {@link ByteBuf}s and drains/disposes {@link ByteBuf}s on cancellation.
+ *
+ * @param <T> the emit data type, it should be {@code ByteBuffer} or {@link CharSequence}.
  */
 abstract class MultiLob<T> {
 

@@ -38,7 +38,8 @@ final class InstantCodec implements Codec<Instant> {
     }
 
     @Override
-    public Instant decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Instant decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         LocalDateTime origin = LocalDateTimeCodec.decodeOrigin(value, binary, context);
 
         if (origin == null) {

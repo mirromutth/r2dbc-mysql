@@ -55,7 +55,7 @@ final class DefaultCodecs implements Codecs {
         Map<Type, PrimitiveCodec<?>> primitiveCodecs = new HashMap<>();
         List<ParametrizedCodec<?>> parametrizedCodecs = new ArrayList<>();
         List<MassiveCodec<?>> massiveCodecs = new ArrayList<>();
-        List<MassiveParametrizedCodec<?>> massiveParametrizedCodecs = new ArrayList<>();
+        List<MassiveParametrizedCodec<?>> massiveParamCodecs = new ArrayList<>();
 
         for (Codec<?> codec : codecs) {
             if (codec instanceof PrimitiveCodec<?>) {
@@ -70,15 +70,15 @@ final class DefaultCodecs implements Codecs {
                 massiveCodecs.add((MassiveCodec<?>) codec);
 
                 if (codec instanceof MassiveParametrizedCodec<?>) {
-                    massiveParametrizedCodecs.add((MassiveParametrizedCodec<?>) codec);
+                    massiveParamCodecs.add((MassiveParametrizedCodec<?>) codec);
                 }
             }
         }
 
         this.primitiveCodecs = primitiveCodecs;
-        this.massiveCodecs = massiveCodecs.toArray(new MassiveCodec[0]);
-        this.massiveParametrizedCodecs = massiveParametrizedCodecs.toArray(new MassiveParametrizedCodec[0]);
-        this.parametrizedCodecs = parametrizedCodecs.toArray(new ParametrizedCodec[0]);
+        this.massiveCodecs = massiveCodecs.toArray(new MassiveCodec<?>[0]);
+        this.massiveParametrizedCodecs = massiveParamCodecs.toArray(new MassiveParametrizedCodec<?>[0]);
+        this.parametrizedCodecs = parametrizedCodecs.toArray(new ParametrizedCodec<?>[0]);
     }
 
     /**
@@ -146,15 +146,15 @@ final class DefaultCodecs implements Codecs {
         } else if (BigInteger.class == type) {
             if (value < 0) {
                 return (T) BigIntegerCodec.unsignedBigInteger(value);
-            } else {
-                return (T) BigInteger.valueOf(value);
             }
+
+            return (T) BigInteger.valueOf(value);
         } else if (type.isAssignableFrom(Number.class)) {
             if (value < 0) {
                 return (T) BigIntegerCodec.unsignedBigInteger(value);
-            } else {
-                return (T) Long.valueOf(value);
             }
+
+            return (T) Long.valueOf(value);
         }
 
         String message = "Cannot decode value of type '%s' with last inserted ID %s";

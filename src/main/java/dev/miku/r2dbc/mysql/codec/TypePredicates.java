@@ -56,6 +56,5 @@ final class TypePredicates {
         return DataTypes.BIT == type || DataTypes.GEOMETRY == type || isString(type) || isLob(type);
     }
 
-    private TypePredicates() {
-    }
+    private TypePredicates() { }
 }

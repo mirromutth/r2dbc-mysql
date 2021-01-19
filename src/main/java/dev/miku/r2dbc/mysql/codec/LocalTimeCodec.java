@@ -43,7 +43,8 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     @Override
-    public LocalTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public LocalTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         return decodeOrigin(binary, value);
     }
 
@@ -77,16 +78,16 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
 
             if (isNegative) {
                 return negativeCircle(hour, minute, second, nano);
-            } else {
-                return LocalTime.of(hour % HOURS_OF_DAY, minute, second, nano);
             }
+
+            return LocalTime.of(hour % HOURS_OF_DAY, minute, second, nano);
         }
 
         if (isNegative) {
             return negativeCircle(hour, minute, second);
-        } else {
-            return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
         }
+
+        return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
     }
 
     static boolean readNegative(ByteBuf buf) {
@@ -121,18 +122,18 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         if (bytes < MICRO_TIME_SIZE) {
             if (isNegative) {
                 return negativeCircle(hour, minute, second);
-            } else {
-                return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
             }
+
+            return LocalTime.of(hour % HOURS_OF_DAY, minute, second);
         }
 
         long nano = buf.readUnsignedIntLE() * NANOS_OF_MICRO;
 
         if (isNegative) {
             return negativeCircle(hour, minute, second, nano);
-        } else {
-            return LocalTime.of(hour % HOURS_OF_DAY, minute, second, (int) nano);
         }
+
+        return LocalTime.of(hour % HOURS_OF_DAY, minute, second, (int) nano);
     }
 
     static ByteBuf encodeBinary(ByteBufAllocator alloc, LocalTime time) {

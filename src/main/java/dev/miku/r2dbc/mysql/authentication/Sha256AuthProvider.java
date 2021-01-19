@@ -57,6 +57,5 @@ final class Sha256AuthProvider implements MySqlAuthProvider {
         return SHA256_PASSWORD;
     }
 
-    private Sha256AuthProvider() {
-    }
+    private Sha256AuthProvider() { }
 }

@@ -38,7 +38,8 @@ import java.util.Set;
 import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
 
 /**
- * Codec for {@link Set}{@code <}{@link String}{@code >}, {@link Set}{@code <}{@link Enum}{@code >} and {@link String}{@code []}.
+ * Codec for {@link Set}{@code <}{@link String}{@code >}, {@link Set}{@code <}{@link Enum}{@code >} and the
+ * {@link String}{@code []}.
  */
 final class SetCodec implements ParametrizedCodec<String[]> {
 
@@ -49,13 +50,15 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     }
 
     @Override
-    public String[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public String[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (!value.isReadable()) {
             return EMPTY_STRINGS;
         }
 
         int firstComma = value.indexOf(value.readerIndex(), value.writerIndex(), (byte) ',');
-        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
+        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion())
+            .getCharset();
 
         if (firstComma < 0) {
             return new String[] { value.toString(charset) };
@@ -64,24 +67,26 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         return value.toString(charset).split(",");
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public Set<?> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
+    public Set<?> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary,
+        CodecContext context) {
         if (!value.isReadable()) {
             return Collections.emptySet();
         }
 
         Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
-        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset();
+        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion())
+            .getCharset();
         int firstComma = value.indexOf(value.readerIndex(), value.writerIndex(), (byte) ',');
         boolean isEnum = subClass.isEnum();
 
         if (firstComma < 0) {
             if (isEnum) {
                 return Collections.singleton(Enum.valueOf((Class<Enum>) subClass, value.toString(charset)));
-            } else {
-                return Collections.singleton(value.toString(charset));
             }
+
+            return Collections.singleton(value.toString(charset));
         }
 
         Iterable<String> elements = new SplitIterable(value, charset, firstComma);
@@ -115,11 +120,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
         Class<?> argument = ParametrizedUtils.getTypeArgument(target, Set.class);
 
-        if (argument == null) {
-            return false;
-        }
-
-        return argument.isEnum() || argument.isAssignableFrom(String.class);
+        return argument != null && (argument.isEnum() || argument.isAssignableFrom(String.class));
     }
 
     @Override
@@ -130,15 +131,16 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     @Override
     public Parameter encode(Object value, CodecContext context) {
         if (value instanceof CharSequence[]) {
-            return new StringArrayParameter(allocator, InternalArrays.toImmutableList((CharSequence[]) value), context);
-        } else {
-            return new SetParameter(allocator, (Set<?>) value, context);
+            return new StringArrayParameter(allocator, InternalArrays.toImmutableList((CharSequence[]) value),
+                context);
         }
+
+        return new SetParameter(allocator, (Set<?>) value, context);
     }
 
     private static Set<?> buildSet(Class<?> subClass, boolean isEnum) {
         if (isEnum) {
-            @SuppressWarnings({"unchecked", "rawtypes"})
+            @SuppressWarnings({ "unchecked", "rawtypes" })
             EnumSet<?> s = EnumSet.noneOf((Class<Enum>) subClass);
             return s;
         }
@@ -169,7 +171,8 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
     }
 
-    private static ByteBuf encodeSet(ByteBufAllocator alloc, Iterator<? extends CharSequence> iter, CodecContext context) {
+    private static ByteBuf encodeSet(ByteBufAllocator alloc, Iterator<? extends CharSequence> iter,
+        CodecContext context) {
         Charset charset = context.getClientCollation().getCharset();
         ByteBuf content = alloc.buffer();
 
@@ -352,7 +355,8 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
         private final CodecContext context;
 
-        private StringArrayParameter(ByteBufAllocator allocator, List<CharSequence> value, CodecContext context) {
+        private StringArrayParameter(ByteBufAllocator allocator, List<CharSequence> value,
+            CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;

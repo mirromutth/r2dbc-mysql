@@ -67,6 +67,5 @@ final class CachingSha2FastAuthProvider implements MySqlAuthProvider {
         return CACHING_SHA2_PASSWORD;
     }
 
-    private CachingSha2FastAuthProvider() {
-    }
+    private CachingSha2FastAuthProvider() { }
 }

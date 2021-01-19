@@ -25,7 +25,7 @@ import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
- * Codec for {@link int}.
+ * Codec for {@code int}.
  */
 final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
@@ -34,13 +34,14 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     }
 
     @Override
-    public Integer decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Integer decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (binary) {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
             return decodeBinary(value, info.getType(), isUnsigned);
-        } else {
-            return parse(value);
         }
+
+        return parse(value);
     }
 
     @Override
@@ -66,7 +67,8 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     @Override
     protected boolean doCanDecode(FieldInformation info) {
         short type = info.getType();
-        return isLowerInt(type) || (DataTypes.INT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0);
+        return isLowerInt(type) ||
+            (DataTypes.INT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0);
     }
 
     /**
@@ -114,17 +116,17 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
             case DataTypes.SMALLINT:
                 if (isUnsigned) {
                     return buf.readUnsignedShortLE();
-                } else {
-                    return buf.readShortLE();
                 }
+
+                return buf.readShortLE();
             case DataTypes.YEAR:
                 return buf.readShortLE();
             default: // TINYINT
                 if (isUnsigned) {
                     return buf.readUnsignedByte();
-                } else {
-                    return buf.readByte();
                 }
+
+                return buf.readByte();
         }
     }
 

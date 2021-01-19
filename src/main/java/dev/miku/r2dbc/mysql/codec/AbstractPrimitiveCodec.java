@@ -21,7 +21,9 @@ import io.netty.buffer.ByteBufAllocator;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * Codec for primitive types, like {@link int} or {@link double}.
+ * Codec for primitive types, like {@code int} or {@code double}.
+ *
+ * @param <T> the boxed type of handling primitive data.
  */
 abstract class AbstractPrimitiveCodec<T> implements PrimitiveCodec<T> {
 
@@ -32,7 +34,8 @@ abstract class AbstractPrimitiveCodec<T> implements PrimitiveCodec<T> {
     private final Class<T> boxedClass;
 
     AbstractPrimitiveCodec(ByteBufAllocator allocator, Class<T> primitiveClass, Class<T> boxedClass) {
-        require(primitiveClass.isPrimitive() && !boxedClass.isPrimitive(), "primitiveClass must be primitive and boxedClass must not be primitive");
+        require(primitiveClass.isPrimitive() && !boxedClass.isPrimitive(),
+            "primitiveClass must be primitive and boxedClass must not be primitive");
 
         this.allocator = allocator;
         this.primitiveClass = primitiveClass;

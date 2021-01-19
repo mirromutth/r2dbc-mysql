@@ -26,7 +26,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Codec for {@link float}.
+ * Codec for {@code float}.
  */
 final class FloatCodec extends AbstractPrimitiveCodec<Float> {
 
@@ -35,7 +35,8 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    public Float decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Float decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (binary && info.getType() == DataTypes.FLOAT) {
             return value.readFloatLE();
         }

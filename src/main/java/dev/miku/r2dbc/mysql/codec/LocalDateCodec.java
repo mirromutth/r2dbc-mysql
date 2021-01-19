@@ -38,7 +38,8 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public LocalDate decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public LocalDate decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         int bytes = value.readableBytes();
         LocalDate date = binary ? readDateBinary(value, bytes) : readDateText(value);
 

@@ -25,7 +25,7 @@ import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
- * Codec for {@link long}.
+ * Codec for {@code long}.
  */
 final class LongCodec implements PrimitiveCodec<Long> {
 
@@ -36,14 +36,15 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public Long decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Long decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (binary) {
             boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
             return decodeBinary(value, info.getType(), isUnsigned);
-        } else {
-            // Note: no check overflow for BIGINT UNSIGNED
-            return parse(value);
         }
+
+        // Note: no check overflow for BIGINT UNSIGNED
+        return parse(value);
     }
 
     @Override
@@ -60,9 +61,9 @@ final class LongCodec implements PrimitiveCodec<Long> {
         // for better performance (BigInteger is obviously slower than long).
         if (DataTypes.BIGINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
             return Long.class == target;
-        } else {
-            return target.isAssignableFrom(Long.class);
         }
+
+        return target.isAssignableFrom(Long.class);
     }
 
     @Override
@@ -134,26 +135,26 @@ final class LongCodec implements PrimitiveCodec<Long> {
             case DataTypes.INT:
                 if (isUnsigned) {
                     return buf.readUnsignedIntLE();
-                } else {
-                    return buf.readIntLE();
                 }
+
+                return buf.readIntLE();
             case DataTypes.MEDIUMINT:
                 // Note: MySQL return 32-bits two's complement for 24-bits integer
                 return buf.readIntLE();
             case DataTypes.SMALLINT:
                 if (isUnsigned) {
                     return buf.readUnsignedShortLE();
-                } else {
-                    return buf.readShortLE();
                 }
+
+                return buf.readShortLE();
             case DataTypes.YEAR:
                 return buf.readShortLE();
             default: // TINYINT
                 if (isUnsigned) {
                     return buf.readUnsignedByte();
-                } else {
-                    return buf.readByte();
                 }
+
+                return buf.readByte();
         }
     }
 

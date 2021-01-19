@@ -50,6 +50,5 @@ final class NoAuthProvider implements MySqlAuthProvider {
         return NO_AUTH_PROVIDER;
     }
 
-    private NoAuthProvider() {
-    }
+    private NoAuthProvider() { }
 }

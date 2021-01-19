@@ -24,7 +24,7 @@ import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 /**
- * Codec for BIT, can convert to {@link boolean} if precision is 1.
+ * Codec for BIT, can convert to {@code boolean} if precision is 1.
  */
 final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
 
@@ -33,7 +33,8 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public Boolean decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
+    public Boolean decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
         if (!binary && DataTypes.TINYINT == info.getType()) {
             return value.readByte() != '0';
         }

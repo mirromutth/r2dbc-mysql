@@ -48,8 +48,7 @@ final class ClientExceptions {
         return new MySqlConnectionException(e);
     }
 
-    private ClientExceptions() {
-    }
+    private ClientExceptions() { }
 }
 
 final class MySqlConnectionClosedException extends MySqlConnectionException {

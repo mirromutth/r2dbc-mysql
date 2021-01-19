@@ -20,17 +20,41 @@ import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.NonNull;
 
 /**
- * Base class considers primitive class for {@link Codec} implementations.
+ * Base class considers primitive class for {@link Codec} implementations. It should be an internal
+ * abstraction.
  * <p>
  * Primitive types should never return {@code null} when decoding.
+ *
+ * @param <T> the boxed type that is handled by this codec.
  */
 interface PrimitiveCodec<T> extends Codec<T> {
 
+    /**
+     * Decode a {@link ByteBuf} as specified {@link Class}.
+     *
+     * @param value   the {@link ByteBuf}.
+     * @param info    the information of this value.
+     * @param target  the specified {@link Class}, which can be a primitive type.
+     * @param binary  if the value should be decoded by binary protocol.
+     * @param context the codec context.
+     * @return the decoded data that is boxed.
+     */
     @NonNull
     @Override
     T decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context);
 
+    /**
+     * Check if can decode the field value as a primitive data.
+     *
+     * @param info the information of this value.
+     * @return if can decode.
+     */
     boolean canPrimitiveDecode(FieldInformation info);
 
+    /**
+     * Get the primitive {@link Class}, such as {@link Integer#TYPE}, etc.
+     *
+     * @return the primitive {@link Class}.
+     */
     Class<T> getPrimitiveClass();
 }

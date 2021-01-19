@@ -45,6 +45,7 @@ final class MultiClob extends MultiLob<CharSequence> implements Clob {
             return "";
         }
 
-        return buf.readCharSequence(buf.readableBytes(), CharCollation.fromId(collationId, version).getCharset());
+        return buf.readCharSequence(buf.readableBytes(), CharCollation.fromId(collationId, version)
+            .getCharset());
     }
 }

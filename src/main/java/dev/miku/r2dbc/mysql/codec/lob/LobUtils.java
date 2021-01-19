@@ -29,6 +29,12 @@ import java.util.List;
  */
 public final class LobUtils {
 
+    /**
+     * Create a {@link Blob} from only one {@link ByteBuf}.
+     *
+     * @param value the only one {@link ByteBuf}.
+     * @return the {@link Blob} from singleton.
+     */
     public static Blob createBlob(ByteBuf value) {
         ByteBuf buf = value.retain();
 
@@ -40,6 +46,12 @@ public final class LobUtils {
         }
     }
 
+    /**
+     * Create a {@link Blob} from multiple {@link ByteBuf}s.
+     *
+     * @param value the {@link ByteBuf}s list.
+     * @return the {@link Blob} from multiple.
+     */
     public static Blob createBlob(List<ByteBuf> value) {
         int size = value.size(), i = 0;
 
@@ -55,6 +67,14 @@ public final class LobUtils {
         }
     }
 
+    /**
+     * Create a {@link Clob} from only one {@link ByteBuf}.
+     *
+     * @param value       the only one {@link ByteBuf}.
+     * @param collationId the identifier of {@code CharCollation}.
+     * @param version     the version of MySQL server.
+     * @return the {@link Clob} from singleton.
+     */
     public static Clob createClob(ByteBuf value, int collationId, ServerVersion version) {
         ByteBuf buf = value.retain();
 
@@ -66,21 +86,28 @@ public final class LobUtils {
         }
     }
 
-    public static Clob createClob(List<ByteBuf> buffers, int collationId, ServerVersion version) {
-        int size = buffers.size(), i = 0;
+    /**
+     * Create a {@link Clob} from multiple {@link ByteBuf}s.
+     *
+     * @param value       the {@link ByteBuf}s list.
+     * @param collationId the identifier of {@code CharCollation}.
+     * @param version     the version of MySQL server.
+     * @return the {@link Clob} from multiple.
+     */
+    public static Clob createClob(List<ByteBuf> value, int collationId, ServerVersion version) {
+        int size = value.size(), i = 0;
 
         try {
             for (; i < size; ++i) {
-                buffers.get(i).retain();
+                value.get(i).retain();
             }
 
-            return new MultiClob(buffers, collationId, version);
+            return new MultiClob(value, collationId, version);
         } catch (Throwable e) {
-            NettyBufferUtils.releaseAll(buffers, i);
+            NettyBufferUtils.releaseAll(value, i);
             throw e;
         }
     }
 
-    private LobUtils() {
-    }
+    private LobUtils() { }
 }

@@ -25,8 +25,8 @@ public interface CodecRegistry {
      * Register codec before all other codecs.
      *
      * @param codec the codec to register
-     * @throws IllegalArgumentException if {@code codec} is {@code null}
      * @return this {@link CodecRegistry}
+     * @throws IllegalArgumentException if {@code codec} is {@code null}
      */
     CodecRegistry addFirst(Codec<?> codec);
 
@@ -34,8 +34,8 @@ public interface CodecRegistry {
      * Register codec after all other codecs.
      *
      * @param codec the codec to register
-     * @throws IllegalArgumentException if {@code codec} is {@code null}
      * @return this {@link CodecRegistry}
+     * @throws IllegalArgumentException if {@code codec} is {@code null}
      */
     CodecRegistry addLast(Codec<?> codec);
 }

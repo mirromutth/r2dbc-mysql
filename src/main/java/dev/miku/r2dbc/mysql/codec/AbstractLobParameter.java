@@ -47,9 +47,11 @@ abstract class AbstractLobParameter extends AbstractParameter {
             }
 
             if (discard instanceof Mono<?>) {
-                ((Mono<?>) discard).subscribe(null, e -> logger.error("Exception happened in LOB type cancel binding", e));
+                ((Mono<?>) discard).subscribe(null, e ->
+                    logger.error("Exception happened in LOB type cancel binding", e));
             } else {
-                Flux.from(discard).subscribe(null, e -> logger.error("Exception happened in LOB type cancel binding", e));
+                Flux.from(discard).subscribe(null, e ->
+                    logger.error("Exception happened in LOB type cancel binding", e));
             }
         } catch (Exception e) {
             logger.error("Exception happened in LOB type cancel binding", e);
