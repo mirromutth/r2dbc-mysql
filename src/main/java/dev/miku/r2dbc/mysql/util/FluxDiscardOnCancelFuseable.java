@@ -24,10 +24,9 @@ import reactor.core.publisher.FluxOperator;
 
 /**
  * A decorating operator that replays signals from its source to a {@code CoreSubscriber} and drains the
- * source upon {@link Subscription#cancel() cancel} and drops data signals until termination.
- * Draining data is required to complete a particular request/response window and clear the protocol
- * state as client code expects to start a request/response conversation without any previous
- * response state.
+ * source upon {@link Subscription#cancel() cancel} and drops data signals until termination. Draining data is
+ * required to complete a particular request/response window and clear the protocol state as client code
+ * expects to start a request/response conversation without any previous response state.
  *
  * @see FluxDiscardOnCancel contains all subscriber implementations for discard on cancel.
  */

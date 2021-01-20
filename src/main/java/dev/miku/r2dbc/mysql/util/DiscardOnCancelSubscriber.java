@@ -30,10 +30,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * An implementation of {@link CoreSubscriber} for request all elements and drains/discards them from upstream
  * when downstream want to cancel its subscribe.
  * <p>
- * The drains/discards behavior is defined by {@code doOnDiscard}, and applied by {@link Operators#onDiscard}.
+ * The drains/discards behavior is defined by {@code doOnDiscard(Class, Consumer)}, and applied by standard
+ * {@link Operators#onDiscard}.
  */
-class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscriber<? super T>> extends AtomicInteger
-    implements CoreSubscriber<T>, Scannable, Subscription {
+class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscriber<? super T>>
+    extends AtomicInteger implements CoreSubscriber<T>, Scannable, Subscription {
 
     private static final int TERMINATED = 2;
 
@@ -116,7 +117,8 @@ class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscri
     static <T> CoreSubscriber<T> create(CoreSubscriber<? super T> s, boolean fuseable) {
         if (fuseable) {
             if (s instanceof Fuseable.ConditionalSubscriber) {
-                return new DiscardOnCancelFuseableConditionalSubscriber<>((Fuseable.ConditionalSubscriber<? super T>) s);
+                return new DiscardOnCancelFuseableConditionalSubscriber<>(
+                    (Fuseable.ConditionalSubscriber<? super T>) s);
             }
             return new DiscardOnCancelFuseableSubscriber<T, CoreSubscriber<? super T>>(s);
         }
@@ -131,7 +133,8 @@ class DiscardOnCancelSubscriber<T, S extends Subscription, A extends CoreSubscri
 /**
  * An extension of {@link DiscardOnCancelSubscriber} for implements {@link Fuseable.QueueSubscription}.
  */
-class DiscardOnCancelFuseableSubscriber<T, A extends CoreSubscriber<? super T>> extends DiscardOnCancelSubscriber<T, Fuseable.QueueSubscription<T>, A>
+class DiscardOnCancelFuseableSubscriber<T, A extends CoreSubscriber<? super T>>
+    extends DiscardOnCancelSubscriber<T, Fuseable.QueueSubscription<T>, A>
     implements Fuseable.QueueSubscription<T> {
 
     DiscardOnCancelFuseableSubscriber(A actual) {
@@ -175,7 +178,8 @@ class DiscardOnCancelFuseableSubscriber<T, A extends CoreSubscriber<? super T>> 
 /**
  * An extension of {@link DiscardOnCancelSubscriber} for implements {@link Fuseable.ConditionalSubscriber}.
  */
-final class DiscardOnCancelConditionalSubscriber<T> extends DiscardOnCancelSubscriber<T, Subscription, Fuseable.ConditionalSubscriber<? super T>>
+final class DiscardOnCancelConditionalSubscriber<T>
+    extends DiscardOnCancelSubscriber<T, Subscription, Fuseable.ConditionalSubscriber<? super T>>
     implements Fuseable.ConditionalSubscriber<T> {
 
     DiscardOnCancelConditionalSubscriber(Fuseable.ConditionalSubscriber<? super T> actual) {
@@ -194,9 +198,10 @@ final class DiscardOnCancelConditionalSubscriber<T> extends DiscardOnCancelSubsc
 }
 
 /**
- * An extension of {@link DiscardOnCancelFuseableSubscriber} for implements {@link Fuseable.ConditionalSubscriber}.
+ * An extension of {@link DiscardOnCancelFuseableSubscriber} for {@link Fuseable.ConditionalSubscriber}.
  */
-final class DiscardOnCancelFuseableConditionalSubscriber<T> extends DiscardOnCancelFuseableSubscriber<T, Fuseable.ConditionalSubscriber<? super T>>
+final class DiscardOnCancelFuseableConditionalSubscriber<T>
+    extends DiscardOnCancelFuseableSubscriber<T, Fuseable.ConditionalSubscriber<? super T>>
     implements Fuseable.ConditionalSubscriber<T> {
 
     DiscardOnCancelFuseableConditionalSubscriber(Fuseable.ConditionalSubscriber<? super T> actual) {

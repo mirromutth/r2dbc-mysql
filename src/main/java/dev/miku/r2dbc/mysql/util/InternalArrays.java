@@ -35,14 +35,14 @@ import java.util.function.UnaryOperator;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An utility with constants of arrays for reduce temporary objects and
- * ensure immutability, do NOT use it outer than {@literal r2dbc-mysql}.
+ * An utility with constants of arrays for reduce temporary objects and ensure immutability, do NOT use it
+ * outer than {@literal r2dbc-mysql}.
  */
 public final class InternalArrays {
 
-    public static final byte[] EMPTY_BYTES = {};
+    public static final byte[] EMPTY_BYTES = { };
 
-    public static final String[] EMPTY_STRINGS = {};
+    public static final String[] EMPTY_STRINGS = { };
 
     /**
      * Wrap an array to an immutable {@link List} without deep copy.
@@ -69,8 +69,8 @@ public final class InternalArrays {
     }
 
     /**
-     * Convert an array to an immutable {@link List} with array copy.
-     * It will copy array but will not clone each element.
+     * Convert an array to an immutable {@link List} with array copy. It will copy array but will not clone
+     * each element.
      *
      * @param a   the array which want to be converted.
      * @param <E> the type for elements of {@code a}.
@@ -112,8 +112,7 @@ public final class InternalArrays {
         return new ArrItr<>(0, a);
     }
 
-    private InternalArrays() {
-    }
+    private InternalArrays() { }
 }
 
 final class ArrItr<E> implements ListIterator<E>, Iterator<E> {

@@ -23,8 +23,8 @@ import io.netty.util.ReferenceCounted;
 import java.util.List;
 
 /**
- * An internal utility considers the use of safe release buffers (array or {@link List})
- * and uses {@link ReferenceCountUtil#safeRelease} to suppress release errors.
+ * An internal utility considers the use of safe release buffers (array or {@link List}). It uses standard
+ * netty {@link ReferenceCountUtil#safeRelease} to suppress release errors.
  */
 public final class NettyBufferUtils {
 
@@ -72,6 +72,5 @@ public final class NettyBufferUtils {
         }
     }
 
-    private NettyBufferUtils() {
-    }
+    private NettyBufferUtils() { }
 }
