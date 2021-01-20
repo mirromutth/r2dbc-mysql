@@ -21,5 +21,10 @@ package dev.miku.r2dbc.mysql.message.server;
  */
 public interface ServerStatusMessage extends ServerMessage {
 
+    /**
+     * Get the server statuses bitmap.
+     *
+     * @return the server statuses bitmap.
+     */
     short getServerStatuses();
 }

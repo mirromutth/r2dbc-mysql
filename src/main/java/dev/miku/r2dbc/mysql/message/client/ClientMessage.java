@@ -31,7 +31,7 @@ public interface ClientMessage {
      * Encode a message into {@link ByteBuf}s.
      *
      * @param allocator the {@link ByteBufAllocator} that use to get {@link ByteBuf} to write into.
-     * @param context   current MySQL connection context
+     * @param context   current MySQL connection context.
      * @return a {@link Flux} that's produces the encoded {@link ByteBuf}s.
      * @throws IllegalArgumentException if {@code allocator} or {@code context} is {@code null}.
      */

@@ -21,5 +21,10 @@ package dev.miku.r2dbc.mysql.message.server;
  */
 public interface WarningMessage extends ServerMessage {
 
+    /**
+     * Get the number of warning(s) record.
+     *
+     * @return warning record number.
+     */
     int getWarnings();
 }

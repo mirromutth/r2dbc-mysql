@@ -50,7 +50,8 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
     private final String authType;
 
-    private HandshakeV10Request(HandshakeHeader header, int envelopeId, byte[] salt, Capability serverCapability, short serverStatuses, String authType) {
+    private HandshakeV10Request(HandshakeHeader header, int envelopeId, byte[] salt,
+        Capability serverCapability, short serverStatuses, String authType) {
         this.header = requireNonNull(header, "header must not be null");
         this.envelopeId = envelopeId;
         this.salt = requireNonNull(salt, "salt must not be null");
@@ -107,12 +108,11 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
 
     @Override
     public int hashCode() {
-        int result = header.hashCode();
-        result = 31 * result + envelopeId;
-        result = 31 * result + Arrays.hashCode(salt);
-        result = 31 * result + serverCapability.hashCode();
-        result = 31 * result + (int) serverStatuses;
-        return 31 * result + authType.hashCode();
+        int hash = 31 * header.hashCode() + envelopeId;
+        hash = 31 * hash + Arrays.hashCode(salt);
+        hash = 31 * hash + serverCapability.hashCode();
+        hash = 31 * hash + serverStatuses;
+        return 31 * hash + authType.hashCode();
     }
 
     @Override
@@ -154,7 +154,8 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
             if (capability.isSaltSecured()) {
                 // If it has not this part, means it is using mysql_old_password,
                 // that salt and authentication is not secure.
-                int saltSecondPartSize = Math.max(MIN_SALT_SECOND_PART_SIZE, saltSize - SALT_FIRST_PART_SIZE - 1);
+                int saltSecondPartSize = Math.max(MIN_SALT_SECOND_PART_SIZE,
+                    saltSize - SALT_FIRST_PART_SIZE - 1);
 
                 salt.writeBytes(buf, buf.readerIndex(), saltSecondPartSize);
                 // Skip salt second part and terminal.
@@ -206,7 +207,8 @@ final class HandshakeV10Request implements HandshakeRequest, ServerStatusMessage
         }
 
         HandshakeV10Request build() {
-            return new HandshakeV10Request(header, envelopeId, salt, serverCapability, serverStatuses, authType);
+            return new HandshakeV10Request(header, envelopeId, salt, serverCapability, serverStatuses,
+                authType);
         }
 
         void authType(String authType) {

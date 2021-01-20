@@ -27,9 +27,9 @@ import java.util.List;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link FieldValue} considers large field value which bytes more
- * than {@link Integer#MAX_VALUE}, it would be exists when MySQL server return LOB
- * types (i.e. BLOB, CLOB), LONGTEXT length can be unsigned int32.
+ * An implementation of {@link FieldValue} considers large field value which bytes width/size is greater than
+ * {@link Integer#MAX_VALUE}, it would be exists when MySQL server return LOB types (i.e. BLOB, CLOB),
+ * LONGTEXT length can be unsigned int32.
  *
  * @see FieldValue
  */

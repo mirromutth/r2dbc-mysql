@@ -41,7 +41,8 @@ final class HandshakeResponse320 extends ScalarClientMessage implements Handshak
 
     private final String database;
 
-    HandshakeResponse320(int envelopeId, Capability capability, String user, byte[] authentication, String database) {
+    HandshakeResponse320(int envelopeId, Capability capability, String user, byte[] authentication,
+        String database) {
         this.header = new SslRequest320(envelopeId, capability);
         this.user = requireNonNull(user, "user must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");

@@ -24,8 +24,8 @@ import reactor.core.publisher.Mono;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link ClientMessage} considers the message can be encoded as a
- * buffer with a pre-calculated size.
+ * An implementation of {@link ClientMessage} considers the message can be encoded as a buffer with a
+ * pre-calculated size.
  */
 abstract class SizedClientMessage implements ClientMessage {
 

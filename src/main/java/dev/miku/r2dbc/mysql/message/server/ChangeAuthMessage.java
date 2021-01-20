@@ -64,7 +64,8 @@ public final class ChangeAuthMessage implements ServerMessage {
 
         ChangeAuthMessage that = (ChangeAuthMessage) o;
 
-        return envelopeId == that.envelopeId && authType.equals(that.authType) && Arrays.equals(salt, that.salt);
+        return envelopeId == that.envelopeId && authType.equals(that.authType) &&
+            Arrays.equals(salt, that.salt);
     }
 
     @Override

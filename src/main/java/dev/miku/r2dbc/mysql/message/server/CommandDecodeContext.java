@@ -23,11 +23,10 @@ final class CommandDecodeContext implements DecodeContext {
 
     static final CommandDecodeContext INSTANCE = new CommandDecodeContext();
 
-    private CommandDecodeContext() {
-    }
-
     @Override
     public String toString() {
         return "DecodeContext-Command";
     }
+
+    private CommandDecodeContext() { }
 }

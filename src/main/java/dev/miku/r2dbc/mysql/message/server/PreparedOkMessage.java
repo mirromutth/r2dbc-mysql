@@ -95,17 +95,8 @@ public final class PreparedOkMessage implements ServerMessage, WarningMessage {
 
         PreparedOkMessage that = (PreparedOkMessage) o;
 
-        if (statementId != that.statementId) {
-            return false;
-        }
-        if (totalColumns != that.totalColumns) {
-            return false;
-        }
-        if (totalParameters != that.totalParameters) {
-            return false;
-        }
-        return warnings == that.warnings;
-
+        return statementId == that.statementId && totalColumns == that.totalColumns &&
+            totalParameters == that.totalParameters && warnings == that.warnings;
     }
 
     @Override
@@ -113,16 +104,17 @@ public final class PreparedOkMessage implements ServerMessage, WarningMessage {
         int result = statementId;
         result = 31 * result + totalColumns;
         result = 31 * result + totalParameters;
-        result = 31 * result + warnings;
-        return result;
+        return 31 * result + warnings;
     }
 
     @Override
     public String toString() {
-        if (warnings != 0) {
-            return String.format("PreparedOkMessage{statementId=%d, totalColumns=%d, totalParameters=%d, warnings=%d}", statementId, totalColumns, totalParameters, warnings);
-        } else {
-            return String.format("PreparedOkMessage{statementId=%d, totalColumns=%d, totalParameters=%d}", statementId, totalColumns, totalParameters);
+        if (warnings == 0) {
+            return "PreparedOkMessage{statementId=" + statementId + ", totalColumns=" + totalColumns +
+                ", totalParameters=" + totalParameters + '}';
         }
+
+        return "PreparedOkMessage{statementId=" + statementId + ", totalColumns=" + totalColumns +
+            ", totalParameters=" + totalParameters + ", warnings=" + warnings + '}';
     }
 }

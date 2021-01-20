@@ -51,7 +51,8 @@ final class HandshakeResponse41 extends ScalarClientMessage implements Handshake
 
     // private final byte zStdCompressionLevel; // When Z-Standard compression supporting
 
-    HandshakeResponse41(int envelopeId, Capability capability, int collationId, String user, byte[] authentication, String authType, String database, Map<String, String> attributes) {
+    HandshakeResponse41(int envelopeId, Capability capability, int collationId, String user,
+        byte[] authentication, String authType, String database, Map<String, String> attributes) {
         this.header = new SslRequest41(envelopeId, capability, collationId);
         this.user = requireNonNull(user, "user must not be null");
         this.authentication = requireNonNull(authentication, "authentication must not be null");

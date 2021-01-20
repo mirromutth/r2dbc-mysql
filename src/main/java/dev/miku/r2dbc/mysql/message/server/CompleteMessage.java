@@ -21,5 +21,11 @@ package dev.miku.r2dbc.mysql.message.server;
  */
 public interface CompleteMessage extends ServerMessage {
 
+    /**
+     * Check whether this message is the last complete message, which also means that the total task has been
+     * done.
+     *
+     * @return if task has been done.
+     */
     boolean isDone();
 }

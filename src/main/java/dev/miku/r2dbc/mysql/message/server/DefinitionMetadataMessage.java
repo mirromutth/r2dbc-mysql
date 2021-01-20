@@ -58,11 +58,9 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     private final short decimals;
 
-    private DefinitionMetadataMessage(
-        @Nullable String database, String table, @Nullable String originTable,
-        String column, @Nullable String originColumn,
-        int collationId, long size, short type, short definitions, short decimals
-    ) {
+    private DefinitionMetadataMessage(@Nullable String database, String table, @Nullable String originTable,
+        String column, @Nullable String originColumn, int collationId, long size, short type,
+        short definitions, short decimals) {
         require(size >= 0, "size must not be a negative integer");
         require(collationId > 0, "collationId must be a positive integer");
 
@@ -125,21 +123,24 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     @Override
     public int hashCode() {
-        return Objects.hash(database, table, originTable, column, originColumn, collationId, size, type, definitions, decimals);
+        return Objects.hash(database, table, originTable, column, originColumn, collationId, size, type,
+            definitions, decimals);
     }
 
     @Override
     public String toString() {
-        return String.format("DefinitionMetadataMessage{database='%s', table='%s' (origin:'%s'), column='%s' (origin:'%s'), collationId=%d, size=%d, type=%d, definitions=%x, decimals=%d}",
-            database, table, originTable, column, originColumn, collationId, size, type, definitions, decimals);
+        return "DefinitionMetadataMessage{database='" + database + "', table='" + table + "' (origin:'" +
+            originTable + "'), column='" + column + "' (origin:'" + originColumn + "'), collationId=" +
+            collationId + ", size=" + size + ", type=" + type + ", definitions=" +
+            Integer.toHexString(definitions) + ", decimals=" + decimals + '}';
     }
 
     static DefinitionMetadataMessage decode(ByteBuf buf, ConnectionContext context) {
         if (context.getCapability().isProtocol41()) {
             return decode41(buf, context);
-        } else {
-            return decode320(buf, context);
         }
+
+        return decode320(buf, context);
     }
 
     private static DefinitionMetadataMessage decode320(ByteBuf buf, ConnectionContext context) {
@@ -158,18 +159,8 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         short definitions = buf.readShortLE();
         short decimals = buf.readUnsignedByte();
 
-        return new DefinitionMetadataMessage(
-            null,
-            table,
-            null,
-            column,
-            null,
-            collation.getId(),
-            size,
-            type,
-            definitions,
-            decimals
-        );
+        return new DefinitionMetadataMessage(null, table, null, column, null, collation.getId(), size, type,
+            definitions, decimals);
     }
 
     private static DefinitionMetadataMessage decode41(ByteBuf buf, ConnectionContext context) {
@@ -202,22 +193,13 @@ public final class DefinitionMetadataMessage implements ServerMessage {
             type = DataTypes.ENUMERABLE;
         }
 
-        return new DefinitionMetadataMessage(
-            database,
-            table,
-            originTable,
-            column,
-            originColumn,
-            collationId,
-            size,
-            type,
-            definitions,
-            buf.readUnsignedByte()
-        );
+        return new DefinitionMetadataMessage(database, table, originTable, column, originColumn, collationId,
+            size, type, definitions, buf.readUnsignedByte());
     }
 
     private static String readVarIntSizedString(ByteBuf buf, Charset charset) {
-        int bytes = (int) VarIntUtils.readVarInt(buf); // JVM can NOT support string which length upper than maximum of int32
+        // JVM can NOT support string which length upper than maximum of int32
+        int bytes = (int) VarIntUtils.readVarInt(buf);
 
         if (bytes == 0) {
             return "";

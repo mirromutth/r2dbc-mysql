@@ -38,7 +38,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class ParamWriter extends ParameterWriter {
 
-    private static final char[] HEX = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    private static final char[] HEX_CHAR = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c',
+        'd', 'e', 'f' };
 
     private static final Consumer<Parameter> DISPOSE = Parameter::dispose;
 
@@ -129,8 +130,8 @@ final class ParamWriter extends ParameterWriter {
         int limit = buffer.limit();
         for (int i = buffer.position(); i < limit; ++i) {
             byte b = buffer.get(i);
-            builder.append(HEX[(b & 0xF0) >>> 4])
-                .append(HEX[b & 0xF]);
+            builder.append(HEX_CHAR[(b & 0xF0) >>> 4])
+                .append(HEX_CHAR[b & 0xF]);
         }
     }
 
@@ -141,8 +142,8 @@ final class ParamWriter extends ParameterWriter {
         startAvailable(Mode.HEX);
 
         for (byte b : bytes) {
-            builder.append(HEX[(b & 0xF0) >>> 4])
-                .append(HEX[b & 0xF]);
+            builder.append(HEX_CHAR[(b & 0xF0) >>> 4])
+                .append(HEX_CHAR[b & 0xF]);
         }
     }
 
@@ -185,7 +186,8 @@ final class ParamWriter extends ParameterWriter {
         CharSequence s = csq == null ? "null" : csq;
 
         if (start < 0 || start > s.length() || end < start || end > s.length()) {
-            throw new IndexOutOfBoundsException("start: " + start + ", end: " + end + ", str length: " + s.length());
+            throw new IndexOutOfBoundsException("start: " + start + ", end: " + end + ", str length: " +
+                s.length());
         }
 
         return append0(s, start, end);
@@ -203,7 +205,8 @@ final class ParamWriter extends ParameterWriter {
         String s = str == null ? "null" : str;
 
         if (off < 0 || off > s.length() || len < 0 || off + len > s.length() || off + len < 0) {
-            throw new IndexOutOfBoundsException("off: " + off + ", len: " + len + ", str length: " + s.length());
+            throw new IndexOutOfBoundsException("off: " + off + ", len: " + len + ", str length: " +
+                s.length());
         }
 
         write0(s, off, len);
@@ -227,7 +230,8 @@ final class ParamWriter extends ParameterWriter {
         }
 
         if (off < 0 || off > c.length || len < 0 || off + len > c.length || off + len < 0) {
-            throw new IndexOutOfBoundsException("off: " + off + ", len: " + len + ", chars length: " + c.length);
+            throw new IndexOutOfBoundsException("off: " + off + ", len: " + len + ", chars length: " +
+                c.length);
         }
 
         write0(c, off, len);
@@ -254,9 +258,9 @@ final class ParamWriter extends ParameterWriter {
 
         if (current == Mode.FULL) {
             throw new IllegalStateException("Unexpected write, parameters are filled-up");
-        } else {
-            throw new IllegalStateException("Unexpected write, current mode is " + current + ", but write with " + mode);
         }
+
+        throw new IllegalStateException("Unexpected write, mode is " + current + ", write with " + mode);
     }
 
     private void flushParameter(Void ignored) {
@@ -332,8 +336,8 @@ final class ParamWriter extends ParameterWriter {
                 builder.append('\\').append('Z');
                 break;
             case '\n':
-                // Should escape it for some logging such as Relational Database Service (RDS) Logging System, etc.
-                // Sure, it is not necessary, but this will be better.
+                // Should escape it for some logging such as Relational Database Service (RDS) Logging
+                // System, etc. Sure, it is not necessary, but this will be better.
                 builder.append('\\').append('n');
                 break;
             case '\r':
@@ -371,7 +375,6 @@ final class ParamWriter extends ParameterWriter {
         FULL,
 
         NULL {
-
             @Override
             boolean canFollow(Mode mode) {
                 return false;
@@ -379,7 +382,6 @@ final class ParamWriter extends ParameterWriter {
         },
 
         NUMERIC {
-
             @Override
             boolean canFollow(Mode mode) {
                 return false;
@@ -387,7 +389,6 @@ final class ParamWriter extends ParameterWriter {
         },
 
         BINARY {
-
             @Override
             void start(StringBuilder builder) {
                 builder.append('b').append('\'');
@@ -400,7 +401,6 @@ final class ParamWriter extends ParameterWriter {
         },
 
         HEX {
-
             @Override
             void start(StringBuilder builder) {
                 builder.append('x').append('\'');
@@ -413,7 +413,6 @@ final class ParamWriter extends ParameterWriter {
         },
 
         STRING {
-
             @Override
             boolean canFollow(Mode mode) {
                 return this == mode || mode == Mode.NUMERIC;
@@ -429,7 +428,6 @@ final class ParamWriter extends ParameterWriter {
                 builder.append('\'');
             }
         };
-
 
         void start(StringBuilder builder) {
             // Do nothing

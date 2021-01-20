@@ -28,6 +28,5 @@ final class PrepareQueryDecodeContext implements DecodeContext {
         return "DecodeContext-PrepareQuery";
     }
 
-    private PrepareQueryDecodeContext() {
-    }
+    private PrepareQueryDecodeContext() { }
 }

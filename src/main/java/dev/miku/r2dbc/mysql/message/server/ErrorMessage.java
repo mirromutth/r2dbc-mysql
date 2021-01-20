@@ -57,6 +57,12 @@ public final class ErrorMessage implements ServerMessage {
         return errorMessage;
     }
 
+    /**
+     * Decode error message from a {@link ByteBuf}.
+     *
+     * @param buf the {@link ByteBuf}.
+     * @return decoded error message.
+     */
     public static ErrorMessage decode(ByteBuf buf) {
         buf.skipBytes(1); // 0xFF, error message header
 
@@ -86,26 +92,19 @@ public final class ErrorMessage implements ServerMessage {
 
         ErrorMessage that = (ErrorMessage) o;
 
-        if (errorCode != that.errorCode) {
-            return false;
-        }
-        if (!Objects.equals(sqlState, that.sqlState)) {
-            return false;
-        }
-
-        return errorMessage.equals(that.errorMessage);
+        return errorCode == that.errorCode && Objects.equals(sqlState, that.sqlState) &&
+            errorMessage.equals(that.errorMessage);
     }
 
     @Override
     public int hashCode() {
-        int result = errorCode;
-        result = 31 * result + (sqlState != null ? sqlState.hashCode() : 0);
-        result = 31 * result + errorMessage.hashCode();
-        return result;
+        int hash = 31 * errorCode + (sqlState != null ? sqlState.hashCode() : 0);
+        return 31 * hash + errorMessage.hashCode();
     }
 
     @Override
     public String toString() {
-        return String.format("ErrorMessage{errorCode=%d, sqlState='%s', errorMessage='%s'}", errorCode, sqlState, errorMessage);
+        return "ErrorMessage{errorCode=" + errorCode + ", sqlState='" + sqlState + "', errorMessage='" +
+            errorMessage + "'}";
     }
 }

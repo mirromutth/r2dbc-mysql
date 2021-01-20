@@ -25,16 +25,48 @@ import io.r2dbc.spi.R2dbcPermissionDeniedException;
  */
 public interface HandshakeRequest extends ServerMessage {
 
+    /**
+     * Get the handshake request header.
+     *
+     * @return the header.
+     */
     HandshakeHeader getHeader();
 
+    /**
+     * Get the envelope identifier of this message packet.
+     *
+     * @return envelope identifier.
+     */
     int getEnvelopeId();
 
+    /**
+     * Get the server-side capability.
+     *
+     * @return the server-side capability.
+     */
     Capability getServerCapability();
 
+    /**
+     * Get the authentication plugin type name.
+     *
+     * @return the authentication plugin type.
+     */
     String getAuthType();
 
+    /**
+     * Get the challenge salt for authentication.
+     *
+     * @return the challenge salt.
+     */
     byte[] getSalt();
 
+    /**
+     * Decode a {@link HandshakeRequest} from a envelope {@link ByteBuf}.
+     *
+     * @param envelopeId envelope identifier.
+     * @param buf        the {@link ByteBuf}.
+     * @return decoded {@link HandshakeRequest}.
+     */
     static HandshakeRequest decode(int envelopeId, ByteBuf buf) {
         HandshakeHeader header = HandshakeHeader.decode(buf);
         int version = header.getProtocolVersion();
@@ -44,8 +76,8 @@ public interface HandshakeRequest extends ServerMessage {
                 return HandshakeV10Request.decode(envelopeId, buf, header);
             case 9:
                 return HandshakeV9Request.decode(envelopeId, buf, header);
-            default:
-                throw new R2dbcPermissionDeniedException("Does not support handshake protocol version " + version);
         }
+
+        throw new R2dbcPermissionDeniedException("Does not support handshake protocol version " + version);
     }
 }

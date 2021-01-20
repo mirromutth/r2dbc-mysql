@@ -19,12 +19,15 @@ package dev.miku.r2dbc.mysql.message.client;
 import io.netty.buffer.ByteBuf;
 
 /**
- * The request message check alive of MySQL server.
+ * A singleton request message check alive of MySQL server.
  */
 public final class PingMessage extends SizedClientMessage {
 
     private static final int PING_FLAG = 0x0E;
 
+    /**
+     * The instance of the singleton class.
+     */
     public static final PingMessage INSTANCE = new PingMessage();
 
     @Override
@@ -42,6 +45,5 @@ public final class PingMessage extends SizedClientMessage {
         return "PingMessage{}";
     }
 
-    private PingMessage() {
-    }
+    private PingMessage() { }
 }

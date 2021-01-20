@@ -80,7 +80,8 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
         int colSize = colMetadata.length;
 
         if (index >= paramSize + colSize) {
-            throw new IllegalStateException(String.format("columns' metadata has filled up, now index: %d, param length: %d, column length: %d", index, paramSize, colSize));
+            throw new IllegalStateException("Columns metadata has filled up, now index: " + index +
+                ", param length: " + paramSize + ", column length: " + colSize);
         }
 
         if (index < paramSize) {
@@ -100,7 +101,7 @@ final class PreparedMetadataDecodeContext extends MetadataDecodeContext {
     @Override
     protected Object loggingPoints() {
         int paramSize = paramMetadata.length;
-        return String.format("[%d, %d]", paramSize, paramSize + colMetadata.length);
+        return "[" + paramSize + ", " + (paramSize + colMetadata.length) + ']';
     }
 
     private static DefinitionMetadataMessage[] createArray(int size) {

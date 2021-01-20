@@ -23,7 +23,8 @@ import io.netty.util.ReferenceCounted;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link FieldValue} considers field value bytes is less or equals than {@link Integer#MAX_VALUE}.
+ * An implementation of {@link FieldValue} considers the length of the field value bytes is less than or equal
+ * to {@link Integer#MAX_VALUE}.
  */
 public final class NormalFieldValue extends AbstractReferenceCounted implements FieldValue {
 

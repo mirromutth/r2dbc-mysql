@@ -69,6 +69,5 @@ final class ByteBufCombiner {
         }
     }
 
-    private ByteBufCombiner() {
-    }
+    private ByteBufCombiner() { }
 }

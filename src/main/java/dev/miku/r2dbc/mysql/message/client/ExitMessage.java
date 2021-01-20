@@ -19,12 +19,15 @@ package dev.miku.r2dbc.mysql.message.client;
 import io.netty.buffer.ByteBuf;
 
 /**
- * The request message tells the MySQL client to exit.
+ * A singleton request message tells the MySQL client to exit.
  */
 public final class ExitMessage extends SizedClientMessage {
 
     private static final int EXIT_FLAG = 0x01;
 
+    /**
+     * The instance of the singleton class.
+     */
     public static final ExitMessage INSTANCE = new ExitMessage();
 
     @Override
@@ -42,6 +45,5 @@ public final class ExitMessage extends SizedClientMessage {
         return "ExitMessage{}";
     }
 
-    private ExitMessage() {
-    }
+    private ExitMessage() { }
 }
