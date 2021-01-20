@@ -130,12 +130,12 @@ final class DateTimes {
 
     static boolean canDecodeChronology(short type, ParameterizedType target,
         Class<? extends Temporal> chronology) {
-        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
+        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type) &&
             LocalDate.class == ParametrizedUtils.getTypeArgument(target, chronology);
     }
 
     static boolean canDecodeDateTime(short type, Class<?> target, Class<? extends Temporal> temporal) {
-        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type || DataTypes.TIMESTAMP2 == type) &&
+        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type) &&
             target.isAssignableFrom(temporal);
     }
 

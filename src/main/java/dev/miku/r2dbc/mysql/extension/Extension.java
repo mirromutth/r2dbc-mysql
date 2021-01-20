@@ -21,4 +21,5 @@ package dev.miku.r2dbc.mysql.extension;
  */
 public interface Extension {
 
+    // A marker interface should be empty.
 }
