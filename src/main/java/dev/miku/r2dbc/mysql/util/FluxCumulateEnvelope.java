@@ -29,8 +29,8 @@ import reactor.util.annotation.Nullable;
 import reactor.util.context.Context;
 
 /**
- * An implementation of {@link Flux}{@code <}{@link ByteBuf}{@code >} that considers
- * cumulate buffers as envelopes of the MySQL socket protocol.
+ * An implementation of {@link Flux}{@code <}{@link ByteBuf}{@code >} that considers cumulate buffers as
+ * envelopes of the MySQL socket protocol.
  */
 final class FluxCumulateEnvelope extends FluxOperator<ByteBuf, ByteBuf> {
 
@@ -70,7 +70,8 @@ final class CumulateEnvelopeSubscriber implements CoreSubscriber<ByteBuf>, Scann
 
     private int envelopeId;
 
-    CumulateEnvelopeSubscriber(CoreSubscriber<? super ByteBuf> actual, ByteBufAllocator alloc, int size, int start) {
+    CumulateEnvelopeSubscriber(CoreSubscriber<? super ByteBuf> actual, ByteBufAllocator alloc, int size,
+        int start) {
         this.actual = actual;
         this.alloc = alloc;
         this.size = size;
@@ -88,7 +89,8 @@ final class CumulateEnvelopeSubscriber implements CoreSubscriber<ByteBuf>, Scann
     @Override
     public void onNext(ByteBuf buf) {
         if (done) {
-            // Does not release the buffer because it should be handled by OperatorUtils.discardOnCancel() or Context.
+            // Does not release the buffer because it should be handled by OperatorUtils.discardOnCancel()
+            // or Context.
             Operators.onNextDropped(buf, actual.currentContext());
             return;
         }
@@ -155,9 +157,12 @@ final class CumulateEnvelopeSubscriber implements CoreSubscriber<ByteBuf>, Scann
         ByteBuf cumulated = this.cumulated;
         this.cumulated = null;
 
-        // MySQL socket protocol need least one envelope, and the last envelope must small than maximum size of envelopes.
-        // - If there has no previous envelope, then the cumulated is null, should produce an empty envelope header.
-        // - If previous envelope is a max-size envelope, then the cumulated is null, should produce an empty envelope header.
+        // MySQL socket protocol need least one envelope, and the last envelope must small than maximum
+        // size of envelopes.
+        // - If there has no previous envelope, then the cumulated is null, should produce an empty
+        //   envelope header.
+        // - If previous envelope is a max-size envelope, then the cumulated is null, should produce an
+        //   empty envelope header.
         int size = cumulated == null ? 0 : cumulated.readableBytes();
         ByteBuf header = null;
 
@@ -239,11 +244,13 @@ final class CumulateEnvelopeSubscriber implements CoreSubscriber<ByteBuf>, Scann
                 cumulated.isReadOnly()) {
                 // Merging and replacing the cumulated under the following conditions:
                 // - the cumulated cannot be resized to accommodate the following data
-                // - the cumulated is assumed to be shared (i.e. refCnt() > 1), so the reallocation may not be safe, see onNext(...).
+                // - the cumulated is assumed to be shared (i.e. refCnt() > 1), so the reallocation may not
+                //   be safe, see onNext(...).
                 int oldBytes = cumulated.readableBytes();
                 int bufBytes = buf.readableBytes();
                 int newBytes = oldBytes + bufBytes;
-                ByteBuf result = releasing = alloc.buffer(alloc.calculateNewCapacity(newBytes, Integer.MAX_VALUE));
+                ByteBuf result = releasing = alloc.buffer(alloc.calculateNewCapacity(newBytes,
+                    Integer.MAX_VALUE));
 
                 // Avoid to calling writeBytes(...) with redundancy check and stack depth comparison.
                 result.setBytes(0, cumulated, cumulated.readerIndex(), oldBytes)

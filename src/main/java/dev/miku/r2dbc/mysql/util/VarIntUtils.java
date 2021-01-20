@@ -107,10 +107,13 @@ public final class VarIntUtils {
     }
 
     /**
+     * Checks the next variable-length integer position/index. If the index is a negative integer means the
+     * {@code buf} has not a var integer. If the index is {@literal 0}, means {@code buf} looks like has only
+     * a var integer which buffer has no other data. If the index is a positive integer means how much buffer
+     * size after read a var integer.
+     *
      * @param buf a readable buffer for check it has next a var integer or not.
-     * @return a negative integer means {@code buf} has not a var integer,
-     * return 0 means {@code buf} looks like has only a var integer which buffer has no other data,
-     * return a positive integer means how much buffer size after read a var integer.
+     * @return the index.
      */
     public static int checkNextVarInt(ByteBuf buf) {
         int byteSize = requireNonNull(buf, "buf must not be null").readableBytes();
@@ -157,10 +160,9 @@ public final class VarIntUtils {
     /**
      * Reserve a seat of an unknown var integer in {@code buf} header.
      * <p>
-     * Note: make sure the var integer will be set into the {@code buf} header,
-     * can not use it when you want write a var integer into a {@code buf}
-     * which has data before the var integer. i.e. the {@code buf} should be a
-     * new {@link ByteBuf}.
+     * Note: make sure the var integer will be set into the {@code buf} header, can not use it when you want
+     * write a var integer into a {@code buf} which has data before the var integer. i.e. the {@code buf}
+     * should be a new {@link ByteBuf}.
      *
      * @param buf that want reserve to this {@link ByteBuf}.
      */
@@ -171,8 +173,8 @@ public final class VarIntUtils {
     }
 
     /**
-     * Set a var integer to the {@code buf} header from 32-bits integer,
-     * the {@code buf} header should be reserved by {@link #reserveVarInt}.
+     * Set a var integer to the {@code buf} header from 32-bits integer, the {@code buf} header should be
+     * reserved by {@link #reserveVarInt}.
      *
      * @param buf   that want set to this {@link ByteBuf}, which is reserved a var integer.
      * @param value integer that want to set.
@@ -207,8 +209,8 @@ public final class VarIntUtils {
     }
 
     /**
-     * Set a var integer to the {@code buf} header from 64-bits integer,
-     * the {@code buf} header should be reserved by {@link #reserveVarInt}.
+     * Set a var integer to the {@code buf} header from 64-bits integer, the {@code buf} header should be
+     * reserved by {@link #reserveVarInt}.
      *
      * @param buf   that want set to this {@link ByteBuf}, which is reserved a var integer.
      * @param value integer that want to set.
@@ -339,6 +341,5 @@ public final class VarIntUtils {
         }
     }
 
-    private VarIntUtils() {
-    }
+    private VarIntUtils() { }
 }

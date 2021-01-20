@@ -22,11 +22,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
 
 /**
- * A decorating operator that replays signals from its source to a {@link DiscardOnCancelSubscriber} and drains the
- * source upon {@link Subscription#cancel() cancel} and drops data signals until termination.
- * Draining data is required to complete a particular request/response window and clear the protocol
- * state as client code expects to start a request/response conversation without any previous
- * response state.
+ * A decorating operator that replays signals from its source to a {@link DiscardOnCancelSubscriber} and
+ * drains the source upon {@link Subscription#cancel() cancel} and drops data signals until termination.
+ * Draining data is required to complete a particular request/response window and clear the protocol state as
+ * client code expects to start a request/response conversation without any previous response state.
  * <p>
  * This is a slightly altered version of R2DBC SQL Server's implementation:
  * https://github.com/r2dbc/r2dbc-mssql

@@ -33,10 +33,12 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 public final class OperatorUtils {
 
     /**
-     * Replay signals from {@link Flux the source} until cancellation. Drains the source for data signals if the subscriber cancels the subscription.
+     * Replay signals from {@link Flux the source} until cancellation. Drains the source for data signals if
+     * the subscriber cancels the subscription.
      * <p>
-     * Draining data is required to complete a particular request/response window and clear the protocol state as client code expects to start a
-     * request/response conversation without leaving previous frames on the stack.
+     * Draining data is required to complete a particular request/response window and clear the protocol state
+     * as client code expects to start a request/response conversation without leaving previous frames on the
+     * stack.
      *
      * @param source the source to decorate.
      * @param <T>    The type of values in both source and output sequences.
@@ -53,13 +55,14 @@ public final class OperatorUtils {
         return new FluxDiscardOnCancel<>(source);
     }
 
-    public static Flux<ByteBuf> cumulateEnvelope(Flux<? extends ByteBuf> source, ByteBufAllocator allocator, int envelopeIdStart) {
+    public static Flux<ByteBuf> cumulateEnvelope(Flux<? extends ByteBuf> source, ByteBufAllocator allocator,
+        int envelopeIdStart) {
         requireNonNull(source, "source must not be null");
         requireNonNull(allocator, "allocator must not be null");
 
-        return new FluxCumulateEnvelope(source, allocator, Envelopes.MAX_ENVELOPE_SIZE, envelopeIdStart & 0xFF);
+        return new FluxCumulateEnvelope(source, allocator, Envelopes.MAX_ENVELOPE_SIZE,
+            envelopeIdStart & 0xFF);
     }
 
-    private OperatorUtils() {
-    }
+    private OperatorUtils() { }
 }

@@ -23,18 +23,15 @@ import reactor.util.annotation.Nullable;
  */
 public final class AssertUtils {
 
-    private AssertUtils() {
-    }
-
     /**
-     * Checks that a specified object reference is not {@code null} and
-     * throws a customized {@link IllegalArgumentException} if it is.
+     * Checks that an object is not {@code null} and throws a customized {@link IllegalArgumentException} if
+     * it is.
      *
-     * @param obj     the object reference to check for nullity
-     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
-     * @param <T>     the type of the reference
-     * @return {@code obj} if not {@code null}
-     * @throws IllegalArgumentException if {@code obj} is {@code null}
+     * @param obj     the object reference to check for nullity.
+     * @param message the detail message to be used by thrown {@link IllegalArgumentException}.
+     * @param <T>     the type of the reference.
+     * @return {@code obj} if not {@code null}.
+     * @throws IllegalArgumentException if {@code obj} is {@code null}.
      */
     public static <T> T requireNonNull(@Nullable T obj, String message) {
         if (obj == null) {
@@ -45,11 +42,11 @@ public final class AssertUtils {
     }
 
     /**
-     * Checks that a specified condition is {@code true} and throws a
-     * customized {@link IllegalArgumentException} if it is not.
+     * Checks that a condition is accepted and throws a customized {@link IllegalArgumentException} if it is
+     * not.
      *
-     * @param condition the condition value
-     * @param message   the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
+     * @param condition if condition accepted.
+     * @param message   the detail message to be used by thrown {@link IllegalArgumentException}.
      * @throws IllegalArgumentException if {@code condition} is {@code false}.
      */
     public static void require(boolean condition, String message) {
@@ -59,13 +56,13 @@ public final class AssertUtils {
     }
 
     /**
-     * Checks that a specified {@link String} is not {@code null} or empty or backticks included and
-     * throws a customized {@link IllegalArgumentException} if it is.
+     * Checks that a specified {@link String} is not {@code null} or empty or backticks included and throws a
+     * customized {@link IllegalArgumentException} if it is.
      *
-     * @param name    the {@link String} to check for nullity or empty or backticks included
-     * @param message the detail message to be used in the event that an {@link IllegalArgumentException} is thrown
-     * @return {@code name} if not {@code null} or empty or backticks included
-     * @throws IllegalArgumentException if {@code name} is {@code null} or empty or backticks included
+     * @param name    the {@link String} to check for nullity or empty or backticks included.
+     * @param message the detail message to be used by thrown {@link IllegalArgumentException}.
+     * @return {@code name} if not {@code null} or empty or backticks included.
+     * @throws IllegalArgumentException if {@code name} is {@code null} or empty or backticks included.
      */
     public static String requireValidName(@Nullable String name, String message) {
         if (name == null || name.isEmpty() || name.indexOf('`') >= 0) {
@@ -74,4 +71,6 @@ public final class AssertUtils {
 
         return name;
     }
+
+    private AssertUtils() { }
 }
