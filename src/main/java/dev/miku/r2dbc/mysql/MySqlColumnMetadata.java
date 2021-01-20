@@ -140,7 +140,6 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
                 return Double.class;
             case DataTypes.TIMESTAMP:
             case DataTypes.DATETIME:
-            case DataTypes.TIMESTAMP2:
                 return LocalDateTime.class;
             case DataTypes.BIGINT:
                 if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {

@@ -28,6 +28,9 @@ public final class Envelopes {
      */
     public static final int SIZE_FIELD_SIZE = 3;
 
+    /**
+     * The byte size of header part.
+     */
     public static final int PART_HEADER_SIZE = SIZE_FIELD_SIZE + 1;
 
     /**
@@ -40,6 +43,5 @@ public final class Envelopes {
      */
     public static final byte TERMINAL = 0;
 
-    private Envelopes() {
-    }
+    private Envelopes() { }
 }

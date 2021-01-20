@@ -21,26 +21,32 @@ package dev.miku.r2dbc.mysql.constant;
  */
 public final class TlsVersions {
 
+    /**
+     * TLS version 1.0, not recommended. All available MySQL versions support it.
+     */
     public static final String TLS1 = "TLSv1";
 
+    /**
+     * TLS version 1.1. All available MySQL versions support it.
+     */
     public static final String TLS1_1 = "TLSv1.1";
 
     /**
-     * Supported only in Community Edition {@literal 8.0.4+} or Enterprise Edition {@literal 5.6.0+}.
-     * The {@literal '+'} means that this version or higher is included.
+     * TLS version 1.2. It is supported in 8.0.4 (or higher) Community Edition, or 5.6.0 (or higher)
+     * Enterprise Edition.
      * <p>
      * Note: The Enterprise Edition version will looks like {@literal 5.7.26-enterprise}.
      */
     public static final String TLS1_2 = "TLSv1.2";
 
     /**
-     * The {@literal TLSv1.3} is available as of MySQL 8.0.16 or higher,
-     * and requires compiling MySQL using OpenSSL 1.1.1 or higher.
+     * TLS version 1.3. It is available as of MySQL 8.0.16 or higher, and requires compiling MySQL using
+     * OpenSSL 1.1.1 or higher.
      * <p>
-     * It will not be used unless user has set it up.
+     * It will not be used unless user has set it up, because the driver cannot know which compiling library
+     * the MySQL server uses.
      */
     public static final String TLS1_3 = "TLSv1.3";
 
-    private TlsVersions() {
-    }
+    private TlsVersions() { }
 }

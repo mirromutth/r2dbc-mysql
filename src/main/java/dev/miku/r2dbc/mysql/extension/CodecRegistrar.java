@@ -27,5 +27,11 @@ import io.netty.buffer.ByteBufAllocator;
 @FunctionalInterface
 public interface CodecRegistrar extends Extension {
 
+    /**
+     * Register codec(s) into a {@link CodecRegistry} of the connection.
+     *
+     * @param allocator a {@link ByteBufAllocator} for allocate {@code ByteBuf}, non {@code null}.
+     * @param registry  the {@link CodecRegistry}, it can register multiple codecs, non {@code null}.
+     */
     void register(ByteBufAllocator allocator, CodecRegistry registry);
 }

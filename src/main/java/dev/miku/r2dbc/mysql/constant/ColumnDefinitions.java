@@ -21,6 +21,9 @@ package dev.miku.r2dbc.mysql.constant;
  */
 public final class ColumnDefinitions {
 
+    /**
+     * The data is not null.
+     */
     public static final int NOT_NULL = 1;
 
 //    public static final int PRIMARY_PART = 1 << 1; // This field is a part of the primary key
@@ -29,9 +32,11 @@ public final class ColumnDefinitions {
 //    public static final int BLOB = 1 << 4;
 
     /**
-     * Only for numeric types, like BIGINT UNSIGNED, INT UNSIGNED, etc.
-     * Note: IEEE-754 floating types (e.g. DOUBLE/FLOAT) do not supports
-     * it in MySQL 8.0+.
+     * The data is an unsigned number. Only applicable to numeric types, like BIGINT UNSIGNED, INT UNSIGNED,
+     * etc.
+     * <p>
+     * Note: IEEE-754 floating types (e.g. DOUBLE/FLOAT) do not supports it in MySQL 8.0+. When creating a
+     * column as an unsigned floating type, the server may report a warning.
      */
     public static final int UNSIGNED = 1 << 5;
 
@@ -41,9 +46,8 @@ public final class ColumnDefinitions {
     /**
      * The real type of this field is ENUMERABLE.
      * <p>
-     * Note: in order to be compatible with older drivers, MySQL server
-     * will send type as VARCHAR for type ENUMERABLE. If this flag is
-     * enabled, change data type to ENUMERABLE.
+     * Note: in order to be compatible with older drivers, MySQL server will send type as VARCHAR for type
+     * ENUMERABLE. If this flag is enabled, change data type to ENUMERABLE.
      */
     public static final int ENUMERABLE = 1 << 8;
 
@@ -53,15 +57,13 @@ public final class ColumnDefinitions {
     /**
      * The real type of this field is SET.
      * <p>
-     * Note: in order to be compatible with older drivers, MySQL server
-     * will send type as VARCHAR for type SET. If this flag is enabled,
-     * change data type to SET.
+     * Note: in order to be compatible with older drivers, MySQL server will send type as VARCHAR for type
+     * SET. If this flag is enabled, change data type to SET.
      */
     public static final int SET = 1 << 11; // type is set
 
 //    public static final int NO_DEFAULT = 1 << 12; // column has no default value
 //    public static final int ON_UPDATE_NOW = 1 << 13; // field will be set to NOW() in UPDATE statement
 
-    private ColumnDefinitions() {
-    }
+    private ColumnDefinitions() { }
 }

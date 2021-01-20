@@ -21,10 +21,19 @@ package dev.miku.r2dbc.mysql.constant;
  */
 public final class ServerStatuses {
 
+    /**
+     * Server has disabled auto commit and began a transaction.
+     */
     public static final short IN_TRANSACTION = 1;
 
+    /**
+     * Server has enabled auto commit when it does not begin a transaction.
+     */
     public static final short AUTO_COMMIT = 2;
 
+    /**
+     * There are more results following this complete message.
+     */
     public static final short MORE_RESULTS_EXISTS = 8;
 
 //    public static final short QUERY_NO_GOOD_INDEX_USED = 16;
@@ -48,6 +57,5 @@ public final class ServerStatuses {
 //    public static final short IN_TRANS_READONLY = 8192;
 //    public static final short SESSION_STATE_CHANGED = 16384;
 
-    private ServerStatuses() {
-    }
+    private ServerStatuses() { }
 }
