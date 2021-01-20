@@ -50,6 +50,14 @@ public final class ServerMessageDecoder {
 
     private final List<ByteBuf> parts = new ArrayList<>();
 
+    /**
+     * Decode a server-side message from {@link #parts} and current envelope.
+     *
+     * @param envelope      the current envelope.
+     * @param context       the connection context.
+     * @param decodeContext the decode context.
+     * @return the server-side message, or {@code null} if {@code envelope} is not last packet.
+     */
     @Nullable
     public ServerMessage decode(ByteBuf envelope, ConnectionContext context, DecodeContext decodeContext) {
         requireNonNull(envelope, "envelope must not be null");
@@ -65,6 +73,9 @@ public final class ServerMessageDecoder {
         return decodeMessage(buffers, id.intValue() & 0xFF, context, decodeContext);
     }
 
+    /**
+     * Dispose the underlying resource.
+     */
     public void dispose() {
         if (parts.isEmpty()) {
             return;
@@ -75,7 +86,8 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static ServerMessage decodeMessage(List<ByteBuf> buffers, int envelopeId, ConnectionContext context, DecodeContext decodeContext) {
+    private static ServerMessage decodeMessage(List<ByteBuf> buffers, int envelopeId,
+        ConnectionContext context, DecodeContext decodeContext) {
         if (decodeContext instanceof ResultDecodeContext) {
             return decodeResult(buffers, context, (ResultDecodeContext) decodeContext);
         } else if (decodeContext instanceof FetchDecodeContext) {
@@ -88,7 +100,8 @@ public final class ServerMessageDecoder {
             if (decodeContext instanceof CommandDecodeContext) {
                 return decodeCommandMessage(combined, context);
             } else if (decodeContext instanceof PreparedMetadataDecodeContext) {
-                return decodePreparedMetadata(combined, context, (PreparedMetadataDecodeContext) decodeContext);
+                return decodePreparedMetadata(combined, context,
+                    (PreparedMetadataDecodeContext) decodeContext);
             } else if (decodeContext instanceof PrepareQueryDecodeContext) {
                 return decodePrepareQuery(combined);
             } else if (decodeContext instanceof LoginDecodeContext) {
@@ -102,7 +115,8 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static ServerMessage decodePreparedMetadata(ByteBuf buf, ConnectionContext context, PreparedMetadataDecodeContext decodeContext) {
+    private static ServerMessage decodePreparedMetadata(ByteBuf buf, ConnectionContext context,
+        PreparedMetadataDecodeContext decodeContext) {
         short header = buf.getUnsignedByte(buf.readerIndex());
 
         if (header == ERROR) {
@@ -116,7 +130,9 @@ public final class ServerMessageDecoder {
             return decodeInMetadata(buf, header, context, decodeContext);
         }
 
-        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on prepared metadata phase", header, buf.readableBytes()));
+        throw new R2dbcNonTransientResourceException("Unknown message header 0x" +
+            Integer.toHexString(header) + " and readable bytes is " + buf.readableBytes() +
+            " on prepared metadata phase");
     }
 
     private static ServerMessage decodeFetch(List<ByteBuf> buffers, ConnectionContext context) {
@@ -132,7 +148,8 @@ public final class ServerMessageDecoder {
     }
 
     @Nullable
-    private static ServerMessage decodeResult(List<ByteBuf> buffers, ConnectionContext context, ResultDecodeContext decodeContext) {
+    private static ServerMessage decodeResult(List<ByteBuf> buffers, ConnectionContext context,
+        ResultDecodeContext decodeContext) {
         ByteBuf firstBuf = buffers.get(0);
         short header = firstBuf.getUnsignedByte(firstBuf.readerIndex());
         ErrorMessage error = decodeCheckError(buffers, header);
@@ -166,7 +183,9 @@ public final class ServerMessageDecoder {
                 break;
         }
 
-        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on prepare query phase", header, buf.readableBytes()));
+        throw new R2dbcNonTransientResourceException("Unknown message header 0x" +
+            Integer.toHexString(header) + " and readable bytes is " + buf.readableBytes() +
+            " on prepare query phase");
     }
 
     private static ServerMessage decodeCommandMessage(ByteBuf buf, ConnectionContext context) {
@@ -201,7 +220,9 @@ public final class ServerMessageDecoder {
             return ColumnCountMessage.decode(buf);
         }
 
-        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on command phase", header, buf.readableBytes()));
+        throw new R2dbcNonTransientResourceException("Unknown message header 0x" +
+            Integer.toHexString(header) + " and readable bytes is " + buf.readableBytes() +
+            " on command phase");
     }
 
     private static ServerMessage decodeLogin(int envelopeId, ByteBuf buf, ConnectionContext context) {
@@ -223,12 +244,14 @@ public final class ServerMessageDecoder {
             case EOF: // Auth exchange message or EOF message
                 if (EofMessage.isValidSize(buf.readableBytes())) {
                     return EofMessage.decode(buf);
-                } else {
-                    return ChangeAuthMessage.decode(envelopeId, buf);
                 }
+
+                return ChangeAuthMessage.decode(envelopeId, buf);
         }
 
-        throw new R2dbcPermissionDeniedException(String.format("Unknown message header 0x%x and readable bytes is %d on connection phase", header, buf.readableBytes()));
+        throw new R2dbcPermissionDeniedException("Unknown message header 0x" +
+            Integer.toHexString(header) + " and readable bytes is " + buf.readableBytes() +
+            " on connection phase");
     }
 
     @Nullable
@@ -242,14 +265,14 @@ public final class ServerMessageDecoder {
                 // success, no need release
                 envelope = null;
                 return envelopeId;
-            } else {
-                // skip the sequence Id
-                envelope.skipBytes(1);
-                buffers.add(envelope);
-                // success, no need release
-                envelope = null;
-                return null;
             }
+
+            // skip the sequence Id
+            envelope.skipBytes(1);
+            buffers.add(envelope);
+            // success, no need release
+            envelope = null;
+            return null;
         } finally {
             if (envelope != null) {
                 envelope.release();
@@ -267,14 +290,14 @@ public final class ServerMessageDecoder {
                 if (buffers.size() > 1) {
                     // Multi-buffers, must be big data row message.
                     return true;
-                } else {
-                    // Not EOF or OK.
-                    int size = firstBuf.readableBytes();
-                    return !EofMessage.isValidSize(size) && !OkMessage.isValidSize(size);
                 }
+
+                // Not EOF or OK.
+                int size = firstBuf.readableBytes();
+                return !EofMessage.isValidSize(size) && !OkMessage.isValidSize(size);
             default:
                 // If header is 0, SHOULD NOT be OK message.
-                // Because MySQL server sends OK messages always starting with 0xFE in SELECT statement result.
+                // Because MySQL sends OK messages always starting with 0xFE in SELECT statement result.
                 // Now, it is not OK message, not be error message, it must be row.
                 return true;
         }
@@ -297,7 +320,8 @@ public final class ServerMessageDecoder {
         return null;
     }
 
-    private static ServerMessage decodeRow(List<ByteBuf> buffers, ByteBuf firstBuf, short header, ConnectionContext context, String phase) {
+    private static ServerMessage decodeRow(List<ByteBuf> buffers, ByteBuf firstBuf, short header,
+        ConnectionContext context, String phase) {
         if (isRow(buffers, firstBuf, header)) {
             // FieldReader will clear the buffers.
             return new RowMessage(FieldReader.of(buffers));
@@ -335,11 +359,13 @@ public final class ServerMessageDecoder {
             buffers.clear();
         }
 
-        throw new R2dbcNonTransientResourceException(String.format("Unknown message header 0x%x and readable bytes is %d on %s phase", header, totalBytes, phase));
+        throw new R2dbcNonTransientResourceException("Unknown message header 0x" +
+            Integer.toHexString(header) + " and readable bytes is " + totalBytes + " on " + phase + " phase");
     }
 
     @Nullable
-    private static SyntheticMetadataMessage decodeInMetadata(ByteBuf buf, short header, ConnectionContext context, MetadataDecodeContext decodeContext) {
+    private static SyntheticMetadataMessage decodeInMetadata(ByteBuf buf, short header,
+        ConnectionContext context, MetadataDecodeContext decodeContext) {
         ServerMessage message;
 
         if (EOF == header && EofMessage.isValidSize(buf.readableBytes())) {

@@ -37,11 +37,6 @@ final class SslRequest41 extends SizedClientMessage implements SslRequest {
 
     private final int collationId;
 
-    /**
-     * @param envelopeId   the beginning of the envelope ID.
-     * @param capability client {@link Capability capability}.
-     * @param collationId  0 if server not support protocol 41 or has been not give collation.
-     */
     SslRequest41(int envelopeId, Capability capability, int collationId) {
         require(collationId > 0, "collationId must be a positive integer");
 

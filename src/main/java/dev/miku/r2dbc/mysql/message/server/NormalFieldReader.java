@@ -25,7 +25,8 @@ import io.netty.buffer.ByteBufUtil;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * An implementation of {@link FieldReader} considers result bytes is less or equals than {@link Integer#MAX_VALUE}.
+ * An implementation of {@link FieldReader} considers field data, which byte width/size is less than or equal
+ * to {@link Integer#MAX_VALUE}.
  */
 final class NormalFieldReader implements FieldReader {
 

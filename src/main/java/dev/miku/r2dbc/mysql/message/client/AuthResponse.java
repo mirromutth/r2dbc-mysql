@@ -23,7 +23,8 @@ import java.util.Arrays;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A message that contains only an authentication, used by full authentication or change authentication response.
+ * A message that contains only an authentication, used by full authentication or change authentication
+ * response.
  */
 public final class AuthResponse extends SizedClientMessage implements LoginClientMessage {
 

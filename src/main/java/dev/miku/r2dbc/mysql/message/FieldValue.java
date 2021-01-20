@@ -19,17 +19,27 @@ package dev.miku.r2dbc.mysql.message;
 import io.netty.util.ReferenceCounted;
 
 /**
- * A sealed interface for field value, it has 3-implementations: {@link NullFieldValue},
- * {@link NormalFieldValue} and {@link LargeFieldValue}.
+ * A sealed interface for field, it has 3-implementations: {@link NullFieldValue}, {@link NormalFieldValue}
+ * and {@link LargeFieldValue}.
  * <p>
  * WARNING: it is sealed interface, should NEVER extends or implemented by another interface or class.
  */
 public interface FieldValue extends ReferenceCounted {
 
+    /**
+     * Check if value is {@code null}.
+     *
+     * @return if value is {@code null}.
+     */
     default boolean isNull() {
         return false;
     }
 
+    /**
+     * Get an instance for {@code null} value.
+     *
+     * @return a field contains a {@code null} value.
+     */
     static FieldValue nullField() {
         return NullFieldValue.INSTANCE;
     }

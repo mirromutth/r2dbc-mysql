@@ -23,8 +23,7 @@ final class LoginDecodeContext implements DecodeContext {
 
     static final LoginDecodeContext INSTANCE = new LoginDecodeContext();
 
-    private LoginDecodeContext() {
-    }
+    private LoginDecodeContext() { }
 
     @Override
     public String toString() {

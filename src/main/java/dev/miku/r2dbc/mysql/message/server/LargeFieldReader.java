@@ -35,9 +35,9 @@ import java.util.List;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * An implementation of {@link FieldReader} for large result which bytes more than
- * {@link Integer#MAX_VALUE}, it would be exists when MySQL server return LOB types
- * (i.e. BLOB, CLOB), LONGTEXT length can be unsigned int32.
+ * An implementation of {@link FieldReader} for large result which bytes more than {@link Integer#MAX_VALUE},
+ * it would be exists when MySQL server return LOB types (i.e. BLOB, CLOB), LONGTEXT length can be unsigned
+ * int32.
  */
 final class LargeFieldReader extends AbstractReferenceCounted implements FieldReader {
 
@@ -104,11 +104,11 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
 
         List<ByteBuf> results = readSlice(currentBuf, fieldSize);
 
-        if (fieldSize <= Integer.MAX_VALUE) {
-            return new NormalFieldValue(retainedMerge(currentBuf.alloc(), results));
-        } else {
+        if (fieldSize > Integer.MAX_VALUE) {
             return retainedLargeField(results);
         }
+
+        return new NormalFieldValue(retainedMerge(currentBuf.alloc(), results));
     }
 
     @Override
@@ -116,6 +116,7 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
         for (ByteBuf buffer : buffers) {
             buffer.touch(hint);
         }
+
         return this;
     }
 
@@ -125,10 +126,17 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
     }
 
     /**
-     * @return should NEVER retain any buffer.
+     * Read a fixed length buffer from {@link #buffers}. The length can be very large, so use {@link ByteBuf}
+     * list instead of a single buffer.
+     *
+     * @param current the current {@link ByteBuf} in {@link #buffers}.
+     * @param length  the length of read.
+     * @return result buffer list, should NEVER retain any buffer.
      */
-    private List<ByteBuf> readSlice(ByteBuf buf, long length) {
-        List<ByteBuf> results = new ArrayList<>(Math.max((int) Math.min((length / Envelopes.MAX_ENVELOPE_SIZE) + 2, Byte.MAX_VALUE), 10));
+    private List<ByteBuf> readSlice(ByteBuf current, long length) {
+        ByteBuf buf = current;
+        List<ByteBuf> results = new ArrayList<>(Math.max(
+            (int) Math.min((length / Envelopes.MAX_ENVELOPE_SIZE) + 2, Byte.MAX_VALUE), 10));
         long totalSize = 0;
         int bufReadable;
 
@@ -148,7 +156,8 @@ final class LargeFieldReader extends AbstractReferenceCounted implements FieldRe
         return results;
     }
 
-    private byte[] readBytes(ByteBuf buf, int length) {
+    private byte[] readBytes(ByteBuf current, int length) {
+        ByteBuf buf = current;
         byte[] result = new byte[length];
         int resultSize = 0;
         int bufReadable;

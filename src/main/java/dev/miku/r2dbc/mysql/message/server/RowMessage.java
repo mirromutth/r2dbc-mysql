@@ -39,6 +39,13 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
         this.reader = requireNonNull(reader, "reader must not be null");
     }
 
+    /**
+     * Decode this message to an array of {@link FieldValue}.
+     *
+     * @param isBinary if decode with binary protocol.
+     * @param context  information context array.
+     * @return the {@link FieldValue} array.
+     */
     public final FieldValue[] decode(boolean isBinary, FieldInformation[] context) {
         return isBinary ? binary(context) : text(context.length);
     }
@@ -88,7 +95,8 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
 
                 bitMask <<= 1;
 
-                // Should make sure it is 0 of byte, it may change to int in future, so try not use `bitMask == 0` only.
+                // Should make sure it is 0 of byte, it may change to int in future, so try not use
+                // `bitMask == 0` only.
                 if ((bitMask & 0xFF) == 0) {
                     // An approach to circular left shift 1-bit.
                     bitMask = 1;
@@ -166,7 +174,11 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
     }
 
     /**
-     * @return {@literal 0} means field is var integer sized in binary result.
+     * Get the fixed length of specify data type, or {@literal 0} means field is var integer sized in binary
+     * result.
+     *
+     * @param type the specify data type.
+     * @return the fixed length.
      */
     private static int getFixedBinaryBytes(short type) {
         switch (type) {

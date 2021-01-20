@@ -17,7 +17,9 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 /**
- * Message sent from a MySQL server to a MySQL client.
+ * Marker interface for message sent from a MySQL server to a MySQL client.
  */
 public interface ServerMessage {
+
+    // Marker interface should be empty.
 }

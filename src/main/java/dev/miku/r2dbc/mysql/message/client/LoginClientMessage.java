@@ -21,5 +21,10 @@ package dev.miku.r2dbc.mysql.message.client;
  */
 public interface LoginClientMessage extends ClientMessage {
 
+    /**
+     * Get the current envelope ID used to serialize subsequent request messages.
+     *
+     * @return the current envelope ID.
+     */
     int getEnvelopeId();
 }

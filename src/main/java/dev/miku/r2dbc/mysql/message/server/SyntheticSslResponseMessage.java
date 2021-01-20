@@ -17,21 +17,19 @@
 package dev.miku.r2dbc.mysql.message.server;
 
 /**
- * A synthetic message for trigger SSL handshake complete handler.
+ * A synthetic message for trigger SSL handshake complete handler. It is a singleton class.
  */
 public final class SyntheticSslResponseMessage implements ServerMessage {
 
-    private static final SyntheticSslResponseMessage INSTANCE = new SyntheticSslResponseMessage();
-
-    private SyntheticSslResponseMessage() {
-    }
+    /**
+     * An instance for the singleton class.
+     */
+    public static final SyntheticSslResponseMessage INSTANCE = new SyntheticSslResponseMessage();
 
     @Override
     public String toString() {
         return "SyntheticSslResponseMessage{}";
     }
 
-    public static SyntheticSslResponseMessage getInstance() {
-        return INSTANCE;
-    }
+    private SyntheticSslResponseMessage() { }
 }

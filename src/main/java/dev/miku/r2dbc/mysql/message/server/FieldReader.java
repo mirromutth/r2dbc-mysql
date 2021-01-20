@@ -38,14 +38,18 @@ interface FieldReader extends ReferenceCounted {
     void skipOneByte();
 
     /**
+     * Read a fixed length field as a byte array.
+     *
      * @param length must be a positive integer.
-     * @return length fixed field.
+     * @return the byte array.
      */
     byte[] readSizeFixedBytes(int length);
 
     /**
+     * Read a fixed length field as a {@link FieldValue}.
+     *
      * @param length must be a positive integer.
-     * @return length fixed field.
+     * @return the {@link FieldValue}.
      */
     FieldValue readSizeFixedField(int length);
 

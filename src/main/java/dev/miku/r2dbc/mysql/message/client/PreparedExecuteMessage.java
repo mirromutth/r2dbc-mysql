@@ -86,7 +86,8 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
 
     @Override
     public String toString() {
-        return String.format("PreparedExecuteMessage{statementId=%d, immediate=%b, has %d parameters}", statementId, immediate, values.length);
+        return "PreparedExecuteMessage{statementId=" + statementId + ", immediate=" + immediate + ", has " +
+            values.length + " parameters}";
     }
 
     @Override

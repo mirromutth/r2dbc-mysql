@@ -27,9 +27,6 @@ final class NullFieldValue implements FieldValue {
 
     static final NullFieldValue INSTANCE = new NullFieldValue();
 
-    private NullFieldValue() {
-    }
-
     @Override
     public boolean isNull() {
         return true;
@@ -69,4 +66,6 @@ final class NullFieldValue implements FieldValue {
     public boolean release(int decrement) {
         return false;
     }
+
+    private NullFieldValue() { }
 }

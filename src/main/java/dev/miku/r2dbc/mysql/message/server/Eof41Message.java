@@ -61,26 +61,22 @@ final class Eof41Message implements EofMessage, WarningMessage, ServerStatusMess
 
         Eof41Message that = (Eof41Message) o;
 
-        if (warnings != that.warnings) {
-            return false;
-        }
-        return serverStatuses == that.serverStatuses;
+        return warnings == that.warnings && serverStatuses == that.serverStatuses;
     }
 
     @Override
     public int hashCode() {
-        int result = warnings;
-        result = 31 * result + (int) serverStatuses;
-        return result;
+        return 31 * warnings + serverStatuses;
     }
 
     @Override
     public String toString() {
-        if (warnings != 0) {
-            return String.format("Eof41Message{warnings=%d, serverStatuses=%x}", warnings, serverStatuses);
-        } else {
-            return String.format("Eof41Message{serverStatuses=%x}", serverStatuses);
+        if (warnings == 0) {
+            return "Eof41Message{serverStatuses=" + Integer.toHexString(serverStatuses) + '}';
         }
+
+        return "Eof41Message{warnings=" + warnings + ", serverStatuses=" +
+            Integer.toHexString(serverStatuses) + '}';
     }
 
     static Eof41Message decode(ByteBuf buf) {

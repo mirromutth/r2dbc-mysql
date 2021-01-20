@@ -87,9 +87,8 @@ final class HandshakeV9Request implements HandshakeRequest {
 
     @Override
     public int hashCode() {
-        int result = header.hashCode();
-        result = 31 * result + envelopeId;
-        return 31 * result + Arrays.hashCode(salt);
+        int hash = 31 * header.hashCode() + envelopeId;
+        return 31 * hash + Arrays.hashCode(salt);
     }
 
     @Override
@@ -107,7 +106,7 @@ final class HandshakeV9Request implements HandshakeRequest {
         byte[] salt;
 
         if (buf.getByte(buf.writerIndex() - 1) == TERMINAL) {
-            salt = ByteBufUtil.getBytes(buf, buf.readerIndex(),  bytes - 1);
+            salt = ByteBufUtil.getBytes(buf, buf.readerIndex(), bytes - 1);
         } else {
             salt = ByteBufUtil.getBytes(buf);
         }

@@ -22,8 +22,8 @@ import io.netty.buffer.ByteBuf;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 
 /**
- * A message that is start envelope for {@literal SELECT} query result,
- * {@link #totalColumns}  how many columns will be returned for the result.
+ * A message that is start envelope for {@literal SELECT} query result, {@link #totalColumns}  how many
+ * columns will be returned for the result.
  */
 public final class ColumnCountMessage implements ServerMessage {
 
@@ -65,6 +65,6 @@ public final class ColumnCountMessage implements ServerMessage {
 
     @Override
     public String toString() {
-        return String.format("ColumnCountMessage{totalColumns=%d}", totalColumns);
+        return "ColumnCountMessage{totalColumns=" + totalColumns + '}';
     }
 }

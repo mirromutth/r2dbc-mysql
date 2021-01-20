@@ -25,11 +25,9 @@ import static dev.miku.r2dbc.mysql.constant.Envelopes.TERMINAL;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * The handshake generic header, all protocol versions contains
- * this data whether V9 or V10.
+ * The handshake generic header, all protocol versions contains this data whether V9 or V10.
  * <p>
- * If MySQL protocol will be released V11 or higher versions,
- * may need to reorganize the generic headers.
+ * If MySQL protocol will be released V11 or higher versions, may need to reorganize the generic headers.
  */
 public final class HandshakeHeader {
 
@@ -46,8 +44,8 @@ public final class HandshakeHeader {
     }
 
     /**
-     * The first byte defines the MySQL handshake version those
-     * permit the MySQL server to add support for newer protocols.
+     * The first byte defines the MySQL handshake version those permit the MySQL server to add support for
+     * newer protocols.
      *
      * @return The handshake version by MySQL server used.
      */
@@ -56,14 +54,18 @@ public final class HandshakeHeader {
     }
 
     /**
-     * @return MySQL server version
+     * Get the MySQL server version.
+     *
+     * @return MySQL server version.
      */
     public ServerVersion getServerVersion() {
         return serverVersion;
     }
 
     /**
-     * @return The connection id by MySQL server given, can NOT promise positive integer.
+     * Get the connection identifier by MySQL server given, it may not be a positive integer.
+     *
+     * @return the connection identifier.
      */
     public int getConnectionId() {
         return connectionId;
@@ -77,7 +79,8 @@ public final class HandshakeHeader {
 
     @Override
     public String toString() {
-        return String.format("HandshakeHeader{protocolVersion=%d, serverVersion=%s, connectionId=%d}", protocolVersion, serverVersion, connectionId);
+        return "HandshakeHeader{protocolVersion=" + protocolVersion + ", serverVersion=" + serverVersion +
+            ", connectionId=" + connectionId + '}';
     }
 
     @Override
@@ -91,21 +94,14 @@ public final class HandshakeHeader {
 
         HandshakeHeader that = (HandshakeHeader) o;
 
-        if (protocolVersion != that.protocolVersion) {
-            return false;
-        }
-        if (connectionId != that.connectionId) {
-            return false;
-        }
-        return serverVersion.equals(that.serverVersion);
+        return protocolVersion == that.protocolVersion && connectionId == that.connectionId &&
+            serverVersion.equals(that.serverVersion);
     }
 
     @Override
     public int hashCode() {
-        int result = protocolVersion;
-        result = 31 * result + serverVersion.hashCode();
-        result = 31 * result + connectionId;
-        return result;
+        int hash = 31 * protocolVersion + serverVersion.hashCode();
+        return 31 * hash + connectionId;
     }
 
     static String readCStringAscii(ByteBuf buf) {

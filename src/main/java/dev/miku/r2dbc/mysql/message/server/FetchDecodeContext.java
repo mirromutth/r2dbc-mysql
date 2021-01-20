@@ -28,6 +28,5 @@ final class FetchDecodeContext implements DecodeContext {
         return "DecodeContext-Fetch";
     }
 
-    private FetchDecodeContext() {
-    }
+    private FetchDecodeContext() { }
 }

@@ -25,15 +25,29 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
  */
 public interface SslRequest extends LoginClientMessage {
 
+    /**
+     * Get current {@link Capability} of the connection.
+     *
+     * @return the {@link Capability}.
+     */
     Capability getCapability();
 
+    /**
+     * Construct an instance of {@link SslRequest}, it is implemented by the protocol version that is given by
+     * {@link Capability}.
+     *
+     * @param envelopeId  the beginning envelope ID of this message.
+     * @param capability  the current {@link Capability}.
+     * @param collationId the {@code CharCollation} ID, or 0 if server does not return a collation ID.
+     * @return the instance implemented by the specified protocol version.
+     */
     static SslRequest from(int envelopeId, Capability capability, int collationId) {
         require(capability.isSslEnabled(), "capability must be SSL enabled");
 
         if (capability.isProtocol41()) {
             return new SslRequest41(envelopeId, capability, collationId);
-        } else {
-            return new SslRequest320(envelopeId, capability);
         }
+
+        return new SslRequest320(envelopeId, capability);
     }
 }

@@ -24,14 +24,14 @@ import java.util.Objects;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A message contains a bundle of {@link DefinitionMetadataMessage}s, {@link #isCompleted()} returning
- * {@code true} means it is last metadata bundle of current query.
+ * A message contains a bundle of {@link DefinitionMetadataMessage}s, when the {@link #isCompleted()}
+ * returning {@code true} means it is last metadata bundle of current query.
  * <p>
  * Note: all subclasses are synthetic messages, not real exists.
  */
 public final class SyntheticMetadataMessage implements ServerMessage {
 
-    static final DefinitionMetadataMessage[] EMPTY_METADATA = {};
+    static final DefinitionMetadataMessage[] EMPTY_METADATA = { };
 
     private final boolean completed;
 
@@ -40,7 +40,8 @@ public final class SyntheticMetadataMessage implements ServerMessage {
     @Nullable
     private final EofMessage eof;
 
-    SyntheticMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages, @Nullable EofMessage eof) {
+    SyntheticMetadataMessage(boolean completed, DefinitionMetadataMessage[] messages,
+        @Nullable EofMessage eof) {
         this.completed = completed;
         this.messages = requireNonNull(messages, "messages must not be null");
         this.eof = eof;
@@ -91,10 +92,12 @@ public final class SyntheticMetadataMessage implements ServerMessage {
     @Override
     public String toString() {
         if (messages.length <= 3) {
-            return String.format("SyntheticMetadataMessage{completed=%b, messages=%s, eof=%s}", completed, Arrays.toString(messages), eof);
+            return "SyntheticMetadataMessage{completed=" + completed + ", messages=" +
+                Arrays.toString(messages) + ", eof=" + eof + '}';
         }
 
         // MySQL support 4096 columns for pre-table, no need print large bundle of messages in here.
-        return String.format("SyntheticMetadataMessage{completed=%b, messages=[%s, %s, ...more %d messages], eof=%s}", completed, messages[0], messages[1], messages.length - 2, eof);
+        return "SyntheticMetadataMessage{completed=" + completed + ", messages=[" + messages[0] + ", " +
+            messages[1] + ", ...more " + (messages.length - 2) + " messages], eof=" + eof + '}';
     }
 }

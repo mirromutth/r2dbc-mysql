@@ -120,7 +120,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         }
 
         if (mode != SslMode.TUNNEL) {
-            ctx.fireChannelRead(SyntheticSslResponseMessage.getInstance());
+            ctx.fireChannelRead(SyntheticSslResponseMessage.INSTANCE);
         }
 
         // Remove self because it is useless. (kick down the ladder!)

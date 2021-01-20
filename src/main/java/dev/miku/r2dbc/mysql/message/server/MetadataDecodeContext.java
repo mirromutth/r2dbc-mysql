@@ -50,13 +50,14 @@ abstract class MetadataDecodeContext implements DecodeContext {
                 }
 
                 return bundle;
-            } else {
-                // Should not check complete, EOF message will be complete signal.
-                return null;
             }
+
+            // Should not check complete, EOF message will be complete signal.
+            return null;
         } else if (message instanceof EofMessage) {
             if (eofDeprecated) {
-                throw new IllegalStateException(String.format("Unexpected %s because server has deprecated EOF", message));
+                throw new IllegalStateException("Unexpected " + message +
+                    " because server has deprecated EOF");
             }
 
             // Current columns index is also last index of metadata after put, see `putMetadata`.
@@ -65,33 +66,42 @@ abstract class MetadataDecodeContext implements DecodeContext {
 
             if (bundle == null) {
                 if (logger.isErrorEnabled()) {
-                    logger.error("Unexpected {} when metadata unfilled, fill index: {}, checkpoint(s): {}", message, currentIndex, loggingPoints());
+                    logger.error("Unexpected {} when metadata unfilled, fill index: {}, checkpoint(s): {}",
+                        message, currentIndex, loggingPoints());
                 }
             } else {
                 logger.debug("Respond a metadata bundle by {}", message);
             }
 
             return bundle;
-        } else {
-            throw new IllegalStateException(String.format("Unknown message type %s when reading metadata", message.getClass().getSimpleName()));
         }
+
+        throw new IllegalStateException("Unknown message type " + message.getClass().getSimpleName() +
+            " when reading metadata");
     }
 
     @Nullable
     abstract protected SyntheticMetadataMessage checkComplete(int index, @Nullable EofMessage eof);
 
     /**
-     * @return index of metadata after put
+     * Put a column metadata message into this context.
+     *
+     * @param metadata the column metadata message.
+     * @return current index after putting the metadata.
      */
     abstract protected int putMetadata(DefinitionMetadataMessage metadata);
 
     /**
-     * @return current index, for {@link #checkComplete(int, EofMessage)} on EOF message come
+     * Get the current index, for {@link #checkComplete(int, EofMessage)} when receive a EOF message.
+     *
+     * @return the current index.
      */
     abstract protected int currentIndex();
 
     /**
-     * @return serialized checkpoints used by logger
+     * Get checkpoints for logging.
+     *
+     * @return serializable object, like {@link String} or {@link Integer}.
      */
     abstract protected Object loggingPoints();
 }

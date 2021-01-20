@@ -58,9 +58,9 @@ final class ResultDecodeContext extends MetadataDecodeContext {
 
             // In results, row metadata has filled-up does not means complete. (has rows or OK/EOF following)
             return new SyntheticMetadataMessage(false, metadataMessages, eof);
-        } else {
-            return null;
         }
+
+        return null;
     }
 
     @Override
@@ -69,7 +69,8 @@ final class ResultDecodeContext extends MetadataDecodeContext {
         int size = metadataMessages.length;
 
         if (index >= size) {
-            throw new IllegalStateException(String.format("columns' metadata has filled up, now index: %d, array length: %d", index, size));
+            throw new IllegalStateException("Columns metadata has filled up, now index: " + index +
+                ", array length: " + size);
         }
 
         metadataMessages[index] = metadata;

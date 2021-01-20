@@ -27,9 +27,6 @@ final class Eof320Message implements EofMessage {
 
     static final Eof320Message INSTANCE = new Eof320Message();
 
-    private Eof320Message() {
-    }
-
     @Override
     public boolean isDone() {
         // If server use protocol 3.20, it should not supports multi-results.
@@ -40,4 +37,6 @@ final class Eof320Message implements EofMessage {
     public String toString() {
         return "Eof320Message{}";
     }
+
+    private Eof320Message() { }
 }

@@ -27,11 +27,10 @@ import java.nio.charset.Charset;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * OK message, it may be a complete signal of command, or a succeed signal for
- * the Connection Phase of connection lifecycle.
+ * OK message, it may be a complete signal of command, or a succeed signal for the Connection Phase of
+ * connection lifecycle.
  * <p>
- * Note: OK message are also used to indicate EOF and EOF message are deprecated
- * as of MySQL 5.7.5.
+ * Note: OK message are also used to indicate EOF and EOF message are deprecated as of MySQL 5.7.5.
  */
 public final class OkMessage implements WarningMessage, ServerStatusMessage, CompleteMessage {
 
@@ -50,10 +49,8 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
 
     private final String information;
 
-    private OkMessage(
-        long affectedRows, long lastInsertId, short serverStatuses,
-        int warnings, String information
-    ) {
+    private OkMessage(long affectedRows, long lastInsertId, short serverStatuses, int warnings,
+        String information) {
         this.affectedRows = affectedRows;
         this.lastInsertId = lastInsertId;
         this.serverStatuses = serverStatuses;
@@ -106,21 +103,22 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
     public int hashCode() {
         int result = (int) (affectedRows ^ (affectedRows >>> 32));
         result = 31 * result + (int) (lastInsertId ^ (lastInsertId >>> 32));
-        result = 31 * result + (int) serverStatuses;
+        result = 31 * result + serverStatuses;
         result = 31 * result + warnings;
-        result = 31 * result + information.hashCode();
-        return result;
+        return 31 * result + information.hashCode();
     }
 
     @Override
     public String toString() {
-        if (warnings != 0) {
-            return String.format("OkMessage{affectedRows=%d, lastInsertId=%d, serverStatuses=%x, warnings=%d, information='%s'}",
-                affectedRows, lastInsertId, serverStatuses, warnings, information);
-        } else {
-            return String.format("OkMessage{affectedRows=%d, lastInsertId=%d, serverStatuses=%x, information='%s'}",
-                affectedRows, lastInsertId, serverStatuses, information);
+        if (warnings == 0) {
+            return "OkMessage{affectedRows=" + affectedRows + ", lastInsertId=" + lastInsertId +
+                ", serverStatuses=" + Integer.toHexString(serverStatuses) + ", information='" + information +
+                "'}";
         }
+
+        return "OkMessage{affectedRows=" + affectedRows + ", lastInsertId=" + lastInsertId +
+            ", serverStatuses=" + Integer.toHexString(serverStatuses) + ", warnings=" + warnings +
+            ", information='" + information + "'}";
     }
 
     static boolean isValidSize(int bytes) {
@@ -151,22 +149,25 @@ public final class OkMessage implements WarningMessage, ServerStatusMessage, Com
             int sizeAfterVarInt = VarIntUtils.checkNextVarInt(buf);
 
             if (sizeAfterVarInt < 0) {
-                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, buf.toString(charset));
-            } else {
-                int readerIndex = buf.readerIndex();
-                long size = VarIntUtils.readVarInt(buf);
-                String information;
-
-                if (size > sizeAfterVarInt) {
-                    information = buf.toString(readerIndex, buf.writerIndex() - readerIndex, charset);
-                } else {
-                    information = buf.toString(buf.readerIndex(), (int) size, charset);
-                }
-                // Ignore state information of session track, it is not human readable and useless for R2DBC client.
-                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);
+                return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings,
+                    buf.toString(charset));
             }
-        } else { // maybe have no human-readable message
-            return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, "");
+
+            int readerIndex = buf.readerIndex();
+            long size = VarIntUtils.readVarInt(buf);
+            String information;
+
+            if (size > sizeAfterVarInt) {
+                information = buf.toString(readerIndex, buf.writerIndex() - readerIndex, charset);
+            } else {
+                information = buf.toString(buf.readerIndex(), (int) size, charset);
+            }
+
+            // Ignore session track, it is not human readable and useless for R2DBC client.
+            return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, information);
         }
+
+        // Maybe have no human-readable message
+        return new OkMessage(affectedRows, lastInsertId, serverStatuses, warnings, "");
     }
 }

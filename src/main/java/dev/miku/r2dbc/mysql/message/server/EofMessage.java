@@ -25,14 +25,26 @@ import io.netty.buffer.ByteBuf;
  */
 public interface EofMessage extends CompleteMessage {
 
+    /**
+     * Decode EOF message by a {@link ByteBuf}, automatically identify protocol version.
+     *
+     * @param buf the {@link ByteBuf}.
+     * @return decoded EOF message.
+     */
     static EofMessage decode(ByteBuf buf) {
         if (buf.readableBytes() >= Eof41Message.SIZE) {
             return Eof41Message.decode(buf);
-        } else {
-            return Eof320Message.INSTANCE;
         }
+
+        return Eof320Message.INSTANCE;
     }
 
+    /**
+     * Check whether the length of buffer is the valid length for decoding the EOF message.
+     *
+     * @param readableBytes the length of buffer.
+     * @return if the length valid.
+     */
     static boolean isValidSize(int readableBytes) {
         return readableBytes == Eof320Message.SIZE || readableBytes == Eof41Message.SIZE;
     }
