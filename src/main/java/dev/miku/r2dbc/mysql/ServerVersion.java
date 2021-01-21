@@ -24,15 +24,11 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class ServerVersion implements Comparable<ServerVersion> {
 
-    private static final String[] ENTERPRISES = new String[]{
-        "enterprise",
-        "commercial",
-        "advanced"
-    };
+    private static final String[] ENTERPRISES = new String[] { "enterprise", "commercial", "advanced" };
 
     /**
-     * Unresolved version string, do NOT use it on {@link #hashCode()},
-     * {@link #equals(Object)} or {@link #compareTo(ServerVersion)}.
+     * Unresolved/origin version pattern, do NOT use it on {@link #hashCode()}, {@link #equals(Object)} or
+     * {@link #compareTo(ServerVersion)}.
      */
     private transient final String origin;
 
@@ -50,15 +46,21 @@ public final class ServerVersion implements Comparable<ServerVersion> {
     }
 
     /**
-     * Returns whether the current {@link ServerVersion} is greater (higher, newer) or the same as the given one.
+     * Returns whether the current {@link ServerVersion} is greater than or equal to the given one.
      *
-     * @param version the give one
-     * @return {@code true} if greater or the same as {@code version}, otherwise {@code false}
+     * @param version the give one.
+     * @return if greater or the same as {@code version}.
      */
     public boolean isGreaterThanOrEqualTo(ServerVersion version) {
         return compareTo(version) >= 0;
     }
 
+    /**
+     * Returns whether the current {@link ServerVersion} is less than given one.
+     *
+     * @param version the give one
+     * @return if less than {@code version}.
+     */
     public boolean isLessThan(ServerVersion version) {
         return compareTo(version) < 0;
     }
@@ -91,6 +93,11 @@ public final class ServerVersion implements Comparable<ServerVersion> {
         return patch;
     }
 
+    /**
+     * Checks if the version is enterprise edition.
+     *
+     * @return if is enterprise edition.
+     */
     public boolean isEnterprise() {
         for (String enterprise : ENTERPRISES) {
             // Maybe should ignore case?
@@ -118,19 +125,17 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     @Override
     public int hashCode() {
-        int result = major;
-        result = 31 * result + minor;
-        result = 31 * result + patch;
-        return result;
+        int hash = 31 * major + minor;
+        return 31 * hash + patch;
     }
 
     @Override
     public String toString() {
         if (origin.isEmpty()) {
             return String.format("%d.%d.%d", major, minor, patch);
-        } else {
-            return origin;
         }
+
+        return origin;
     }
 
     /**
@@ -138,13 +143,13 @@ public final class ServerVersion implements Comparable<ServerVersion> {
      *
      * @param version origin version string.
      * @return A {@link ServerVersion} that value decode from {@code version}.
-     * @throws IllegalArgumentException if {@code version} is null, or any version part overflows to a negative integer.
+     * @throws IllegalArgumentException if {@code version} is null, or any version part overflow.
      */
     public static ServerVersion parse(String version) {
         requireNonNull(version, "version must not be null");
 
         int length = version.length();
-        int[] index = new int[]{0};
+        int[] index = new int[] { 0 };
         int major = readInt(version, length, index);
 
         if (index[0] >= length) {
@@ -211,9 +216,9 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
             if (ch < '0' || ch > '9') {
                 break;
-            } else {
-                ans = ans * 10 + (ch - '0');
             }
+
+            ans = ans * 10 + (ch - '0');
         }
 
         index[0] = i;

@@ -33,7 +33,8 @@ import static dev.miku.r2dbc.mysql.util.InternalArrays.EMPTY_STRINGS;
  */
 public final class MySqlSslConfiguration {
 
-    private static final MySqlSslConfiguration DISABLED = new MySqlSslConfiguration(SslMode.DISABLED, EMPTY_STRINGS, null, null, null, null, null, null);
+    private static final MySqlSslConfiguration DISABLED = new MySqlSslConfiguration(SslMode.DISABLED,
+        EMPTY_STRINGS, null, null, null, null, null, null);
 
     private final SslMode sslMode;
 
@@ -57,11 +58,10 @@ public final class MySqlSslConfiguration {
     @Nullable
     private final Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer;
 
-    private MySqlSslConfiguration(
-        SslMode sslMode, String[] tlsVersion, @Nullable HostnameVerifier sslHostnameVerifier, @Nullable String sslCa,
-        @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert,
-        @Nullable Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer
-    ) {
+    private MySqlSslConfiguration(SslMode sslMode, String[] tlsVersion,
+        @Nullable HostnameVerifier sslHostnameVerifier, @Nullable String sslCa, @Nullable String sslKey,
+        @Nullable CharSequence sslKeyPassword, @Nullable String sslCert,
+        @Nullable Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer) {
         this.sslMode = sslMode;
         this.tlsVersion = tlsVersion;
         this.sslHostnameVerifier = sslHostnameVerifier;
@@ -105,6 +105,13 @@ public final class MySqlSslConfiguration {
         return sslCert;
     }
 
+    /**
+     * Customizes a {@link SslContextBuilder} that customizer was specified by configuration, or do nothing if
+     * the customizer was not set.
+     *
+     * @param builder the {@link SslContextBuilder}.
+     * @return the {@code builder}.
+     */
     public SslContextBuilder customizeSslContext(SslContextBuilder builder) {
         if (sslContextBuilderCustomizer == null) {
             return builder;
@@ -134,8 +141,9 @@ public final class MySqlSslConfiguration {
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(sslMode, sslHostnameVerifier, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
-        return 31 * result + Arrays.hashCode(tlsVersion);
+        int hash = Objects.hash(sslMode, sslHostnameVerifier, sslCa, sslKey, sslKeyPassword, sslCert,
+            sslContextBuilderCustomizer);
+        return 31 * hash + Arrays.hashCode(tlsVersion);
     }
 
     @Override
@@ -144,19 +152,20 @@ public final class MySqlSslConfiguration {
             return "MySqlSslConfiguration{sslMode=DISABLED}";
         }
 
-        return String.format("MySqlSslConfiguration{sslMode=%s, tlsVersion=%s, sslHostnameVerifier=%s, sslCa='%s', sslKey='%s', sslKeyPassword=REDACTED, sslCert='%s', sslContextBuilderCustomizer=%s}",
-            sslMode, Arrays.toString(tlsVersion), sslHostnameVerifier, sslCa, sslKey, sslCert, sslContextBuilderCustomizer);
+        return "MySqlSslConfiguration{sslMode=" + sslMode + ", tlsVersion=" + Arrays.toString(tlsVersion) +
+            ", sslHostnameVerifier=" + sslHostnameVerifier + ", sslCa='" + sslCa + "', sslKey='" + sslKey +
+            "', sslKeyPassword=REDACTED, sslCert='" + sslCert + "', sslContextBuilderCustomizer=" +
+            sslContextBuilderCustomizer + '}';
     }
 
     static MySqlSslConfiguration disabled() {
         return DISABLED;
     }
 
-    static MySqlSslConfiguration create(
-        SslMode sslMode, String[] tlsVersion, @Nullable HostnameVerifier sslHostnameVerifier, @Nullable String sslCa,
-        @Nullable String sslKey, @Nullable CharSequence sslKeyPassword, @Nullable String sslCert,
-        @Nullable Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer
-    ) {
+    static MySqlSslConfiguration create(SslMode sslMode, String[] tlsVersion,
+        @Nullable HostnameVerifier sslHostnameVerifier, @Nullable String sslCa, @Nullable String sslKey,
+        @Nullable CharSequence sslKeyPassword, @Nullable String sslCert,
+        @Nullable Function<SslContextBuilder, SslContextBuilder> sslContextBuilderCustomizer) {
         requireNonNull(sslMode, "sslMode must not be null");
 
         if (sslMode == SslMode.DISABLED) {
@@ -165,6 +174,7 @@ public final class MySqlSslConfiguration {
 
         requireNonNull(tlsVersion, "tlsVersion must not be null");
 
-        return new MySqlSslConfiguration(sslMode, tlsVersion, sslHostnameVerifier, sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
+        return new MySqlSslConfiguration(sslMode, tlsVersion, sslHostnameVerifier, sslCa, sslKey,
+            sslKeyPassword, sslCert, sslContextBuilderCustomizer);
     }
 }

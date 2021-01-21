@@ -61,10 +61,9 @@ public final class MySqlConnection implements Connection {
     private static final int PREFIX_LENGTH = 6;
 
     /**
-     * If MySQL server version greater than or equal to {@literal 8.0.3}, or greater than
-     * or equal to {@literal 5.7.20} and less than {@literal 8.0.0}, the column name of
-     * current session isolation level will be {@literal @@transaction_isolation},
-     * otherwise it is {@literal @@tx_isolation}.
+     * If MySQL server version greater than or equal to {@literal 8.0.3}, or greater than or equal to
+     * {@literal 5.7.20} and less than {@literal 8.0.0}, the column name of current session isolation level
+     * will be {@literal @@transaction_isolation}, otherwise it is {@literal @@tx_isolation}.
      *
      * @see #init judge server version before get the isolation level.
      */
@@ -78,16 +77,17 @@ public final class MySqlConnection implements Connection {
      * Convert initialize result to {@link InitData}.
      */
     private static final Function<MySqlResult, Publisher<InitData>> INIT_HANDLER = r ->
-        r.map((row, meta) -> new InitData(convertIsolationLevel(row.get(0, String.class)), row.get(1, String.class), null));
+        r.map((row, meta) -> new InitData(convertIsolationLevel(row.get(0, String.class)),
+            row.get(1, String.class), null));
 
-    private static final Function<MySqlResult, Publisher<InitData>> FULL_INIT_HANDLER = r -> r.map((row, meta) -> {
+    private static final Function<MySqlResult, Publisher<InitData>> FULL_INIT = r -> r.map((row, meta) -> {
         IsolationLevel level = convertIsolationLevel(row.get(0, String.class));
         String product = row.get(1, String.class);
         String systemTimeZone = row.get(2, String.class);
         String timeZone = row.get(3, String.class);
         ZoneId zoneId;
 
-        if (timeZone == null || timeZone.isEmpty() || "SYSTEM".equals(timeZone)) {
+        if (timeZone == null || timeZone.isEmpty() || "SYSTEM".equalsIgnoreCase(timeZone)) {
             if (systemTimeZone == null || systemTimeZone.isEmpty()) {
                 logger.warn("MySQL does not return any timezone, trying to use system default timezone");
                 zoneId = ZoneId.systemDefault();
@@ -101,10 +101,11 @@ public final class MySqlConnection implements Connection {
         return new InitData(level, product, zoneId);
     });
 
-    private static final BiConsumer<ServerMessage, SynchronousSink<Boolean>> PING_HANDLER = (message, sink) -> {
+    private static final BiConsumer<ServerMessage, SynchronousSink<Boolean>> PING = (message, sink) -> {
         if (message instanceof ErrorMessage) {
             ErrorMessage msg = (ErrorMessage) message;
-            logger.debug("Remote validate failed: [{}] [{}] {}", msg.getErrorCode(), msg.getSqlState(), msg.getErrorMessage());
+            logger.debug("Remote validate failed: [{}] [{}] {}", msg.getErrorCode(), msg.getSqlState(),
+                msg.getErrorMessage());
             sink.next(false);
             sink.complete();
         } else if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
@@ -138,21 +139,17 @@ public final class MySqlConnection implements Connection {
      * Current isolation level inferred by past statements.
      * <p>
      * Inference rules:
-     * <ol>
-     * <li>In the beginning, it is also {@link #sessionLevel}.</li>
-     * <li>After the user calls {@link #setTransactionIsolationLevel(IsolationLevel)}, it will change to the user-specified value.</li>
+     * <ol><li>In the beginning, it is also {@link #sessionLevel}.</li>
+     * <li>After the user calls {@link #setTransactionIsolationLevel(IsolationLevel)}, it will change to
+     * the user-specified value.</li>
      * <li>After the end of a transaction (commit or rollback), it will recover to {@link #sessionLevel}.</li>
      * </ol>
      */
     private volatile IsolationLevel currentLevel;
 
-    /**
-     * Visible for unit tests.
-     */
-    MySqlConnection(
-        Client client, ConnectionContext context, Codecs codecs, IsolationLevel level, QueryCache queryCache,
-        PrepareCache prepareCache, @Nullable String product, @Nullable Predicate<String> prepare
-    ) {
+    MySqlConnection(Client client, ConnectionContext context, Codecs codecs, IsolationLevel level,
+        QueryCache queryCache, PrepareCache prepareCache, @Nullable String product,
+        @Nullable Predicate<String> prepare) {
         this.client = client;
         this.context = context;
         this.sessionLevel = level;
@@ -167,7 +164,7 @@ public final class MySqlConnection implements Connection {
         if (this.batchSupported) {
             logger.debug("Batch is supported by server");
         } else {
-            logger.warn("The MySQL server does not support batch executing, fallback to executing one-by-one");
+            logger.warn("The MySQL server does not support batch, fallback to executing one-by-one");
         }
     }
 
@@ -209,9 +206,9 @@ public final class MySqlConnection implements Connection {
     public MySqlBatch createBatch() {
         if (batchSupported) {
             return new MySqlBatchingBatch(client, codecs, context);
-        } else {
-            return new MySqlSyntheticBatch(client, codecs, context);
         }
+
+        return new MySqlSyntheticBatch(client, codecs, context);
     }
 
     @Override
@@ -224,7 +221,7 @@ public final class MySqlConnection implements Connection {
             if (isInTransaction()) {
                 return QueryFlow.executeVoid(client, sql);
             } else if (batchSupported) {
-                // See TestKit.savePointStartsTransaction, if connection does not in transaction, then starts transaction.
+                // If connection does not in transaction, then starts transaction.
                 return QueryFlow.executeVoid(client, "BEGIN;" + sql);
             } else {
                 return QueryFlow.executeVoid(client, "BEGIN", sql);
@@ -232,11 +229,6 @@ public final class MySqlConnection implements Connection {
         });
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * @param sql the SQL of the statement, should include only one-statement, otherwise stream terminate disordered.
-     */
     @Override
     public MySqlStatement createStatement(String sql) {
         requireNonNull(sql, "sql must not be null");
@@ -244,22 +236,24 @@ public final class MySqlConnection implements Connection {
         Query query = queryCache.get(sql);
 
         if (query.isSimple()) {
-            if (prepare == null || !prepare.test(sql)) {
-                logger.debug("Create a simple statement provided by text query");
-                return new TextSimpleStatement(client, codecs, context, sql);
-            } else {
+            if (prepare != null && prepare.test(sql)) {
                 logger.debug("Create a simple statement provided by prepare query");
                 return new PrepareSimpleStatement(client, codecs, context, sql, prepareCache);
             }
-        } else {
-            if (prepare == null) {
-                logger.debug("Create a parametrized statement provided by text query");
-                return new TextParametrizedStatement(client, codecs, query, context);
-            } else {
-                logger.debug("Create a parametrized statement provided by prepare query");
-                return new PrepareParametrizedStatement(client, codecs, query, context, prepareCache);
-            }
+
+            logger.debug("Create a simple statement provided by text query");
+
+            return new TextSimpleStatement(client, codecs, context, sql);
         }
+
+        if (prepare == null) {
+            logger.debug("Create a parametrized statement provided by text query");
+            return new TextParametrizedStatement(client, codecs, query, context);
+        }
+
+        logger.debug("Create a parametrized statement provided by prepare query");
+
+        return new PrepareParametrizedStatement(client, codecs, query, context, prepareCache);
     }
 
     @Override
@@ -293,8 +287,8 @@ public final class MySqlConnection implements Connection {
     }
 
     /**
-     * MySQL does not have any way to query the isolation level of the current transaction,
-     * only inferred from past statements, so driver can not make sure the result is right.
+     * MySQL does not have any way to query the isolation level of the current transaction, only inferred from
+     * past statements, so driver can not make sure the result is right.
      * <p>
      * See https://bugs.mysql.com/bug.php?id=53341
      * <p>
@@ -310,7 +304,7 @@ public final class MySqlConnection implements Connection {
         requireNonNull(isolationLevel, "isolationLevel must not be null");
 
         // Set next transaction isolation level.
-        return QueryFlow.executeVoid(client, String.format("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel.asSql()))
+        return QueryFlow.executeVoid(client, "SET TRANSACTION ISOLATION LEVEL " + isolationLevel.asSql())
             .doOnSuccess(ignored -> currentLevel = isolationLevel);
     }
 
@@ -327,11 +321,11 @@ public final class MySqlConnection implements Connection {
                 return Mono.just(false);
             }
 
-            return client.exchange(PingMessage.INSTANCE, PING_HANDLER)
+            return client.exchange(PingMessage.INSTANCE, PING)
                 .last()
                 .onErrorResume(e -> {
                     // `last` maybe emit a NoSuchElementException, exchange maybe emit exception by Netty.
-                    // But should NEVER emit any exception in this method, so logging exception and emit false.
+                    // But should NEVER emit any exception, so logging exception and emit false.
                     logger.debug("Remote validate failed", e);
                     return Mono.just(false);
                 });
@@ -352,13 +346,10 @@ public final class MySqlConnection implements Connection {
                 return Mono.empty();
             }
 
-            return QueryFlow.executeVoid(client, String.format("SET autocommit=%d", autoCommit ? 1 : 0));
+            return QueryFlow.executeVoid(client, "SET autocommit=" + (autoCommit ? 1 : 0));
         });
     }
 
-    /**
-     * Visible for tests.
-     */
     boolean isInTransaction() {
         return (context.getServerStatuses() & ServerStatuses.IN_TRANSACTION) != 0;
     }
@@ -383,22 +374,24 @@ public final class MySqlConnection implements Connection {
     }
 
     /**
-     * @param client       must be logged-in
-     * @param codecs       built-in {@link Codecs}
-     * @param context      must be initialized
-     * @param queryCache   the cache of {@link Query}
-     * @param prepareCache the cache of server-preparing result
-     * @param prepare      judging for prefer use prepare statement to execute simple query
+     * Initialize a {@link MySqlConnection} after login.
+     *
+     * @param client       must be logged-in.
+     * @param codecs       the {@link Codecs}.
+     * @param context      must be initialized.
+     * @param queryCache   the cache of {@link Query}.
+     * @param prepareCache the cache of server-preparing result.
+     * @param prepare      judging for prefer use prepare statement to execute simple query.
+     * @return a {@link Mono} will emit an initialized {@link MySqlConnection}.
      */
-    static Mono<MySqlConnection> init(
-        Client client, Codecs codecs, ConnectionContext context, QueryCache queryCache,
-        PrepareCache prepareCache, @Nullable Predicate<String> prepare
-    ) {
+    static Mono<MySqlConnection> init(Client client, Codecs codecs, ConnectionContext context,
+        QueryCache queryCache, PrepareCache prepareCache, @Nullable Predicate<String> prepare) {
         ServerVersion version = context.getServerVersion();
         StringBuilder query = new StringBuilder(128);
 
         // Maybe create a InitFlow for data initialization after login?
-        if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8X) || (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5X) && version.isLessThan(TX_LEVEL_8X))) {
+        if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8X) ||
+            (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5X) && version.isLessThan(TX_LEVEL_8X))) {
             query.append("SELECT @@transaction_isolation AS i, @@version_comment AS v");
         } else {
             query.append("SELECT @@tx_isolation AS i, @@version_comment AS v");
@@ -407,7 +400,7 @@ public final class MySqlConnection implements Connection {
         Function<MySqlResult, Publisher<InitData>> handler;
 
         if (context.shouldSetServerZoneId()) {
-            handler = FULL_INIT_HANDLER;
+            handler = FULL_INIT;
             query.append(", @@system_time_zone AS s, @@time_zone AS t");
         } else {
             handler = INIT_HANDLER;
@@ -424,13 +417,17 @@ public final class MySqlConnection implements Connection {
                     context.setServerZoneId(serverZoneId);
                 }
 
-                return new MySqlConnection(client, context, codecs, data.level, queryCache, prepareCache, data.product, prepare);
+                return new MySqlConnection(client, context, codecs, data.level, queryCache, prepareCache,
+                    data.product, prepare);
             });
     }
 
     /**
-     * @param id the ID/name of MySQL time zone
-     * @return the {@link ZoneId} from {@code id}, or system default timezone if not found.
+     * Creates a {@link ZoneId} from MySQL timezone result, or fallback to system default timezone if not
+     * found.
+     *
+     * @param id the ID/name of MySQL timezone.
+     * @return the {@link ZoneId}.
      */
     private static ZoneId convertZoneId(String id) {
         String realId;
@@ -456,11 +453,12 @@ public final class MySqlConnection implements Connection {
                     // Don't think so, but should support it for compatible.
                     // Just use GMT+8, id is equal to +08:00.
                     return ZoneId.of("+8");
-                default:
-                    return ZoneId.of(realId, ZoneId.SHORT_IDS);
             }
+
+            return ZoneId.of(realId, ZoneId.SHORT_IDS);
         } catch (DateTimeException e) {
-            logger.warn("The server timezone is <{}> that's unknown, trying to use system default timezone", id);
+            logger.warn("The server timezone is unknown <{}>, trying to use system default timezone", id, e);
+
             return ZoneId.systemDefault();
         }
     }
@@ -480,10 +478,11 @@ public final class MySqlConnection implements Connection {
                 return IsolationLevel.REPEATABLE_READ;
             case "SERIALIZABLE":
                 return IsolationLevel.SERIALIZABLE;
-            default:
-                logger.warn("Unknown isolation level {} in current session, fallback to repeatable read", name);
-                return IsolationLevel.REPEATABLE_READ;
         }
+
+        logger.warn("Unknown isolation level {} in current session, fallback to repeatable read", name);
+
+        return IsolationLevel.REPEATABLE_READ;
     }
 
     private static class InitData {

@@ -59,7 +59,8 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     private final int collationId;
 
-    private MySqlColumnMetadata(int index, short type, String name, short definitions, boolean nonNull, long size, int decimals, int collationId) {
+    private MySqlColumnMetadata(int index, short type, String name, short definitions, boolean nonNull,
+        long size, int decimals, int collationId) {
         require(index >= 0, "index must not be a negative integer");
         require(size >= 0, "size must not be a negative integer");
         require(decimals >= 0, "decimals must not be a negative integer");
@@ -84,16 +85,9 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     static MySqlColumnMetadata create(int index, DefinitionMetadataMessage message) {
         short definitions = message.getDefinitions();
-        return new MySqlColumnMetadata(
-            index,
-            message.getType(),
-            message.getColumn(),
-            definitions,
-            (definitions & ColumnDefinitions.NOT_NULL) != 0,
-            message.getSize(),
-            message.getDecimals(),
-            message.getCollationId()
-        );
+        return new MySqlColumnMetadata(index, message.getType(), message.getColumn(), definitions,
+            (definitions & ColumnDefinitions.NOT_NULL) != 0, message.getSize(), message.getDecimals(),
+            message.getCollationId());
     }
 
     int getIndex() {
@@ -119,21 +113,21 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
             case DataTypes.TINYINT:
                 if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
                     return Short.class;
-                } else {
-                    return Byte.class;
                 }
+
+                return Byte.class;
             case DataTypes.SMALLINT:
                 if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
                     return Integer.class;
-                } else {
-                    return Short.class;
                 }
+
+                return Short.class;
             case DataTypes.INT:
                 if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
                     return Long.class;
-                } else {
-                    return Integer.class;
                 }
+
+                return Integer.class;
             case DataTypes.FLOAT:
                 return Float.class;
             case DataTypes.DOUBLE:
@@ -144,9 +138,9 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
             case DataTypes.BIGINT:
                 if ((definitions & ColumnDefinitions.UNSIGNED) != 0) {
                     return BigInteger.class;
-                } else {
-                    return Long.class;
                 }
+
+                return Long.class;
             case DataTypes.MEDIUMINT:
                 return Integer.class;
             case DataTypes.DATE:
@@ -167,13 +161,14 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
             case DataTypes.BLOB:
                 if (collationId == CharCollation.BINARY_ID) {
                     return ByteBuffer.class;
-                } else {
-                    return String.class;
                 }
+
+                return String.class;
             case DataTypes.BIT:
                 return ByteBuffer.class;
             case DataTypes.GEOMETRY:
-                // Most of Geometry libraries were using byte[] to encode/decode which based on WKT (includes Extended-WKT) or WKB
+                // Most of Geometry libraries were using byte[] to encode/decode which based on WKT
+                // (includes Extended-WKT) or WKB
                 // MySQL using WKB for encoding/decoding, so use byte[] instead of ByteBuffer by default type.
                 // It maybe change after R2DBC SPI specify default type for GEOMETRY.
                 return byte[].class;
@@ -215,7 +210,8 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
         // 0x00 means it is an integer or a static string.
         // 0x1f means it is a dynamic string, an original-double or an original-float.
         // 0x00 to 0x51 for the number of digits to right of the decimal point.
-        if (type == DataTypes.DECIMAL || type == DataTypes.NEW_DECIMAL || type == DataTypes.DOUBLE || type == DataTypes.FLOAT) {
+        if (type == DataTypes.DECIMAL || type == DataTypes.NEW_DECIMAL || type == DataTypes.DOUBLE ||
+            type == DataTypes.FLOAT) {
             if (decimals >= 0 && decimals <= 0x51) {
                 return decimals;
             }
@@ -255,7 +251,8 @@ final class MySqlColumnMetadata implements ColumnMetadata, FieldInformation {
 
     @Override
     public String toString() {
-        return String.format("MySqlColumnMetadata{index=%d, type=%d, name='%s', definitions=%x, nullability=%s, size=%d, decimals=%d, collationId=%d}",
-            index, type, name, definitions, nullability, size, decimals, collationId);
+        return "MySqlColumnMetadata{index=" + index + ", type=" + type + ", name='" + name +
+            "', definitions=" + Integer.toHexString(definitions) + ", nullability=" + nullability +
+            ", size=" + size + ", decimals=" + decimals + ", collationId=" + collationId + '}';
     }
 }

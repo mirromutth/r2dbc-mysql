@@ -33,7 +33,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link Set}{@code <}{@link String}{@code >} for {@code RowMetadata.getColumnNames} results.
+ * An implementation of {@link Set}{@code <}{@link String}{@code >} for {@code RowMetadata.getColumnNames}
+ * results.
  *
  * @see MySqlNames column name searching rules.
  */
@@ -80,7 +81,8 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
 
     @Override
     public Spliterator<String> spliterator() {
-        return Spliterators.spliterator(this.originNames, Spliterator.NONNULL | Spliterator.ORDERED | Spliterator.IMMUTABLE);
+        return Spliterators.spliterator(this.originNames,
+            Spliterator.NONNULL | Spliterator.ORDERED | Spliterator.IMMUTABLE);
     }
 
     @Override
@@ -97,7 +99,7 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
         return Arrays.copyOf(originNames, originNames.length);
     }
 
-    @SuppressWarnings({"unchecked", "SuspiciousSystemArraycopy"})
+    @SuppressWarnings({ "unchecked", "SuspiciousSystemArraycopy" })
     @Override
     public <T> T[] toArray(T[] a) {
         Objects.requireNonNull(a);
@@ -186,14 +188,15 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
     static ColumnNameSet of(String name) {
         requireNonNull(name, "name must not be null");
 
-        String[] names = new String[]{name};
+        String[] names = new String[] { name };
         return new ColumnNameSet(names, names);
     }
 
     static ColumnNameSet of(String[] originNames, String[] sortedNames) {
         requireNonNull(originNames, "originNames must not be null");
         requireNonNull(sortedNames, "sortedNames must not be null");
-        require(originNames.length == sortedNames.length, "The length of origin names the same as sorted names one");
+        require(originNames.length == sortedNames.length,
+            "The length of origin names the same as sorted names one");
 
         return new ColumnNameSet(originNames, sortedNames);
     }

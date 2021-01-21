@@ -175,8 +175,7 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
                 if (isNegative) {
                     if (nanos > 0) {
                         // Note: nanos should always be a positive integer or 0, see Duration.getNano().
-                        // So if duration is negative, seconds should be humanity seconds - 1, so +1 then
-                        // negate.
+                        // So the seconds should be humanity seconds - 1, so +1 then negate.
                         seconds = -(seconds + 1);
                         nanos = NANOS_OF_SECOND - nanos;
                     } else {
@@ -248,8 +247,8 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
 
             if (hours < 0 || minutes < 0 || seconds < 0 || micros < 0) {
                 throw new IllegalStateException(String.format(
-                    "Too large duration %s, abs value overflowing to %d:%02d:%02d.%06d", value, hours,
-                    minutes, seconds, micros));
+                    "Duration %s abs value overflowing to %d:%02d:%02d.%06d", value, hours, minutes, seconds,
+                    micros));
             }
 
             encodeTime(writer, isNegative, hours, minutes, seconds, micros);

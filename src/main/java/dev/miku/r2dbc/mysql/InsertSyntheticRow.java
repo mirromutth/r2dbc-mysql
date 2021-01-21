@@ -34,7 +34,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * An implementation of {@link Row} for support to reading last inserted ID.
  * <p>
- * It is also an implementation of {@link RowMetadata} and {@link ColumnMetadata} for reduce redundant objects.
+ * It is also an implementation of {@link RowMetadata} and {@link ColumnMetadata} for reduce redundant
+ * objects.
  *
  * @see MySqlStatement#returnGeneratedValues(String...) reading last inserted ID.
  */
@@ -148,7 +149,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
 
     private void assertValidName(String name) {
         if (!nameSet.contains(name)) {
-            throw new NoSuchElementException(String.format("column name '%s' does not exist in %s", name, this.nameSet));
+            throw new NoSuchElementException("Column name '" + name + "' does not exist in " + this.nameSet);
         }
     }
 
@@ -160,14 +161,14 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
         if (lastInsertId < 0) {
             // BIGINT UNSIGNED
             return BigInteger.class;
-        } else {
-            return Long.TYPE;
         }
+
+        return Long.TYPE;
     }
 
     private static void assertValidIndex(int index) {
         if (index != 0) {
-            throw new ArrayIndexOutOfBoundsException(String.format("column index %d is invalid, total 1", index));
+            throw new ArrayIndexOutOfBoundsException("Index: " + index + ", total: 1");
         }
     }
 }

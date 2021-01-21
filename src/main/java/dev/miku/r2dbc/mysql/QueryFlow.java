@@ -67,9 +67,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * A message flow considers both of parametrized and text queries, such as
- * {@link TextParametrizedStatement}, {@link PrepareParametrizedStatement},
- * {@link TextSimpleStatement}, {@link PrepareSimpleStatement} and
+ * A message flow considers both of parametrized and text queries, such as {@link TextParametrizedStatement},
+ * {@link PrepareParametrizedStatement}, {@link TextSimpleStatement}, {@link PrepareSimpleStatement} and
  * {@link MySqlBatch}.
  */
 final class QueryFlow {
@@ -90,26 +89,29 @@ final class QueryFlow {
      * @param context  the {@link ConnectionContext} for initialization.
      * @return the {@link Client}, or an error/exception received by login failed.
      */
-    static Mono<Client> login(Client client, SslMode sslMode, String database, String user, @Nullable CharSequence password, ConnectionContext context) {
+    static Mono<Client> login(Client client, SslMode sslMode, String database, String user,
+        @Nullable CharSequence password, ConnectionContext context) {
         return client.exchange(new LoginExchangeable(client, sslMode, database, user, password, context))
             .onErrorResume(e -> client.forceClose().then(Mono.error(e)))
             .then(Mono.just(client));
     }
 
     /**
-     * Execute multiple bindings of a server-preparing statement with one-by-one binary execution.
-     * The execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}.
-     * The {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s.
+     * Execute multiple bindings of a server-preparing statement with one-by-one binary execution. The
+     * execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. If client
+     * receives a {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s. The
+     * exchange will be completed by {@link CompleteMessage} after receive the last result for the last
+     * binding.
      *
      * @param client    the {@link Client} to exchange messages with.
      * @param sql       the original statement for exception tracing.
      * @param bindings  the data of bindings.
      * @param fetchSize the size of fetching, if it less than or equal to {@literal 0} means fetch all rows.
      * @param cache     the cache of server-preparing result.
-     * @return the messages received in response to this exchange, and will be completed
-     * by {@link CompleteMessage} when it is last result for each binding.
+     * @return the messages received in response to this exchange.
      */
-    static Flux<Flux<ServerMessage>> execute(Client client, String sql, List<Binding> bindings, int fetchSize, PrepareCache cache) {
+    static Flux<Flux<ServerMessage>> execute(Client client, String sql, List<Binding> bindings, int fetchSize,
+        PrepareCache cache) {
         return Flux.defer(() -> {
             if (bindings.isEmpty()) {
                 return Flux.empty();
@@ -121,15 +123,15 @@ final class QueryFlow {
     }
 
     /**
-     * Execute multiple bindings of a client-preparing statement with one-by-one text query.
-     * The execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}.
-     * The {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s.
+     * Execute multiple bindings of a client-preparing statement with one-by-one text query. The execution
+     * terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage}
+     * will emit an exception and cancel subsequent {@link Binding}s. This exchange will be completed by
+     * {@link CompleteMessage} after receive the last result for the last binding.
      *
      * @param client   the {@link Client} to exchange messages with.
      * @param query    the {@link Query} for synthetic client-preparing statement.
      * @param bindings the data of bindings.
-     * @return the messages received in response to this exchange, and will be completed
-     * by {@link CompleteMessage} when it is last result for each binding.
+     * @return the messages received in response to this exchange.
      */
     static Flux<Flux<ServerMessage>> execute(Client client, Query query, List<Binding> bindings) {
         return Flux.defer(() -> {
@@ -143,13 +145,14 @@ final class QueryFlow {
     }
 
     /**
-     * Execute a simple query and return a {@link Mono} for the complete signal or error. Query execution terminates with
-     * the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception.
+     * Execute a simple query and return a {@link Mono} for the complete signal or error. Query execution
+     * terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage}
+     * will emit an exception. The exchange will be completed by {@link CompleteMessage} after receive the
+     * last result for the last binding.
      *
      * @param client the {@link Client} to exchange messages with.
      * @param sql    the query to execute, can be contains multi-statements.
-     * @return the messages received in response to this exchange, and will be
-     * completed by {@link CompleteMessage} for each statement.
+     * @return the messages received in response to this exchange.
      */
     static Mono<Void> executeVoid(Client client, String sql) {
         return Mono.defer(() -> execute0(client, sql).doOnNext(OBJ_RELEASE).then());
@@ -157,13 +160,13 @@ final class QueryFlow {
 
     /**
      * Execute multiple simple queries with one-by-one and return a {@link Mono} for the complete signal or
-     * error. Query execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}.
-     * The {@link ErrorMessage} will emit an exception and cancel subsequent statements execution.
+     * error. Query execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The
+     * {@link ErrorMessage} will emit an exception and cancel subsequent statements execution. The exchange
+     * will be completed by {@link CompleteMessage} after receive the last result for the last binding.
      *
      * @param client     the {@link Client} to exchange messages with.
      * @param statements the queries to execute, each element can be contains multi-statements.
-     * @return the messages received in response to this exchange, and will be
-     * completed by {@link CompleteMessage} for each statement.
+     * @return the messages received in response to this exchange.
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
         return client.exchange(new MultiQueryExchangeable(InternalArrays.asIterator(statements)))
@@ -172,27 +175,27 @@ final class QueryFlow {
     }
 
     /**
-     * Execute a simple compound query and return its results. Query execution terminates with
-     * each {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will
-     * emit an exception.
+     * Execute a simple compound query. Query execution terminates with the last {@link CompleteMessage} or a
+     * {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception. The exchange will be completed
+     * by {@link CompleteMessage} after receive the last result for the last binding.
      *
      * @param client the {@link Client} to exchange messages with.
      * @param sql    the query to execute, can be contains multi-statements.
-     * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
+     * @return the messages received in response to this exchange.
      */
     static Flux<Flux<ServerMessage>> execute(Client client, String sql) {
         return Flux.defer(() -> execute0(client, sql).windowUntil(RESULT_DONE));
     }
 
     /**
-     * Execute multiple simple compound queries with one-by-one and return their results. Query execution
-     * terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage}
-     * will emit an exception and cancel subsequent statements execution.
+     * Execute multiple simple compound queries with one-by-one. Query execution terminates with the last
+     * {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception and
+     * cancel subsequent statements execution. The exchange will be completed by {@link CompleteMessage} after
+     * receive the last result for the last binding.
      *
      * @param client     the {@link Client} to exchange messages with.
      * @param statements bundled sql for execute.
-     * @return the messages received in response to this exchange, and will be
-     * completed by {@link CompleteMessage} for each statement.
+     * @return the messages received in response to this exchange.
      */
     static Flux<Flux<ServerMessage>> execute(Client client, List<String> statements) {
         return Flux.defer(() -> {
@@ -209,12 +212,14 @@ final class QueryFlow {
     }
 
     /**
-     * Execute a simple query. Query execution terminates with the last {@link CompleteMessage} or
-     * a {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception.
+     * Execute a simple query statement. Query execution terminates with the last {@link CompleteMessage} or a
+     * {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception. The exchange will be completed
+     * by {@link CompleteMessage} after receive the last result for the last binding. The exchange will be
+     * completed by {@link CompleteMessage} after receive the last result for the last binding.
      *
      * @param client the {@link Client} to exchange messages with.
      * @param sql    the query to execute, can be contains multi-statements.
-     * @return the messages received in response to this exchange, and will be completed by {@link CompleteMessage} when it is the last.
+     * @return the messages received in response to this exchange.
      */
     private static Flux<ServerMessage> execute0(Client client, String sql) {
         return client.exchange(TextQueryMessage.of(sql), (message, sink) -> {
@@ -230,8 +235,7 @@ final class QueryFlow {
         });
     }
 
-    private QueryFlow() {
-    }
+    private QueryFlow() { }
 }
 
 /**
@@ -376,12 +380,12 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
 }
 
 /**
- * An implementation of {@link FluxExchangeable} that considers server-preparing queries.
- * Which contains a built-in state machine.
+ * An implementation of {@link FluxExchangeable} that considers server-preparing queries. Which contains a
+ * built-in state machine.
  * <p>
- * It will reset a prepared statement if cache has matched it, otherwise it will prepare
- * statement to a new statement ID and put the ID into the cache. If the statement ID does
- * not exist in the cache after the last row sent, the ID will be closed.
+ * It will reset a prepared statement if cache has matched it, otherwise it will prepare statement to a new
+ * statement ID and put the ID into the cache. If the statement ID does not exist in the cache after the last
+ * row sent, the ID will be closed.
  */
 final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 
@@ -473,7 +477,8 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
                         putToCache(statementId);
                         doNextExecute(statementId, sink);
                     }
-                } else if (message instanceof SyntheticMetadataMessage && ((SyntheticMetadataMessage) message).isCompleted()) {
+                } else if (message instanceof SyntheticMetadataMessage &&
+                    ((SyntheticMetadataMessage) message).isCompleted()) {
                     Integer statementId = this.statementId;
                     if (statementId == null) {
                         logger.error("Prepared OK message not found");
@@ -489,13 +494,14 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
                 break;
             case EXECUTE:
                 if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
-                    // Complete message means execute phase done or fetch phase done (when cursor is not opened).
+                    // Complete message means execute or fetch phase done (when cursor is not opened).
                     onCompleteMessage((CompleteMessage) message, sink);
                 } else if (message instanceof SyntheticMetadataMessage) {
                     EofMessage eof = ((SyntheticMetadataMessage) message).getEof();
                     if (eof instanceof ServerStatusMessage) {
                         // Otherwise means cursor does not be opened, wait for end of row EOF message.
-                        if ((((ServerStatusMessage) eof).getServerStatuses() & ServerStatuses.CURSOR_EXISTS) != 0) {
+                        if ((((ServerStatusMessage) eof).getServerStatuses() &
+                            ServerStatuses.CURSOR_EXISTS) != 0) {
                             if (doNextFetch(sink)) {
                                 sink.next(message);
                             }
@@ -592,7 +598,8 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
         }
 
         setMode(FETCH);
-        requests.onNext(this.fetch == null ? (this.fetch = new PreparedFetchMessage(statementId, fetchSize)) : this.fetch);
+        requests.onNext(this.fetch == null ? (this.fetch = new PreparedFetchMessage(statementId, fetchSize)) :
+            this.fetch);
 
         return true;
     }
@@ -612,7 +619,8 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 
         if (message instanceof ServerStatusMessage) {
             short statuses = ((ServerStatusMessage) message).getServerStatuses();
-            if ((statuses & ServerStatuses.CURSOR_EXISTS) != 0 && (statuses & ServerStatuses.LAST_ROW_SENT) == 0) {
+            if ((statuses & ServerStatuses.CURSOR_EXISTS) != 0 &&
+                (statuses & ServerStatuses.LAST_ROW_SENT) == 0) {
                 doNextFetch(sink);
                 // Not last complete message, no need emit.
                 return;
@@ -641,8 +649,8 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 /**
  * An implementation of {@link FluxExchangeable} that considers login to the database.
  * <p>
- * Not like other {@link FluxExchangeable}s, it is started by a server-side message,
- * which should be a {@link HandshakeRequest}.
+ * Not like other {@link FluxExchangeable}s, it is started by a server-side message, which should be an
+ * implementation of {@link HandshakeRequest}.
  */
 final class LoginExchangeable extends FluxExchangeable<Void> {
 
@@ -679,10 +687,8 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
 
     private int lastEnvelopeId;
 
-    LoginExchangeable(
-        Client client, SslMode sslMode, String database, String user,
-        @Nullable CharSequence password, ConnectionContext context
-    ) {
+    LoginExchangeable(Client client, SslMode sslMode, String database, String user,
+        @Nullable CharSequence password, ConnectionContext context) {
         this.client = client;
         this.sslMode = sslMode;
         this.database = database;
@@ -714,7 +720,8 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
                 lastEnvelopeId = request.getEnvelopeId() + 1;
 
                 if (capability.isSslEnabled()) {
-                    requests.onNext(SslRequest.from(lastEnvelopeId, capability, context.getClientCollation().getId()));
+                    requests.onNext(SslRequest.from(lastEnvelopeId, capability,
+                        context.getClientCollation().getId()));
                 } else {
                     requests.onNext(createHandshakeResponse(lastEnvelopeId, capability));
                 }
@@ -738,7 +745,8 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
 
             if (msg.isFailed()) {
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Connection (id {}) fast authentication failed, auto-try to use full authentication", context.getConnectionId());
+                    logger.debug("Connection (id {}) fast authentication failed, use full authentication",
+                        context.getConnectionId());
                 }
 
                 requests.onNext(createAuthResponse(lastEnvelopeId, "full authentication"));
@@ -749,7 +757,7 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
             lastEnvelopeId = msg.getEnvelopeId() + 1;
             authProvider = MySqlAuthProvider.build(msg.getAuthType());
             salt = msg.getSalt();
-            requests.onNext(createAuthResponse(lastEnvelopeId,"change authentication"));
+            requests.onNext(createAuthResponse(lastEnvelopeId, "change authentication"));
         } else {
             sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
                 message.getClass().getSimpleName() + "' in login phase"));
@@ -765,10 +773,12 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
         MySqlAuthProvider authProvider = getAndNextProvider();
 
         if (authProvider.isSslNecessary() && !sslCompleted) {
-            throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase), CLI_SPECIFIC);
+            throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase),
+                CLI_SPECIFIC);
         }
 
-        return new AuthResponse(envelopeId, authProvider.authentication(password, salt, context.getClientCollation()));
+        return new AuthResponse(envelopeId,
+            authProvider.authentication(password, salt, context.getClientCollation()));
     }
 
     private Capability clientCapability(Capability serverCapability) {
@@ -816,7 +826,8 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
         ServerVersion serverVersion = header.getServerVersion();
 
         if (handshakeVersion < HANDSHAKE_VERSION) {
-            logger.warn("The MySQL use old handshake V{}, server version is {}, maybe most features are not available", handshakeVersion, serverVersion);
+            logger.warn("MySQL use handshake V{}, server version is {}, maybe most features are unavailable",
+                handshakeVersion, serverVersion);
         }
 
         Capability capability = clientCapability(message.getServerCapability());
@@ -839,7 +850,8 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
         MySqlAuthProvider authProvider = getAndNextProvider();
 
         if (authProvider.isSslNecessary() && !sslCompleted) {
-            throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), "handshake"), CLI_SPECIFIC);
+            throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), "handshake"),
+                CLI_SPECIFIC);
         }
 
         byte[] authorization = authProvider.authentication(password, salt, context.getClientCollation());

@@ -60,7 +60,7 @@ final class MySqlRowMetadata implements RowMetadata {
 
                 this.originMetadata = metadata;
                 this.sortedMetadata = metadata;
-                this.sortedNames = new String[]{name};
+                this.sortedNames = new String[] { name };
                 this.nameSet = ColumnNameSet.of(name);
 
                 break;
@@ -84,7 +84,7 @@ final class MySqlRowMetadata implements RowMetadata {
     @Override
     public MySqlColumnMetadata getColumnMetadata(int index) {
         if (index < 0 || index >= originMetadata.length) {
-            throw new ArrayIndexOutOfBoundsException("Column index " + index + " (total " + originMetadata.length + ')');
+            throw new ArrayIndexOutOfBoundsException("Index: " + index + ", total: " + originMetadata.length);
         }
 
         return originMetadata[index];
@@ -115,7 +115,8 @@ final class MySqlRowMetadata implements RowMetadata {
 
     @Override
     public String toString() {
-        return String.format("MySqlRowMetadata{metadata=%s, sortedNames=%s}", Arrays.toString(originMetadata), Arrays.toString(sortedNames));
+        return "MySqlRowMetadata{metadata=" + Arrays.toString(originMetadata) + ", sortedNames=" +
+            Arrays.toString(sortedNames) + '}';
     }
 
     MySqlColumnMetadata[] unwrap() {

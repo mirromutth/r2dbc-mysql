@@ -17,15 +17,13 @@
 package dev.miku.r2dbc.mysql;
 
 /**
- * A utility considers column names searching logic which use a special compare rule
- * for sort and special binary search.
+ * A utility considers column names searching logic which use a special compare rule for sort and special
+ * binary search.
  *
- * <ul>
- * <li>Sort: compare with case insensitive first, then compare with case sensitive
- * when they equals by case insensitive.</li>
- * <li>Search: find with case sensitive first, then find with case insensitive
- * when not found in case sensitive.</li>
- * </ul>
+ * <ul><li>Sort: compare with case insensitive first, then compare with case sensitive when they equals by
+ * case insensitive.</li>
+ * <li>Search: find with case sensitive first, then find with case insensitive when not found in case
+ * sensitive.</li></ul>
  * <p>
  * For example:
  * Sort first: abc AB a Abc Ab ABC A ab b B -> A a B b AB Ab ab ABC Abc abc
@@ -36,12 +34,13 @@ package dev.miku.r2dbc.mysql;
 final class MySqlNames {
 
     /**
-     * @param names column names ordered by {@link #compare}
-     * @param name  least 1 character enclosed by {@literal `} means it use case
-     *              sensitive mode, otherwise use default mode (find with case
-     *              sensitive first, then find with case insensitive when not
-     *              found in case sensitive)
-     * @return found index by special binary search, {@code -1} means not found.
+     * Find the best match of target string. This means that if it cannot find case-sensitive content, it will
+     * try to find with case-insensitive. If the target string is enclosed by {@literal `} and contains at
+     * least 1 character in quotes, it will find with case-sensitive only.
+     *
+     * @param names column names ordered by {@link #compare}.
+     * @param name  the target string.
+     * @return found index, or a negative integer means not found.
      */
     static int nameSearch(String[] names, String name) {
         int size = name.length();
@@ -90,15 +89,16 @@ final class MySqlNames {
     }
 
     /**
-     * A special compare rule {@code left} and {@code right}
+     * Compares double strings and return an integer of both difference. If the integer is {@code 0} means
+     * both strings equals even case sensitive, absolute value is {@code 2} means it is equals by case
+     * insensitive but not equals when case sensitive, absolute value is {@code 4} means it is not equals even
+     * case insensitive.
      * <p>
      * Note: visible for unit tests.
      *
-     * @param left  the {@link String} of left
-     * @param right the {@link String} of right
-     * @return {@code 0} means both strings equals even case sensitive,
-     * absolute value is {@code 2} means it is equals by case insensitive but not equals when case sensitive,
-     * absolute value is {@code 4} means it is not equals even case insensitive.
+     * @param left  the {@link String} of left.
+     * @param right the {@link String} of right.
+     * @return an integer of both difference.
      */
     static int compare(String left, String right) {
         return compare0(left, right, 0, right.length());
@@ -135,12 +135,11 @@ final class MySqlNames {
         // Length not equals means both strings not equals even case insensitive.
         if (leftSize != rightSize) {
             return leftSize < rightSize ? -4 : 4;
-        } else {
-            // Equals when case insensitive, use case sensitive.
-            return csCompared < 0 ? -2 : (csCompared > 0 ? 2 : 0);
         }
+
+        // Equals when case insensitive, use case sensitive.
+        return csCompared < 0 ? -2 : (csCompared > 0 ? 2 : 0);
     }
 
-    private MySqlNames() {
-    }
+    private MySqlNames() { }
 }

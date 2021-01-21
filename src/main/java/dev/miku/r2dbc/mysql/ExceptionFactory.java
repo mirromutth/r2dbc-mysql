@@ -59,8 +59,8 @@ final class ExceptionFactory {
             case 1698: // User need password but has no password
             case 1873: // Change user denied
                 return new R2dbcPermissionDeniedException(errorMessage, sqlState, errorCode);
-            case 1159: // Read interrupted, reading basic packet timeout because of network jitter in most cases
-            case 1161: // Write interrupted, writing basic packet timeout because of network jitter in most cases
+            case 1159: // Read interrupted, reading packet timeout because of network jitter in most cases
+            case 1161: // Write interrupted, writing packet timeout because of network jitter in most cases
             case 1213: // Dead lock :-( no one wants this
             case 1317: // Statement execution interrupted
                 return new R2dbcTransientResourceException(errorMessage, sqlState, errorCode);
@@ -102,7 +102,8 @@ final class ExceptionFactory {
         return mappingSqlState(errorMessage, sqlState, errorCode, sql);
     }
 
-    private static R2dbcException mappingSqlState(String errorMessage, String sqlState, int errorCode, @Nullable String sql) {
+    private static R2dbcException mappingSqlState(String errorMessage, String sqlState, int errorCode,
+        @Nullable String sql) {
         if (sqlState.startsWith(SYNTAX_ERROR_PREFIX)) {
             return new R2dbcBadGrammarException(errorMessage, sqlState, errorCode, sql);
         } else if (sqlState.startsWith(CONSTRAINT_VIOLATION_PREFIX)) {

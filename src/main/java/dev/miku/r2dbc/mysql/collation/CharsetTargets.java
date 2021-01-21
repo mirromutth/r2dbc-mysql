@@ -27,11 +27,8 @@ final class CharsetTargets {
 
     // Windows-1252 is a superset of ISO 8859-1 (also real Latin 1), which by standards should be
     // considered the same encoding
-    static final CharsetTarget LATIN1 = new MixCharsetTarget(
-        1,
-        StandardCharsets.ISO_8859_1,
-        new NamedCharsetTarget(1, "Cp1252")
-    );
+    static final CharsetTarget LATIN1 = new MixCharsetTarget(1, StandardCharsets.ISO_8859_1,
+        new NamedCharsetTarget(1, "Cp1252"));
 
     static final CharsetTarget UTF8 = new CachedCharsetTarget(3, StandardCharsets.UTF_8);
 
@@ -39,8 +36,7 @@ final class CharsetTargets {
 
     static final CharsetTarget UTF16 = new CachedCharsetTarget(4, StandardCharsets.UTF_16);
 
-    // UCS2 is 2-bytes encoded by MySQL, but it may 4-bytes encoded by JVM because of it is also `UTF-16`
-    // in JVM.
+    // UCS2 is 2-bytes encoded by MySQL, but it is also `UTF-16` in JVM, 4-bytes each character.
     static final CharsetTarget UCS2 = UTF16;
 
     static final CharsetTarget UTF16LE = new CachedCharsetTarget(4, StandardCharsets.UTF_16LE);
@@ -71,11 +67,8 @@ final class CharsetTargets {
 
     static final CharsetTarget GBK = new NamedCharsetTarget(2, "GBK");
 
-    static final CharsetTarget CP850 = new MixCharsetTarget(
-        1,
-        new NamedCharsetTarget(1, "Cp850"),
-        new NamedCharsetTarget(1, "Cp437")
-    );
+    static final CharsetTarget CP850 = new MixCharsetTarget(1, new NamedCharsetTarget(1, "Cp850"),
+        new NamedCharsetTarget(1, "Cp437"));
 
     static final CharsetTarget CP852 = new NamedCharsetTarget(1, "Cp852");
 
@@ -93,12 +86,8 @@ final class CharsetTargets {
     // MySQL called "Cp932" for "Windows-932", but JVM not support "Cp932" aliases. It is also "Windows-31J".
     static final CharsetTarget CP932 = new NamedCharsetTarget(2, "WINDOWS-932");
 
-    static final CharsetTarget SHIFT_JIS = new MixCharsetTarget(
-        2,
-        new NamedCharsetTarget(2, "SHIFT-JIS"),
-        new NamedCharsetTarget(2, "Cp943"),
-        CP932
-    );
+    static final CharsetTarget SHIFT_JIS = new MixCharsetTarget(2, new NamedCharsetTarget(2, "SHIFT-JIS"),
+        new NamedCharsetTarget(2, "Cp943"), CP932);
 
     // Note: also "Cp5346"
     static final CharsetTarget CP1250 = new NamedCharsetTarget(1, "Cp1250");

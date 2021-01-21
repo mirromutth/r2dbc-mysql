@@ -19,8 +19,8 @@ package dev.miku.r2dbc.mysql;
 import reactor.util.annotation.Nullable;
 
 /**
- * A data class considers indexes of a named parameter. Most case of the relation
- * between parameter name and index is one-to-one.
+ * A data class considers indexes of a named parameter. Most case of the relation between parameter name and
+ * index is one-to-one.
  */
 final class ParameterIndex {
 

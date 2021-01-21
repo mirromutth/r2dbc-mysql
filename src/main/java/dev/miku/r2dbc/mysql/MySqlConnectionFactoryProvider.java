@@ -58,8 +58,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public static final Option<String> UNIX_SOCKET = Option.valueOf("unixSocket");
 
     /**
-     * Option to set {@link ZoneId} of server. If it is set, driver will ignore the
-     * real time zone of server-side.
+     * Option to set {@link ZoneId} of server. If it is set, driver will ignore the real time zone of
+     * server-side.
      *
      * @since 0.8.2
      */
@@ -80,26 +80,27 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public static final Option<SslMode> SSL_MODE = Option.valueOf("sslMode");
 
     /**
-     * Option to configure {@link HostnameVerifier}. It will be used only if {@link #SSL_MODE} set
-     * to {@link SslMode#VERIFY_IDENTITY}. It can be an implementation class name of
-     * {@link HostnameVerifier} with a public no-args constructor.
+     * Option to configure {@link HostnameVerifier}. It is available only if the {@link #SSL_MODE} set to
+     * {@link SslMode#VERIFY_IDENTITY}. It can be an implementation class name of {@link HostnameVerifier}
+     * with a public no-args constructor.
      *
      * @since 0.8.2
      */
-    public static final Option<HostnameVerifier> SSL_HOSTNAME_VERIFIER = Option.valueOf("sslHostnameVerifier");
+    public static final Option<HostnameVerifier> SSL_HOSTNAME_VERIFIER =
+        Option.valueOf("sslHostnameVerifier");
 
     /**
-     * Option to TLS versions for SslContext protocols, see also {@code TlsVersions}. Usually sorted
-     * from higher to lower. It can be a {@code Collection<String>}. It can be a {@link String},
-     * protocols will be split by {@code ,}. e.g. "TLSv1.2,TLSv1.1,TLSv1".
+     * Option to TLS versions for SslContext protocols, see also {@code TlsVersions}. Usually sorted from
+     * higher to lower. It can be a {@code Collection<String>}. It can be a {@link String}, protocols will be
+     * split by {@code ,}. e.g. "TLSv1.2,TLSv1.1,TLSv1".
      *
      * @since 0.8.1
      */
     public static final Option<String[]> TLS_VERSION = Option.valueOf("tlsVersion");
 
     /**
-     * Option to set a PEM file of server SSL CA. It will be used to verify server certificates. And
-     * it will be used only if {@link #SSL_MODE} set to {@link SslMode#VERIFY_CA} or higher level.
+     * Option to set a PEM file of server SSL CA. It will be used to verify server certificates. And it will
+     * be used only if {@link #SSL_MODE} set to {@link SslMode#VERIFY_CA} or higher level.
      *
      * @since 0.8.1
      */
@@ -113,8 +114,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public static final Option<String> SSL_KEY = Option.valueOf("sslKey");
 
     /**
-     * Option to set a PEM file password of client SSL key. It will be used only if {@link #SSL_KEY}
-     * and {@link #SSL_CERT} set.
+     * Option to set a PEM file password of client SSL key. It will be used only if {@link #SSL_KEY} and
+     * {@link #SSL_CERT} set.
      *
      * @since 0.8.1
      */
@@ -128,13 +129,13 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     public static final Option<String> SSL_CERT = Option.valueOf("sslCert");
 
     /**
-     * Option to custom {@link SslContextBuilder}. It can be an implementation class name of
-     * {@link Function} with a public no-args constructor.
+     * Option to custom {@link SslContextBuilder}. It can be an implementation class name of {@link Function}
+     * with a public no-args constructor.
      *
      * @since 0.8.2
      */
-    public static final Option<Function<SslContextBuilder, SslContextBuilder>> SSL_CONTEXT_BUILDER_CUSTOMIZER =
-        Option.valueOf("sslContextBuilderCustomizer");
+    public static final Option<Function<SslContextBuilder, SslContextBuilder>>
+        SSL_CONTEXT_BUILDER_CUSTOMIZER = Option.valueOf("sslContextBuilderCustomizer");
 
     /**
      * Enable/Disable TCP KeepAlive.
@@ -154,21 +155,22 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
      * Enable server preparing for parametrized statements and prefer server preparing simple statements.
      * <p>
      * The value can be a {@link Boolean}. If it is {@code true}, driver will use server preparing for
-     * parametrized statements and text query for simple statements. If it is {@code false}, driver will
-     * use client preparing for parametrized statements and text query for simple statements.
+     * parametrized statements and text query for simple statements. If it is {@code false}, driver will use
+     * client preparing for parametrized statements and text query for simple statements.
      * <p>
      * The value can be a {@link Predicate}{@code <}{@link String}{@code >}. If it is set, driver will server
-     * preparing for parametrized statements, it configures whether to prefer prepare execution on a statement-
-     * by-statement basis (simple statements). The {@link Predicate}{@code <}{@link String}{@code >} accepts
-     * the simple SQL query string and returns a {@code boolean} flag indicating preference.
+     * preparing for parametrized statements, it configures whether to prefer prepare execution on a
+     * statement-by-statement basis (simple statements). The {@link Predicate}{@code <}{@link String}{@code >}
+     * accepts the simple SQL query string and returns a {@code boolean} flag indicating preference.
      * <p>
-     * The value can be a {@link String}. If it is set, driver will try to convert it to {@link Boolean}
-     * or an instance of {@link Predicate}{@code <}{@link String}{@code >} which use reflection with a public
+     * The value can be a {@link String}. If it is set, driver will try to convert it to {@link Boolean} or an
+     * instance of {@link Predicate}{@code <}{@link String}{@code >} which use reflection with a public
      * no-args constructor.
      *
      * @since 0.8.1
      */
-    public static final Option<Object> USE_SERVER_PREPARE_STATEMENT = Option.valueOf("useServerPrepareStatement");
+    public static final Option<Object> USE_SERVER_PREPARE_STATEMENT =
+        Option.valueOf("useServerPrepareStatement");
 
     /**
      * Option to set the maximum size of the {@link Query} parsing cache.  Default to {@code 256}.
@@ -233,7 +235,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             .into(builder::tcpKeepAlive);
         mapper.from(TCP_NO_DELAY).asBoolean()
             .into(builder::tcpNoDelay);
-        mapper.from(ZERO_DATE).asInstance(ZeroDateOption.class, id -> ZeroDateOption.valueOf(id.toUpperCase()))
+        mapper.from(ZERO_DATE)
+            .asInstance(ZeroDateOption.class, id -> ZeroDateOption.valueOf(id.toUpperCase()))
             .into(builder::zeroDateOption);
         mapper.from(USE_SERVER_PREPARE_STATEMENT).servePrepare(enable -> {
             if (enable) {
@@ -260,8 +263,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
      * Set builder of {@link MySqlConnectionConfiguration} for hostname-based address with SSL
      * configurations.
      * <p>
-     * Notice for contributors: SSL key password is special, should keep it {@link CharSequence},
-     * do NEVER use {@link OptionMapper#from} because it maybe convert password to {@link String}.
+     * Notice for contributors: SSL key password is special, should keep it {@link CharSequence}, do NEVER use
+     * {@link OptionMapper#from} because it maybe convert password to {@link String}.
      *
      * @param builder the builder of {@link MySqlConnectionConfiguration}.
      * @param mapper  the {@link OptionMapper} of {@code options}.
@@ -285,7 +288,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             .into(builder::sslKey);
         mapper.consume(SSL_KEY_PASSWORD, builder::sslKeyPassword);
         mapper.from(SSL_CONTEXT_BUILDER_CUSTOMIZER).asInstance(Function.class)
-            .into(customizer -> builder.sslContextBuilderCustomizer((Function<SslContextBuilder, SslContextBuilder>) customizer));
+            .into(builder::sslContextBuilderCustomizer);
         mapper.from(SSL_CA).asString()
             .into(builder::sslCa);
     }

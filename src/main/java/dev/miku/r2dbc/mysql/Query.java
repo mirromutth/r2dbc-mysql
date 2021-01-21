@@ -47,15 +47,31 @@ public final class Query {
         this.formattedSize = formattedSize;
     }
 
+    /**
+     * Writes an index specified statement part to a {@link StringBuilder}.
+     *
+     * @param builder the {@link StringBuilder}
+     * @param i       the index.
+     */
     public void partTo(StringBuilder builder, int i) {
         Part part = parts.get(i);
         builder.append(sql, part.start, part.end);
     }
 
+    /**
+     * Get the length of formatted statement.
+     *
+     * @return the formatted size.
+     */
     public int getFormattedSize() {
         return formattedSize;
     }
 
+    /**
+     * Get the number of parts.
+     *
+     * @return the number of parts.
+     */
     public int getPartSize() {
         return parts.size();
     }
@@ -136,6 +152,12 @@ public final class Query {
             ", parts=" + parts + ", formattedSize=" + formattedSize + '}';
     }
 
+    /**
+     * Parses an origin statement as a {@link Query}.
+     *
+     * @param sql the origin statement.
+     * @return parsed {@link Query}.
+     */
     public static Query parse(String sql) {
         int offset = findParamMark(sql, 0);
 
@@ -144,7 +166,7 @@ public final class Query {
         }
 
         Map<String, ParameterIndex> nameKeyedParams = new HashMap<>();
-        // An parameter name, used by singleton map, if SQL does not contains named-parameter, it will always be empty.
+        // Used by singleton map, if SQL does not contains named-parameter, it will always be empty.
         String anyName = "";
         // The last parameter end index (whatever named or not) of sql.
         int lastParamEnd = 0;
@@ -214,11 +236,12 @@ public final class Query {
      * <li>Multi-line comments beginning enclosed</li>
      * </ul>
      *
-     * @param sql    the SQL string to search in.
-     * @param offset the offset to start searching.
+     * @param sql   the SQL string to search in.
+     * @param start the offset to start searching.
      * @return the offset or a negative integer if not found.
      */
-    private static int findParamMark(CharSequence sql, int offset) {
+    private static int findParamMark(CharSequence sql, int start) {
+        int offset = start;
         int length = sql.length();
         char ch;
 
@@ -233,7 +256,8 @@ public final class Query {
                     if (sql.charAt(offset) == '*') {
                         // Consume if '/* ... */' comment.
                         while (++offset < length) {
-                            if (sql.charAt(offset) == '*' && offset + 1 < length && sql.charAt(offset + 1) == '/') {
+                            if (sql.charAt(offset) == '*' && offset + 1 < length &&
+                                sql.charAt(offset + 1) == '/') {
                                 // If end of comment.
                                 offset += 2;
                                 break;

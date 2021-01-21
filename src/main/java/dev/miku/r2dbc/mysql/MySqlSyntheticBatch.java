@@ -26,8 +26,8 @@ import java.util.List;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link MySqlBatch} for executing a collection of statements
- * in one-by-one against the MySQL database.
+ * An implementation of {@link MySqlBatch} for executing a collection of statements in one-by-one against the
+ * MySQL database.
  */
 final class MySqlSyntheticBatch extends MySqlBatch {
 
