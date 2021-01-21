@@ -56,8 +56,10 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
     }
 
     @Override
-    public Object decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context) {
-        try (Reader r = new InputStreamReader(new ByteBufInputStream(value), CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset())) {
+    public Object decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+        CodecContext context) {
+        try (Reader r = new InputStreamReader(new ByteBufInputStream(value),
+            CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset())) {
             return MAPPER.readValue(r, target);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -65,8 +67,10 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
     }
 
     @Override
-    public Object decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary, CodecContext context) {
-        try (Reader r = new InputStreamReader(new ByteBufInputStream(value), CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset())) {
+    public Object decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary,
+        CodecContext context) {
+        try (Reader r = new InputStreamReader(new ByteBufInputStream(value),
+            CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset())) {
             return MAPPER.readValue(r, MAPPER.constructType(target));
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -94,7 +98,8 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
     }
 
     private boolean doCanDecode(FieldInformation info) {
-        return mode.isDecode() && info.getType() == DataTypes.JSON && info.getCollationId() != CharCollation.BINARY_ID;
+        return mode.isDecode() && info.getType() == DataTypes.JSON &&
+            info.getCollationId() != CharCollation.BINARY_ID;
     }
 
     private static final class JacksonParameter implements Parameter {
@@ -159,7 +164,6 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
     public enum Mode {
 
         ALL {
-
             @Override
             boolean isEncode() {
                 return true;
@@ -171,7 +175,6 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
             }
         },
         ENCODE {
-
             @Override
             boolean isEncode() {
                 return true;
@@ -183,7 +186,6 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
             }
         },
         DECODE {
-
             @Override
             boolean isEncode() {
                 return false;

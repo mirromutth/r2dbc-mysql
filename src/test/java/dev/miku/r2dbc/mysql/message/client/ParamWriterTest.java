@@ -100,7 +100,8 @@ class ParamWriterTest {
     void appendNull() {
         assertThat(ParameterWriterHelper.toSql(ParameterWriterHelper.get(parameterOnly(1)).append(null)))
             .isEqualTo("'null'");
-        assertThat(ParameterWriterHelper.toSql(ParameterWriterHelper.get(parameterOnly(1)).append(null, 1, 3)))
+        assertThat(ParameterWriterHelper.toSql(ParameterWriterHelper.get(parameterOnly(1))
+            .append(null, 1, 3)))
             .isEqualTo("'ul'");
     }
 

@@ -165,7 +165,8 @@ interface StatementTestSupport<T extends MySqlStatementSupport> {
         assertThrows(IllegalArgumentException.class, () -> statement.returnGeneratedValues(""));
         assertThrows(IllegalArgumentException.class, () -> statement.returnGeneratedValues("`generating`"));
         assertThrows(IllegalArgumentException.class, () -> statement.returnGeneratedValues("generating`"));
-        assertThrows(IllegalArgumentException.class, () -> statement.returnGeneratedValues("generated", "names"));
+        assertThrows(IllegalArgumentException.class, () ->
+            statement.returnGeneratedValues("generated", "names"));
     }
 
     @Test

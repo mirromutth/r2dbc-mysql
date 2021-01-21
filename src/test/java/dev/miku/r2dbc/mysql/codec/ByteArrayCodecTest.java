@@ -32,11 +32,11 @@ class ByteArrayCodecTest implements CodecTestSupport<byte[]> {
 
     private final byte[][] bytes = {
         new byte[0],
-        new byte[]{0},
-        new byte[]{0x7F},
-        new byte[]{0x12, 34, 0x56, 78, (byte) 0x9A},
+        new byte[] { 0 },
+        new byte[] { 0x7F },
+        new byte[] { 0x12, 34, 0x56, 78, (byte) 0x9A },
         "Hello world!".getBytes(StandardCharsets.US_ASCII),
-        new byte[]{(byte) 0xFE, (byte) 0xDC, (byte) 0xBA},
+        new byte[] { (byte) 0xFE, (byte) 0xDC, (byte) 0xBA },
     };
 
     @Override

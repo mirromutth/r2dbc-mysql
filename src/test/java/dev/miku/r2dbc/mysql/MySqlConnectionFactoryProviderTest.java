@@ -56,26 +56,27 @@ class MySqlConnectionFactoryProviderTest {
 
     @Test
     void validUrl() throws UnsupportedEncodingException {
-        assertThat(ConnectionFactories.get("r2dbc:mysql://root@localhost:3306")).isExactlyInstanceOf(MySqlConnectionFactory.class);
-        assertThat(ConnectionFactories.get("r2dbcs:mysql://root@localhost:3306")).isExactlyInstanceOf(MySqlConnectionFactory.class);
-        assertThat(ConnectionFactories.get("r2dbc:mysql://root@localhost:3306?unixSocket=" + URLEncoder.encode("/path/to/mysql.sock", "UTF-8")))
+        assertThat(ConnectionFactories.get("r2dbc:mysql://root@localhost:3306"))
+            .isExactlyInstanceOf(MySqlConnectionFactory.class);
+        assertThat(ConnectionFactories.get("r2dbcs:mysql://root@localhost:3306"))
+            .isExactlyInstanceOf(MySqlConnectionFactory.class);
+        assertThat(ConnectionFactories.get("r2dbc:mysql://root@localhost:3306?unixSocket=" +
+            URLEncoder.encode("/path/to/mysql.sock", "UTF-8")))
             .isExactlyInstanceOf(MySqlConnectionFactory.class);
 
         assertThat(ConnectionFactories.get("r2dbcs:mysql://root@localhost:3306?" +
             "unixSocket=" + URLEncoder.encode("/path/to/mysql.sock", "UTF-8") +
             "&sslMode=disabled")).isNotNull();
 
-        assertThat(ConnectionFactories.get(
-            "r2dbcs:mysql://root:123456@127.0.0.1:3306/r2dbc?" +
-                "zeroDate=use_round&" +
-                "sslMode=verify_identity&" +
-                "serverPreparing=true" +
-                String.format("tlsVersion=%s&", URLEncoder.encode("TLSv1.3,TLSv1.2,TLSv1.1", "UTF-8")) +
-                String.format("sslCa=%s&", URLEncoder.encode("/path/to/ca.pem", "UTF-8")) +
-                String.format("sslKey=%s&", URLEncoder.encode("/path/to/client-key.pem", "UTF-8")) +
-                String.format("sslCert=%s&", URLEncoder.encode("/path/to/client-cert.pem", "UTF-8")) +
-                "sslKeyPassword=ssl123456"
-        )).isExactlyInstanceOf(MySqlConnectionFactory.class);
+        assertThat(ConnectionFactories.get("r2dbcs:mysql://root:123456@127.0.0.1:3306/r2dbc?" +
+            "zeroDate=use_round&" +
+            "sslMode=verify_identity&" +
+            "serverPreparing=true" +
+            String.format("tlsVersion=%s&", URLEncoder.encode("TLSv1.3,TLSv1.2,TLSv1.1", "UTF-8")) +
+            String.format("sslCa=%s&", URLEncoder.encode("/path/to/ca.pem", "UTF-8")) +
+            String.format("sslKey=%s&", URLEncoder.encode("/path/to/client-key.pem", "UTF-8")) +
+            String.format("sslCert=%s&", URLEncoder.encode("/path/to/client-cert.pem", "UTF-8")) +
+            "sslKeyPassword=ssl123456")).isExactlyInstanceOf(MySqlConnectionFactory.class);
     }
 
     @Test
@@ -83,8 +84,8 @@ class MySqlConnectionFactoryProviderTest {
         Assert<?, SslMode> that = assertThat(SslMode.DISABLED);
 
         MySqlConnectionConfiguration configuration = MySqlConnectionFactoryProvider.setup(
-            ConnectionFactoryOptions.parse("r2dbcs:mysql://root@localhost:3306?" +
-                "unixSocket=" + URLEncoder.encode("/path/to/mysql.sock", "UTF-8")));
+            ConnectionFactoryOptions.parse("r2dbcs:mysql://root@localhost:3306?unixSocket=" +
+                URLEncoder.encode("/path/to/mysql.sock", "UTF-8")));
 
         that.isEqualTo(configuration.getSsl().getSslMode());
 
@@ -160,7 +161,7 @@ class MySqlConnectionFactoryProviderTest {
         assertThat(configuration.getExtensions()).isEqualTo(Extensions.from(Collections.emptyList(), true));
 
         assertThat(configuration.getSsl().getSslMode()).isEqualTo(SslMode.VERIFY_IDENTITY);
-        assertThat(configuration.getSsl().getTlsVersion()).isEqualTo(new String[] {"TLSv1.3", "TLSv1.2"});
+        assertThat(configuration.getSsl().getTlsVersion()).isEqualTo(new String[] { "TLSv1.3", "TLSv1.2" });
         assertThat(configuration.getSsl().getSslCa()).isEqualTo("/path/to/ca.pem");
         assertThat(configuration.getSsl().getSslKey()).isEqualTo("/path/to/client-key.pem");
         assertThat(configuration.getSsl().getSslCert()).isEqualTo("/path/to/client-cert.pem");
@@ -173,56 +174,60 @@ class MySqlConnectionFactoryProviderTest {
 
     @Test
     void invalidProgrammatic() {
-        assertThatIllegalStateException().isThrownBy(() -> MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
-            .option(DRIVER, "mysql")
-            .option(PORT, 3307)
-            .option(USER, "root")
-            .option(PASSWORD, "123456")
-            .option(SSL, true)
-            .option(CONNECT_TIMEOUT, Duration.ofSeconds(3))
-            .option(DATABASE, "r2dbc")
-            .option(Option.valueOf("zeroDate"), "use_round")
-            .option(Option.valueOf("sslMode"), "verify_identity")
-            .option(Option.valueOf("tlsVersion"), "TLSv1.3,TLSv1.2")
-            .option(Option.valueOf("sslCa"), "/path/to/ca.pem")
-            .option(Option.valueOf("sslKey"), "/path/to/client-key.pem")
-            .option(Option.valueOf("sslCert"), "/path/to/client-cert.pem")
-            .option(Option.valueOf("sslKeyPassword"), "ssl123456")
-            .option(Option.valueOf("tcpKeepAlive"), "true")
-            .option(Option.valueOf("tcpNoDelay"), "true")
-            .build()))
+        assertThatIllegalStateException().isThrownBy(() ->
+            MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
+                .option(DRIVER, "mysql")
+                .option(PORT, 3307)
+                .option(USER, "root")
+                .option(PASSWORD, "123456")
+                .option(SSL, true)
+                .option(CONNECT_TIMEOUT, Duration.ofSeconds(3))
+                .option(DATABASE, "r2dbc")
+                .option(Option.valueOf("zeroDate"), "use_round")
+                .option(Option.valueOf("sslMode"), "verify_identity")
+                .option(Option.valueOf("tlsVersion"), "TLSv1.3,TLSv1.2")
+                .option(Option.valueOf("sslCa"), "/path/to/ca.pem")
+                .option(Option.valueOf("sslKey"), "/path/to/client-key.pem")
+                .option(Option.valueOf("sslCert"), "/path/to/client-cert.pem")
+                .option(Option.valueOf("sslKeyPassword"), "ssl123456")
+                .option(Option.valueOf("tcpKeepAlive"), "true")
+                .option(Option.valueOf("tcpNoDelay"), "true")
+                .build()))
             .withMessageContaining("host");
 
-        assertThatIllegalStateException().isThrownBy(() -> MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
-            .option(DRIVER, "mysql")
-            .option(HOST, "127.0.0.1")
-            .option(PORT, 3307)
-            .option(PASSWORD, "123456")
-            .build()))
+        assertThatIllegalStateException().isThrownBy(() ->
+            MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
+                .option(DRIVER, "mysql")
+                .option(HOST, "127.0.0.1")
+                .option(PORT, 3307)
+                .option(PASSWORD, "123456")
+                .build()))
             .withMessageContaining("user");
 
-        assertThatIllegalArgumentException().isThrownBy(() -> MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
-            .option(DRIVER, "mysql")
-            .option(HOST, "127.0.0.1")
-            .option(PORT, 3307)
-            .option(USER, "root")
-            .option(PASSWORD, "123456")
-            .option(Option.valueOf("sslMode"), "verify_ca")
-            .option(Option.valueOf("sslCa"), "/path/to/ca.pem")
-            .option(Option.valueOf("sslKey"), "/path/to/client-key.pem")
-            .build()))
+        assertThatIllegalArgumentException().isThrownBy(() ->
+            MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
+                .option(DRIVER, "mysql")
+                .option(HOST, "127.0.0.1")
+                .option(PORT, 3307)
+                .option(USER, "root")
+                .option(PASSWORD, "123456")
+                .option(Option.valueOf("sslMode"), "verify_ca")
+                .option(Option.valueOf("sslCa"), "/path/to/ca.pem")
+                .option(Option.valueOf("sslKey"), "/path/to/client-key.pem")
+                .build()))
             .withMessageContaining("sslCert and sslKey");
 
-        assertThatIllegalArgumentException().isThrownBy(() -> MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
-            .option(DRIVER, "mysql")
-            .option(HOST, "127.0.0.1")
-            .option(PORT, 3307)
-            .option(USER, "root")
-            .option(PASSWORD, "123456")
-            .option(Option.valueOf("sslMode"), "verify_ca")
-            .option(Option.valueOf("sslCa"), "/path/to/ca.pem")
-            .option(Option.valueOf("sslCert"), "/path/to/client-cert.pem")
-            .build()))
+        assertThatIllegalArgumentException().isThrownBy(() ->
+            MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
+                .option(DRIVER, "mysql")
+                .option(HOST, "127.0.0.1")
+                .option(PORT, 3307)
+                .option(USER, "root")
+                .option(PASSWORD, "123456")
+                .option(Option.valueOf("sslMode"), "verify_ca")
+                .option(Option.valueOf("sslCa"), "/path/to/ca.pem")
+                .option(Option.valueOf("sslCert"), "/path/to/client-cert.pem")
+                .build()))
             .withMessageContaining("sslCert and sslKey");
     }
 
@@ -232,12 +237,13 @@ class MySqlConnectionFactoryProviderTest {
         Assert<?, Boolean> isHost = assertThat(false);
         Assert<?, SslMode> sslMode = assertThat(SslMode.DISABLED);
 
-        MySqlConnectionConfiguration configuration = MySqlConnectionFactoryProvider.setup(ConnectionFactoryOptions.builder()
+        ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
             .option(DRIVER, "mysql")
             .option(Option.valueOf("unixSocket"), "/path/to/mysql.sock")
             .option(USER, "root")
             .option(SSL, true)
-            .build());
+            .build();
+        MySqlConnectionConfiguration configuration = MySqlConnectionFactoryProvider.setup(options);
 
         domain.isEqualTo(configuration.getDomain());
         isHost.isEqualTo(configuration.isHost());
@@ -366,19 +372,21 @@ class MySqlConnectionFactoryProviderTest {
 
     @Test
     void invalidServerPreparing() {
-        assertThatIllegalArgumentException().isThrownBy(() -> ConnectionFactories.get(ConnectionFactoryOptions.builder()
-            .option(DRIVER, "mysql")
-            .option(HOST, "127.0.0.1")
-            .option(USER, "root")
-            .option(USE_SERVER_PREPARE_STATEMENT, NotPredicate.class.getTypeName())
-            .build()));
+        assertThatIllegalArgumentException().isThrownBy(() ->
+            ConnectionFactories.get(ConnectionFactoryOptions.builder()
+                .option(DRIVER, "mysql")
+                .option(HOST, "127.0.0.1")
+                .option(USER, "root")
+                .option(USE_SERVER_PREPARE_STATEMENT, NotPredicate.class.getTypeName())
+                .build()));
 
-        assertThatIllegalArgumentException().isThrownBy(() -> ConnectionFactories.get(ConnectionFactoryOptions.builder()
-            .option(DRIVER, "mysql")
-            .option(HOST, "127.0.0.1")
-            .option(USER, "root")
-            .option(USE_SERVER_PREPARE_STATEMENT, NotPredicate.class.getPackage() + "NonePredicate")
-            .build()));
+        assertThatIllegalArgumentException().isThrownBy(() ->
+            ConnectionFactories.get(ConnectionFactoryOptions.builder()
+                .option(DRIVER, "mysql")
+                .option(HOST, "127.0.0.1")
+                .option(USER, "root")
+                .option(USE_SERVER_PREPARE_STATEMENT, NotPredicate.class.getPackage() + "NonePredicate")
+                .build()));
     }
 }
 

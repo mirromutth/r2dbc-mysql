@@ -39,7 +39,8 @@ class JacksonCodecTest implements CodecTestSupport<Object> {
     private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
 
     private final Account[] accounts = {
-        new Account(1, "The devil of mirror", "UNKNOWN", Arrays.asList("Human", "\r\n\0\032\\'\"\u00a5\u20a9", "Github user")),
+        new Account(1, "The devil of mirror", "UNKNOWN",
+            Arrays.asList("Human", "\r\n\0\032\\'\"\u00a5\u20a9", "Github user")),
         new Account(2, "The super man", "Good job", Collections.singletonList("Krypton")),
         new Account(3, "Nothing", "Nothing interesting", Collections.emptyList())
     };

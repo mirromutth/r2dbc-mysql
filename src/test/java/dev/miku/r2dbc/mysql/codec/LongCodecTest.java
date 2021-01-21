@@ -71,7 +71,7 @@ class LongCodecTest implements CodecTestSupport<Long> {
 
     static ByteBuf encode(long value) {
         if (value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE) {
-            return Unpooled.wrappedBuffer(new byte[]{(byte) value});
+            return Unpooled.wrappedBuffer(new byte[] { (byte) value });
         } else if (value >= Short.MIN_VALUE && value <= Short.MAX_VALUE) {
             return Unpooled.buffer(Short.BYTES).writeShortLE((short) value);
         } else if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {

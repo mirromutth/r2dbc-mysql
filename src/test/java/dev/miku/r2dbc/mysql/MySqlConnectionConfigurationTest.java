@@ -65,32 +65,37 @@ class MySqlConnectionConfigurationTest {
     void unixSocket() {
         for (SslMode mode : SslMode.values()) {
             if (mode.startSsl()) {
-                assertThatIllegalArgumentException().isThrownBy(() -> unixSocketSslMode(mode)).withMessageContaining("sslMode");
+                assertThatIllegalArgumentException().isThrownBy(() -> unixSocketSslMode(mode))
+                    .withMessageContaining("sslMode");
             } else {
                 assertThat(unixSocketSslMode(SslMode.DISABLED)).isNotNull();
             }
         }
 
-        ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(MySqlConnectionConfiguration.builder()
+        MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builder()
             .unixSocket(UNIX_SOCKET)
             .user(USER)
-            .build());
+            .build();
+        ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(configuration);
         asserted.extracting(MySqlConnectionConfiguration::getDomain).isEqualTo(UNIX_SOCKET);
         asserted.extracting(MySqlConnectionConfiguration::getUser).isEqualTo(USER);
         asserted.extracting(MySqlConnectionConfiguration::isHost).isEqualTo(false);
-        asserted.extracting(MySqlConnectionConfiguration::getSsl).extracting(MySqlSslConfiguration::getSslMode).isEqualTo(SslMode.DISABLED);
+        asserted.extracting(MySqlConnectionConfiguration::getSsl)
+            .extracting(MySqlSslConfiguration::getSslMode).isEqualTo(SslMode.DISABLED);
     }
 
     @Test
     void hosted() {
-        ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(MySqlConnectionConfiguration.builder()
+        MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builder()
             .host(HOST)
             .user(USER)
-            .build());
+            .build();
+        ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(configuration);
         asserted.extracting(MySqlConnectionConfiguration::getDomain).isEqualTo(HOST);
         asserted.extracting(MySqlConnectionConfiguration::getUser).isEqualTo(USER);
         asserted.extracting(MySqlConnectionConfiguration::isHost).isEqualTo(true);
-        asserted.extracting(MySqlConnectionConfiguration::getSsl).extracting(MySqlSslConfiguration::getSslMode).isEqualTo(SslMode.PREFERRED);
+        asserted.extracting(MySqlConnectionConfiguration::getSsl)
+            .extracting(MySqlSslConfiguration::getSslMode).isEqualTo(SslMode.PREFERRED);
     }
 
     @Test
@@ -108,7 +113,8 @@ class MySqlConnectionConfigurationTest {
 
     @Test
     void isEquals() {
-        assertThat(filledUp()).isEqualTo(filledUp()).extracting(Objects::hashCode).isEqualTo(filledUp().hashCode());
+        assertThat(filledUp()).isEqualTo(filledUp()).extracting(Objects::hashCode)
+            .isEqualTo(filledUp().hashCode());
     }
 
     @Test

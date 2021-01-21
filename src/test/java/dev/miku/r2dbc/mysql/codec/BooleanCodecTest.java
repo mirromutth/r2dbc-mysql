@@ -28,10 +28,7 @@ import java.util.Arrays;
  */
 class BooleanCodecTest implements CodecTestSupport<Boolean> {
 
-    private final Boolean[] booleans = {
-        Boolean.TRUE,
-        Boolean.FALSE
-    };
+    private final Boolean[] booleans = { Boolean.TRUE, Boolean.FALSE };
 
     @Override
     public BooleanCodec getCodec(ByteBufAllocator allocator) {
@@ -51,7 +48,7 @@ class BooleanCodecTest implements CodecTestSupport<Boolean> {
     @Override
     public ByteBuf[] binaryParameters(Charset charset) {
         return Arrays.stream(booleans)
-            .map(it -> Unpooled.wrappedBuffer(it ? new byte[] {1} : new byte[] {0}))
+            .map(it -> Unpooled.wrappedBuffer(it ? new byte[] { 1 } : new byte[] { 0 }))
             .toArray(ByteBuf[]::new);
     }
 

@@ -39,7 +39,8 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
 
     @Test
     void isInTransaction() {
-        complete(connection -> Mono.<Void>fromRunnable(() -> assertThat(connection.isInTransaction()).isFalse())
+        complete(connection -> Mono.<Void>fromRunnable(() -> assertThat(connection.isInTransaction())
+            .isFalse())
             .then(connection.beginTransaction())
             .doOnSuccess(ignored -> assertThat(connection.isInTransaction()).isTrue())
             .then(connection.commitTransaction())
@@ -73,7 +74,8 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
     void setTransactionIsolationLevel() {
         complete(connection -> Flux.just(READ_UNCOMMITTED, READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE)
             .concatMap(level -> connection.setTransactionIsolationLevel(level)
-                .doOnSuccess(ignored -> assertThat(level).isEqualTo(connection.getTransactionIsolationLevel()))));
+                .map(ignored -> assertThat(level))
+                .doOnNext(a -> a.isEqualTo(connection.getTransactionIsolationLevel()))));
     }
 
     @Test
@@ -111,7 +113,9 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
             deleteBatch.add(formattedDelete(isOdd));
             deleteBatch.add(formattedDelete(isEven));
 
-            return Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value VARCHAR(20))")
+            String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value VARCHAR(20))";
+
+            return Mono.from(connection.createStatement(tdl)
                 .execute())
                 .thenMany(insertBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
@@ -121,7 +125,8 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
                 .then(Mono.from(selectStmt.execute()))
                 .flatMapMany(result -> result.map((row, metadata) -> row.get("value", String.class)))
                 .collectList()
-                .doOnNext(data -> assertThat(data).isEqualTo(Arrays.asList(firstData, secondData, thirdData, fourthData, fifthData)))
+                .doOnNext(data -> assertThat(data)
+                    .isEqualTo(Arrays.asList(firstData, secondData, thirdData, fourthData, fifthData)))
                 .thenMany(updateBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
                 .collectList()
@@ -129,7 +134,8 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
                 .thenMany(selectBatch.execute())
                 .concatMap(result -> result.map((row, metadata) -> row.get("value", String.class)))
                 .collectList()
-                .doOnNext(data -> assertThat(data).isEqualTo(Arrays.asList(sixthData, sixthData, seventhData, seventhData, seventhData)))
+                .doOnNext(data -> assertThat(data)
+                    .isEqualTo(Arrays.asList(sixthData, sixthData, seventhData, seventhData, seventhData)))
                 .thenMany(deleteBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
                 .collectList()

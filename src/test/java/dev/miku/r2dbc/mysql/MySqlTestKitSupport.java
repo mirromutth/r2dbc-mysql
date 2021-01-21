@@ -79,11 +79,14 @@ abstract class MySqlTestKitSupport implements TestKit<String> {
     private static JdbcTemplate jdbc(MySqlConnectionConfiguration configuration) {
         HikariDataSource source = new HikariDataSource();
 
-        source.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s", configuration.getDomain(), configuration.getPort(), configuration.getDatabase()));
+        source.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s", configuration.getDomain(),
+            configuration.getPort(), configuration.getDatabase()));
         source.setUsername(configuration.getUser());
-        source.setPassword(Optional.ofNullable(configuration.getPassword()).map(Object::toString).orElse(null));
+        source.setPassword(Optional.ofNullable(configuration.getPassword())
+            .map(Object::toString).orElse(null));
         source.setMaximumPoolSize(1);
-        source.setConnectionTimeout(Optional.ofNullable(configuration.getConnectTimeout()).map(Duration::toMillis).orElse(0L));
+        source.setConnectionTimeout(Optional.ofNullable(configuration.getConnectTimeout())
+            .map(Duration::toMillis).orElse(0L));
 
         ZoneId zoneId = configuration.getServerZoneId();
 

@@ -45,11 +45,14 @@ class RequestQueueTest {
         RequestQueue queue = new RequestQueue();
         List<Integer> arr = new AddEventList(queue);
 
-        Mono<Boolean> third = Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(3)))))
+        Mono<Boolean> third = Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(3)))))
             .flatMap(Function.identity());
-        Mono<Boolean> second = Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(2)))))
+        Mono<Boolean> second = Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(2)))))
             .flatMap(Function.identity());
-        Mono<Boolean> first = Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(1)))))
+        Mono<Boolean> first = Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(1)))))
             .flatMap(Function.identity());
 
         Flux.concat(first, second, third)
@@ -65,22 +68,26 @@ class RequestQueueTest {
         RequestQueue queue = new RequestQueue();
         List<Integer> arr = new AddEventList(queue);
 
-        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(5)))))
+        Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(5)))))
             .flatMap(Function.identity())
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
-        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(4)))))
+        Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(4)))))
             .flatMap(Function.identity())
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
         queue.dispose();
-        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(3)))))
+        Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(3)))))
             .flatMap(Function.identity())
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
-        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(2)))))
+        Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sink, Mono.fromSupplier(() -> arr.add(2)))))
             .flatMap(Function.identity())
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
@@ -91,25 +98,32 @@ class RequestQueueTest {
     @Test
     void disposeWithRelease() {
         RequestQueue queue = new RequestQueue();
-        IntegerData[] sources = new IntegerData[]{new IntegerData(1), new IntegerData(2), new IntegerData(3), new IntegerData(4)};
+        IntegerData[] sources = new IntegerData[] { new IntegerData(1), new IntegerData(2),
+            new IntegerData(3), new IntegerData(4) };
         List<Integer> arr = new AddEventList(queue);
 
-        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sources[0], sink, Mono.fromSupplier(() -> arr.add(sources[0].consumeData())))))
+        Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sources[0], sink, Mono.fromSupplier(() ->
+                arr.add(sources[0].consumeData())))))
             .flatMap(Function.identity())
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
-        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sources[1], sink, Mono.fromSupplier(() -> arr.add(sources[1].consumeData())))))
+        Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sources[1], sink, Mono.fromSupplier(() ->
+                arr.add(sources[1].consumeData())))))
             .flatMap(Function.identity())
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
         queue.dispose();
-        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sources[2], sink, Mono.fromSupplier(() -> true))))
+        Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sources[2], sink, Mono.fromSupplier(() -> true))))
             .flatMap(Function.identity())
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
-        Mono.<Mono<Boolean>>create(sink -> queue.submit(RequestTask.wrap(sources[3], sink, Mono.fromSupplier(() -> true))))
+        Mono.<Mono<Boolean>>create(sink ->
+            queue.submit(RequestTask.wrap(sources[3], sink, Mono.fromSupplier(() -> true))))
             .flatMap(Function.identity())
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);

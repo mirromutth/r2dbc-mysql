@@ -37,7 +37,8 @@ import java.util.Objects;
  */
 abstract class JacksonIntegrationTestSupport extends IntegrationTestSupport {
 
-    private static final String TDL = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value JSON)";
+    private static final String TDL = "CREATE TEMPORARY TABLE test" +
+        "(id INT PRIMARY KEY AUTO_INCREMENT,value JSON)";
 
     private static final Foo[] FOO = {
         new Foo("Smart", Arrays.asList(1, 2, 3), Collections.singletonList("Human")),

@@ -29,7 +29,8 @@ import static org.mockito.Mockito.mock;
  */
 class MySqlBatchingBatchTest {
 
-    private final MySqlBatchingBatch batch = new MySqlBatchingBatch(mock(Client.class), mock(Codecs.class), ConnectionContextTest.mock());
+    private final MySqlBatchingBatch batch = new MySqlBatchingBatch(mock(Client.class), mock(Codecs.class),
+        ConnectionContextTest.mock());
 
     @Test
     void add() {
@@ -38,15 +39,19 @@ class MySqlBatchingBatchTest {
         batch.add("    ");
         batch.add("INSERT INTO `test` VALUES (100);");
         batch.add("INSERT INTO `test` VALUES (100);    ");
-        batch.add("INSERT INTO `test` VALUES (100);    INSERT INTO `test` VALUES (100); INSERT INTO `test` VALUES (100)   ");
+        batch.add("INSERT INTO `test` VALUES (100);    INSERT INTO `test` VALUES (100); " +
+            "INSERT INTO `test` VALUES (100)   ");
         batch.add("");
-        batch.add("   ;   INSERT INTO `test` VALUES (100);    INSERT INTO `test` VALUES (100); INSERT INTO `test` VALUES (100);  ");
+        batch.add("   ;   INSERT INTO `test` VALUES (100);    INSERT INTO `test` VALUES (100); " +
+            "INSERT INTO `test` VALUES (100);  ");
 
         assertEquals(batch.getSql(), ";INSERT INTO `test` VALUES (100);" +
             "    ;INSERT INTO `test` VALUES (100);" +
             "INSERT INTO `test` VALUES (100);" +
-            "INSERT INTO `test` VALUES (100);    INSERT INTO `test` VALUES (100); INSERT INTO `test` VALUES (100)   ;" +
-            ";   ;   INSERT INTO `test` VALUES (100);    INSERT INTO `test` VALUES (100); INSERT INTO `test` VALUES (100)");
+            "INSERT INTO `test` VALUES (100);    INSERT INTO `test` VALUES (100); " +
+            "INSERT INTO `test` VALUES (100)   ;" +
+            ";   ;   INSERT INTO `test` VALUES (100);    INSERT INTO `test` VALUES (100); " +
+            "INSERT INTO `test` VALUES (100)");
     }
 
     @SuppressWarnings("ConstantConditions")

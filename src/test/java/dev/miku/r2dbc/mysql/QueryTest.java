@@ -38,9 +38,11 @@ class QueryTest {
     void parse() {
         assertQuery("INSERT INTO `user` (`id`, `name`) VALUES (1, 'hello')");
         assertQuery("INSERT INTO `user` (`id`, `name`) VALUES (1, 'hello''world')");
-        assertQuery("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` /* ??? */ LIKE '?name' AND `good` = \"dsa?\" -- ??");
+        assertQuery("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` /* ??? */ " +
+            "LIKE '?name' AND `good` = \"dsa?\" -- ??");
 
-        assertQuery("SELECT * FROM `user` WHERE (? = ?)", "SELECT * FROM `user` WHERE (? = ?)", Collections.emptyMap(), 2);
+        assertQuery("SELECT * FROM `user` WHERE (? = ?)", "SELECT * FROM `user` WHERE (? = ?)",
+            Collections.emptyMap(), 2);
         assertQuery("?", "?", Collections.emptyMap(), 1);
         assertQuery("?n", "?", mapOf(link("n", 0)), 1);
         assertQuery("?name", "?", mapOf(link("name", 0)), 1);
@@ -48,61 +50,78 @@ class QueryTest {
         assertQuery("?n SELECT", "? SELECT", mapOf(link("n", 0)), 1);
         assertQuery("?name SELECT", "? SELECT", mapOf(link("name", 0)), 1);
 
-        assertQuery("SELECT * FROM `user` WHERE `id` = ?", "SELECT * FROM `user` WHERE `id` = ?", Collections.emptyMap(), 1);
-        assertQuery("SELECT * FROM `user` WHERE `id` = ?i", "SELECT * FROM `user` WHERE `id` = ?", mapOf(link("i", 0)), 1);
-        assertQuery("SELECT * FROM `user` WHERE `id` = ?id", "SELECT * FROM `user` WHERE `id` = ?", mapOf(link("id", 0)), 1);
-        assertQuery("INSERT INTO `user` VALUES (?, ?, ?, ?)", "INSERT INTO `user` VALUES (?, ?, ?, ?)", Collections.emptyMap(), 4);
-        assertQuery("INSERT INTO `user` VALUES (?, ?a, ?, ?b)", "INSERT INTO `user` VALUES (?, ?, ?, ?)", mapOf(link("a", 1), link("b", 3)), 4);
-        assertQuery("INSERT INTO `user` VALUES (?a, ?b, ?c, ?d)", "INSERT INTO `user` VALUES (?, ?, ?, ?)", mapOf(link("a", 0), link("b", 1), link("c", 2), link("d", 3)), 4);
-        assertQuery("INSERT INTO `user` VALUES (?a, ?a, ?a, ?a, ?a, ?a, ?a, ?a, ?a)", "INSERT INTO `user` VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", mapOf(link("a", 0, 1, 2, 3, 4, 5, 6, 7, 8)), 9);
+        assertQuery("SELECT * FROM `user` WHERE `id` = ?", "SELECT * FROM `user` WHERE `id` = ?",
+            Collections.emptyMap(), 1);
+        assertQuery("SELECT * FROM `user` WHERE `id` = ?i", "SELECT * FROM `user` WHERE `id` = ?",
+            mapOf(link("i", 0)), 1);
+        assertQuery("SELECT * FROM `user` WHERE `id` = ?id", "SELECT * FROM `user` WHERE `id` = ?",
+            mapOf(link("id", 0)), 1);
+        assertQuery("INSERT INTO `user` VALUES (?, ?, ?, ?)", "INSERT INTO `user` VALUES (?, ?, ?, ?)",
+            Collections.emptyMap(), 4);
+        assertQuery("INSERT INTO `user` VALUES (?, ?a, ?, ?b)", "INSERT INTO `user` VALUES (?, ?, ?, ?)",
+            mapOf(link("a", 1), link("b", 3)), 4);
+        assertQuery("INSERT INTO `user` VALUES (?a, ?b, ?c, ?d)", "INSERT INTO `user` VALUES (?, ?, ?, ?)",
+            mapOf(link("a", 0), link("b", 1), link("c", 2), link("d", 3)), 4);
+        assertQuery("INSERT INTO `user` VALUES (?a, ?a, ?a, ?a, ?a, ?a, ?a, ?a, ?a)",
+            "INSERT INTO `user` VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            mapOf(link("a", 0, 1, 2, 3, 4, 5, 6, 7, 8)), 9);
 
-        assertQuery("UPDATE `user` SET `name` = ?", "UPDATE `user` SET `name` = ?", Collections.emptyMap(), 1);
-        assertQuery("UPDATE `user` SET `name` = ?n", "UPDATE `user` SET `name` = ?", mapOf(link("n", 0)), 1);
-        assertQuery("UPDATE `user` SET `name` = ?n/", "UPDATE `user` SET `name` = ?/", mapOf(link("n", 0)), 1);
-        assertQuery("UPDATE `user` SET `name` = ?name", "UPDATE `user` SET `name` = ?", mapOf(link("name", 0)), 1);
-        assertQuery("UPDATE `user` SET `name` = ?name, `good` = ?", "UPDATE `user` SET `name` = ?, `good` = ?", mapOf(link("name", 0)), 2);
-        assertQuery("UPDATE `user` SET `name` = ?name, `good` = ?-", "UPDATE `user` SET `name` = ?, `good` = ?-", mapOf(link("name", 0)), 2);
-        assertQuery("UPDATE `user` SET `name` = ?, `good` = ?g", "UPDATE `user` SET `name` = ?, `good` = ?", mapOf(link("g", 1)), 2);
+        assertQuery("UPDATE `user` SET `name` = ?", "UPDATE `user` SET `name` = ?",
+            Collections.emptyMap(), 1);
+        assertQuery("UPDATE `user` SET `name` = ?n", "UPDATE `user` SET `name` = ?",
+            mapOf(link("n", 0)), 1);
+        assertQuery("UPDATE `user` SET `name` = ?n/", "UPDATE `user` SET `name` = ?/",
+            mapOf(link("n", 0)), 1);
+        assertQuery("UPDATE `user` SET `name` = ?name", "UPDATE `user` SET `name` = ?",
+            mapOf(link("name", 0)), 1);
+        assertQuery("UPDATE `user` SET `name` = ?name, `good` = ?",
+            "UPDATE `user` SET `name` = ?, `good` = ?",
+            mapOf(link("name", 0)), 2);
+        assertQuery("UPDATE `user` SET `name` = ?name, `good` = ?-",
+            "UPDATE `user` SET `name` = ?, `good` = ?-",
+            mapOf(link("name", 0)), 2);
+        assertQuery("UPDATE `user` SET `name` = ?, `good` = ?g", "UPDATE `user` SET `name` = ?, `good` = ?",
+            mapOf(link("g", 1)), 2);
 
-        assertQuery("UPDATE `user` SET `name` = ?name, -- This is comment\n `good` = ?", "UPDATE `user` SET `name` = ?, -- This is comment\n `good` = ?", mapOf(link("name", 0)), 2);
+        assertQuery("UPDATE `user` SET `name` = ?name, -- This is comment\n `good` = ?",
+            "UPDATE `user` SET `name` = ?, -- This is comment\n `good` = ?",
+            mapOf(link("name", 0)), 2);
 
-        assertQuery(
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `age` = ?",
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `age` = ?",
-            Collections.emptyMap(),
-            5
-        );
-        assertQuery(
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?) ON DUPLICATE KEY UPDATE `name` = ?name",
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?",
-            mapOf(link("name", 1, 3)),
-            4
-        );
-        assertQuery(
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?age) ON DUPLICATE KEY UPDATE `age` = ?age",
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) ON DUPLICATE KEY UPDATE `age` = ?",
-            mapOf(link("age", 2, 3)),
-            4
-        );
-        assertQuery(
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age",
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `age` = ?",
-            mapOf(link("name", 1, 3), link("age", 2, 4)),
-            5
-        );
-        assertQuery(
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age",
-            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?, `age` = ?",
+        assertQuery("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE `name` = ?, `age` = ?",
+            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE `name` = ?, `age` = ?",
+            Collections.emptyMap(), 5);
+        assertQuery("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?) " +
+                "ON DUPLICATE KEY UPDATE `name` = ?name",
+            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE `name` = ?",
+            mapOf(link("name", 1, 3)), 4);
+        assertQuery("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?age) " +
+                "ON DUPLICATE KEY UPDATE `age` = ?age",
+            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE `age` = ?",
+            mapOf(link("age", 2, 3)), 4);
+        assertQuery("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) " +
+                "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age",
+            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE `name` = ?, `age` = ?",
+            mapOf(link("name", 1, 3), link("age", 2, 4)), 5);
+        assertQuery("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) " +
+                "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age",
+            "INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE `name` = ?, `age` = ?",
             mapOf(link("id", 0), link("name", 1, 3), link("age", 2, 4)),
-            5
-        );
+            5);
 
-        assertQuery("UPDATE `user` SET `name` = 2-?", "UPDATE `user` SET `name` = 2-?", Collections.emptyMap(), 1);
+        assertQuery("UPDATE `user` SET `name` = 2-?", "UPDATE `user` SET `name` = 2-?",
+            Collections.emptyMap(), 1);
     }
 
     @Test
     void getNamedIndexes() {
-        Query query = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        Query query = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
         Map<String, ParameterIndex> namedIndexes = query.getNamedIndexes();
 
         assertThat(namedIndexes.get("id")).isEqualTo(index(0));
@@ -114,12 +133,14 @@ class QueryTest {
 
         assertThat(Query.parse("UPDATE `user` SET `name` = ?").getNamedIndexes()).isEmpty();
         assertThat(Query.parse("UPDATE `user` SET `name` = ?n").getNamedIndexes()).containsOnlyKeys("n");
-        assertThat(Query.parse("UPDATE `user` SET `name` = ?name").getNamedIndexes()).containsOnlyKeys("name");
+        assertThat(Query.parse("UPDATE `user` SET `name` = ?name").getNamedIndexes())
+            .containsOnlyKeys("name");
     }
 
     @Test
     void bind() {
-        Query query = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        Query query = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
         Binding binding = new Binding(5);
 
         assertThat(binding.findUnbind()).isZero();
@@ -133,7 +154,9 @@ class QueryTest {
         query.getNamedIndexes().get("age").bind(binding, MockParameter.INSTANCE);
         assertThat(binding.findUnbind()).isEqualTo(-1);
 
-        query = Query.parse("INSERT INTO `user` (`id`, `nickname`, `real_name`) VALUE (?, ?initName, ?initName) ON DUPLICATE KEY UPDATE `nickname` = ?updateName, `real_name` = ?updateName");
+        query = Query.parse("INSERT INTO `user` (`id`, `nickname`, `real_name`) VALUE " +
+            "(?, ?initName, ?initName) ON DUPLICATE KEY UPDATE " +
+            "`nickname` = ?updateName, `real_name` = ?updateName");
 
         binding = new Binding(5);
 
@@ -151,13 +174,17 @@ class QueryTest {
 
     @Test
     void selfHashCode() {
-        Query query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
-        Query query2 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        Query query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        Query query2 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
 
         assertThat(query1.hashCode()).isEqualTo(query2.hashCode());
 
-        Query query3 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
-        Query query4 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        Query query3 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        Query query4 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
 
         assertThat(query3.hashCode()).isEqualTo(query4.hashCode());
         assertThat(query1.hashCode()).isNotEqualTo(query3.hashCode());
@@ -169,38 +196,47 @@ class QueryTest {
         assertThat(query1.hashCode()).isNotEqualTo(query5.hashCode());
         assertThat(query3.hashCode()).isNotEqualTo(query5.hashCode());
 
-        Query query7 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` /* ??? */ LIKE '?name' AND `good` = \"dsa?\" -- ??");
-        Query query8 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` /* ??? */ LIKE '?name' AND `good` = \"dsa?\" -- ??");
+        Query query7 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` /* ??? */ " +
+            "LIKE '?name' AND `good` = \"dsa?\" -- ??");
+        Query query8 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` /* ??? */ " +
+            "LIKE '?name' AND `good` = \"dsa?\" -- ??");
 
         assertThat(query7.hashCode()).isEqualTo(query8.hashCode());
         assertThat(query1.hashCode()).isNotEqualTo(query7.hashCode());
         assertThat(query3.hashCode()).isNotEqualTo(query7.hashCode());
         assertThat(query5.hashCode()).isNotEqualTo(query7.hashCode());
 
-        Query query9 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` LIKE '?name' AND `good` = \"dsa?\" -- ??");
+        Query query9 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND " +
+            "`name` LIKE '?name' AND `good` = \"dsa?\" -- ??");
 
         assertThat(query7.hashCode()).isNotEqualTo(query9.hashCode());
     }
 
     @Test
     void selfEquals() {
-        Query query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
-        Query query2 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        Query query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        Query query2 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
 
         assertThat(query1).isEqualTo(query2);
 
-        query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
-        query2 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        query2 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?id, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
 
         assertThat(query1).isEqualTo(query2);
 
         query1 = Query.parse("UPDATE `user` SET `name` = ?name, `good` = ?");
         assertThat(query1).isNotEqualTo(query2);
 
-        query1 = Query.parse("UPDATE `user` SET `name` = ?, `good` = ?, `age` = ?, `data` = ?, `content` = ?");
+        query1 = Query.parse("UPDATE `user` SET `name` = ?, `good` = ?, `age` = ?, `data` = ?," +
+            "`content` = ?");
         assertThat(query1).isNotEqualTo(query2);
 
-        query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
+        query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`) VALUE (?, ?name, ?age) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age");
         assertThat(query1).isNotEqualTo(query2);
 
         query1 = Query.parse("INSERT INTO `user` (`id`, `name`) VALUES (1, 'hello')");
@@ -208,18 +244,22 @@ class QueryTest {
 
         assertThat(query1).isEqualTo(query2);
 
-        query1 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` LIKE '?name' AND `good` = \"dsa?\" /* ??? */ -- ??");
-        query2 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND `name` LIKE '?name' AND `good` = \"dsa?\" /* ??? */ -- ??");
+        query1 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND " +
+            "`name` LIKE '?name' AND `good` = \"dsa?\" /* ??? */ -- ??");
+        query2 = Query.parse("SELECT * FROM `user ? hello` WHERE `id` = '?' AND " +
+            "`name` LIKE '?name' AND `good` = \"dsa?\" /* ??? */ -- ??");
 
         assertThat(query1).isEqualTo(query2);
     }
 
     @Test
     void indexesEquals() {
-        Query query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`, `updated_at`, `created_at`) VALUE (?id, ?name, ?age, ?now, ?now) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age, " +
-            "`updated_at` = ?now");
-        Query query2 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`, `updated_at`, `created_at`) VALUE (?id, ?name, ?age, ?now, ?now) ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age, " +
-            "`updated_at` = ?now");
+        Query query1 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`, `updated_at`, `created_at`) " +
+            "VALUE (?id, ?name, ?age, ?now, ?now) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age, `updated_at` = ?now");
+        Query query2 = Query.parse("INSERT INTO `user` (`id`, `name`, `age`, `updated_at`, `created_at`) " +
+            "VALUE (?id, ?name, ?age, ?now, ?now) " +
+            "ON DUPLICATE KEY UPDATE `name` = ?name, `age` = ?age, `updated_at` = ?now");
 
         assertThat(query1.getNamedIndexes().get("name")).isEqualTo(query1.getNamedIndexes().get("name"));
         assertThat(query1.getNamedIndexes().get("now")).isEqualTo(query1.getNamedIndexes().get("now"));
@@ -242,7 +282,8 @@ class QueryTest {
         assertThat(query.getNamedIndexes()).isEmpty();
     }
 
-    private static void assertQuery(String sql, String formatted, Map<String, ParameterIndex> namedIndexes, int parameters) {
+    private static void assertQuery(String sql, String formatted, Map<String, ParameterIndex> namedIndexes,
+        int parameters) {
         Query query = Query.parse(sql);
 
         assertThat(query.isSimple()).isFalse();

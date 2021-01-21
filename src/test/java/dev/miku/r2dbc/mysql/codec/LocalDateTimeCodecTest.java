@@ -23,6 +23,9 @@ import java.nio.charset.Charset;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 
+import static dev.miku.r2dbc.mysql.codec.LocalDateCodecTest.DATES;
+import static dev.miku.r2dbc.mysql.codec.LocalTimeCodecTest.TIMES;
+
 /**
  * Unit tests for {@link LocalDateTimeCodec}.
  */
@@ -51,10 +54,10 @@ class LocalDateTimeCodecTest extends DateTimeCodecTestSupport<LocalDateTime> {
     }
 
     private static LocalDateTime[] multiple() {
-        LocalDateTime[] results = new LocalDateTime[LocalDateCodecTest.DATES.length * LocalTimeCodecTest.TIMES.length];
-        for (int i = 0; i < LocalDateCodecTest.DATES.length; ++i) {
-            for (int j = 0; j < LocalTimeCodecTest.TIMES.length; ++j) {
-                results[i * (LocalTimeCodecTest.TIMES.length) + j] = LocalDateTime.of(LocalDateCodecTest.DATES[i], LocalTimeCodecTest.TIMES[j]);
+        LocalDateTime[] results = new LocalDateTime[DATES.length * TIMES.length];
+        for (int i = 0; i < DATES.length; ++i) {
+            for (int j = 0; j < TIMES.length; ++j) {
+                results[i * (TIMES.length) + j] = LocalDateTime.of(DATES[i], TIMES[j]);
             }
         }
         return results;

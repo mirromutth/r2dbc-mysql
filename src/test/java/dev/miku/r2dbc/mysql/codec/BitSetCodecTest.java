@@ -33,11 +33,11 @@ class BitSetCodecTest implements CodecTestSupport<BitSet> {
 
     private final BitSet[] sets = {
         BitSet.valueOf(new byte[0]),
-        BitSet.valueOf(new byte[]{0}), // It is also empty
-        BitSet.valueOf(new byte[]{4, 5, 6}),
-        BitSet.valueOf(new long[]{0x8D567C913B4F61A2L}),
-        BitSet.valueOf(new long[]{0x8D56700000F61A2L}),
-        BitSet.valueOf(new byte[]{(byte) 0xFE, (byte) 0xDC, (byte) 0xBA})
+        BitSet.valueOf(new byte[] { 0 }), // It is also empty
+        BitSet.valueOf(new byte[] { 4, 5, 6 }),
+        BitSet.valueOf(new long[] { 0x8D567C913B4F61A2L }),
+        BitSet.valueOf(new long[] { 0x8D56700000F61A2L }),
+        BitSet.valueOf(new byte[] { (byte) 0xFE, (byte) 0xDC, (byte) 0xBA })
     };
 
     @Override
@@ -76,7 +76,7 @@ class BitSetCodecTest implements CodecTestSupport<BitSet> {
 
     static ByteBuf encode(BitSet value) {
         if (value.isEmpty()) {
-            return Unpooled.wrappedBuffer(new byte[]{0});
+            return Unpooled.wrappedBuffer(new byte[] { 0 });
         }
         return LongCodecTest.encode(value.toLongArray()[0]);
     }
