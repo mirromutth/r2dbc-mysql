@@ -43,7 +43,8 @@ public final class MySqlRow implements Row {
 
     private final ConnectionContext context;
 
-    MySqlRow(FieldValue[] fields, MySqlRowMetadata rowMetadata, Codecs codecs, boolean binary, ConnectionContext context) {
+    MySqlRow(FieldValue[] fields, MySqlRowMetadata rowMetadata, Codecs codecs, boolean binary,
+        ConnectionContext context) {
         this.fields = requireNonNull(fields, "fields must not be null");
         this.rowMetadata = requireNonNull(rowMetadata, "rowMetadata must not be null");
         this.codecs = requireNonNull(codecs, "codecs must not be null");
@@ -68,10 +69,13 @@ public final class MySqlRow implements Row {
     }
 
     /**
-     * @param index the column index starting at 0
-     * @param type  must be {@link ParameterizedType} linked {@code T}
-     * @param <T>   generic type, like {@code Set<String>}, {@code List<String>} or JSON-Serializable type when JSON serializer valid.
-     * @return {@code type} specified generic instance.
+     * Returns the value for a column in this row. The value can be a parameterized type.
+     *
+     * @param index the index of the column starting at {@code 0}.
+     * @param type  the parameterized type of item to return.
+     * @param <T>   the type of the item being returned.
+     * @return the value for a column in this row. Value can be {@code null}.
+     * @throws IllegalArgumentException if {@code name} or {@code type} is {@code null}.
      */
     @Nullable
     public <T> T get(int index, ParameterizedType type) {
@@ -81,6 +85,15 @@ public final class MySqlRow implements Row {
         return codecs.decode(fields[index], info, type, binary, context);
     }
 
+    /**
+     * Returns the value for a column in this row. The value can be a parameterized type.
+     *
+     * @param name the name of the column.
+     * @param type the parameterized type of item to return.
+     * @param <T>  the type of the item being returned.
+     * @return the value for a column in this row. Value can be {@code null}.
+     * @throws IllegalArgumentException if {@code name} or {@code type} is {@code null}.
+     */
     @Nullable
     public <T> T get(String name, ParameterizedType type) {
         requireNonNull(type, "type must not be null");

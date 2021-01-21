@@ -39,15 +39,14 @@ abstract class MySqlStatementSupport implements MySqlStatement {
         switch (columns.length) {
             case 0:
                 this.generatedKeyName = LAST_INSERT_ID;
-                break;
+                return this;
             case 1:
-                this.generatedKeyName = requireValidName(columns[0], "id name must not be empty and not contain backticks");
-                break;
-            default:
-                throw new IllegalArgumentException("MySQL only supports single generated value");
+                this.generatedKeyName = requireValidName(columns[0],
+                    "id name must not be empty and not contain backticks");
+                return this;
         }
 
-        return this;
+        throw new IllegalArgumentException("MySQL only supports single generated value");
     }
 
     @Override

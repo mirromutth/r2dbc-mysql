@@ -35,7 +35,7 @@ final class Extensions {
 
     private static final Logger logger = Loggers.getLogger(Extensions.class);
 
-    private static final Extension[] EMPTY = {};
+    private static final Extension[] EMPTY = { };
 
     private final Extension[] extensions;
 
@@ -44,10 +44,10 @@ final class Extensions {
     }
 
     /**
-     * Apply {@link Consumer consumer} for each {@link Extension} of the requested type {@code type}
-     * until all {@link Extension extensions} have been processed or the action throws an exception.
-     * Actions are performed in the order of iteration, if that order is specified.
-     * Exceptions thrown by the action are relayed to the caller.
+     * Apply {@link Consumer consumer} for each {@link Extension} of the requested type {@code type} until all
+     * {@link Extension extensions} have been processed or the action throws an exception. Actions are
+     * performed in the order of iteration, if that order is specified. Exceptions thrown by the action are
+     * relayed to the caller.
      *
      * @param type     the extension type to filter for
      * @param consumer the {@link Consumer} to notify for each instance of {@code type}
@@ -102,13 +102,15 @@ final class Extensions {
     /**
      * Autodetect extensions using {@link ServiceLoader} mechanism.
      *
+     * @param discovered existed {@link Extension}s.
      * @return the detected {@link Extension}s.
      */
     private static List<Extension> autodetect(List<Extension> discovered) {
         logger.debug("Discovering Extensions using ServiceLoader");
 
-        ServiceLoader<Extension> extensions = AccessController.doPrivileged((PrivilegedAction<ServiceLoader<Extension>>) () ->
-            ServiceLoader.load(Extension.class, Extensions.class.getClassLoader()));
+        ServiceLoader<Extension> extensions = AccessController.doPrivileged(
+            (PrivilegedAction<ServiceLoader<Extension>>) () ->
+                ServiceLoader.load(Extension.class, Extensions.class.getClassLoader()));
 
         for (Extension extension : extensions) {
             logger.debug(String.format("Registering extension %s", extension.getClass().getName()));

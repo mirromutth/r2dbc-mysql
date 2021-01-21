@@ -33,8 +33,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * Base class considers parametrized {@link MySqlStatement} with parameter markers.
  * <p>
- * MySQL uses indexed parameters which are marked by {@literal ?} without naming.
- * Implementations should uses {@link Query} to supports named parameters.
+ * MySQL uses indexed parameters which are marked by {@literal ?} without naming. Implementations should uses
+ * {@link Query} to supports named parameters.
  */
 abstract class ParametrizedStatementSupport extends MySqlStatementSupport {
 

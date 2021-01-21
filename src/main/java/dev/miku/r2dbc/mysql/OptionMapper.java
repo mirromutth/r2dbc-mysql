@@ -77,10 +77,10 @@ final class SourceSpec {
             return new Source.Impl<>(type.cast(value));
         } else if (value instanceof String) {
             try {
-                Class<?> implementation = Class.forName((String) value);
+                Class<?> impl = Class.forName((String) value);
 
-                if (type.isAssignableFrom(implementation)) {
-                    return new Source.Impl<>(type.cast(implementation.getDeclaredConstructor().newInstance()));
+                if (type.isAssignableFrom(impl)) {
+                    return new Source.Impl<>(type.cast(impl.getDeclaredConstructor().newInstance()));
                 }
                 // Otherwise not an implementation, convert failed.
             } catch (ReflectiveOperationException e) {
@@ -196,18 +196,18 @@ final class SourceSpec {
             if ("true".equalsIgnoreCase(serverPreparing) || "false".equalsIgnoreCase(serverPreparing)) {
                 enables.accept(Boolean.parseBoolean(serverPreparing));
                 return;
-            } else {
-                try {
-                    Class<?> implementation = Class.forName(serverPreparing);
+            }
 
-                    if (Predicate.class.isAssignableFrom(implementation)) {
-                        preferred.accept((Predicate<String>) implementation.getDeclaredConstructor().newInstance());
-                        return;
-                    }
-                    // Otherwise not an implementation, convert failed.
-                } catch (ReflectiveOperationException e) {
-                    throw new IllegalArgumentException("Cannot instantiate '" + value + "'", e);
+            try {
+                Class<?> impl = Class.forName(serverPreparing);
+
+                if (Predicate.class.isAssignableFrom(impl)) {
+                    preferred.accept((Predicate<String>) impl.getDeclaredConstructor().newInstance());
+                    return;
                 }
+                // Otherwise not an implementation, convert failed.
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalArgumentException("Cannot instantiate '" + value + "'", e);
             }
         }
 
@@ -215,7 +215,8 @@ final class SourceSpec {
     }
 
     private static String toMessage(Option<?> option, Object value, String type) {
-        return "Cannot convert value " + value + " of " + value.getClass() + " as " + type + " for option " + option.name();
+        return "Cannot convert value " + value + " of " + value.getClass() + " as " + type + " for option " +
+            option.name();
     }
 }
 
@@ -258,8 +259,7 @@ interface Source<T> {
 @FunctionalInterface
 interface Otherwise {
 
-    Otherwise NOOP = ignored -> {
-    };
+    Otherwise NOOP = ignored -> { };
 
     Otherwise FALL = Runnable::run;
 

@@ -19,8 +19,8 @@ package dev.miku.r2dbc.mysql;
 /**
  * A capabilities flag bitmap considers to define the session behaviors of the connection.
  * <p>
- * Some flags should not be disabled by driver or always enabled. These flags may have
- * no getter or builder setter, or neither.
+ * Some flags should not be disabled by driver or always enabled. These flags may have no getter or builder
+ * setter, or neither.
  */
 public final class Capability {
 
@@ -47,8 +47,8 @@ public final class Capability {
     private static final int CONNECT_WITH_DB = 8;
 
     /**
-     * Enable it to disallow a statement which use {@code database.table.column} for
-     * access other schema data.
+     * Enable it to disallow a statement which use {@code database.table.column} for access other schema
+     * data.
      */
     private static final int NO_SCHEMA = 16;
 
@@ -79,8 +79,8 @@ public final class Capability {
     private static final int PROTOCOL_41 = 512;
 
     /**
-     * Use {@code wait_interactive_timeout} instead of {@code wait_timeout} for the server
-     * waits for activity on a connection before closing it.
+     * Use {@code wait_interactive_timeout} instead of {@code wait_timeout} for the server waits for activity
+     * on a connection before closing it.
      */
     private static final int INTERACTIVE = 1024;
 
@@ -96,8 +96,7 @@ public final class Capability {
      */
     private static final int TRANSACTIONS = 8192;
 
-    // Old flag and alias of PROTOCOL_41. It will not be used by any available
-    // server version/edition.
+    // Old flag and alias of PROTOCOL_41. It will not be used by any available server version/edition.
 //    private static final int RESERVED = 16384;
 
     /**
@@ -127,8 +126,7 @@ public final class Capability {
     private static final int PS_MULTI_RESULTS = 1 << 18;
 
     /**
-     * Supports authentication plugins. Server will send more details (i.e. name) for
-     * authentication plugin.
+     * Supports authentication plugins. Server will send more details (i.e. name) for authentication plugin.
      */
     private static final int PLUGIN_AUTH = 1 << 19;
 
@@ -138,7 +136,7 @@ public final class Capability {
     private static final int CONNECT_ATTRS = 1 << 20;
 
     /**
-     * Can use var int sized bytes to encode client authentication.
+     * Can use var-integer sized bytes to encode client authentication.
      * <p>
      * Origin name: PLUGIN_AUTH_LENENC_CLIENT_DATA.
      */
@@ -171,46 +169,101 @@ public final class Capability {
 
     private final int bitmap;
 
+    /**
+     * Checks if the connection will be connected and logon with a database.
+     *
+     * @return if login with database.
+     */
     public boolean isConnectWithDatabase() {
         return (bitmap & CONNECT_WITH_DB) != 0;
     }
 
+    /**
+     * Checks if the connection enabled SSL.
+     *
+     * @return if SSL enabled.
+     */
     public boolean isSslEnabled() {
         return (bitmap & SSL) != 0;
     }
 
+    /**
+     * Checks if the connection is using protocol 4.1.
+     *
+     * @return if using protocol 4.1.
+     */
     public boolean isProtocol41() {
         return (bitmap & PROTOCOL_41) != 0;
     }
 
+    /**
+     * Checks if can use var-integer sized bytes to encode client authentication.
+     *
+     * @return if can use var-integer sized authentication.
+     */
     public boolean isVarIntSizedAuthAllowed() {
         return (bitmap & VAR_INT_SIZED_AUTH) != 0;
     }
 
+    /**
+     * Checks if allow authentication plugin type name.
+     *
+     * @return if allowed.
+     */
     public boolean isPluginAuthAllowed() {
         return (bitmap & PLUGIN_AUTH) != 0;
     }
 
+    /**
+     * Checks if the connection contains connection attributes.
+     *
+     * @return if has connection attributes.
+     */
     public boolean isConnectionAttributesAllowed() {
         return (bitmap & CONNECT_ATTRS) != 0;
     }
 
+    /**
+     * Checks if server supports multiple-statement. i.e. computed statement.
+     *
+     * @return if server supported.
+     */
     public boolean isMultiStatementsAllowed() {
         return (bitmap & MULTI_STATEMENTS) != 0;
     }
 
+    /**
+     * Checks if server marks EOF message as deprecated.
+     *
+     * @return if EOF message was deprecated.
+     */
     public boolean isEofDeprecated() {
         return (bitmap & DEPRECATE_EOF) != 0;
     }
 
+    /**
+     * Checks if server uses more than 8 bytes of salt.
+     *
+     * @return if using secure salt.
+     */
     public boolean isSaltSecured() {
         return (bitmap & SECURE_SALT) != 0;
     }
 
+    /**
+     * Checks if server supports transaction.
+     *
+     * @return if server supported.
+     */
     public boolean isTransactionAllowed() {
         return (bitmap & TRANSACTIONS) != 0;
     }
 
+    /**
+     * Get the original bitmap of {@link Capability this}.
+     *
+     * @return the bitmap.
+     */
     public int getBitmap() {
         return bitmap;
     }
@@ -248,6 +301,12 @@ public final class Capability {
         this.bitmap = bitmap;
     }
 
+    /**
+     * Creates a {@link Capability} with capabilities bitmap. It will unset all unknown flag.
+     *
+     * @param capabilities the capabilities bitmap.
+     * @return the {@link Capability} without unknown flag.
+     */
     public static Capability of(int capabilities) {
         return new Capability(capabilities & ALL_SUPPORTED);
     }

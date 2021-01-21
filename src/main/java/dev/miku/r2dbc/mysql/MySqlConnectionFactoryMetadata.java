@@ -25,11 +25,10 @@ final class MySqlConnectionFactoryMetadata implements ConnectionFactoryMetadata 
 
     static final MySqlConnectionFactoryMetadata INSTANCE = new MySqlConnectionFactoryMetadata();
 
-    private MySqlConnectionFactoryMetadata() {
-    }
-
     @Override
     public String getName() {
         return "MySQL";
     }
+
+    private MySqlConnectionFactoryMetadata() { }
 }

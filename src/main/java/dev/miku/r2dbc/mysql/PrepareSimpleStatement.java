@@ -37,7 +37,8 @@ final class PrepareSimpleStatement extends SimpleStatementSupport {
 
     private int fetchSize = 0;
 
-    PrepareSimpleStatement(Client client, Codecs codecs, ConnectionContext context, String sql, PrepareCache prepareCache) {
+    PrepareSimpleStatement(Client client, Codecs codecs, ConnectionContext context, String sql,
+        PrepareCache prepareCache) {
         super(client, codecs, context, sql);
         this.prepareCache = prepareCache;
     }

@@ -23,8 +23,8 @@ import reactor.core.publisher.Flux;
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * An implementation of {@link MySqlBatch} for executing a collection of statements
- * in a batch against the MySQL database.
+ * An implementation of {@link MySqlBatch} for executing a collection of statements in a batch against the
+ * MySQL database.
  */
 final class MySqlBatchingBatch extends MySqlBatch {
 

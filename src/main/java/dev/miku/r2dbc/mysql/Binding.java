@@ -28,7 +28,7 @@ import java.util.Arrays;
  */
 final class Binding {
 
-    private static final Parameter[] EMPTY_VALUES = {};
+    private static final Parameter[] EMPTY_VALUES = { };
 
     private final Parameter[] values;
 
@@ -44,17 +44,18 @@ final class Binding {
      */
     void add(int index, Parameter value) {
         if (index < 0 || index >= this.values.length) {
-            throw new IndexOutOfBoundsException("index must not be a negative integer and less than " + this.values.length);
+            throw new IndexOutOfBoundsException("Index: " + index + ", length: " + this.values.length);
         }
 
         this.values[index] = value;
     }
 
     /**
-     * Convert binding to a request message.
+     * Converts bindings to a request message. If not need execute immediate, it will return a open cursor
+     * message.
      *
-     * @param statementId prepared statement identifier
-     * @param immediate   use {@code true} if should be execute immediate, otherwise return a open cursor message
+     * @param statementId prepared statement identifier.
+     * @param immediate   if should be execute immediate, otherwise return a open cursor message
      * @return an execute message or open cursor message
      */
     PreparedExecuteMessage toExecuteMessage(int statementId, boolean immediate) {

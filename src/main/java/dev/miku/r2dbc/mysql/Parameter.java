@@ -38,16 +38,16 @@ public interface Parameter extends Disposable {
     }
 
     /**
-     * Binary protocol encoding. See MySQL protocol documentations, if don't want to support
-     * the binary protocol, please receive an exception.
+     * Binary protocol encoding. See MySQL protocol documentations, if don't want to support the binary
+     * protocol, please receive an exception.
      * <p>
-     * Note: not like the text protocol, it make a sense for state-less. Binary protocol
-     * maybe need to add a var-integer before each binaries of the parameter. So if it
-     * seems like {@code Mono<Void> publishBinary(Xxx binaryWriter)}, and if we need to
-     * support multiple times writing like a {@code OutputStream} or {@code Writer} for
-     * each parameter, this make a hell of a complex state system. If we don't support
-     * multiple times writing, it will be hard to understand and maybe make a confuse
-     * to user.
+     * Note: not like the text protocol, it make a sense for state-less.
+     * <p>
+     * Binary protocol maybe need to add a var-integer length before encoded content. So if makes it like
+     * {@code Mono<Void> publishBinary (Xxx binaryWriter)}, and if supports multiple times writing like a
+     * {@code OutputStream} or {@code Writer} for each parameter, this make a hell of a complex state system.
+     * If we don't support multiple times writing, it will be hard to understand and maybe make a confuse to
+     * user.
      *
      * @return the encoded binary buffer(s).
      */
@@ -56,14 +56,14 @@ public interface Parameter extends Disposable {
     /**
      * Text protocol encoding.
      * <p>
-     * Note: not like the binary protocol, it make a sense for copy-less. If it seems
-     * like {@code Publisher<? extends CharSequence> publishText()}, then we need to
-     * always deep copy results (with escaping) into the string buffer of the
-     * synthesized SQL statement.
+     * Note: not like the binary protocol, it make a sense for copy-less.
      * <p>
-     * WARNING: the {@code output} requires state synchronization after
-     * this function called, so if the {@code writer} is buffered,
-     * please flush the buffer before receiving the completion signal.
+     * If it seems like {@code Publisher<? extends CharSequence> publishText()}, then we need to always deep
+     * copy results (with escaping) into the string buffer of the synthesized SQL statement.
+     * <p>
+     * WARNING: the {@code output} requires state synchronization after this function called, so if external
+     * writer buffered the {@code writer}, please flush the external buffer before receiving the completion
+     * signal.
      *
      * @param writer the text protocol writer, extended {@code Writer}, not thread-safety.
      * @return the encoding completion signal.
@@ -81,6 +81,5 @@ public interface Parameter extends Disposable {
      * {@inheritDoc}
      */
     @Override
-    default void dispose() {
-    }
+    default void dispose() { }
 }

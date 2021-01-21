@@ -50,7 +50,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class MySqlResult implements Result {
 
-    private static final Function<OkMessage, Integer> ROWS_UPDATED = message -> (int) message.getAffectedRows();
+    private static final Function<OkMessage, Integer> ROWS_UPDATED = message ->
+        (int) message.getAffectedRows();
 
     private static final Consumer<ReferenceCounted> RELEASE = ReferenceCounted::release;
 
@@ -69,11 +70,8 @@ public final class MySqlResult implements Result {
 
     private MySqlRowMetadata rowMetadata;
 
-    /**
-     * @param isBinary rows is binary.
-     * @param messages must include complete signal.
-     */
-    MySqlResult(boolean isBinary, Codecs codecs, ConnectionContext context, @Nullable String generatedKeyName, Flux<ServerMessage> messages) {
+    MySqlResult(boolean isBinary, Codecs codecs, ConnectionContext context, @Nullable String generatedKeyName,
+        Flux<ServerMessage> messages) {
         this.isBinary = isBinary;
         this.codecs = requireNonNull(codecs, "codecs must not be null");
         this.context = requireNonNull(context, "context must not be null");
@@ -92,12 +90,13 @@ public final class MySqlResult implements Result {
 
         if (generatedKeyName == null) {
             return results().handle((message, sink) -> handleResult(message, sink, f));
-        } else {
-            return affects().map(message -> {
-                InsertSyntheticRow row = new InsertSyntheticRow(codecs, generatedKeyName, message.getLastInsertId());
-                return f.apply(row, row);
-            });
         }
+
+        return affects().map(message -> {
+            InsertSyntheticRow row = new InsertSyntheticRow(codecs, generatedKeyName,
+                message.getLastInsertId());
+            return f.apply(row, row);
+        });
     }
 
     private Mono<OkMessage> affects() {
@@ -139,7 +138,8 @@ public final class MySqlResult implements Result {
         });
     }
 
-    private <T> void handleResult(ServerMessage message, SynchronousSink<T> sink, BiFunction<Row, RowMetadata, ? extends T> f) {
+    private <T> void handleResult(ServerMessage message, SynchronousSink<T> sink,
+        BiFunction<Row, RowMetadata, ? extends T> f) {
         if (message instanceof SyntheticMetadataMessage) {
             DefinitionMetadataMessage[] metadataMessages = ((SyntheticMetadataMessage) message).unwrap();
             if (metadataMessages.length == 0) {
@@ -153,7 +153,8 @@ public final class MySqlResult implements Result {
         }
     }
 
-    private <T> void processRow(RowMessage message, SynchronousSink<T> sink, BiFunction<Row, RowMetadata, ? extends T> f) {
+    private <T> void processRow(RowMessage message, SynchronousSink<T> sink,
+        BiFunction<Row, RowMetadata, ? extends T> f) {
         MySqlRowMetadata rowMetadata = this.rowMetadata;
 
         if (rowMetadata == null) {

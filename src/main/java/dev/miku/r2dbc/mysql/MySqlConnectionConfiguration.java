@@ -91,12 +91,12 @@ public final class MySqlConnectionConfiguration {
 
     private final Extensions extensions;
 
-    private MySqlConnectionConfiguration(
-        boolean isHost, String domain, int port, MySqlSslConfiguration ssl, boolean tcpKeepAlive, boolean tcpNoDelay,
-        @Nullable Duration connectTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
-        String user, @Nullable CharSequence password, @Nullable String database,
-        @Nullable Predicate<String> preferPrepareStatement, int queryCacheSize, int prepareCacheSize, Extensions extensions
-    ) {
+    private MySqlConnectionConfiguration(boolean isHost, String domain, int port, MySqlSslConfiguration ssl,
+        boolean tcpKeepAlive, boolean tcpNoDelay, @Nullable Duration connectTimeout,
+        ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId, String user,
+        @Nullable CharSequence password, @Nullable String database,
+        @Nullable Predicate<String> preferPrepareStatement, int queryCacheSize, int prepareCacheSize,
+        Extensions extensions) {
         this.isHost = isHost;
         this.domain = domain;
         this.port = port;
@@ -115,6 +115,11 @@ public final class MySqlConnectionConfiguration {
         this.extensions = extensions;
     }
 
+    /**
+     * Creates a builder of the configuration. All options are default.
+     *
+     * @return the builder.
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -175,11 +180,11 @@ public final class MySqlConnectionConfiguration {
         return preferPrepareStatement;
     }
 
-    public int getQueryCacheSize() {
+    int getQueryCacheSize() {
         return queryCacheSize;
     }
 
-    public int getPrepareCacheSize() {
+    int getPrepareCacheSize() {
         return prepareCacheSize;
     }
 
@@ -224,40 +229,24 @@ public final class MySqlConnectionConfiguration {
     @Override
     public String toString() {
         if (isHost) {
-            return "MySqlConnectionConfiguration{" +
-                ", host='" + domain + '\'' +
-                ", port=" + port +
-                ", ssl=" + ssl +
-                ", tcpNoDelay=" + tcpNoDelay +
-                ", tcpKeepAlive=" + tcpKeepAlive +
-                ", connectTimeout=" + connectTimeout +
-                ", serverZoneId=" + serverZoneId +
-                ", zeroDateOption=" + zeroDateOption +
-                ", user='" + user + '\'' +
-                ", password=" + password +
-                ", database='" + database + '\'' +
-                ", preferPrepareStatement=" + preferPrepareStatement +
-                ", queryCacheSize=" + queryCacheSize +
-                ", prepareCacheSize=" + prepareCacheSize +
-                ", extensions=" + extensions +
-                '}';
-        } else {
-            return "MySqlConnectionConfiguration{" +
-                ", unixSocket='" + domain + '\'' +
-                ", connectTimeout=" + connectTimeout +
-                ", serverZoneId=" + serverZoneId +
-                ", zeroDateOption=" + zeroDateOption +
-                ", user='" + user + '\'' +
-                ", password=" + password +
-                ", database='" + database + '\'' +
-                ", preferPrepareStatement=" + preferPrepareStatement +
-                ", queryCacheSize=" + queryCacheSize +
-                ", prepareCacheSize=" + prepareCacheSize +
-                ", extensions=" + extensions +
-                '}';
+            return "MySqlConnectionConfiguration{, host='" + domain + "', port=" + port + ", ssl=" + ssl +
+                ", tcpNoDelay=" + tcpNoDelay + ", tcpKeepAlive=" + tcpKeepAlive + ", connectTimeout=" +
+                connectTimeout + ", serverZoneId=" + serverZoneId + ", zeroDateOption=" + zeroDateOption +
+                ", user='" + user + '\'' + ", password=" + password + ", database='" + database +
+                "', preferPrepareStatement=" + preferPrepareStatement + ", queryCacheSize=" + queryCacheSize +
+                ", prepareCacheSize=" + prepareCacheSize + ", extensions=" + extensions + '}';
         }
+
+        return "MySqlConnectionConfiguration{, unixSocket='" + domain + "', connectTimeout=" +
+            connectTimeout + ", serverZoneId=" + serverZoneId + ", zeroDateOption=" + zeroDateOption +
+            ", user='" + user + "', password=" + password + ", database='" + database +
+            "', preferPrepareStatement=" + preferPrepareStatement + ", queryCacheSize=" + queryCacheSize +
+            ", prepareCacheSize=" + prepareCacheSize + ", extensions=" + extensions + '}';
     }
 
+    /**
+     * A builder for {@link MySqlConnectionConfiguration} creation.
+     */
     public static final class Builder {
 
         @Nullable
@@ -320,9 +309,11 @@ public final class MySqlConnectionConfiguration {
 
         private final List<Extension> extensions = new ArrayList<>();
 
-        private Builder() {
-        }
-
+        /**
+         * Builds an immutable {@link MySqlConnectionConfiguration} with current options.
+         *
+         * @return the {@link MySqlConnectionConfiguration}.
+         */
         public MySqlConnectionConfiguration build() {
             SslMode sslMode = requireSslMode();
 
@@ -340,8 +331,9 @@ public final class MySqlConnectionConfiguration {
             MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslHostnameVerifier,
                 sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
             return new MySqlConnectionConfiguration(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay,
-                connectTimeout, zeroDateOption, serverZoneId, user, password, database, preferPrepareStatement,
-                queryCacheSize, prepareCacheSize, Extensions.from(extensions, autodetectExtensions));
+                connectTimeout, zeroDateOption, serverZoneId, user, password, database,
+                preferPrepareStatement, queryCacheSize, prepareCacheSize,
+                Extensions.from(extensions, autodetectExtensions));
         }
 
         /**
@@ -451,7 +443,8 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Enforce the time zone of server.  Default to query server time zone in initialization (no enforce).
+         * Enforce the time zone of server.  Default to query server time zone in initialization (no
+         * enforce).
          *
          * @param serverZoneId the {@link ZoneId}, or {@code null} if query in initialization.
          * @return this {@link Builder}.
@@ -463,8 +456,8 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configure the behavior when this driver receives a value of zero-date.
-         * See also {@link ZeroDateOption}.
+         * Configure the {@link ZeroDateOption}.  It is a behavior option when this driver receives a value of
+         * zero-date.
          *
          * @param zeroDate the {@link ZeroDateOption}.
          * @return this {@link Builder}.
@@ -513,9 +506,9 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configure ssl {@link HostnameVerifier}, it will be available only set {@link #sslMode} as
-         * {@link SslMode#VERIFY_IDENTITY}. It is useful when server was using special Certificates
-         * or need special verification.
+         * Configure SSL {@link HostnameVerifier}, it is available only set {@link #sslMode(SslMode)} as
+         * {@link SslMode#VERIFY_IDENTITY}. It is useful when server was using special Certificates or need
+         * special verification.
          * <p>
          * Default is builtin {@link HostnameVerifier} which use RFC standards.
          *
@@ -525,16 +518,16 @@ public final class MySqlConnectionConfiguration {
          * @since 0.8.2
          */
         public Builder sslHostnameVerifier(HostnameVerifier sslHostnameVerifier) {
-            this.sslHostnameVerifier = requireNonNull(sslHostnameVerifier, "sslHostnameVerifier must not be null");
+            this.sslHostnameVerifier = requireNonNull(sslHostnameVerifier,
+                "sslHostnameVerifier must not be null");
             return this;
         }
 
         /**
-         * Configure ssl root cert for server certificate validation. It is only used
-         * if {@link #sslMode(SslMode)} is configured for verify server certification.
+         * Configure SSL root certification for server certificate validation. It is only available if the
+         * {@link #sslMode(SslMode)} is configured for verify server certification.
          * <p>
-         * Default is {@code null}, which means that the default algorithm is used for
-         * the trust manager.
+         * Default is {@code null}, which means that the default algorithm is used for the trust manager.
          *
          * @param sslCa an X.509 certificate chain file in PEM format.
          * @return this {@link Builder}.
@@ -578,7 +571,8 @@ public final class MySqlConnectionConfiguration {
          * <p>
          * It will be used only if {@link #sslKey} and {@link #sslCert} non-null.
          *
-         * @param sslKeyPassword the password of the {@link #sslKey}, or {@code null} if it's not password-protected.
+         * @param sslKeyPassword the password of the {@link #sslKey}, or {@code null} if it's not
+         *                       password-protected.
          * @return this {@link Builder}.
          * @since 0.8.2
          */
@@ -589,17 +583,18 @@ public final class MySqlConnectionConfiguration {
 
         /**
          * Configure a {@link SslContextBuilder} customizer. The customizer gets applied on each SSL
-         * connection attempt to allow for just-in-time configuration updates. The {@link Function}
-         * gets called with the prepared {@link SslContextBuilder} that has all configuration options
-         * applied. The customizer may return the same builder or return a new builder instance to
-         * be used to build the SSL context.
+         * connection attempt to allow for just-in-time configuration updates. The {@link Function} gets
+         * called with the prepared {@link SslContextBuilder} that has all configuration options applied. The
+         * customizer may return the same builder or return a new builder instance to be used to build the SSL
+         * context.
          *
          * @param customizer customizer function
          * @return this {@link Builder}
          * @throws IllegalArgumentException if {@code customizer} is {@code null}
          * @since 0.8.1
          */
-        public Builder sslContextBuilderCustomizer(Function<SslContextBuilder, SslContextBuilder> customizer) {
+        public Builder sslContextBuilderCustomizer(
+            Function<SslContextBuilder, SslContextBuilder> customizer) {
             requireNonNull(customizer, "sslContextBuilderCustomizer must not be null");
 
             this.sslContextBuilderCustomizer = customizer;
@@ -635,8 +630,8 @@ public final class MySqlConnectionConfiguration {
         /**
          * Configure the protocol of parametrized statements to the text protocol.
          * <p>
-         * The text protocol is default protocol that's using client-preparing.
-         * See also MySQL documentations.
+         * The text protocol is default protocol that's using client-preparing. See also MySQL
+         * documentations.
          *
          * @return this {@link Builder}
          * @since 0.8.1
@@ -649,8 +644,8 @@ public final class MySqlConnectionConfiguration {
         /**
          * Configure the protocol of parametrized statements to the binary protocol.
          * <p>
-         * The binary protocol is compact protocol that's using server-preparing.
-         * See also MySQL documentations.
+         * The binary protocol is compact protocol that's using server-preparing. See also MySQL
+         * documentations.
          *
          * @return this {@link Builder}.
          * @since 0.8.1
@@ -660,17 +655,16 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configure the protocol of parametrized statements and prepare-preferred
-         * simple statements to the binary protocol.
+         * Configure the protocol of parametrized statements and prepare-preferred simple statements to the
+         * binary protocol.
          * <p>
-         * The {@code preferPrepareStatement} configures whether to prefer prepare execution
-         * on a statement-by-statement basis (simple statements). The {@link Predicate} accepts
-         * the simple SQL query string and returns a boolean flag indicating preference.
-         * {@code true} prepare-preferred, {@code false} prefers direct execution (text protocol).
-         * Defaults to direct execution.
+         * The {@code preferPrepareStatement} configures whether to prefer prepare execution on a
+         * statement-by-statement basis (simple statements). The {@link Predicate} accepts the simple SQL
+         * query string and returns a boolean flag indicating preference. {@code true} prepare-preferred,
+         * {@code false} prefers direct execution (text protocol). Defaults to direct execution.
          * <p>
-         * The binary protocol is compact protocol that's using server-preparing.
-         * See also MySQL documentations.
+         * The binary protocol is compact protocol that's using server-preparing. See also MySQL
+         * documentations.
          *
          * @param preferPrepareStatement the above {@link Predicate}.
          * @return this {@link Builder}.
@@ -685,11 +679,11 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configures the maximum size of the {@link Query} parsing cache. Usually it should be power of
-         * two.  Default to {@code 0}. Driver will use unbounded cache if size is less than {@code 0}.
+         * Configures the maximum size of the {@link Query} parsing cache. Usually it should be power of two.
+         * Default to {@code 0}. Driver will use unbounded cache if size is less than {@code 0}.
          * <p>
-         * Notice: the cache is using EL model (the PACELC theorem) which provider better performance.
-         * That means it is an elastic cache. So this size is not a hard-limit. It should be over 16 in average.
+         * Notice: the cache is using EL model (the PACELC theorem) which provider better performance. That
+         * means it is an elastic cache. So this size is not a hard-limit. It should be over 16 in average.
          *
          * @param queryCacheSize the above size, {@code 0} means no cache, {@code -1} means unbounded cache.
          * @return this {@link Builder}.
@@ -701,18 +695,18 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configures the maximum size of the server-preparing cache. Usually it should be power of
-         * two.  Default to {@code 256}. Driver will use unbounded cache if size is less than {@code 0}.
+         * Configures the maximum size of the server-preparing cache. Usually it should be power of two.
+         * Default to {@code 256}. Driver will use unbounded cache if size is less than {@code 0}. It is used
+         * only if using server-preparing parametrized statements, i.e. the {@link #useServerPrepareStatement}
+         * is set.
          * <p>
-         * It will be used only if using server-preparing for parametrized statements, i.e. the
-         * {@link #useServerPrepareStatement} is set.
-         * <p>
-         * Notice: the cache is using EC model (the PACELC theorem) for ensure consistency. Consistency
-         * is very important because MySQL contains a hard limit of all server-prepared statements which
-         * has been opened, see also {@code max_prepared_stmt_count}. And, the cache is one-to-one
-         * connection, which means it will not work on thread-concurrency.
+         * Notice: the cache is using EC model (the PACELC theorem) for ensure consistency. Consistency is
+         * very important because MySQL contains a hard limit of all server-prepared statements which has been
+         * opened, see also {@code max_prepared_stmt_count}. And, the cache is one-to-one connection, which
+         * means it will not work on thread-concurrency.
          *
-         * @param prepareCacheSize the above size, {@code 0} means no cache, {@code -1} means unbounded cache.
+         * @param prepareCacheSize the above size, {@code 0} means no cache, {@code -1} means unbounded
+         *                         cache.
          * @return this {@link Builder}.
          * @since 0.8.3
          */
@@ -722,8 +716,8 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configures whether to use {@link ServiceLoader} to discover and register extensions.
-         * Defaults to {@code true}.
+         * Configures whether to use {@link ServiceLoader} to discover and register extensions. Defaults to
+         * {@code true}.
          *
          * @param enabled to discover and register extensions.
          * @return this {@link Builder}.
@@ -737,10 +731,9 @@ public final class MySqlConnectionConfiguration {
         /**
          * Registers a {@link Extension} to extend driver functionality and manually.
          * <p>
-         * Notice: the driver will not deduplicate {@link Extension}s of autodetect
-         * discovered and manually extended. So if a {@link Extension} is registered by
-         * this function and autodetect discovered, it will get two {@link Extension}
-         * as same.
+         * Notice: the driver will not deduplicate {@link Extension}s of autodetect discovered and manually
+         * extended. So if a {@link Extension} is registered by this function and autodetect discovered, it
+         * will get two {@link Extension} as same.
          *
          * @param extension extension to extend driver functionality.
          * @return this {@link Builder}.
@@ -761,5 +754,7 @@ public final class MySqlConnectionConfiguration {
 
             return sslMode;
         }
+
+        private Builder() { }
     }
 }

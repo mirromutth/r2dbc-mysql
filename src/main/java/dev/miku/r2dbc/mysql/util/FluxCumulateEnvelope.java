@@ -89,8 +89,7 @@ final class CumulateEnvelopeSubscriber implements CoreSubscriber<ByteBuf>, Scann
     @Override
     public void onNext(ByteBuf buf) {
         if (done) {
-            // Does not release the buffer because it should be handled by OperatorUtils.discardOnCancel()
-            // or Context.
+            // Do not release the buffer, it should be handled by OperatorUtils.discardOnCancel() or Context.
             Operators.onNextDropped(buf, actual.currentContext());
             return;
         }
@@ -157,8 +156,7 @@ final class CumulateEnvelopeSubscriber implements CoreSubscriber<ByteBuf>, Scann
         ByteBuf cumulated = this.cumulated;
         this.cumulated = null;
 
-        // MySQL socket protocol need least one envelope, and the last envelope must small than maximum
-        // size of envelopes.
+        // The protocol need least one envelope, and the last must small than maximum size of envelopes.
         // - If there has no previous envelope, then the cumulated is null, should produce an empty
         //   envelope header.
         // - If previous envelope is a max-size envelope, then the cumulated is null, should produce an

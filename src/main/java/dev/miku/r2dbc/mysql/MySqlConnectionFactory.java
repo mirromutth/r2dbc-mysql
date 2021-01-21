@@ -58,6 +58,12 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
         return MySqlConnectionFactoryMetadata.INSTANCE;
     }
 
+    /**
+     * Creates a {@link MySqlConnectionFactory} with a {@link MySqlConnectionConfiguration}.
+     *
+     * @param configuration the {@link MySqlConnectionConfiguration}.
+     * @return configured {@link MySqlConnectionFactory}.
+     */
     public static MySqlConnectionFactory from(MySqlConnectionConfiguration configuration) {
         requireNonNull(configuration, "configuration must not be null");
 
@@ -69,7 +75,8 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
 
             if (configuration.isHost()) {
                 ssl = configuration.getSsl();
-                address = InetSocketAddress.createUnresolved(configuration.getDomain(), configuration.getPort());
+                address = InetSocketAddress.createUnresolved(configuration.getDomain(),
+                    configuration.getPort());
             } else {
                 ssl = MySqlSslConfiguration.disabled();
                 address = new DomainSocketAddress(configuration.getDomain());
@@ -79,21 +86,25 @@ public final class MySqlConnectionFactory implements ConnectionFactory {
             String user = configuration.getUser();
             CharSequence password = configuration.getPassword();
             SslMode sslMode = ssl.getSslMode();
-            ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption(), configuration.getServerZoneId());
+            ConnectionContext context = new ConnectionContext(configuration.getZeroDateOption(),
+                configuration.getServerZoneId());
             Extensions extensions = configuration.getExtensions();
             Predicate<String> prepare = configuration.getPreferPrepareStatement();
             int prepareCacheSize = configuration.getPrepareCacheSize();
 
-            return Client.connect(ssl, address, configuration.isTcpKeepAlive(), configuration.isTcpNoDelay(), context, configuration.getConnectTimeout())
+            return Client.connect(ssl, address, configuration.isTcpKeepAlive(), configuration.isTcpNoDelay(),
+                context, configuration.getConnectTimeout())
                 .flatMap(client -> QueryFlow.login(client, sslMode, database, user, password, context))
                 .flatMap(client -> {
                     ByteBufAllocator allocator = client.getByteBufAllocator();
                     CodecsBuilder builder = Codecs.builder(allocator);
                     PrepareCache prepareCache = Caches.createPrepareCache(prepareCacheSize);
 
-                    extensions.forEach(CodecRegistrar.class, registrar -> registrar.register(allocator, builder));
+                    extensions.forEach(CodecRegistrar.class, registrar ->
+                        registrar.register(allocator, builder));
 
-                    return MySqlConnection.init(client, builder.build(), context, queryCache.get(), prepareCache, prepare);
+                    return MySqlConnection.init(client, builder.build(), context, queryCache.get(),
+                        prepareCache, prepare);
                 });
         }));
     }

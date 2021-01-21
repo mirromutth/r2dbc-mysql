@@ -34,7 +34,8 @@ final class PrepareParametrizedStatement extends ParametrizedStatementSupport {
 
     private int fetchSize = 0;
 
-    PrepareParametrizedStatement(Client client, Codecs codecs, Query query, ConnectionContext context, PrepareCache prepareCache) {
+    PrepareParametrizedStatement(Client client, Codecs codecs, Query query, ConnectionContext context,
+        PrepareCache prepareCache) {
         super(client, codecs, query, context);
         this.prepareCache = prepareCache;
     }

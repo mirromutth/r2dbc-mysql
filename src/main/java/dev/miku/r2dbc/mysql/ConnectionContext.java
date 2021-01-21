@@ -29,9 +29,8 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * The MySQL connection context considers the behavior of server or client.
  * <p>
- * WARNING: Do NOT change any data outside of this project, try configure
- * {@code ConnectionFactoryOptions} or {@code MySqlConnectionConfiguration}
- * to control connection context and client behavior.
+ * WARNING: Do NOT change any data outside of this project, try configure {@code ConnectionFactoryOptions} or
+ * {@code MySqlConnectionConfiguration} to control connection context and client behavior.
  */
 public final class ConnectionContext implements CodecContext {
 
@@ -47,8 +46,8 @@ public final class ConnectionContext implements CodecContext {
     private ZoneId serverZoneId;
 
     /**
-     * Assume that the auto commit is always turned on, it will be set after handshake V10 request message,
-     * or OK message which means handshake V9 completed.
+     * Assume that the auto commit is always turned on, it will be set after handshake V10 request message, or
+     * OK message which means handshake V9 completed.
      */
     private volatile short serverStatuses = ServerStatuses.AUTO_COMMIT;
 
@@ -59,10 +58,22 @@ public final class ConnectionContext implements CodecContext {
         this.serverZoneId = serverZoneId;
     }
 
+    /**
+     * Get the connection identifier that is specified by server.
+     *
+     * @return the connection identifier.
+     */
     public int getConnectionId() {
         return connectionId;
     }
 
+    /**
+     * Initializes this context.
+     *
+     * @param connectionId the connection identifier that is specified by server.
+     * @param version      the server version.
+     * @param capability   the connection capabilities.
+     */
     public void init(int connectionId, ServerVersion version, Capability capability) {
         this.connectionId = connectionId;
         this.serverVersion = version;
@@ -103,14 +114,29 @@ public final class ConnectionContext implements CodecContext {
         return zeroDateOption;
     }
 
+    /**
+     * Get the bitmap of server statuses.
+     *
+     * @return the bitmap.
+     */
     public short getServerStatuses() {
         return serverStatuses;
     }
 
+    /**
+     * Updates server statuses.
+     *
+     * @param serverStatuses the bitmap of server statuses.
+     */
     public void setServerStatuses(short serverStatuses) {
         this.serverStatuses = serverStatuses;
     }
 
+    /**
+     * Get the connection capability. Should use it after this context initialized.
+     *
+     * @return the connection capability.
+     */
     public Capability getCapability() {
         return capability;
     }

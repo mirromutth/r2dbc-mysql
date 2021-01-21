@@ -95,8 +95,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
 
                 bitMask <<= 1;
 
-                // Should make sure it is 0 of byte, it may change to int in future, so try not use
-                // `bitMask == 0` only.
+                // Do NOT use `bitMask == 0` only.
                 if ((bitMask & 0xFF) == 0) {
                     // An approach to circular left shift 1-bit.
                     bitMask = 1;
