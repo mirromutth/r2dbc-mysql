@@ -31,11 +31,12 @@ class CharCollationTest {
 
     @Test
     void fromId() {
-        assertNotNull(CharCollation.fromId(33, version)); // utf-8 general case insensitivity
-        assertNotNull(CharCollation.fromId(45, version)); // utf-8 more 4-bytes general case insensitivity
-        assertNotNull(CharCollation.fromId(224, version)); // utf-8 more 4-bytes unicode case insensitivity
-        assertNotNull(CharCollation.fromId(246, version)); // utf-8 more 4-bytes unicode version 5.20 case insensitivity
-        assertNotNull(CharCollation.fromId(255, version)); // utf-8 more 4-bytes unicode version 9.00 accent insensitivity and case insensitivity
+        assertNotNull(CharCollation.fromId(33, version)); // utf8 general case insensitivity
+        assertNotNull(CharCollation.fromId(45, version)); // utf8mb4 general case insensitivity
+        assertNotNull(CharCollation.fromId(224, version)); // utf8mb4 unicode case insensitivity
+        assertNotNull(CharCollation.fromId(246, version)); // utf8mb4 unicode 5.20 case insensitivity
+        // utf8mb4 unicode 9.00 accent insensitivity and case insensitivity
+        assertNotNull(CharCollation.fromId(255, version));
         assertNotEquals(CharCollation.fromId(33, version), CharCollation.fromId(224, version));
     }
 }

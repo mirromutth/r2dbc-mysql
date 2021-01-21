@@ -37,7 +37,7 @@ class LobUtilsTest {
 
     private static final String SINGLE = "Hello world";
 
-    private static final String[] MULTI = {"Hello", "R2DBC", "MySQL"};
+    private static final String[] MULTI = { "Hello", "R2DBC", "MySQL" };
 
     @Test
     void normalFieldValue() {
@@ -60,7 +60,8 @@ class LobUtilsTest {
 
         Flux.from(LobUtils.createBlob(buffers).stream())
             .as(StepVerifier::create)
-            .expectNext(ByteBuffer.wrap(MULTI[0].getBytes()), ByteBuffer.wrap(MULTI[1].getBytes()), ByteBuffer.wrap(MULTI[2].getBytes()))
+            .expectNext(ByteBuffer.wrap(MULTI[0].getBytes()), ByteBuffer.wrap(MULTI[1].getBytes()),
+                ByteBuffer.wrap(MULTI[2].getBytes()))
             .verifyComplete();
 
         // Mock row releasing.

@@ -32,7 +32,8 @@ import org.openjdk.jmh.annotations.Timeout;
 @Testable
 public class MySqlNamesCompareBenchmark extends BenchmarkSupport {
 
-    private static final String LEFT = "This is a test message for testing String compare with case insensitive or case sensitive";
+    private static final String LEFT = "This is a test message for testing String compare " +
+        "with case insensitive or case sensitive";
 
     private static final String RIGHT = LEFT.toUpperCase();
 

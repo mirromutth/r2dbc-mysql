@@ -37,7 +37,8 @@ class PrepareQueryIntegrationTest extends QueryIntegrationTestSupport {
         String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)";
         badGrammar(connection -> Mono.from(connection.createStatement(tdl).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .thenMany(connection.createStatement("INSERT INTO test(`value`) VALUES (?); INSERT INTO test(`value`) VALUES (?)")
+            .thenMany(connection.createStatement("INSERT INTO test(`value`) VALUES (?); " +
+                "INSERT INTO test(`value`) VALUES (?)")
                 .bind(0, 1)
                 .bind(1, 2)
                 .execute())
@@ -46,10 +47,11 @@ class PrepareQueryIntegrationTest extends QueryIntegrationTestSupport {
 
     @Test
     void fetchSize() {
-        complete(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
-            .execute())
+        complete(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test" +
+            "(id INT PRIMARY KEY AUTO_INCREMENT,value INT)").execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
+            .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)")
+                .execute()))
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .thenMany(connection.createStatement("SELECT value FROM test WHERE id > ?")
                 .bind(0, 0)
@@ -66,8 +68,8 @@ class PrepareQueryIntegrationTest extends QueryIntegrationTestSupport {
 
     @Test
     void insertFetch() {
-        complete(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
-            .execute())
+        complete(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test" +
+            "(id INT PRIMARY KEY AUTO_INCREMENT,value INT)").execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .thenMany(connection.createStatement("INSERT INTO test(`value`) VALUES (?),(?),(?),(?),(?)")
                 .bind(0, 1)

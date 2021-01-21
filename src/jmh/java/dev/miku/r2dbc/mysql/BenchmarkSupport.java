@@ -40,8 +40,9 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 10, time = 1)
 @Fork(value = 5, jvmArgsAppend = {
     "-server", "-Xms4g", "-Xmx4g", "-Xmn1536m", "-XX:CMSInitiatingOccupancyFraction=82", "-Xss256k",
-    "-XX:+DisableExplicitGC", "-XX:+UseConcMarkSweepGC", "-XX:+UseParNewGC", "-XX:+CMSParallelRemarkEnabled", "-XX:ParallelGCThreads=8",
-    "-XX:LargePageSizeInBytes=128m", "-XX:+UseFastAccessorMethods", "-XX:+CMSScavengeBeforeRemark", "-XX:CMSInitiatingOccupancyFraction=90",
+    "-XX:+DisableExplicitGC", "-XX:+UseConcMarkSweepGC", "-XX:+UseParNewGC", "-XX:+CMSParallelRemarkEnabled",
+    "-XX:ParallelGCThreads=8", "-XX:LargePageSizeInBytes=128m", "-XX:+UseFastAccessorMethods",
+    "-XX:+CMSScavengeBeforeRemark", "-XX:CMSInitiatingOccupancyFraction=90",
     "-XX:+UseCMSInitiatingOccupancyOnly", "-XX:+CMSClassUnloadingEnabled"
 })
 @BenchmarkMode(Mode.AverageTime)

@@ -36,7 +36,8 @@ class DurationCodecTest implements CodecTestSupport<Duration> {
 
     private static final long SECONDS_OF_MINUTE = TimeUnit.MINUTES.toSeconds(1);
 
-    private static final long MAX_SECONDS = TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 59;
+    private static final long MAX_SECONDS = TimeUnit.HOURS.toSeconds(838) +
+        TimeUnit.MINUTES.toSeconds(59) + 59;
 
     private static final long MAX_NANOS = TimeUnit.MICROSECONDS.toNanos(999999);
 
@@ -101,9 +102,9 @@ class DurationCodecTest implements CodecTestSupport<Duration> {
                 int nanos = it.getNano();
 
                 buf.writeIntLE((int) (seconds / SECONDS_OF_DAY))
-                        .writeByte((int) ((seconds % SECONDS_OF_DAY) / SECONDS_OF_HOUR))
-                        .writeByte((int) ((seconds % SECONDS_OF_HOUR) / SECONDS_OF_MINUTE))
-                        .writeByte((int) (seconds % SECONDS_OF_MINUTE));
+                    .writeByte((int) ((seconds % SECONDS_OF_DAY) / SECONDS_OF_HOUR))
+                    .writeByte((int) ((seconds % SECONDS_OF_HOUR) / SECONDS_OF_MINUTE))
+                    .writeByte((int) (seconds % SECONDS_OF_MINUTE));
 
                 if (nanos != 0) {
                     buf.writeIntLE((int) TimeUnit.NANOSECONDS.toMicros(nanos));

@@ -79,9 +79,10 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         super(configuration);
     }
 
-    @SuppressWarnings({"varargs", "unchecked"})
+    @SuppressWarnings({ "varargs", "unchecked" })
     <T> void testType(Type type, boolean valueSelect, String defined, T... values) {
-        String tdl = String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)", defined);
+        String tdl = String.format("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value %s)",
+            defined);
         complete(connection -> Mono.from(connection.createStatement(tdl).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .thenMany(Flux.fromIterable(convertOptional(values))
@@ -100,7 +101,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
 
     @Test
     void smallintSigned() {
-        testType(Short.class, true, "SMALLINT", (short) 1, (short) -1, null, Short.MIN_VALUE, Short.MAX_VALUE);
+        testType(Short.class, true, "SMALLINT", (short) 1, (short) -1, null, Short.MIN_VALUE,
+            Short.MAX_VALUE);
     }
 
     @Test
@@ -135,7 +137,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
 
     @Test
     void bigintUnsigned() {
-        testType(BigInteger.class, true, "BIGINT UNSIGNED", BigInteger.ONE, null, BigInteger.ZERO, UINT64_MAX_VALUE);
+        testType(BigInteger.class, true, "BIGINT UNSIGNED", BigInteger.ONE, null, BigInteger.ZERO,
+            UINT64_MAX_VALUE);
     }
 
     @Test
@@ -150,22 +153,26 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
 
     @Test
     void doubleSigned() {
-        testType(Double.class, true, "DOUBLE", null, 1.0, -1.0, Double.MIN_VALUE, Double.MIN_NORMAL, Double.MAX_VALUE);
+        testType(Double.class, true, "DOUBLE", null, 1.0, -1.0, Double.MIN_VALUE, Double.MIN_NORMAL,
+            Double.MAX_VALUE);
     }
 
     @Test
     void doubleUnsigned() {
-        testType(Double.class, true, "DOUBLE UNSIGNED", null, 1.0, Double.MIN_VALUE, Double.MIN_NORMAL, Double.MAX_VALUE);
+        testType(Double.class, true, "DOUBLE UNSIGNED", null, 1.0, Double.MIN_VALUE, Double.MIN_NORMAL,
+            Double.MAX_VALUE);
     }
 
     @Test
     void decimalSigned() {
-        testType(BigDecimal.class, true, "DECIMAL(10,2)", null, new BigDecimal("1.00"), new BigDecimal("-1.00"), new BigDecimal("1.99"));
+        testType(BigDecimal.class, true, "DECIMAL(10,2)", null, new BigDecimal("1.00"),
+            new BigDecimal("-1.00"), new BigDecimal("1.99"));
     }
 
     @Test
     void decimalUnsigned() {
-        testType(BigDecimal.class, true, "DECIMAL(10,2) UNSIGNED", null, new BigDecimal("1.00"), new BigDecimal("1.99"));
+        testType(BigDecimal.class, true, "DECIMAL(10,2) UNSIGNED", null, new BigDecimal("1.00"),
+            new BigDecimal("1.99"));
     }
 
     @Test
@@ -183,7 +190,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     @Test
     void enumerable() {
         testType(String.class, true, "ENUM('ONE','TWO','THREE')", null, "ONE", "TWO", "THREE");
-        testType(EnumData.class, true, "ENUM('ONE','TWO','THREE')", null, EnumData.ONE, EnumData.TWO, EnumData.THREE);
+        testType(EnumData.class, true, "ENUM('ONE','TWO','THREE')", null, EnumData.ONE, EnumData.TWO,
+            EnumData.THREE);
     }
 
     /**
@@ -191,16 +199,20 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
      */
     @Test
     void varbinary() {
-        testType(byte[].class, true, "VARBINARY(50)", new byte[0], null, new byte[]{1, 2, 3, 4, 5});
-        testType(ByteBuffer.class, true, "VARBINARY(50)", ByteBuffer.allocate(0), null, ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5}));
+        testType(byte[].class, true, "VARBINARY(50)", new byte[0], null, new byte[] { 1, 2, 3, 4, 5 });
+        testType(ByteBuffer.class, true, "VARBINARY(50)", ByteBuffer.allocate(0), null,
+            ByteBuffer.wrap(new byte[] { 1, 2, 3, 4, 5 }));
     }
 
     @Test
     void bit() {
         testType(Boolean.class, true, "BIT(1)", null, false, true);
-        testType(BitSet.class, true, "BIT(16)", null, BitSet.valueOf(new byte[]{(byte) 0xEF, (byte) 0xCD}), BitSet.valueOf(new byte[0]), BitSet.valueOf(new byte[]{0, 0}));
-        testType(byte[].class, false, "BIT(16)", null, new byte[]{(byte) 0xCD, (byte) 0xEF}, new byte[]{0, 0});
-        testType(ByteBuffer.class, false, "BIT(16)", null, ByteBuffer.wrap(new byte[]{1, 2}), ByteBuffer.wrap(new byte[]{0, 0}));
+        testType(BitSet.class, true, "BIT(16)", null, BitSet.valueOf(new byte[] { (byte) 0xEF, (byte) 0xCD }),
+            BitSet.valueOf(new byte[0]), BitSet.valueOf(new byte[] { 0, 0 }));
+        testType(byte[].class, false, "BIT(16)", null, new byte[] { (byte) 0xCD, (byte) 0xEF },
+            new byte[] { 0, 0 });
+        testType(ByteBuffer.class, false, "BIT(16)", null, ByteBuffer.wrap(new byte[] { 1, 2 }),
+            ByteBuffer.wrap(new byte[] { 0, 0 }));
     }
 
     @Test
@@ -211,19 +223,16 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     @SuppressWarnings("unchecked")
     @Test
     void set() {
-        Type stringSet = new TypeReference<Set<String>>() {
+        Type stringSet = new TypeReference<Set<String>>() {}.getType();
+        Type enumSet = new TypeReference<Set<EnumData>>() {}.getType();
 
-        }.getType();
-        Type enumSet = new TypeReference<Set<EnumData>>() {
-
-        }.getType();
-
-        testType(String.class, true, "SET('ONE','TWO','THREE')", null, "ONE,TWO,THREE", "ONE", "", "ONE,THREE");
+        testType(String.class, true, "SET('ONE','TWO','THREE')", null, "ONE,TWO,THREE", "ONE", "",
+            "ONE,THREE");
         testType(String[].class, true, "SET('ONE','TWO','THREE')", null,
-            new String[]{"ONE", "TWO", "THREE"},
-            new String[]{"ONE"},
-            new String[]{},
-            new String[]{"ONE", "THREE"});
+            new String[] { "ONE", "TWO", "THREE" },
+            new String[] { "ONE" },
+            new String[] { },
+            new String[] { "ONE", "THREE" });
         testType(stringSet, true, "SET('ONE','TWO','THREE')", null,
             new HashSet<>(Arrays.asList("ONE", "TWO", "THREE")),
             Collections.singleton("ONE"),
@@ -239,7 +248,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     @DisabledIfSystemProperty(named = "test.mysql.version", matches = "5\\.[56](\\.\\d+)?")
     @Test
     void json() {
-        testType(String.class, false, "JSON", null, "{\"data\": 1}", "[\"data\", 1]", "1", "null", "\"R2DBC\"", "2.56");
+        testType(String.class, false, "JSON", null, "{\"data\": 1}", "[\"data\", 1]", "1", "null",
+            "\"R2DBC\"", "2.56");
     }
 
     @Test
@@ -252,9 +262,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         LocalTime minTime = LocalTime.MIDNIGHT;
         LocalTime aTime = LocalTime.of(10, 5, 28);
         LocalTime maxTime = LocalTime.of(23, 59, 59);
-        Duration minDuration = Duration.ofSeconds(-TimeUnit.HOURS.toSeconds(838) - TimeUnit.MINUTES.toSeconds(59) - 59);
+        Duration minDuration = Duration.ofSeconds(-TimeUnit.HOURS.toSeconds(838) -
+            TimeUnit.MINUTES.toSeconds(59) - 59);
         Duration aDuration = Duration.ofSeconds(1854672);
-        Duration maxDuration = Duration.ofSeconds(TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 59);
+        Duration maxDuration = Duration.ofSeconds(TimeUnit.HOURS.toSeconds(838) +
+            TimeUnit.MINUTES.toSeconds(59) + 59);
 
         testType(LocalTime.class, true, "TIME", null, minTime, aTime, maxTime);
         testType(Duration.class, true, "TIME", null, minDuration, aDuration, maxDuration);
@@ -266,9 +278,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         LocalTime smallTime = LocalTime.of(0, 0, 0, 1000);
         LocalTime aTime = LocalTime.of(10, 5, 28, 5_410_000);
         LocalTime maxTime = LocalTime.of(23, 59, 59, 999_999_000);
-        Duration smallDuration = Duration.ofSeconds(-TimeUnit.HOURS.toSeconds(838) - TimeUnit.MINUTES.toSeconds(59) - 58, -999_999_000);
+        Duration smallDuration = Duration.ofSeconds(-TimeUnit.HOURS.toSeconds(838) -
+            TimeUnit.MINUTES.toSeconds(59) - 58, -999_999_000);
         Duration aDuration = Duration.ofSeconds(1854672, 5_410_000);
-        Duration bigDuration = Duration.ofSeconds(TimeUnit.HOURS.toSeconds(838) + TimeUnit.MINUTES.toSeconds(59) + 58, 999_999_000);
+        Duration bigDuration = Duration.ofSeconds(TimeUnit.HOURS.toSeconds(838) +
+            TimeUnit.MINUTES.toSeconds(59) + 58, 999_999_000);
 
         testType(LocalTime.class, true, "TIME(6)", null, smallTime, aTime, maxTime);
         testType(Duration.class, true, "TIME(6)", null, smallDuration, aDuration, bigDuration);
@@ -282,11 +296,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         LocalTime lastSecond = LocalTime.of(23, 59, 59);
         LocalTime firstSecond = LocalTime.of(0, 0, 1);
 
-        List<Tuple2<Duration, LocalTime>> dataCases = Arrays.asList(
-            Tuples.of(negativeOne, lastSecond),
-            Tuples.of(negativeOneDay, lastSecond),
-            Tuples.of(oneDayOneSecond, firstSecond)
-        );
+        List<Tuple2<Duration, LocalTime>> dataCases = Arrays.asList(Tuples.of(negativeOne, lastSecond),
+            Tuples.of(negativeOneDay, lastSecond), Tuples.of(oneDayOneSecond, firstSecond));
         String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value TIME)";
         complete(connection -> Mono.from(connection.createStatement(tdl).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
@@ -306,12 +317,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         LocalTime lastMicro = LocalTime.of(23, 59, 59, 999_999_000);
         LocalTime firstMicro = LocalTime.of(0, 0, 0, 1000);
 
-        List<Tuple2<Duration, LocalTime>> dataCases = Arrays.asList(
-            Tuples.of(one, lastMicro),
-            Tuples.of(oneDay, lastMicro),
-            Tuples.of(oneDayOne, firstMicro),
-            Tuples.of(aDuration, aTime)
-        );
+        List<Tuple2<Duration, LocalTime>> dataCases = Arrays.asList(Tuples.of(one, lastMicro),
+            Tuples.of(oneDay, lastMicro), Tuples.of(oneDayOne, firstMicro), Tuples.of(aDuration, aTime));
         String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value TIME(6))";
         complete(connection -> Mono.from(connection.createStatement(tdl).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
@@ -360,11 +367,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     }
 
     /**
-     * SQL query {@code SELECT 1} is a ping approach which is cross-database (maybe some are not
-     * supported) and is easy to understand.
+     * SQL query {@code SELECT 1} is a ping approach which is cross-database (maybe some are not supported)
+     * and is easy to understand.
      * <p>
-     * Note: looks like {@code SELECT 1} result value type returned by the MySQL server is BIGINT,
-     * try using Number.class to eliminate {@code assertEquals} fail because of the value type.
+     * Note: looks like {@code SELECT 1} result value type returned by the MySQL server is BIGINT, try using
+     * Number.class to eliminate {@code assertEquals} fail because of the value type.
      */
     @Test
     void selectOne() {
@@ -380,7 +387,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
      */
     @Test
     void selectFromOtherDatabase() {
-        complete(connection -> Flux.from(connection.createStatement("SELECT * FROM `information_schema`.`innodb_trx`").execute())
+        complete(conn -> Flux.from(conn.createStatement("SELECT * FROM `information_schema`.`innodb_trx`")
+            .execute())
             .flatMap(result -> result.map((row, metadata) -> row.get(0))));
     }
 
@@ -394,7 +402,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         complete(connection -> Mono.from(connection.createStatement(tdl).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .thenMany(Flux.range(0, 10))
-            .flatMap(it -> Flux.from(connection.createStatement("INSERT INTO test VALUES(DEFAULT,?,?,NOW(),NOW())")
+            .flatMap(it -> Flux.from(connection.createStatement("INSERT INTO test VALUES" +
+                "(DEFAULT,?,?,NOW(),NOW())")
                 .bind(0, String.format("integration-test%d@mail.com", it))
                 .bind(1, "******")
                 .execute()))
@@ -414,10 +423,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
      */
     @Test
     void consumePortion() {
-        complete(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
-            .execute())
+        complete(connection -> Mono.from(connection.createStatement("CREATE TEMPORARY TABLE test" +
+            "(id INT PRIMARY KEY AUTO_INCREMENT,value INT)").execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
+            .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)")
+                .execute()))
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .then(Mono.from(connection.createStatement("SELECT value FROM test WHERE id > ?")
                 .bind(0, 0)
@@ -440,10 +450,12 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         List<Integer> values = new ArrayList<>();
         complete(connection -> Mono.from(connection.createStatement(tdl).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) VALUES (1),(2),(3),(4),(5)").execute()))
+            .then(Mono.from(connection.createStatement("INSERT INTO test(`value`) " +
+                "VALUES (1),(2),(3),(4),(5)").execute()))
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .thenMany(Flux.merge(
-                Flux.from(connection.createStatement("SELECT value FROM test WHERE id > ?").bind(0, 0).execute())
+                Flux.from(connection.createStatement("SELECT value FROM test WHERE id > ?")
+                    .bind(0, 0).execute())
                     .flatMap(r -> r.map((row, meta) -> row.get(0, Integer.class)))
                     .doOnNext(values::add),
                 connection.createStatement("BAD GRAMMAR").execute()
@@ -464,10 +476,12 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     @Test
     void foundRows() {
         int value = 10;
-        complete(connection -> Flux.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
+        complete(connection -> Flux.from(connection.createStatement("CREATE TEMPORARY TABLE test" +
+            "(id INT PRIMARY KEY AUTO_INCREMENT,value INT)")
             .execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .thenMany(connection.createStatement("INSERT INTO test VALUES(DEFAULT,?)").bind(0, value).execute())
+            .thenMany(connection.createStatement("INSERT INTO test VALUES(DEFAULT,?)")
+                .bind(0, value).execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .thenMany(connection.createStatement("UPDATE test SET value=? WHERE id=?")
                 .bind(0, value).bind(1, 1).execute())
@@ -477,18 +491,23 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
     }
 
     /**
-     * See https://github.com/mirromutth/r2dbc-mysql/issues/156 and https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html .
+     * See also:
+     *
+     * <ul><li>https://github.com/mirromutth/r2dbc-mysql/issues/156</li>
+     * <li>https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html</li>
+     * <li>https://github.com/mirromutth/r2dbc-mysql/issues/90</li></ul>
      * <p>
-     * And, we enabled {@code Capability.FOUND_ROWS} by default, see also https://github.com/mirromutth/r2dbc-mysql/issues/90 .
-     * <p>
-     * So, the first number of affected rows is 1, the second one is 2, and the third is 1 (found/touched 1, changed 0).
+     * The {@code Capability.FOUND_ROWS} has been enabled by default, the first number of affected rows is
+     * 1, thesecond one is 2, and the third is 1 (found/touched 1, changed 0).
      */
     @Test
     void insertOnDuplicate() {
-        complete(connection -> Flux.from(connection.createStatement("CREATE TEMPORARY TABLE test(id INT PRIMARY KEY,value INT)")
+        complete(connection -> Flux.from(connection.createStatement("CREATE TEMPORARY TABLE test" +
+            "(id INT PRIMARY KEY,value INT)")
             .execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
-            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) ON DUPLICATE KEY UPDATE value=?")
+            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) " +
+                "ON DUPLICATE KEY UPDATE value=?")
                 .bind(0, 1)
                 .bind(1, 10)
                 .bind(2, 20)
@@ -501,7 +520,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
             .flatMap(QueryIntegrationTestSupport::extractFirstInteger)
             .collectList()
             .doOnNext(it -> assertThat(it).isEqualTo(Collections.singletonList(10)))
-            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) ON DUPLICATE KEY UPDATE value=?")
+            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) " +
+                "ON DUPLICATE KEY UPDATE value=?")
                 .bind(0, 1)
                 .bind(1, 10)
                 .bind(2, 20)
@@ -514,7 +534,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
             .flatMap(QueryIntegrationTestSupport::extractFirstInteger)
             .collectList()
             .doOnNext(it -> assertThat(it).isEqualTo(Collections.singletonList(20)))
-            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) ON DUPLICATE KEY UPDATE value=?")
+            .thenMany(connection.createStatement("INSERT INTO test VALUES(?,?) " +
+                "ON DUPLICATE KEY UPDATE value=?")
                 .bind(0, 1)
                 .bind(1, 10)
                 .bind(2, 20)
@@ -538,7 +559,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         if (type instanceof Class<?>) {
             return Flux.from(result.map((row, metadata) -> Optional.ofNullable(row.get(0, (Class<T>) type))));
         }
-        return Flux.from(result.map((row, metadata) -> Optional.ofNullable(((MySqlRow) row).get(0, (ParameterizedType) type))));
+        return Flux.from(result.map((row, metadata) ->
+            Optional.ofNullable(((MySqlRow) row).get(0, (ParameterizedType) type))));
     }
 
     private static Mono<Void> testTimeDuration(Connection connection, Duration origin, LocalTime time) {
@@ -563,7 +585,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         return Arrays.stream(values).map(Optional::ofNullable).collect(Collectors.toList());
     }
 
-    private static <T> Mono<Void> testOne(MySqlConnection connection, Type type, boolean selectValue, @Nullable T value) {
+    private static <T> Mono<Void> testOne(MySqlConnection connection, Type type, boolean selectValue,
+        @Nullable T value) {
         MySqlStatement insert = connection.createStatement("INSERT INTO test VALUES(DEFAULT,?)");
 
         if (value == null) {
@@ -605,9 +628,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                     Class<?> clazz = t.getClass();
                     if (clazz.isArray()) {
                         if (clazz == byte[].class) {
-                            assertThat(value).isInstanceOfSatisfying(byte[].class, it -> assertThat(it).isEqualTo(t));
+                            assertThat(value).isInstanceOfSatisfying(byte[].class,
+                                it -> assertThat(it).isEqualTo(t));
                         } else {
-                            assertThat(value).isInstanceOfSatisfying(Object[].class, it -> assertThat(it).isEqualTo(t));
+                            assertThat(value).isInstanceOfSatisfying(Object[].class,
+                                it -> assertThat(it).isEqualTo(t));
                         }
                     } else {
                         assertThat(value).isEqualTo(t);
@@ -621,7 +646,8 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                     MySqlStatement valueSelect;
 
                     if (value == null) {
-                        valueSelect = connection.createStatement("SELECT value FROM test WHERE value IS NULL");
+                        valueSelect = connection.createStatement("SELECT value FROM test " +
+                            "WHERE value IS NULL");
                     } else {
                         valueSelect = connection.createStatement("SELECT value FROM test WHERE value=?");
 
@@ -645,9 +671,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
                                 Class<?> clazz = t.getClass();
                                 if (clazz.isArray()) {
                                     if (clazz == byte[].class) {
-                                        assertThat(value).isInstanceOfSatisfying(byte[].class, item -> assertThat(item).isEqualTo(t));
+                                        assertThat(value).isInstanceOfSatisfying(byte[].class,
+                                            item -> assertThat(item).isEqualTo(t));
                                     } else {
-                                        assertThat(value).isInstanceOfSatisfying(Object[].class, item -> assertThat(item).isEqualTo(t));
+                                        assertThat(value).isInstanceOfSatisfying(Object[].class,
+                                            item -> assertThat(item).isEqualTo(t));
                                     }
                                 } else {
                                     assertThat(value).isEqualTo(t);

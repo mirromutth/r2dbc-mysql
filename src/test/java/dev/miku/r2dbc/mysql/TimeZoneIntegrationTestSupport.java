@@ -40,15 +40,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 abstract class TimeZoneIntegrationTestSupport extends IntegrationTestSupport {
 
-    private static final String TIMESTAMP_TABLE = "CREATE TEMPORARY TABLE test (id INT PRIMARY KEY AUTO_INCREMENT, value TIMESTAMP)";
+    private static final String TIMESTAMP_TABLE = "CREATE TEMPORARY TABLE test " +
+        "(id INT PRIMARY KEY AUTO_INCREMENT, value TIMESTAMP)";
 
-    private static final String TIME_TABLE = "CREATE TEMPORARY TABLE test (id INT PRIMARY KEY AUTO_INCREMENT, value TIME)";
+    private static final String TIME_TABLE = "CREATE TEMPORARY TABLE test " +
+        "(id INT PRIMARY KEY AUTO_INCREMENT, value TIME)";
 
     private static final LocalDateTime ST = LocalDateTime.of(2019, 1, 1, 11, 59, 59);
 
     private static final LocalDateTime DST = ST.plusHours(200 * 24);
 
-    private static final String INSERT = String.format("INSERT INTO test VALUE (DEFAULT, '%s'), (DEFAULT, '%s')",
+    private static final String INSERT = String.format(
+        "INSERT INTO test VALUE (DEFAULT, '%s'), (DEFAULT, '%s')",
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(ST),
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(DST));
 
@@ -92,7 +95,8 @@ abstract class TimeZoneIntegrationTestSupport extends IntegrationTestSupport {
                 .bind(0, 0)
                 .execute())
             .flatMap(r -> r.map((row, meta) -> row.get(0, OffsetDateTime.class)))
-            .doOnNext(it -> assertThat(it.getOffset()).isEqualTo(SERVER_ZONE.getRules().getOffset(it.toLocalDateTime())))
+            .doOnNext(it -> assertThat(it.getOffset())
+                .isEqualTo(SERVER_ZONE.getRules().getOffset(it.toLocalDateTime())))
             .map(OffsetDateTime::toLocalDateTime)
             .collectList()
             .doOnNext(it -> assertThat(it).isEqualTo(Arrays.asList(ST, DST))));
@@ -123,7 +127,8 @@ abstract class TimeZoneIntegrationTestSupport extends IntegrationTestSupport {
                 .bind(0, 0)
                 .execute())
             .flatMap(r -> r.map((row, meta) -> row.get(0, OffsetTime.class)))
-            .doOnNext(it -> assertThat(it.getOffset()).isEqualTo(SERVER_ZONE.getRules().getStandardOffset(Instant.EPOCH)))
+            .doOnNext(it -> assertThat(it.getOffset())
+                .isEqualTo(SERVER_ZONE.getRules().getStandardOffset(Instant.EPOCH)))
             .map(OffsetTime::toLocalTime)
             .collectList()
             .doOnNext(it -> assertThat(it)
@@ -164,7 +169,8 @@ abstract class TimeZoneIntegrationTestSupport extends IntegrationTestSupport {
                 .bind(0, 0)
                 .execute())
             .flatMap(r -> r.map((row, meta) -> row.get(0, OffsetDateTime.class)))
-            .doOnNext(it -> assertThat(it.getOffset()).isEqualTo(SERVER_ZONE.getRules().getOffset(it.toLocalDateTime())))
+            .doOnNext(it -> assertThat(it.getOffset())
+                .isEqualTo(SERVER_ZONE.getRules().getOffset(it.toLocalDateTime())))
             .map(it -> it.toZonedDateTime().withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime())
             .collectList()
             .doOnNext(it -> assertThat(it).isEqualTo(Arrays.asList(ST, DST))));
@@ -193,15 +199,19 @@ abstract class TimeZoneIntegrationTestSupport extends IntegrationTestSupport {
     void updateOffsetTime() {
         complete(connection -> Flux.from(connection.createStatement(TIME_TABLE).execute())
             .thenMany(connection.createStatement("INSERT INTO test VALUE (DEFAULT, ?)")
-                .bind(0, OffsetTime.of(11, 23, 58, 0, ZoneId.systemDefault().getRules().getStandardOffset(Instant.EPOCH)))
+                .bind(0, OffsetTime.of(11, 23, 58, 0,
+                    ZoneId.systemDefault().getRules().getStandardOffset(Instant.EPOCH)))
                 .execute())
             .flatMap(IntegrationTestSupport::extractRowsUpdated)
             .thenMany(connection.createStatement("SELECT value FROM test WHERE id > ?")
                 .bind(0, 0)
                 .execute())
             .flatMap(r -> r.map((row, meta) -> row.get(0, OffsetTime.class)))
-            .doOnNext(it -> assertThat(it.getOffset()).isEqualTo(SERVER_ZONE.getRules().getStandardOffset(Instant.EPOCH)))
-            .map(it -> it.withOffsetSameInstant(ZoneId.systemDefault().getRules().getStandardOffset(Instant.EPOCH)).toLocalTime())
+            .doOnNext(it -> assertThat(it.getOffset())
+                .isEqualTo(SERVER_ZONE.getRules().getStandardOffset(Instant.EPOCH)))
+            .map(it -> it.withOffsetSameInstant(ZoneId.systemDefault().getRules()
+                .getStandardOffset(Instant.EPOCH))
+                .toLocalTime())
             .collectList()
             .doOnNext(it -> assertThat(it)
                 .isEqualTo(Collections.singletonList(LocalTime.of(11, 23, 58)))));

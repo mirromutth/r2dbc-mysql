@@ -40,7 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class FluxCumulateEnvelopeTest {
 
-    private static final byte[] RANDOM_PATTERN = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] RD_PATTERN = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz"
+        .getBytes(StandardCharsets.US_ASCII);
 
     private final ByteBufAllocator allocator = PooledByteBufAllocator.DEFAULT;
 
@@ -254,7 +255,8 @@ class FluxCumulateEnvelopeTest {
         return new FluxCumulateEnvelope(source, allocator, envelopeSize, 0);
     }
 
-    private Consumer<List<ByteBuf>> assertBuffers(String origin, int envelopeSize, int lastSize, int totalSize) {
+    private Consumer<List<ByteBuf>> assertBuffers(String origin, int envelopeSize, int lastSize,
+        int totalSize) {
         return originBuffers -> {
             try {
                 List<ByteBuf> buffers = new ArrayList<>((originBuffers.size() + 1) >>> 1);
@@ -324,6 +326,6 @@ class FluxCumulateEnvelopeTest {
     }
 
     private static byte randomChar() {
-        return RANDOM_PATTERN[ThreadLocalRandom.current().nextInt(0, RANDOM_PATTERN.length)];
+        return RD_PATTERN[ThreadLocalRandom.current().nextInt(0, RD_PATTERN.length)];
     }
 }

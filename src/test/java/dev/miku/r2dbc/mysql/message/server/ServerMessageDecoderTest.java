@@ -41,7 +41,8 @@ class ServerMessageDecoderTest {
         ok.extracting(OkMessage::getServerStatuses).isEqualTo((short) 0x100); // 256
         ok.extracting(OkMessage::getWarnings).isEqualTo(0);
 
-        AbstractObjectAssert<?, PreparedOkMessage> preparedOk = assertThat(decode(okLike(), DecodeContext.prepareQuery()))
+        AbstractObjectAssert<?, PreparedOkMessage> preparedOk = assertThat(decode(okLike(),
+            DecodeContext.prepareQuery()))
             .isExactlyInstanceOf(PreparedOkMessage.class)
             .extracting(message -> (PreparedOkMessage) message);
 
@@ -56,12 +57,14 @@ class ServerMessageDecoderTest {
     }
 
     private static ByteBuf okLike() {
-        return Unpooled.wrappedBuffer(new byte[]{
+        return Unpooled.wrappedBuffer(new byte[] {
             10, 0, 0, // envelope size
             1, // sequence ID
             0, // Heading both of OK and Prepared OK
             1, // OK: affected rows, Prepared OK: first byte of statement ID
-            (byte) 0xFD, // OK: VAR_INT_3_BYTE_CODE, last inserted ID is var-int which payload contains 3 bytes, Prepared OK: second byte of statement ID
+            (byte) 0xFD,
+            // OK: VAR_INT_3_BYTE_CODE, last inserted ID is var-int which payload contains 3 bytes
+            // Prepared OK: second byte of statement ID
             0, // OK: first byte of last inserted ID payload, Prepared OK: third byte of statement ID
             0, // OK: second byte of last inserted ID payload, Prepared OK: last byte of statement ID
             1, // OK: last byte of last inserted ID payload, Prepared OK: first byte of total columns

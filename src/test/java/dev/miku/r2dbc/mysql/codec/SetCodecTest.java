@@ -47,12 +47,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SetCodecTest implements CodecTestSupport<String[]> {
 
     private final String[][] strings = {
-        {},
-        {""},
-        {"\r\n\0\032\\'\"\u00a5\u20a9"},
-        {"Hello", "world!"},
-        {"", ""},
-        {"Hello", "R2DBC", "MySQL"},
+        { },
+        { "" },
+        { "\r\n\0\032\\'\"\u00a5\u20a9" },
+        { "Hello", "world!" },
+        { "", "" },
+        { "Hello", "R2DBC", "MySQL" },
     };
 
     private final Set<?>[] sets = {

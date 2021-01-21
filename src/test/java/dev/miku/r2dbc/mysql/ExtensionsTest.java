@@ -32,7 +32,7 @@ import static org.mockito.Mockito.mock;
  */
 class ExtensionsTest {
 
-    private final Extension[] manual = {mock(Extension.class), mock(Extension.class)};
+    private final Extension[] manual = { mock(Extension.class), mock(Extension.class) };
 
     @Test
     void autodetect() {

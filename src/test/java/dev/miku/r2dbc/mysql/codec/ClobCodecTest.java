@@ -73,12 +73,11 @@ class ClobCodecTest implements CodecTestSupport<Clob> {
             .toArray(ByteBuf[]::new);
     }
 
-
     private static final class MockClob implements Clob {
 
         private final String[] values;
 
-        private MockClob(String ...values) {
+        private MockClob(String... values) {
             this.values = values;
         }
 

@@ -34,10 +34,10 @@ class ByteBufferCodecTest implements CodecTestSupport<ByteBuffer> {
     private final ByteBuffer[] buffers = {
         ByteBuffer.allocate(0),
         ByteBuffer.allocate(1),
-        ByteBuffer.wrap(new byte[]{0x7F}),
-        ByteBuffer.wrap(new byte[]{0x12, 34, 0x56, 78, (byte) 0x9A}),
+        ByteBuffer.wrap(new byte[] { 0x7F }),
+        ByteBuffer.wrap(new byte[] { 0x12, 34, 0x56, 78, (byte) 0x9A }),
         ByteBuffer.wrap("Hello world!".getBytes(StandardCharsets.US_ASCII)),
-        ByteBuffer.wrap(new byte[]{(byte) 0xFE, (byte) 0xDC, (byte) 0xBA}),
+        ByteBuffer.wrap(new byte[] { (byte) 0xFE, (byte) 0xDC, (byte) 0xBA }),
     };
 
     @Override

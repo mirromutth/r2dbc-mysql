@@ -33,9 +33,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class MySqlNamesTest {
 
-    private static final String[] NAMES = {"c", "dD", "cBc", "Dca", "ADC", "DcA", "abc", "b", "B", "dA", "AB", "a", "Abc", "ABC", "A", "ab", "cc", "Da", "CbC"};
+    private static final String[] NAMES = { "c", "dD", "cBc", "Dca", "ADC", "DcA", "abc", "b", "B", "dA",
+        "AB", "a", "Abc", "ABC", "A", "ab", "cc", "Da", "CbC" };
 
-    private static final String[] SINGLETON = {"name"};
+    private static final String[] SINGLETON = { "name" };
 
     private static final Set<String> CS_NAME_SET = new HashSet<>();
 
@@ -74,11 +75,10 @@ class MySqlNamesTest {
     }
 
     /**
-     * A full-arrangement of repeatable selections is generated in 'a' - 'd' and 'A' - 'D' of fixed length String.
+     * A full-arrangement of repeatable selections is generated in 'a' - 'd' and 'A' - 'D' of fixed length
+     * String.
      * <p>
-     * For example:
-     * Input: 2
-     * Publish: aa ab ac ad aA aB aC ... DB DC DD
+     * e.g. input: 2, publish: aa ab ac ad aA aB aC ... DB DC DD
      */
     private static void nameGenerate(int length, Consumer<String> nameConsumer) {
         nameGen0(length, null, nameConsumer);
