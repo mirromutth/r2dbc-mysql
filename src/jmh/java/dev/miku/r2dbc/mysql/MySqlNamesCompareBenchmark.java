@@ -55,6 +55,7 @@ public class MySqlNamesCompareBenchmark extends BenchmarkSupport {
         return MySqlNames.compare(LEFT, LEFT);
     }
 
+    @SuppressWarnings("EqualsWithItself")
     @Benchmark
     @Testable
     public int nativeCompareCs() {

@@ -28,7 +28,7 @@ import dev.miku.r2dbc.mysql.message.server.ServerMessage;
 import io.netty.util.ReferenceCountUtil;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.IsolationLevel;
-import io.r2dbc.spi.R2dbcException;
+import io.r2dbc.spi.TransactionDefinition;
 import io.r2dbc.spi.ValidationDepth;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -50,9 +50,11 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireValidName;
 /**
  * An implementation of {@link Connection} for connecting to the MySQL database.
  */
-public final class MySqlConnection implements Connection {
+public final class MySqlConnection implements Connection, ConnectionState {
 
     private static final Logger logger = LoggerFactory.getLogger(MySqlConnection.class);
+
+    private static final int DEFAULT_LOCK_WAIT_TIMEOUT = 50;
 
     private static final String ZONE_PREFIX_POSIX = "posix/";
 
@@ -78,13 +80,15 @@ public final class MySqlConnection implements Connection {
      */
     private static final Function<MySqlResult, Publisher<InitData>> INIT_HANDLER = r ->
         r.map((row, meta) -> new InitData(convertIsolationLevel(row.get(0, String.class)),
-            row.get(1, String.class), null));
+            convertLockWaitTimeout(row.get(1, Long.class)),
+            row.get(2, String.class), null));
 
     private static final Function<MySqlResult, Publisher<InitData>> FULL_INIT = r -> r.map((row, meta) -> {
         IsolationLevel level = convertIsolationLevel(row.get(0, String.class));
-        String product = row.get(1, String.class);
-        String systemTimeZone = row.get(2, String.class);
-        String timeZone = row.get(3, String.class);
+        long lockWaitTimeout = convertLockWaitTimeout(row.get(1, Long.class));
+        String product = row.get(2, String.class);
+        String systemTimeZone = row.get(3, String.class);
+        String timeZone = row.get(4, String.class);
         ZoneId zoneId;
 
         if (timeZone == null || timeZone.isEmpty() || "SYSTEM".equalsIgnoreCase(timeZone)) {
@@ -98,7 +102,7 @@ public final class MySqlConnection implements Connection {
             zoneId = convertZoneId(timeZone);
         }
 
-        return new InitData(level, product, zoneId);
+        return new InitData(level, lockWaitTimeout, product, zoneId);
     });
 
     private static final BiConsumer<ServerMessage, SynchronousSink<Boolean>> PING = (message, sink) -> {
@@ -128,6 +132,8 @@ public final class MySqlConnection implements Connection {
 
     private final IsolationLevel sessionLevel;
 
+    private final long lockWaitTimeout;
+
     private final QueryCache queryCache;
 
     private final PrepareCache prepareCache;
@@ -147,14 +153,18 @@ public final class MySqlConnection implements Connection {
      */
     private volatile IsolationLevel currentLevel;
 
+    private volatile long currentLockWaitTimeout;
+
     MySqlConnection(Client client, ConnectionContext context, Codecs codecs, IsolationLevel level,
-        QueryCache queryCache, PrepareCache prepareCache, @Nullable String product,
+        long lockWaitTimeout, QueryCache queryCache, PrepareCache prepareCache, @Nullable String product,
         @Nullable Predicate<String> prepare) {
         this.client = client;
         this.context = context;
         this.sessionLevel = level;
         this.currentLevel = level;
         this.codecs = codecs;
+        this.lockWaitTimeout = lockWaitTimeout;
+        this.currentLockWaitTimeout = lockWaitTimeout;
         this.queryCache = queryCache;
         this.prepareCache = prepareCache;
         this.metadata = new MySqlConnectionMetadata(context.getServerVersion().toString(), product);
@@ -180,6 +190,17 @@ public final class MySqlConnection implements Connection {
     }
 
     @Override
+    public Mono<Void> beginTransaction(TransactionDefinition definition) {
+        return Mono.defer(() -> {
+            if (isInTransaction()) {
+                return Mono.empty();
+            }
+
+            return QueryFlow.beginTransaction(client, this, batchSupported, definition);
+        });
+    }
+
+    @Override
     public Mono<Void> close() {
         Mono<Void> closer = client.close();
 
@@ -198,7 +219,7 @@ public final class MySqlConnection implements Connection {
                 return Mono.empty();
             }
 
-            return recoverIsolationLevel(QueryFlow.executeVoid(client, "COMMIT"));
+            return QueryFlow.doneTransaction(client, this, true, lockWaitTimeout, batchSupported);
         });
     }
 
@@ -223,9 +244,9 @@ public final class MySqlConnection implements Connection {
             } else if (batchSupported) {
                 // If connection does not in transaction, then starts transaction.
                 return QueryFlow.executeVoid(client, "BEGIN;" + sql);
-            } else {
-                return QueryFlow.executeVoid(client, "BEGIN", sql);
             }
+
+            return QueryFlow.executeVoid(client, "BEGIN", sql);
         });
     }
 
@@ -270,7 +291,7 @@ public final class MySqlConnection implements Connection {
                 return Mono.empty();
             }
 
-            return recoverIsolationLevel(QueryFlow.executeVoid(client, "ROLLBACK"));
+            return QueryFlow.doneTransaction(client, this, false, lockWaitTimeout, batchSupported);
         });
     }
 
@@ -305,7 +326,7 @@ public final class MySqlConnection implements Connection {
 
         // Set next transaction isolation level.
         return QueryFlow.executeVoid(client, "SET TRANSACTION ISOLATION LEVEL " + isolationLevel.asSql())
-            .doOnSuccess(ignored -> currentLevel = isolationLevel);
+            .doOnSuccess(ignored -> setIsolationLevel(isolationLevel));
     }
 
     @Override
@@ -350,27 +371,38 @@ public final class MySqlConnection implements Connection {
         });
     }
 
-    boolean isInTransaction() {
+    @Override
+    public void setIsolationLevel(IsolationLevel level) {
+        this.currentLevel = level;
+    }
+
+    @Override
+    public void setLockWaitTimeout(long timeoutSeconds) {
+        this.currentLockWaitTimeout = timeoutSeconds;
+    }
+
+    @Override
+    public void resetIsolationLevel() {
+        this.currentLevel = this.sessionLevel;
+    }
+
+    @Override
+    public boolean isLockWaitTimeoutChanged() {
+        return currentLockWaitTimeout != lockWaitTimeout;
+    }
+
+    @Override
+    public void resetLockWaitTimeout() {
+        this.currentLockWaitTimeout = this.lockWaitTimeout;
+    }
+
+    @Override
+    public boolean isInTransaction() {
         return (context.getServerStatuses() & ServerStatuses.IN_TRANSACTION) != 0;
     }
 
     boolean isSessionAutoCommit() {
         return (context.getServerStatuses() & ServerStatuses.AUTO_COMMIT) != 0;
-    }
-
-    private Mono<Void> recoverIsolationLevel(Mono<Void> commitOrRollback) {
-        if (currentLevel != sessionLevel) {
-            // Need recover next transaction isolation level to session isolation level.
-            // Succeed or failed by server executing, just recover current isolation level.
-            return commitOrRollback.doOnSuccess(ignored -> currentLevel = sessionLevel)
-                .doOnError(e -> {
-                    if (e instanceof R2dbcException) {
-                        currentLevel = sessionLevel;
-                    }
-                });
-        }
-
-        return commitOrRollback;
     }
 
     /**
@@ -392,16 +424,17 @@ public final class MySqlConnection implements Connection {
         // Maybe create a InitFlow for data initialization after login?
         if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8X) ||
             (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5X) && version.isLessThan(TX_LEVEL_8X))) {
-            query.append("SELECT @@transaction_isolation AS i, @@version_comment AS v");
+            query.append(
+                "SELECT @@transaction_isolation AS i,@@innodb_lock_wait_timeout AS l,@@version_comment AS v");
         } else {
-            query.append("SELECT @@tx_isolation AS i, @@version_comment AS v");
+            query.append("SELECT @@tx_isolation AS i,@@innodb_lock_wait_timeout AS l,@@version_comment AS v");
         }
 
         Function<MySqlResult, Publisher<InitData>> handler;
 
         if (context.shouldSetServerZoneId()) {
+            query.append(",@@system_time_zone AS s,@@time_zone AS t");
             handler = FULL_INIT;
-            query.append(", @@system_time_zone AS s, @@time_zone AS t");
         } else {
             handler = INIT_HANDLER;
         }
@@ -417,8 +450,8 @@ public final class MySqlConnection implements Connection {
                     context.setServerZoneId(serverZoneId);
                 }
 
-                return new MySqlConnection(client, context, codecs, data.level, queryCache, prepareCache,
-                    data.product, prepare);
+                return new MySqlConnection(client, context, codecs, data.level, data.lockWaitTimeout,
+                    queryCache, prepareCache, data.product, prepare);
             });
     }
 
@@ -466,6 +499,7 @@ public final class MySqlConnection implements Connection {
     private static IsolationLevel convertIsolationLevel(@Nullable String name) {
         if (name == null) {
             logger.warn("Isolation level is null in current session, fallback to repeatable read");
+
             return IsolationLevel.REPEATABLE_READ;
         }
 
@@ -485,9 +519,21 @@ public final class MySqlConnection implements Connection {
         return IsolationLevel.REPEATABLE_READ;
     }
 
+    private static long convertLockWaitTimeout(@Nullable Long timeout) {
+        if (timeout == null) {
+            logger.error("Lock wait timeout is null, fallback to " + DEFAULT_LOCK_WAIT_TIMEOUT + " seconds");
+
+            return DEFAULT_LOCK_WAIT_TIMEOUT;
+        }
+
+        return timeout;
+    }
+
     private static class InitData {
 
         private final IsolationLevel level;
+
+        private final long lockWaitTimeout;
 
         @Nullable
         private final String product;
@@ -495,8 +541,10 @@ public final class MySqlConnection implements Connection {
         @Nullable
         private final ZoneId serverZoneId;
 
-        private InitData(IsolationLevel level, @Nullable String product, @Nullable ZoneId serverZoneId) {
+        private InitData(IsolationLevel level, long lockWaitTimeout, @Nullable String product,
+            @Nullable ZoneId serverZoneId) {
             this.level = level;
+            this.lockWaitTimeout = lockWaitTimeout;
             this.product = product;
             this.serverZoneId = serverZoneId;
         }

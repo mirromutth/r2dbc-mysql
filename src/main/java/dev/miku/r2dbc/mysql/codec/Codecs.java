@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.Parameter;
 import io.netty.buffer.ByteBufAllocator;
@@ -31,46 +32,46 @@ public interface Codecs {
     /**
      * Decode a {@link FieldValue} as specified {@link Class type}.
      *
-     * @param value   the {@link FieldValue}.
-     * @param info    the information of this value.
-     * @param type    the specified {@link Class}.
-     * @param binary  if the value should be decoded by binary protocol.
-     * @param context the codec context.
-     * @param <T>     the generic result type.
+     * @param value    the {@link FieldValue}.
+     * @param metadata the metadata of the column.
+     * @param type     the specified {@link Class}.
+     * @param binary   if the value should be decoded by binary protocol.
+     * @param context  the codec context.
+     * @param <T>      the generic result type.
      * @return the decoded result.
      * @throws IllegalArgumentException if any parameter is {@code null}, or {@code value} cannot be decoded.
      */
     @Nullable
-    <T> T decode(FieldValue value, FieldInformation info, Class<?> type, boolean binary,
+    <T> T decode(FieldValue value, MySqlColumnMetadata metadata, Class<?> type, boolean binary,
         CodecContext context);
 
     /**
      * Decode a {@link FieldValue} as a specified {@link ParameterizedType type}.
      *
-     * @param value   the {@link FieldValue}.
-     * @param info    the information of this value.
-     * @param type    the specified {@link ParameterizedType}.
-     * @param binary  if the value should be decoded by binary protocol.
-     * @param context the codec context.
-     * @param <T>     the generic result type.
+     * @param value    the {@link FieldValue}.
+     * @param metadata the metadata of the column.
+     * @param type     the specified {@link ParameterizedType}.
+     * @param binary   if the value should be decoded by binary protocol.
+     * @param context  the codec context.
+     * @param <T>      the generic result type.
      * @return the decoded result.
      * @throws IllegalArgumentException if any parameter is {@code null}, or {@code value} cannot be decoded.
      */
     @Nullable
-    <T> T decode(FieldValue value, FieldInformation info, ParameterizedType type, boolean binary,
+    <T> T decode(FieldValue value, MySqlColumnMetadata metadata, ParameterizedType type, boolean binary,
         CodecContext context);
 
     /**
      * Decode the last inserted ID from {@code OkMessage} as a specified {@link ParameterizedType type}.
      *
+     * @param <T>   the generic result type.
      * @param value the last inserted ID.
      * @param type  the specified {@link Class}.
-     * @param <T>   the generic result type.
      * @return the decoded result.
      * @throws IllegalArgumentException if {@code type} is {@code null}, or cannot decode a last inserted ID
      *                                  as {@code type}.
      */
-    <T> T decodeLastInsertId(long value, Class<T> type);
+    <T> T decodeLastInsertId(long value, Class<?> type);
 
     /**
      * Encode a value to a {@link Parameter}.

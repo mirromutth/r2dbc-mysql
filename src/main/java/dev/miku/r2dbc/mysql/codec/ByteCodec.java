@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -34,7 +34,7 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    public Byte decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Byte decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         return binary ? value.readByte() : (byte) IntegerCodec.parse(value);
     }
@@ -50,9 +50,8 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        return DataTypes.TINYINT == info.getType() &&
-            (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType() == MySqlType.TINYINT;
     }
 
     static final class ByteParameter extends AbstractParameter {
@@ -77,8 +76,8 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.TINYINT;
+        public MySqlType getType() {
+            return MySqlType.TINYINT;
         }
 
         @Override

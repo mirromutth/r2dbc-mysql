@@ -16,8 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import dev.miku.r2dbc.mysql.codec.FieldInformation;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
 import io.netty.util.ReferenceCounted;
@@ -46,7 +45,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
      * @param context  information context array.
      * @return the {@link FieldValue} array.
      */
-    public final FieldValue[] decode(boolean isBinary, FieldInformation[] context) {
+    public final FieldValue[] decode(boolean isBinary, MySqlColumnMetadata[] context) {
         return isBinary ? binary(context) : text(context.length);
     }
 
@@ -70,7 +69,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
         }
     }
 
-    private FieldValue[] binary(FieldInformation[] context) {
+    private FieldValue[] binary(MySqlColumnMetadata[] context) {
         reader.skipOneByte(); // constant 0x00
 
         int size = context.length;
@@ -85,7 +84,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
                 if ((nullBitmap[bitmapIndex] & bitMask) != 0) {
                     fields[i] = FieldValue.nullField();
                 } else {
-                    int bytes = getFixedBinaryBytes(context[i].getType());
+                    int bytes = context[i].getType().getBinarySize();
                     if (bytes > 0) {
                         fields[i] = reader.readSizeFixedField(bytes);
                     } else {
@@ -170,33 +169,5 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
     @Override
     public String toString() {
         return "RowMessage(encoded)";
-    }
-
-    /**
-     * Get the fixed length of specify data type, or {@literal 0} means field is var integer sized in binary
-     * result.
-     *
-     * @param type the specify data type.
-     * @return the fixed length.
-     */
-    private static int getFixedBinaryBytes(short type) {
-        switch (type) {
-            case DataTypes.TINYINT:
-                return Byte.BYTES;
-            case DataTypes.SMALLINT:
-            case DataTypes.YEAR:
-                return Short.BYTES;
-            case DataTypes.INT:
-            case DataTypes.MEDIUMINT:
-                return Integer.BYTES;
-            case DataTypes.FLOAT:
-                return Float.BYTES;
-            case DataTypes.DOUBLE:
-                return Double.BYTES;
-            case DataTypes.BIGINT:
-                return Long.BYTES;
-            default:
-                return 0;
-        }
     }
 }

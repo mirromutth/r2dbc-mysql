@@ -56,7 +56,7 @@ public final class MySqlRow implements Row {
     public <T> T get(int index, Class<T> type) {
         requireNonNull(type, "type must not be null");
 
-        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(index);
+        MySqlColumnDescriptor info = rowMetadata.getColumnMetadata(index);
         return codecs.decode(fields[index], info, type, binary, context);
     }
 
@@ -64,7 +64,7 @@ public final class MySqlRow implements Row {
     public <T> T get(String name, Class<T> type) {
         requireNonNull(type, "type must not be null");
 
-        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(name);
+        MySqlColumnDescriptor info = rowMetadata.getColumnMetadata(name);
         return codecs.decode(fields[info.getIndex()], info, type, binary, context);
     }
 
@@ -81,7 +81,7 @@ public final class MySqlRow implements Row {
     public <T> T get(int index, ParameterizedType type) {
         requireNonNull(type, "type must not be null");
 
-        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(index);
+        MySqlColumnDescriptor info = rowMetadata.getColumnMetadata(index);
         return codecs.decode(fields[index], info, type, binary, context);
     }
 
@@ -98,7 +98,7 @@ public final class MySqlRow implements Row {
     public <T> T get(String name, ParameterizedType type) {
         requireNonNull(type, "type must not be null");
 
-        MySqlColumnMetadata info = rowMetadata.getColumnMetadata(name);
+        MySqlColumnDescriptor info = rowMetadata.getColumnMetadata(name);
         return codecs.decode(fields[info.getIndex()], info, type, binary, context);
     }
 }

@@ -16,11 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
-import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -54,29 +54,22 @@ final class ClobCodec implements MassiveCodec<Clob> {
     }
 
     @Override
-    public Clob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Clob decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
+        return LobUtils.createClob(value, metadata.getCharCollation(context));
     }
 
     @Override
-    public Clob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary,
-        CodecContext context) {
-        return LobUtils.createClob(value, info.getCollationId(), context.getServerVersion());
+    public Clob decodeMassive(List<ByteBuf> value, MySqlColumnMetadata metadata, Class<?> target,
+        boolean binary, CodecContext context) {
+        return LobUtils.createClob(value, metadata.getCharCollation(context));
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, Class<?> target) {
-        if (info.getCollationId() == CharCollation.BINARY_ID) {
-            return false;
-        }
+    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        MySqlType type = metadata.getType();
 
-        short type = info.getType();
-        if (!TypePredicates.isLob(type) && DataTypes.JSON != type) {
-            return false;
-        }
-
-        return target.isAssignableFrom(Clob.class);
+        return (type.isLob() || type == MySqlType.JSON) && target.isAssignableFrom(Clob.class);
     }
 
     @Override
@@ -172,6 +165,11 @@ final class ClobCodec implements MassiveCodec<Clob> {
                     .doOnNext(writer::append)
                     .then();
             });
+        }
+
+        @Override
+        public MySqlType getType() {
+            return MySqlType.LONGTEXT;
         }
 
         @Override

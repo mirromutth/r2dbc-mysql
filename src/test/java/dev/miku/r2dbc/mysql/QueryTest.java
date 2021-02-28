@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -327,9 +327,6 @@ class QueryTest {
 
         static final MockParameter INSTANCE = new MockParameter();
 
-        private MockParameter() {
-        }
-
         @Override
         public boolean isNull() {
             return false;
@@ -346,17 +343,20 @@ class QueryTest {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.INT;
+        public MySqlType getType() {
+            return MySqlType.INT;
         }
 
         @Override
         public void dispose() {
+            // No need dispose.
         }
 
         @Override
         public String toString() {
             return "MockParameter{}";
         }
+
+        private MockParameter() { }
     }
 }

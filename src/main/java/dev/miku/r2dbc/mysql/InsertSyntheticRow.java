@@ -17,13 +17,12 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.codec.Codecs;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.r2dbc.spi.ColumnMetadata;
 import io.r2dbc.spi.Nullability;
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
 
-import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -79,7 +78,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
     public Number get(int index) {
         assertValidIndex(index);
 
-        return get0(getJavaType0());
+        return get0(getType().getJavaType());
     }
 
     @Override
@@ -87,7 +86,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
         requireNonNull(name, "name must not be null");
         assertValidName(name);
 
-        return get0(getJavaType0());
+        return get0(getType().getJavaType());
     }
 
     @Override
@@ -116,8 +115,8 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
     }
 
     @Override
-    public Class<? extends Number> getJavaType() {
-        return getJavaType0();
+    public MySqlType getType() {
+        return lastInsertId < 0 ? MySqlType.BIGINT_UNSIGNED : MySqlType.BIGINT;
     }
 
     @Override
@@ -126,25 +125,13 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
     }
 
     @Override
-    public Integer getNativeTypeMetadata() {
-        return (int) DataTypes.BIGINT;
+    public Class<?> getJavaType() {
+        return getType().getJavaType();
     }
 
     @Override
     public Nullability getNullability() {
         return Nullability.NON_NULL;
-    }
-
-    @Override
-    public Integer getPrecision() {
-        // The default precision of BIGINT is 20
-        return 20;
-    }
-
-    @Override
-    public Integer getScale() {
-        // BIGINT not support scale.
-        return null;
     }
 
     private void assertValidName(String name) {
@@ -153,17 +140,8 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
         }
     }
 
-    private <T> T get0(Class<T> type) {
+    private <T> T get0(Class<?> type) {
         return codecs.decodeLastInsertId(lastInsertId, type);
-    }
-
-    private Class<? extends Number> getJavaType0() {
-        if (lastInsertId < 0) {
-            // BIGINT UNSIGNED
-            return BigInteger.class;
-        }
-
-        return Long.TYPE;
     }
 
     private static void assertValidIndex(int index) {

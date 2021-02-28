@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
@@ -53,8 +53,8 @@ final class NullParameter implements Parameter {
     }
 
     @Override
-    public short getType() {
-        return DataTypes.NULL;
+    public MySqlType getType() {
+        return MySqlType.NULL;
     }
 
     @Override

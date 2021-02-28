@@ -16,8 +16,9 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
@@ -35,7 +36,7 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     }
 
     @Override
-    public Year decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Year decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         return binary ? Year.of(value.readShortLE()) : Year.of(IntegerCodec.parse(value));
     }
@@ -57,12 +58,12 @@ final class YearCodec extends AbstractClassedCodec<Year> {
             return new ShortCodec.ShortParameter(allocator, (short) year);
         }
 
-        // Unsupported, but should be considered here.
+        // Server does not support it, but still encodes it.
         return new IntegerCodec.IntParameter(allocator, year);
     }
 
     @Override
-    public boolean doCanDecode(FieldInformation info) {
-        return DataTypes.YEAR == info.getType();
+    public boolean doCanDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType() == MySqlType.YEAR;
     }
 }

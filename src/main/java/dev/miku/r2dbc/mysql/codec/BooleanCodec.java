@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -33,12 +34,9 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public Boolean decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Boolean decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        if (!binary && DataTypes.TINYINT == info.getType()) {
-            return value.readByte() != '0';
-        }
-        return value.readBoolean();
+        return binary || metadata.getType() == MySqlType.BIT ? value.readBoolean() : value.readByte() != '0';
     }
 
     @Override
@@ -52,9 +50,9 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public boolean doCanDecode(FieldInformation info) {
-        return (DataTypes.BIT == info.getType() || DataTypes.TINYINT == info.getType()) &&
-            info.getSize() == 1;
+    public boolean doCanDecode(MySqlColumnMetadata metadata) {
+        MySqlType type = metadata.getType();
+        return (type == MySqlType.BIT || type == MySqlType.TINYINT) && metadata.getNativePrecision() == 1;
     }
 
     private static final class BooleanParameter extends AbstractParameter {
@@ -79,10 +77,10 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
         }
 
         @Override
-        public short getType() {
+        public MySqlType getType() {
             // Note: BIT will least 2-bytes in binary parameter (var integer size and content),
             // so use TINYINT will encode to buffer faster and shorter.
-            return DataTypes.TINYINT;
+            return MySqlType.TINYINT;
         }
 
         @Override

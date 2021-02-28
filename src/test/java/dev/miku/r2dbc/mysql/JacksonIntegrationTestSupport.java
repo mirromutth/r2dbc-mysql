@@ -101,11 +101,8 @@ final class Foo {
     private final List<String> authorities;
 
     @JsonCreator
-    Foo(
-        @JsonProperty("n") String name,
-        @JsonProperty("p") List<Integer> priorities,
-        @JsonProperty("a") List<String> authorities
-    ) {
+    Foo(@JsonProperty("n") String name, @JsonProperty("p") List<Integer> priorities,
+        @JsonProperty("a") List<String> authorities) {
         this.name = name;
         this.priorities = priorities;
         this.authorities = authorities;

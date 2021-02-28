@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import dev.miku.r2dbc.mysql.message.LargeFieldValue;
@@ -86,45 +87,45 @@ final class DefaultCodecs implements Codecs {
      * release this buffer.
      */
     @Override
-    public <T> T decode(FieldValue value, FieldInformation info, Class<?> type, boolean binary,
+    public <T> T decode(FieldValue value, MySqlColumnMetadata metadata, Class<?> type, boolean binary,
         CodecContext context) {
         requireNonNull(value, "value must not be null");
-        requireNonNull(info, "info must not be null");
+        requireNonNull(metadata, "info must not be null");
         requireNonNull(context, "context must not be null");
         requireNonNull(type, "type must not be null");
 
-        Class<?> target = chooseClass(info, type);
+        Class<?> target = chooseClass(metadata, type);
 
         // Fast map for primitive classes.
         if (target.isPrimitive()) {
             // If value is null field, then primitive codec should throw an exception instead of return null.
-            return decodePrimitive(value, info, target, binary, context);
+            return decodePrimitive(value, metadata, target, binary, context);
         } else if (value.isNull()) {
             // Not primitive classes and value is null field, return null.
             return null;
         } else if (value instanceof NormalFieldValue) {
-            return decodeNormal((NormalFieldValue) value, info, target, binary, context);
+            return decodeNormal((NormalFieldValue) value, metadata, target, binary, context);
         } else if (value instanceof LargeFieldValue) {
-            return decodeMassive((LargeFieldValue) value, info, target, binary, context);
+            return decodeMassive((LargeFieldValue) value, metadata, target, binary, context);
         }
 
         throw new IllegalArgumentException("Unknown value " + value.getClass().getSimpleName());
     }
 
     @Override
-    public <T> T decode(FieldValue value, FieldInformation info, ParameterizedType type, boolean binary,
-        CodecContext context) {
+    public <T> T decode(FieldValue value, MySqlColumnMetadata metadata, ParameterizedType type,
+        boolean binary, CodecContext context) {
         requireNonNull(value, "value must not be null");
-        requireNonNull(info, "info must not be null");
+        requireNonNull(metadata, "info must not be null");
         requireNonNull(context, "context must not be null");
         requireNonNull(type, "type must not be null");
 
         if (value.isNull()) {
             return null;
         } else if (value instanceof NormalFieldValue) {
-            return decodeNormal((NormalFieldValue) value, info, type, binary, context);
+            return decodeNormal((NormalFieldValue) value, metadata, type, binary, context);
         } else if (value instanceof LargeFieldValue) {
-            return decodeMassive((LargeFieldValue) value, info, type, binary, context);
+            return decodeMassive((LargeFieldValue) value, metadata, type, binary, context);
         }
 
         throw new IllegalArgumentException("Unknown value " + value.getClass().getSimpleName());
@@ -132,7 +133,7 @@ final class DefaultCodecs implements Codecs {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T> T decodeLastInsertId(long value, Class<T> type) {
+    public <T> T decodeLastInsertId(long value, Class<?> type) {
         requireNonNull(type, "type must not be null");
 
         if (Byte.TYPE == type || Byte.class == type) {
@@ -157,13 +158,8 @@ final class DefaultCodecs implements Codecs {
             return (T) Long.valueOf(value);
         }
 
-        String message = "Cannot decode value of type '%s' with last inserted ID %s";
-        if (value < 0) {
-            message = String.format(message, type, Long.toUnsignedString(value));
-        } else {
-            message = String.format(message, type, value);
-        }
-        throw new IllegalArgumentException(message);
+        throw new IllegalArgumentException(String.format("Cannot decode %s with last inserted ID %s", type,
+            value < 0 ? Long.toUnsignedString(value) : value));
     }
 
     @Override
@@ -177,7 +173,7 @@ final class DefaultCodecs implements Codecs {
             }
         }
 
-        throw new IllegalArgumentException("Cannot encode value of type '" + value.getClass() + '\'');
+        throw new IllegalArgumentException("Cannot encode " + value.getClass());
     }
 
     @Override
@@ -185,88 +181,84 @@ final class DefaultCodecs implements Codecs {
         return NullParameter.INSTANCE;
     }
 
-    private <T> T decodePrimitive(FieldValue value, FieldInformation info, Class<?> type, boolean binary,
-        CodecContext context) {
+    private <T> T decodePrimitive(FieldValue value, MySqlColumnMetadata metadata, Class<?> type,
+        boolean binary, CodecContext context) {
         if (value.isNull()) {
-            throw new IllegalArgumentException("Cannot decode null for type " + info.getType());
+            throw new IllegalArgumentException("Cannot decode null for type " + metadata.getType());
         }
 
         @SuppressWarnings("unchecked")
         PrimitiveCodec<T> codec = (PrimitiveCodec<T>) this.primitiveCodecs.get(type);
 
-        if (codec != null && value instanceof NormalFieldValue && codec.canPrimitiveDecode(info)) {
-            return codec.decode(((NormalFieldValue) value).getBufferSlice(), info, type, binary, context);
-        } else {
-            // Mismatch, no one else can support this primitive class.
-            throw new IllegalArgumentException("Cannot decode " + value.getClass().getSimpleName() + " of " +
-                type + " for type " + info.getType());
+        if (codec != null && value instanceof NormalFieldValue && codec.canPrimitiveDecode(metadata)) {
+            return codec.decode(((NormalFieldValue) value).getBufferSlice(), metadata, type, binary, context);
         }
+
+        // Mismatch, no one else can support this primitive class.
+        throw new IllegalArgumentException("Cannot decode " + value.getClass().getSimpleName() + " of " +
+            type + " for " + metadata.getType());
     }
 
     @Nullable
-    private <T> T decodeNormal(NormalFieldValue value, FieldInformation info, Class<?> type, boolean binary,
-        CodecContext context) {
+    private <T> T decodeNormal(NormalFieldValue value, MySqlColumnMetadata metadata, Class<?> type,
+        boolean binary, CodecContext context) {
         for (Codec<?> codec : codecs) {
-            if (codec.canDecode(info, type)) {
+            if (codec.canDecode(metadata, type)) {
                 @SuppressWarnings("unchecked")
                 Codec<T> c = (Codec<T>) codec;
-                return c.decode(value.getBufferSlice(), info, type, binary, context);
+                return c.decode(value.getBufferSlice(), metadata, type, binary, context);
             }
         }
 
-        throw new IllegalArgumentException("Cannot decode value of type " + type + " for " + info.getType() +
-            " with collation " + info.getCollationId());
+        throw new IllegalArgumentException("Cannot decode " + type + " for " + metadata.getType());
     }
 
     @Nullable
-    private <T> T decodeNormal(NormalFieldValue value, FieldInformation info, ParameterizedType type,
+    private <T> T decodeNormal(NormalFieldValue value, MySqlColumnMetadata metadata, ParameterizedType type,
         boolean binary, CodecContext context) {
         for (ParametrizedCodec<?> codec : parametrizedCodecs) {
-            if (codec.canDecode(info, type)) {
+            if (codec.canDecode(metadata, type)) {
                 @SuppressWarnings("unchecked")
-                T result = (T) codec.decode(value.getBufferSlice(), info, type, binary, context);
+                T result = (T) codec.decode(value.getBufferSlice(), metadata, type, binary, context);
                 return result;
             }
         }
 
-        throw new IllegalArgumentException("Cannot decode value of type " + type + " for " + info.getType() +
-            " with collation " + info.getCollationId());
+        throw new IllegalArgumentException("Cannot decode " + type + " for " + metadata.getType());
     }
 
     @Nullable
-    private <T> T decodeMassive(LargeFieldValue value, FieldInformation info, Class<?> type, boolean binary,
-        CodecContext context) {
+    private <T> T decodeMassive(LargeFieldValue value, MySqlColumnMetadata metadata, Class<?> type,
+        boolean binary, CodecContext context) {
         for (MassiveCodec<?> codec : massiveCodecs) {
-            if (codec.canDecode(info, type)) {
+            if (codec.canDecode(metadata, type)) {
                 @SuppressWarnings("unchecked")
                 MassiveCodec<T> c = (MassiveCodec<T>) codec;
-                return c.decodeMassive(value.getBufferSlices(), info, type, binary, context);
+                return c.decodeMassive(value.getBufferSlices(), metadata, type, binary, context);
             }
         }
 
-        throw new IllegalArgumentException("Cannot decode massive value of type " + type + " for " +
-            info.getType() + " with collation " + info.getCollationId());
+        throw new IllegalArgumentException("Cannot decode massive " + type + " for " + metadata.getType());
     }
 
     @Nullable
-    private <T> T decodeMassive(LargeFieldValue value, FieldInformation info, ParameterizedType type,
+    private <T> T decodeMassive(LargeFieldValue value, MySqlColumnMetadata metadata, ParameterizedType type,
         boolean binary, CodecContext context) {
         for (MassiveParametrizedCodec<?> codec : massiveParametrizedCodecs) {
-            if (codec.canDecode(info, type)) {
+            if (codec.canDecode(metadata, type)) {
                 @SuppressWarnings("unchecked")
-                T result = (T) codec.decodeMassive(value.getBufferSlices(), info, type, binary, context);
+                T result = (T) codec.decodeMassive(value.getBufferSlices(), metadata, type, binary, context);
                 return result;
             }
         }
 
-        throw new IllegalArgumentException("Cannot decode massive value of type " + type + " for " +
-            info.getType() + " with collation " + info.getCollationId());
+        throw new IllegalArgumentException("Cannot decode massive  " + type + " for " + metadata.getType());
     }
 
-    private static Class<?> chooseClass(FieldInformation info, Class<?> type) {
+    private static Class<?> chooseClass(MySqlColumnMetadata metadata, Class<?> type) {
         // Object.class means could return any thing
         if (Object.class == type) {
-            Class<?> mainType = info.getJavaType();
+            Class<?> mainType = metadata.getJavaType();
 
             if (mainType != null) {
                 // use main type if main type exists

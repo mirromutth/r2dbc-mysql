@@ -17,13 +17,12 @@
 package dev.miku.r2dbc.mysql.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.CodecContext;
-import dev.miku.r2dbc.mysql.codec.FieldInformation;
 import dev.miku.r2dbc.mysql.codec.ParametrizedCodec;
-import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -56,10 +55,11 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
     }
 
     @Override
-    public Object decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Object decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        try (Reader r = new InputStreamReader(new ByteBufInputStream(value),
-            CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset())) {
+        Charset charset = metadata.getCharCollation(context).getCharset();
+
+        try (Reader r = new InputStreamReader(new ByteBufInputStream(value), charset)) {
             return MAPPER.readValue(r, target);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -67,10 +67,11 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
     }
 
     @Override
-    public Object decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary,
+    public Object decode(ByteBuf value, MySqlColumnMetadata metadata, ParameterizedType target, boolean binary,
         CodecContext context) {
-        try (Reader r = new InputStreamReader(new ByteBufInputStream(value),
-            CharCollation.fromId(info.getCollationId(), context.getServerVersion()).getCharset())) {
+        Charset charset = metadata.getCharCollation(context).getCharset();
+
+        try (Reader r = new InputStreamReader(new ByteBufInputStream(value), charset)) {
             return MAPPER.readValue(r, MAPPER.constructType(target));
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -83,13 +84,13 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, Class<?> target) {
-        return doCanDecode(info);
+    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        return doCanDecode(metadata);
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, ParameterizedType target) {
-        return doCanDecode(info);
+    public boolean canDecode(MySqlColumnMetadata metadata, ParameterizedType target) {
+        return doCanDecode(metadata);
     }
 
     @Override
@@ -97,9 +98,8 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
         return mode.isEncode();
     }
 
-    private boolean doCanDecode(FieldInformation info) {
-        return mode.isDecode() && info.getType() == DataTypes.JSON &&
-            info.getCollationId() != CharCollation.BINARY_ID;
+    private boolean doCanDecode(MySqlColumnMetadata metadata) {
+        return mode.isDecode() && metadata.getType() == MySqlType.JSON;
     }
 
     private static final class JacksonParameter implements Parameter {
@@ -156,8 +156,8 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.VARCHAR;
+        public MySqlType getType() {
+            return MySqlType.VARCHAR;
         }
     }
 

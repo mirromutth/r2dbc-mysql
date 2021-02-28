@@ -17,7 +17,6 @@
 package dev.miku.r2dbc.mysql.codec.lob;
 
 import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.ServerVersion;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Clob;
 
@@ -28,15 +27,12 @@ import java.util.List;
  */
 final class MultiClob extends MultiLob<CharSequence> implements Clob {
 
-    private final int collationId;
+    private final CharCollation collation;
 
-    private final ServerVersion version;
-
-    MultiClob(List<ByteBuf> buffers, int collationId, ServerVersion version) {
+    MultiClob(List<ByteBuf> buffers, CharCollation collation) {
         super(buffers);
 
-        this.collationId = collationId;
-        this.version = version;
+        this.collation = collation;
     }
 
     @Override
@@ -45,7 +41,6 @@ final class MultiClob extends MultiLob<CharSequence> implements Clob {
             return "";
         }
 
-        return buf.readCharSequence(buf.readableBytes(), CharCollation.fromId(collationId, version)
-            .getCharset());
+        return buf.readCharSequence(buf.readableBytes(), collation.getCharset());
     }
 }

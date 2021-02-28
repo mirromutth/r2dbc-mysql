@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import io.netty.buffer.ByteBufAllocator;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.require;
@@ -43,13 +44,13 @@ abstract class AbstractPrimitiveCodec<T> implements PrimitiveCodec<T> {
     }
 
     @Override
-    public final boolean canDecode(FieldInformation info, Class<?> target) {
-        return target.isAssignableFrom(boxedClass) && doCanDecode(info);
+    public final boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        return target.isAssignableFrom(boxedClass) && doCanDecode(metadata);
     }
 
     @Override
-    public final boolean canPrimitiveDecode(FieldInformation info) {
-        return doCanDecode(info);
+    public final boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
+        return doCanDecode(metadata);
     }
 
     @Override
@@ -57,5 +58,5 @@ abstract class AbstractPrimitiveCodec<T> implements PrimitiveCodec<T> {
         return primitiveClass;
     }
 
-    abstract protected boolean doCanDecode(FieldInformation info);
+    abstract protected boolean doCanDecode(MySqlColumnMetadata metadata);
 }

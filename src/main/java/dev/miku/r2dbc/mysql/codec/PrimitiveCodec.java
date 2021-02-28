@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.NonNull;
 
@@ -32,24 +33,25 @@ interface PrimitiveCodec<T> extends Codec<T> {
     /**
      * Decode a {@link ByteBuf} as specified {@link Class}.
      *
-     * @param value   the {@link ByteBuf}.
-     * @param info    the information of this value.
-     * @param target  the specified {@link Class}, which can be a primitive type.
-     * @param binary  if the value should be decoded by binary protocol.
-     * @param context the codec context.
+     * @param value    the {@link ByteBuf}.
+     * @param metadata the metadata of the column.
+     * @param target   the specified {@link Class}, which can be a primitive type.
+     * @param binary   if the value should be decoded by binary protocol.
+     * @param context  the codec context.
      * @return the decoded data that is boxed.
      */
     @NonNull
     @Override
-    T decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary, CodecContext context);
+    T decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
+        CodecContext context);
 
     /**
      * Check if can decode the field value as a primitive data.
      *
-     * @param info the information of this value.
+     * @param metadata the metadata of the column.
      * @return if can decode.
      */
-    boolean canPrimitiveDecode(FieldInformation info);
+    boolean canPrimitiveDecode(MySqlColumnMetadata metadata);
 
     /**
      * Get the primitive {@link Class}, such as {@link Integer#TYPE}, etc.

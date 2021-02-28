@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -39,7 +40,7 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    public byte[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public byte[] decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         if (!value.isReadable()) {
             return EMPTY_BYTES;
@@ -59,8 +60,8 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        return TypePredicates.isBinary(info.getType());
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType().isBinary();
     }
 
     static ByteBuf encodeBytes(ByteBufAllocator alloc, byte[] value) {
@@ -104,8 +105,8 @@ final class ByteArrayCodec extends AbstractClassedCodec<byte[]> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.LONG_BLOB;
+        public MySqlType getType() {
+            return MySqlType.VARBINARY;
         }
 
         @Override

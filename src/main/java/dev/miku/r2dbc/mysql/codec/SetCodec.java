@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
@@ -50,15 +50,14 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     }
 
     @Override
-    public String[] decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public String[] decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         if (!value.isReadable()) {
             return EMPTY_STRINGS;
         }
 
         int firstComma = value.indexOf(value.readerIndex(), value.writerIndex(), (byte) ',');
-        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion())
-            .getCharset();
+        Charset charset = metadata.getCharCollation(context).getCharset();
 
         if (firstComma < 0) {
             return new String[] { value.toString(charset) };
@@ -69,15 +68,14 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public Set<?> decode(ByteBuf value, FieldInformation info, ParameterizedType target, boolean binary,
+    public Set<?> decode(ByteBuf value, MySqlColumnMetadata metadata, ParameterizedType target, boolean binary,
         CodecContext context) {
         if (!value.isReadable()) {
             return Collections.emptySet();
         }
 
         Class<?> subClass = (Class<?>) target.getActualTypeArguments()[0];
-        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion())
-            .getCharset();
+        Charset charset = metadata.getCharCollation(context).getCharset();
         int firstComma = value.indexOf(value.readerIndex(), value.writerIndex(), (byte) ',');
         boolean isEnum = subClass.isEnum();
 
@@ -108,13 +106,13 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, Class<?> target) {
-        return DataTypes.SET == info.getType() && target.isAssignableFrom(String[].class);
+    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        return metadata.getType() == MySqlType.SET && target.isAssignableFrom(String[].class);
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, ParameterizedType target) {
-        if (DataTypes.SET != info.getType()) {
+    public boolean canDecode(MySqlColumnMetadata metadata, ParameterizedType target) {
+        if (metadata.getType() != MySqlType.SET) {
             return false;
         }
 
@@ -323,8 +321,8 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.VARCHAR;
+        public MySqlType getType() {
+            return MySqlType.VARCHAR;
         }
 
         @Override
@@ -380,8 +378,8 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.VARCHAR;
+        public MySqlType getType() {
+            return MySqlType.VARCHAR;
         }
 
         @Override

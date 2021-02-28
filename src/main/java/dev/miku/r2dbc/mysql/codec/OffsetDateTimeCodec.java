@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -40,7 +41,7 @@ final class OffsetDateTimeCodec implements Codec<OffsetDateTime> {
     }
 
     @Override
-    public OffsetDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public OffsetDateTime decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         LocalDateTime origin = LocalDateTimeCodec.decodeOrigin(value, binary, context);
 
@@ -65,8 +66,8 @@ final class OffsetDateTimeCodec implements Codec<OffsetDateTime> {
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, Class<?> target) {
-        return DateTimes.canDecodeDateTime(info.getType(), target, OffsetDateTime.class);
+    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        return DateTimes.canDecodeDateTime(metadata.getType(), target, OffsetDateTime.class);
     }
 
     private static final class OffsetDateTimeParameter extends AbstractParameter {
@@ -95,8 +96,8 @@ final class OffsetDateTimeCodec implements Codec<OffsetDateTime> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.TIMESTAMP;
+        public MySqlType getType() {
+            return MySqlType.TIMESTAMP;
         }
 
         @Override

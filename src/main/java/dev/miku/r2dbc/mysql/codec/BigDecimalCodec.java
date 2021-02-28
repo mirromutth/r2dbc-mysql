@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -37,15 +38,13 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    public BigDecimal decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public BigDecimal decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         if (binary) {
-            short type = info.getType();
-
-            switch (type) {
-                case DataTypes.FLOAT:
+            switch (metadata.getType()) {
+                case FLOAT:
                     return BigDecimal.valueOf(value.readFloatLE());
-                case DataTypes.DOUBLE:
+                case DOUBLE:
                     return BigDecimal.valueOf(value.readDoubleLE());
             }
             // Not float or double, is text-encoded yet.
@@ -76,9 +75,9 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        short type = info.getType();
-        return TypePredicates.isDecimal(type) || DataTypes.FLOAT == type || DataTypes.DOUBLE == type;
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        MySqlType type = metadata.getType();
+        return type == MySqlType.DECIMAL || type == MySqlType.FLOAT || type == MySqlType.DOUBLE;
     }
 
     static ByteBuf encodeAscii(ByteBufAllocator alloc, String ascii) {
@@ -124,8 +123,8 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.NEW_DECIMAL;
+        public MySqlType getType() {
+            return MySqlType.DECIMAL;
         }
 
         @Override
