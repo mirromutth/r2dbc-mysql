@@ -73,15 +73,17 @@ public final class VarIntUtils {
                 case 0:
                     return secondPart.readUnsignedMediumLE();
                 case 1:
-                    return firstPart.readUnsignedByte() | (secondPart.readUnsignedShortLE() << Byte.SIZE);
+                    return firstPart.readUnsignedByte() |
+                        (((long) secondPart.readUnsignedShortLE()) << Byte.SIZE);
                 case 2:
-                    return firstPart.readUnsignedShortLE() | (secondPart.readUnsignedByte() << Short.SIZE);
+                    return firstPart.readUnsignedShortLE() |
+                        (((long) secondPart.readUnsignedByte()) << Short.SIZE);
                 default:
                     return firstPart.readUnsignedMediumLE();
             }
-        } else {
-            return crossReadLong0(firstPart, secondPart);
         }
+
+        return crossReadLong0(firstPart, secondPart);
     }
 
     /**

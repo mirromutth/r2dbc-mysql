@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -39,17 +39,16 @@ final class EnumCodec implements Codec<Enum<?>> {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public Enum<?> decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Enum<?> decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        Charset charset = CharCollation.fromId(info.getCollationId(), context.getServerVersion())
-            .getCharset();
+        Charset charset = metadata.getCharCollation(context).getCharset();
 
         return Enum.valueOf((Class<Enum>) target, value.toString(charset));
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, Class<?> target) {
-        return DataTypes.ENUMERABLE == info.getType() && target.isEnum();
+    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        return metadata.getType() == MySqlType.ENUM && target.isEnum();
     }
 
     @Override
@@ -87,8 +86,8 @@ final class EnumCodec implements Codec<Enum<?>> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.VARCHAR;
+        public MySqlType getType() {
+            return MySqlType.VARCHAR;
         }
 
         @Override

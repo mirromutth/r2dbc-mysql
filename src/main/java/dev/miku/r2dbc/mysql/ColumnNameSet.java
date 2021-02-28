@@ -164,6 +164,7 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
         return false;
     }
 
+    @SuppressWarnings("SuspiciousMethodCalls")
     @Override
     public boolean retainAll(Collection<?> c) {
         Objects.requireNonNull(c);

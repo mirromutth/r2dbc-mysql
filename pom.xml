@@ -56,24 +56,24 @@
     </scm>
 
     <properties>
-        <assertj.version>3.18.0</assertj.version>
+        <assertj.version>3.18.1</assertj.version>
         <java.version>1.8</java.version>
         <mbr.version>0.2.0.RELEASE</mbr.version>
-        <jmh.version>1.26</jmh.version>
+        <jmh.version>1.27</jmh.version>
         <jsr305.version>3.0.2</jsr305.version>
         <junit.version>5.7.0</junit.version>
         <logback.version>1.2.3</logback.version>
-        <mockito.version>3.6.0</mockito.version>
-        <mysql.version>8.0.22</mysql.version>
+        <mockito.version>3.7.7</mockito.version>
+        <mysql.version>8.0.23</mysql.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <r2dbc-spi.version>0.8.3.RELEASE</r2dbc-spi.version>
-        <reactor.version>Dysprosium-SR14</reactor.version>
+        <r2dbc-spi.version>0.9.0.BUILD-SNAPSHOT</r2dbc-spi.version>
+        <reactor.version>Dysprosium-SR16</reactor.version>
         <slf4j.version>1.7.30</slf4j.version>
-        <testcontainers.version>1.15.0</testcontainers.version>
+        <testcontainers.version>1.15.1</testcontainers.version>
         <hikari-cp.version>3.4.5</hikari-cp.version>
-        <spring-framework.version>5.3.1</spring-framework.version>
-        <jackson.version>2.11.3</jackson.version>
+        <spring-framework.version>5.3.3</spring-framework.version>
+        <jackson.version>2.12.1</jackson.version>
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.surefire.skip>false</maven.surefire.skip>
     </properties>
@@ -371,17 +371,9 @@
 
     <repositories>
         <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>spring-snapshots</id>
-            <name>Spring Snapshots</name>
-            <url>https://repo.spring.io/snapshot</url>
+            <id>Sonatype-snapshots</id>
+            <name>Sonatype Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>

@@ -16,16 +16,26 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalTime;
 
-import static dev.miku.r2dbc.mysql.codec.DateTimes.*;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.HOURS_OF_DAY;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.MICRO_TIME_SIZE;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.NANOS_OF_MICRO;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.NANOS_OF_SECOND;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.SECONDS_OF_DAY;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.SECONDS_OF_HOUR;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.SECONDS_OF_MINUTE;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.TIME_SIZE;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.readIntInDigits;
+import static dev.miku.r2dbc.mysql.codec.DateTimes.readMicroInDigits;
 
 /**
  * Codec for {@link LocalTime}.
@@ -43,7 +53,7 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     @Override
-    public LocalTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public LocalTime decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         return decodeOrigin(binary, value);
     }
@@ -59,8 +69,8 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     @Override
-    public boolean doCanDecode(FieldInformation info) {
-        return DataTypes.TIME == info.getType();
+    public boolean doCanDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType() == MySqlType.TIME;
     }
 
     static LocalTime decodeOrigin(boolean binary, ByteBuf value) {
@@ -205,8 +215,8 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.TIME;
+        public MySqlType getType() {
+            return MySqlType.TIME;
         }
 
         @Override

@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import io.netty.buffer.ByteBufAllocator;
 
 /**
@@ -35,9 +36,9 @@ abstract class AbstractClassedCodec<T> implements Codec<T> {
     }
 
     @Override
-    public final boolean canDecode(FieldInformation info, Class<?> target) {
-        return target.isAssignableFrom(this.clazz) && doCanDecode(info);
+    public final boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        return target.isAssignableFrom(this.clazz) && doCanDecode(metadata);
     }
 
-    abstract protected boolean doCanDecode(FieldInformation info);
+    abstract protected boolean doCanDecode(MySqlColumnMetadata metadata);
 }

@@ -161,7 +161,7 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
 
     private void writeTypes(ByteBuf buf, int size) {
         for (int i = 0; i < size; ++i) {
-            buf.writeShortLE(values[i].getType());
+            buf.writeShortLE(values[i].getType().getId());
         }
     }
 

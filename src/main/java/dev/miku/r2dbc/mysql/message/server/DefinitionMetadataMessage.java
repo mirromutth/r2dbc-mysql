@@ -16,10 +16,9 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
+import dev.miku.r2dbc.mysql.ColumnDefinition;
 import dev.miku.r2dbc.mysql.ConnectionContext;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
-import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.Nullable;
@@ -52,15 +51,15 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     private final long size;
 
-    private final short type;
+    private final short typeId;
 
-    private final short definitions;
+    private final ColumnDefinition definition;
 
     private final short decimals;
 
     private DefinitionMetadataMessage(@Nullable String database, String table, @Nullable String originTable,
-        String column, @Nullable String originColumn, int collationId, long size, short type,
-        short definitions, short decimals) {
+        String column, @Nullable String originColumn, int collationId, long size, short typeId,
+        ColumnDefinition definition, short decimals) {
         require(size >= 0, "size must not be a negative integer");
         require(collationId > 0, "collationId must be a positive integer");
 
@@ -71,8 +70,8 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         this.originColumn = originColumn;
         this.collationId = collationId;
         this.size = size;
-        this.type = type;
-        this.definitions = definitions;
+        this.typeId = typeId;
+        this.definition = requireNonNull(definition, "definition must not be null");
         this.decimals = decimals;
     }
 
@@ -88,12 +87,12 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         return size;
     }
 
-    public short getType() {
-        return type;
+    public short getTypeId() {
+        return typeId;
     }
 
-    public short getDefinitions() {
-        return definitions;
+    public ColumnDefinition getDefinition() {
+        return definition;
     }
 
     public short getDecimals() {
@@ -111,8 +110,8 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         DefinitionMetadataMessage that = (DefinitionMetadataMessage) o;
         return collationId == that.collationId &&
             size == that.size &&
-            type == that.type &&
-            definitions == that.definitions &&
+            typeId == that.typeId &&
+            definition.equals(that.definition) &&
             decimals == that.decimals &&
             Objects.equals(database, that.database) &&
             table.equals(that.table) &&
@@ -123,16 +122,16 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
     @Override
     public int hashCode() {
-        return Objects.hash(database, table, originTable, column, originColumn, collationId, size, type,
-            definitions, decimals);
+        return Objects.hash(database, table, originTable, column, originColumn, collationId, size, typeId,
+            definition, decimals);
     }
 
     @Override
     public String toString() {
         return "DefinitionMetadataMessage{database='" + database + "', table='" + table + "' (origin:'" +
             originTable + "'), column='" + column + "' (origin:'" + originColumn + "'), collationId=" +
-            collationId + ", size=" + size + ", type=" + type + ", definitions=" +
-            Integer.toHexString(definitions) + ", decimals=" + decimals + '}';
+            collationId + ", size=" + size + ", type=" + typeId + ", definition=" + definition +
+            ", decimals=" + decimals + '}';
     }
 
     static DefinitionMetadataMessage decode(ByteBuf buf, ConnectionContext context) {
@@ -153,14 +152,14 @@ public final class DefinitionMetadataMessage implements ServerMessage {
         int size = buf.readUnsignedMediumLE();
 
         buf.skipBytes(1); // Constant 0x1
-        short type = buf.readUnsignedByte();
+        short typeId = buf.readUnsignedByte();
 
         buf.skipBytes(1); // Constant 0x3
-        short definitions = buf.readShortLE();
+        ColumnDefinition definition = ColumnDefinition.of(buf.readShortLE());
         short decimals = buf.readUnsignedByte();
 
-        return new DefinitionMetadataMessage(null, table, null, column, null, collation.getId(), size, type,
-            definitions, decimals);
+        return new DefinitionMetadataMessage(null, table, null, column, null, collation.getId(), size, typeId,
+            definition, decimals);
     }
 
     private static DefinitionMetadataMessage decode41(ByteBuf buf, ConnectionContext context) {
@@ -178,23 +177,11 @@ public final class DefinitionMetadataMessage implements ServerMessage {
 
         int collationId = buf.readUnsignedShortLE();
         long size = buf.readUnsignedIntLE();
-        short type = buf.readUnsignedByte();
-        short definitions = buf.readShortLE();
-
-        if (DataTypes.JSON == type && collationId == CharCollation.BINARY_ID) {
-            collationId = collation.getId();
-        }
-
-        if ((definitions & ColumnDefinitions.SET) != 0) {
-            // Maybe need to check if it is a string-like type?
-            type = DataTypes.SET;
-        } else if ((definitions & ColumnDefinitions.ENUMERABLE) != 0) {
-            // Maybe need to check if it is a string-like type?
-            type = DataTypes.ENUMERABLE;
-        }
+        short typeId = buf.readUnsignedByte();
+        ColumnDefinition definition = ColumnDefinition.of(buf.readShortLE());
 
         return new DefinitionMetadataMessage(database, table, originTable, column, originColumn, collationId,
-            size, type, definitions, buf.readUnsignedByte());
+            size, typeId, definition, buf.readUnsignedByte());
     }
 
     private static String readVarIntSizedString(ByteBuf buf, Charset charset) {

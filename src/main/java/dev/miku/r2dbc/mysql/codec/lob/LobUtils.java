@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec.lob;
 
-import dev.miku.r2dbc.mysql.ServerVersion;
+import dev.miku.r2dbc.mysql.collation.CharCollation;
 import dev.miku.r2dbc.mysql.util.NettyBufferUtils;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.Blob;
@@ -70,16 +70,15 @@ public final class LobUtils {
     /**
      * Create a {@link Clob} from only one {@link ByteBuf}.
      *
-     * @param value       the only one {@link ByteBuf}.
-     * @param collationId the identifier of {@code CharCollation}.
-     * @param version     the version of MySQL server.
+     * @param value     the only one {@link ByteBuf}.
+     * @param collation the character collation.
      * @return the {@link Clob} from singleton.
      */
-    public static Clob createClob(ByteBuf value, int collationId, ServerVersion version) {
+    public static Clob createClob(ByteBuf value, CharCollation collation) {
         ByteBuf buf = value.retain();
 
         try {
-            return new SingletonClob(buf, collationId, version);
+            return new SingletonClob(buf, collation);
         } catch (Throwable e) {
             buf.release();
             throw e;
@@ -90,11 +89,10 @@ public final class LobUtils {
      * Create a {@link Clob} from multiple {@link ByteBuf}s.
      *
      * @param value       the {@link ByteBuf}s list.
-     * @param collationId the identifier of {@code CharCollation}.
-     * @param version     the version of MySQL server.
+     * @param collation the character collation.
      * @return the {@link Clob} from multiple.
      */
-    public static Clob createClob(List<ByteBuf> value, int collationId, ServerVersion version) {
+    public static Clob createClob(List<ByteBuf> value, CharCollation collation) {
         int size = value.size(), i = 0;
 
         try {
@@ -102,7 +100,7 @@ public final class LobUtils {
                 value.get(i).retain();
             }
 
-            return new MultiClob(value, collationId, version);
+            return new MultiClob(value, collation);
         } catch (Throwable e) {
             NettyBufferUtils.releaseAll(value, i);
             throw e;

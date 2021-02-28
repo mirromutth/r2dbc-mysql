@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -35,9 +36,9 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    public Float decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Float decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        if (binary && info.getType() == DataTypes.FLOAT) {
+        if (binary && metadata.getType() == MySqlType.FLOAT) {
             return value.readFloatLE();
         }
         // otherwise encoded by text (must not be DOUBLE).
@@ -55,9 +56,9 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        short type = info.getType();
-        return DataTypes.FLOAT == type || (info.getSize() < 7 && TypePredicates.isDecimal(type));
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        MySqlType type = metadata.getType();
+        return type == MySqlType.FLOAT || (type == MySqlType.DECIMAL && metadata.getNativePrecision() < 7);
     }
 
     private static final class FloatParameter extends AbstractParameter {
@@ -90,8 +91,8 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.FLOAT;
+        public MySqlType getType() {
+            return MySqlType.FLOAT;
         }
 
         @Override

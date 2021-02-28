@@ -35,12 +35,12 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class MySqlRowMetadata implements RowMetadata {
 
-    private static final Comparator<MySqlColumnMetadata> NAME_COMPARATOR = (left, right) ->
+    private static final Comparator<MySqlColumnDescriptor> NAME_COMPARATOR = (left, right) ->
         MySqlNames.compare(left.getName(), right.getName());
 
-    private final MySqlColumnMetadata[] originMetadata;
+    private final MySqlColumnDescriptor[] originMetadata;
 
-    private final MySqlColumnMetadata[] sortedMetadata;
+    private final MySqlColumnDescriptor[] sortedMetadata;
 
     /**
      * Copied column names from {@link #sortedMetadata}.
@@ -49,7 +49,7 @@ final class MySqlRowMetadata implements RowMetadata {
 
     private final ColumnNameSet nameSet;
 
-    private MySqlRowMetadata(MySqlColumnMetadata[] metadata) {
+    private MySqlRowMetadata(MySqlColumnDescriptor[] metadata) {
         int size = metadata.length;
 
         switch (size) {
@@ -65,7 +65,7 @@ final class MySqlRowMetadata implements RowMetadata {
 
                 break;
             default:
-                MySqlColumnMetadata[] sortedMetadata = new MySqlColumnMetadata[size];
+                MySqlColumnDescriptor[] sortedMetadata = new MySqlColumnDescriptor[size];
                 System.arraycopy(metadata, 0, sortedMetadata, 0, size);
                 Arrays.sort(sortedMetadata, NAME_COMPARATOR);
 
@@ -82,7 +82,7 @@ final class MySqlRowMetadata implements RowMetadata {
     }
 
     @Override
-    public MySqlColumnMetadata getColumnMetadata(int index) {
+    public MySqlColumnDescriptor getColumnMetadata(int index) {
         if (index < 0 || index >= originMetadata.length) {
             throw new ArrayIndexOutOfBoundsException("Index: " + index + ", total: " + originMetadata.length);
         }
@@ -91,7 +91,7 @@ final class MySqlRowMetadata implements RowMetadata {
     }
 
     @Override
-    public MySqlColumnMetadata getColumnMetadata(String name) {
+    public MySqlColumnDescriptor getColumnMetadata(String name) {
         requireNonNull(name, "name must not be null");
 
         int index = MySqlNames.nameSearch(this.sortedNames, name);
@@ -104,7 +104,7 @@ final class MySqlRowMetadata implements RowMetadata {
     }
 
     @Override
-    public List<MySqlColumnMetadata> getColumnMetadatas() {
+    public List<MySqlColumnDescriptor> getColumnMetadatas() {
         return InternalArrays.asImmutableList(originMetadata);
     }
 
@@ -119,22 +119,22 @@ final class MySqlRowMetadata implements RowMetadata {
             Arrays.toString(sortedNames) + '}';
     }
 
-    MySqlColumnMetadata[] unwrap() {
+    MySqlColumnDescriptor[] unwrap() {
         return originMetadata;
     }
 
     static MySqlRowMetadata create(DefinitionMetadataMessage[] columns) {
         int size = columns.length;
-        MySqlColumnMetadata[] metadata = new MySqlColumnMetadata[size];
+        MySqlColumnDescriptor[] metadata = new MySqlColumnDescriptor[size];
 
         for (int i = 0; i < size; ++i) {
-            metadata[i] = MySqlColumnMetadata.create(i, columns[i]);
+            metadata[i] = MySqlColumnDescriptor.create(i, columns[i]);
         }
 
         return new MySqlRowMetadata(metadata);
     }
 
-    private static String[] getNames(MySqlColumnMetadata[] metadata) {
+    private static String[] getNames(MySqlColumnDescriptor[] metadata) {
         int size = metadata.length;
         String[] names = new String[size];
 

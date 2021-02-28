@@ -26,6 +26,7 @@ import dev.miku.r2dbc.mysql.message.client.AuthResponse;
 import dev.miku.r2dbc.mysql.message.client.ClientMessage;
 import dev.miku.r2dbc.mysql.message.client.HandshakeResponse;
 import dev.miku.r2dbc.mysql.message.client.LoginClientMessage;
+import dev.miku.r2dbc.mysql.message.client.PingMessage;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedCloseMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
@@ -47,17 +48,22 @@ import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.util.ReferenceCountUtil;
+import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
+import io.r2dbc.spi.TransactionDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Operators;
 import reactor.core.publisher.SynchronousSink;
 import reactor.util.annotation.Nullable;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -152,7 +158,7 @@ final class QueryFlow {
      *
      * @param client the {@link Client} to exchange messages with.
      * @param sql    the query to execute, can be contains multi-statements.
-     * @return the messages received in response to this exchange.
+     * @return receives complete signal.
      */
     static Mono<Void> executeVoid(Client client, String sql) {
         return Mono.defer(() -> execute0(client, sql).doOnNext(OBJ_RELEASE).then());
@@ -166,7 +172,7 @@ final class QueryFlow {
      *
      * @param client     the {@link Client} to exchange messages with.
      * @param statements the queries to execute, each element can be contains multi-statements.
-     * @return the messages received in response to this exchange.
+     * @return receives complete signal.
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
         return client.exchange(new MultiQueryExchangeable(InternalArrays.asIterator(statements)))
@@ -209,6 +215,49 @@ final class QueryFlow {
                         .windowUntil(RESULT_DONE);
             }
         });
+    }
+
+    /**
+     * Begins a new transaction with a {@link TransactionDefinition}.  It will change current transaction
+     * statuses of the {@link ConnectionState}.
+     *
+     * @param client         the {@link Client} to exchange messages with.
+     * @param state          the connection state for checks and sets transaction statuses.
+     * @param batchSupported if connection supports batch query.
+     * @param definition     the {@link TransactionDefinition}.
+     * @return receives complete signal.
+     */
+    static Mono<Void> beginTransaction(Client client, ConnectionState state, boolean batchSupported,
+        TransactionDefinition definition) {
+        StartTransactionState startState = StartTransactionState.of(state, definition);
+
+        if (batchSupported || startState.isSimple()) {
+            return client.exchange(new TransactionBatchExchangeable(startState)).then();
+        }
+
+        return client.exchange(new TransactionMultiExchangeable(startState)).then();
+    }
+
+    /**
+     * Commits or rollbacks current transaction.  It will recover statuses of the {@link ConnectionState} in
+     * the initial connection state.
+     *
+     * @param client          the {@link Client} to exchange messages with.
+     * @param state           the connection state for checks and resets transaction statuses.
+     * @param commit          if commit, otherwise rollback.
+     * @param lockWaitTimeout the lock wait timeout of the initial connection state.
+     * @param batchSupported  if connection supports batch query.
+     * @return receives complete signal.
+     */
+    static Mono<Void> doneTransaction(Client client, ConnectionState state, boolean commit,
+        long lockWaitTimeout, boolean batchSupported) {
+        CommitRollbackState commitState = CommitRollbackState.of(state, commit, lockWaitTimeout);
+
+        if (batchSupported || commitState.isSimple()) {
+            return client.exchange(new TransactionBatchExchangeable(commitState)).then();
+        }
+
+        return client.exchange(new TransactionMultiExchangeable(commitState)).then();
     }
 
     /**
@@ -869,5 +918,336 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
 
     private static String formatAuthFails(String authType, String phase) {
         return "Authentication type '" + authType + "' must require SSL in " + phase + " phase";
+    }
+}
+
+abstract class AbstractTransactionState {
+
+    final ConnectionState state;
+
+    /**
+     * A bitmap of unfinished tasks, the lowest one bit is current task.
+     */
+    int tasks;
+
+    private final List<String> statements;
+
+    @Nullable
+    private String sql;
+
+    protected AbstractTransactionState(ConnectionState state, int tasks, List<String> statements) {
+        this.state = state;
+        this.tasks = tasks;
+        this.statements = statements;
+    }
+
+    final void setSql(String sql) {
+        this.sql = sql;
+    }
+
+    final boolean isSimple() {
+        return statements.size() == 1;
+    }
+
+    final String batchStatement() {
+        if (statements.size() == 1) {
+            return statements.get(0);
+        }
+
+        return String.join(";", statements);
+    }
+
+    final Iterator<String> statements() {
+        return statements.iterator();
+    }
+
+    final boolean accept(ServerMessage message, SynchronousSink<Void> sink) {
+        if (message instanceof ErrorMessage) {
+            sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+            return false;
+        }
+
+        if (message instanceof CompleteMessage) {
+            // Note: if CompleteMessage.isDone() is true, it is the last complete message of the entire
+            // operation in batch mode and the last complete message of the current query in multi-query mode.
+            // That means each complete message should be processed whatever it is done or not IN BATCH MODE.
+            // And process only the complete message that's done IN MULTI-QUERY MODE.
+            // So if we need to check isDone() here, should give an extra boolean variable: is it batch mode?
+            // Currently, the tasks can determine current state, no need check isDone(). The Occam’s razor.
+            int task = Integer.lowestOneBit(tasks);
+
+            // Remove current task for prepare next task.
+            this.tasks -= task;
+
+            return process(task, sink);
+        }
+
+        ReferenceCountUtil.safeRelease(message);
+
+        return false;
+    }
+
+    abstract boolean cancelTasks();
+
+    protected abstract boolean process(int task, SynchronousSink<Void> sink);
+}
+
+final class CommitRollbackState extends AbstractTransactionState {
+
+    private static final int LOCK_WAIT_TIMEOUT = 1;
+
+    private static final int COMMIT_OR_ROLLBACK = 2;
+
+    private CommitRollbackState(ConnectionState state, int tasks, List<String> statements) {
+        super(state, tasks, statements);
+    }
+
+    @Override
+    boolean cancelTasks() {
+        if (state.isInTransaction()) {
+            return false;
+        }
+
+        this.tasks = COMMIT_OR_ROLLBACK;
+
+        return true;
+    }
+
+    @Override
+    protected boolean process(int task, SynchronousSink<Void> sink) {
+        switch (task) {
+            case LOCK_WAIT_TIMEOUT:
+                state.resetLockWaitTimeout();
+                return true;
+            case COMMIT_OR_ROLLBACK:
+                state.resetIsolationLevel();
+                sink.complete();
+                return false;
+        }
+
+        sink.error(new IllegalStateException("Undefined commit task: " + task + ", remain: " + tasks));
+
+        return false;
+    }
+
+    static CommitRollbackState of(ConnectionState state, boolean commit, long lockWaitTimeout) {
+        String doneSql = commit ? "COMMIT" : "ROLLBACK";
+
+        if (state.isLockWaitTimeoutChanged()) {
+            List<String> statements = new ArrayList<>(2);
+
+            statements.add("SET innodb_lock_wait_timeout=" + lockWaitTimeout);
+            statements.add(doneSql);
+
+            return new CommitRollbackState(state, LOCK_WAIT_TIMEOUT | COMMIT_OR_ROLLBACK, statements);
+        }
+
+        return new CommitRollbackState(state, COMMIT_OR_ROLLBACK, Collections.singletonList(doneSql));
+    }
+}
+
+final class StartTransactionState extends AbstractTransactionState {
+
+    private static final int LOCK_WAIT_TIMEOUT = 1;
+
+    private static final int ISOLATION_LEVEL = 2;
+
+    private static final int START_TRANSACTION = 4;
+
+    private final long lockWaitTimeout;
+
+    @Nullable
+    private final IsolationLevel isolationLevel;
+
+    private StartTransactionState(ConnectionState state, int tasks, List<String> statements,
+        long lockWaitTimeout, @Nullable IsolationLevel level) {
+        super(state, tasks, statements);
+
+        this.lockWaitTimeout = lockWaitTimeout;
+        this.isolationLevel = level;
+    }
+
+    @Override
+    boolean cancelTasks() {
+        if (state.isInTransaction()) {
+            this.tasks = START_TRANSACTION;
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
+    protected boolean process(int task, SynchronousSink<Void> sink) {
+        switch (task) {
+            case LOCK_WAIT_TIMEOUT:
+                state.setLockWaitTimeout(lockWaitTimeout);
+                return true;
+            case ISOLATION_LEVEL:
+                if (isolationLevel != null) {
+                    state.setIsolationLevel(isolationLevel);
+                }
+                return true;
+            case START_TRANSACTION:
+                sink.complete();
+                return false;
+        }
+
+        sink.error(new IllegalStateException("Undefined transaction task: " + task + ", remain: " + tasks));
+
+        return false;
+    }
+
+    static StartTransactionState of(ConnectionState state, TransactionDefinition definition) {
+        int tasks = START_TRANSACTION;
+        Duration timeout = definition.getAttribute(TransactionDefinition.LOCK_WAIT_TIMEOUT);
+        List<String> statements = null;
+        long lockWaitTimeout;
+
+        if (timeout == null) {
+            lockWaitTimeout = Long.MIN_VALUE;
+        } else {
+            lockWaitTimeout = timeout.getSeconds();
+            statements = new ArrayList<>(3);
+            statements.add("SET innodb_lock_wait_timeout=" + lockWaitTimeout);
+            tasks |= LOCK_WAIT_TIMEOUT;
+        }
+
+        IsolationLevel isolationLevel = definition.getAttribute(TransactionDefinition.ISOLATION_LEVEL);
+
+        if (isolationLevel != null) {
+            if (statements == null) {
+                statements = new ArrayList<>(3);
+            }
+            statements.add("SET TRANSACTION ISOLATION LEVEL " + isolationLevel.asSql());
+            tasks |= ISOLATION_LEVEL;
+        }
+
+        if (statements == null) {
+            return new StartTransactionState(state, tasks,
+                Collections.singletonList(buildStartTransaction(definition)), lockWaitTimeout, null);
+        }
+
+        statements.add(buildStartTransaction(definition));
+
+        return new StartTransactionState(state, tasks, statements, lockWaitTimeout, isolationLevel);
+    }
+
+    private static String buildStartTransaction(TransactionDefinition definition) {
+        Boolean readOnly = definition.getAttribute(TransactionDefinition.READ_ONLY);
+        Boolean snapshot = definition.getAttribute(MySqlTransactionDefinition.WITH_CONSISTENT_SNAPSHOT);
+
+        if (readOnly == null && (snapshot == null || !snapshot)) {
+            return "BEGIN";
+        }
+
+        StringBuilder builder = new StringBuilder(90).append("START TRANSACTION");
+
+        if (snapshot != null && snapshot) {
+            ConsistentSnapshotEngine engine =
+                definition.getAttribute(MySqlTransactionDefinition.CONSISTENT_SNAPSHOT_ENGINE);
+
+            builder.append(" WITH CONSISTENT ");
+
+            if (engine == null) {
+                builder.append("SNAPSHOT");
+            } else {
+                builder.append(engine.asSql()).append(" SNAPSHOT");
+            }
+
+            Long sessionId =
+                definition.getAttribute(MySqlTransactionDefinition.CONSISTENT_SNAPSHOT_FROM_SESSION);
+
+            if (sessionId != null) {
+                builder.append(" FROM SESSION ").append(Long.toUnsignedString(sessionId));
+            }
+        }
+
+        if (readOnly != null) {
+            if (readOnly) {
+                builder.append(" READ ONLY");
+            } else {
+                builder.append(" READ WRITE");
+            }
+        }
+
+        return builder.toString();
+    }
+}
+
+final class TransactionBatchExchangeable extends FluxExchangeable<Void> {
+
+    private final AbstractTransactionState state;
+
+    TransactionBatchExchangeable(AbstractTransactionState state) {
+        this.state = state;
+    }
+
+    @Override
+    public void accept(ServerMessage message, SynchronousSink<Void> sink) {
+        state.accept(message, sink);
+    }
+
+    @Override
+    public void dispose() {
+        // Do nothing.
+    }
+
+    @Override
+    public void subscribe(CoreSubscriber<? super ClientMessage> s) {
+        if (state.cancelTasks()) {
+            s.onSubscribe(Operators.scalarSubscription(s, PingMessage.INSTANCE));
+
+            return;
+        }
+
+        String sql = state.batchStatement();
+
+        state.setSql(sql);
+        s.onSubscribe(Operators.scalarSubscription(s, TextQueryMessage.of(sql)));
+    }
+}
+
+final class TransactionMultiExchangeable extends FluxExchangeable<Void> {
+
+    private final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
+
+    private final AbstractTransactionState state;
+
+    private final Iterator<String> statements;
+
+    TransactionMultiExchangeable(AbstractTransactionState state) {
+        this.state = state;
+        this.statements = state.statements();
+    }
+
+    @Override
+    public void accept(ServerMessage message, SynchronousSink<Void> sink) {
+        if (state.accept(message, sink)) {
+            String sql = statements.next();
+
+            state.setSql(sql);
+            requests.onNext(TextQueryMessage.of(sql));
+        }
+    }
+
+    @Override
+    public void dispose() {
+        requests.onComplete();
+    }
+
+    @Override
+    public void subscribe(CoreSubscriber<? super ClientMessage> s) {
+        if (state.cancelTasks()) {
+            s.onSubscribe(Operators.scalarSubscription(s, PingMessage.INSTANCE));
+
+            return;
+        }
+
+        String sql = statements.next();
+
+        state.setSql(sql);
+        requests.subscribe(s);
+        requests.onNext(TextQueryMessage.of(sql));
     }
 }

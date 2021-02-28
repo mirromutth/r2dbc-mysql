@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql;
 
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
@@ -71,11 +72,13 @@ public interface Parameter extends Disposable {
     Mono<Void> publishText(ParameterWriter writer);
 
     /**
-     * If don't want to support the binary protocol, please throw an exception.
+     * Get the {@link MySqlType} of this parameter data.
+     * <p>
+     * If don't want to support the binary protocol, just throw an exception please.
      *
-     * @return the MySQL data type of this parameter data, see {@code DataTypes}.
+     * @return the MySQL type.
      */
-    short getType();
+    MySqlType getType();
 
     /**
      * {@inheritDoc}

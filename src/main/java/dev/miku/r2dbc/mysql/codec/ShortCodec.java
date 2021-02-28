@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -34,22 +34,22 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public Short decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Short decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         if (binary) {
-            boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
+            MySqlType type = metadata.getType();
 
-            switch (info.getType()) {
-                case DataTypes.SMALLINT: // Already check overflow in `doCanDecode`
-                case DataTypes.YEAR:
+            switch (type) {
+                case SMALLINT:
+                case YEAR:
                     return value.readShortLE();
-                default: // TINYINT
-                    if (isUnsigned) {
-                        return value.readUnsignedByte();
-                    }
-
+                case TINYINT_UNSIGNED:
+                    return value.readUnsignedByte();
+                case TINYINT:
                     return (short) value.readByte();
             }
+
+            throw new IllegalStateException("Cannot decode type " + type + " as a Short");
         }
 
         return (short) IntegerCodec.parse(value);
@@ -72,15 +72,11 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        short type = info.getType();
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        MySqlType type = metadata.getType();
 
-        if (DataTypes.TINYINT == type || DataTypes.YEAR == type) {
-            // Note: MySQL not support negative integer for year.
-            return true;
-        }
-
-        return DataTypes.SMALLINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0;
+        return type == MySqlType.TINYINT_UNSIGNED || type == MySqlType.TINYINT ||
+            type == MySqlType.SMALLINT || type == MySqlType.YEAR;
     }
 
     static final class ShortParameter extends AbstractParameter {
@@ -105,8 +101,8 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.SMALLINT;
+        public MySqlType getType() {
+            return MySqlType.SMALLINT;
         }
 
         @Override

@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -38,7 +39,7 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public LocalDate decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public LocalDate decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         int bytes = value.readableBytes();
         LocalDate date = binary ? readDateBinary(value, bytes) : readDateText(value);
@@ -61,8 +62,8 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public boolean doCanDecode(FieldInformation info) {
-        return DataTypes.DATE == info.getType();
+    public boolean doCanDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType() == MySqlType.DATE;
     }
 
     @Nullable
@@ -177,8 +178,8 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.DATE;
+        public MySqlType getType() {
+            return MySqlType.DATE;
         }
 
         @Override

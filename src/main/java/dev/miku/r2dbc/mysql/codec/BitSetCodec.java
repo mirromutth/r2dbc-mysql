@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
@@ -38,7 +39,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
     }
 
     @Override
-    public BitSet decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public BitSet decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         if (!value.isReadable()) {
             return BitSet.valueOf(EMPTY_BYTES);
@@ -70,23 +71,24 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
             }
         }
 
-        short type;
+        MySqlType type;
+
         if ((byte) bits == bits) {
-            type = DataTypes.TINYINT;
+            type = MySqlType.TINYINT;
         } else if ((short) bits == bits) {
-            type = DataTypes.SMALLINT;
+            type = MySqlType.SMALLINT;
         } else if ((int) bits == bits) {
-            type = DataTypes.INT;
+            type = MySqlType.INT;
         } else {
-            type = DataTypes.BIGINT;
+            type = MySqlType.BIGINT;
         }
 
         return new BitSetParameter(allocator, bits, type);
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        return DataTypes.BIT == info.getType();
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType() == MySqlType.BIT;
     }
 
     private static byte[] reverse(byte[] bytes) {
@@ -109,9 +111,9 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
         private final long value;
 
-        private final short type;
+        private final MySqlType type;
 
-        private BitSetParameter(ByteBufAllocator allocator, long value, short type) {
+        private BitSetParameter(ByteBufAllocator allocator, long value, MySqlType type) {
             this.allocator = allocator;
             this.value = value;
             this.type = type;
@@ -120,13 +122,13 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         @Override
         public Mono<ByteBuf> publishBinary() {
             switch (type) {
-                case DataTypes.TINYINT:
+                case TINYINT:
                     return Mono.fromSupplier(() -> allocator.buffer(Byte.BYTES).writeByte((int) value));
-                case DataTypes.SMALLINT:
+                case SMALLINT:
                     return Mono.fromSupplier(() -> allocator.buffer(Short.BYTES).writeShortLE((int) value));
-                case DataTypes.INT:
+                case INT:
                     return Mono.fromSupplier(() -> allocator.buffer(Integer.BYTES).writeIntLE((int) value));
-                default:
+                default: // BIGINT
                     return Mono.fromSupplier(() -> allocator.buffer(Long.BYTES).writeLongLE(value));
             }
         }
@@ -147,7 +149,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         }
 
         @Override
-        public short getType() {
+        public MySqlType getType() {
             return type;
         }
 

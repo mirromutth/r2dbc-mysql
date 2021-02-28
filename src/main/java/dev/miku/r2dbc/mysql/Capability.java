@@ -158,7 +158,6 @@ public final class Capability {
     // A reserved flag, used to extend the 32-bits capability bitmap to 64-bits.
     // There is no available MySql server version/edition to support it.
 //    private static final int CAPABILITY_EXTENSION = 1 << 29;
-
 //    private static final int SSL_VERIFY_SERVER_CERT = 1 << 30; // Client only flag, use SslMode instead.
 //    private static final int REMEMBER_OPTIONS = 1 << 31; // Connector/C only flag.
 
@@ -273,7 +272,7 @@ public final class Capability {
         if (this == o) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (!(o instanceof Capability)) {
             return false;
         }
 
@@ -302,10 +301,10 @@ public final class Capability {
     }
 
     /**
-     * Creates a {@link Capability} with capabilities bitmap. It will unset all unknown flag.
+     * Creates a {@link Capability} with capabilities bitmap. It will unset all unknown flags.
      *
      * @param capabilities the capabilities bitmap.
-     * @return the {@link Capability} without unknown flag.
+     * @return the {@link Capability} without unknown flags.
      */
     public static Capability of(int capabilities) {
         return new Capability(capabilities & ALL_SUPPORTED);

@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -44,13 +45,13 @@ final class ZonedDateTimeCodec implements ParametrizedCodec<ZonedDateTime> {
     }
 
     @Override
-    public ZonedDateTime decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public ZonedDateTime decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         return decode0(value, binary, context);
     }
 
     @Override
-    public ChronoZonedDateTime<LocalDate> decode(ByteBuf value, FieldInformation info,
+    public ChronoZonedDateTime<LocalDate> decode(ByteBuf value, MySqlColumnMetadata metadata,
         ParameterizedType target, boolean binary, CodecContext context) {
         return decode0(value, binary, context);
     }
@@ -66,13 +67,13 @@ final class ZonedDateTimeCodec implements ParametrizedCodec<ZonedDateTime> {
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, ParameterizedType target) {
-        return DateTimes.canDecodeChronology(info.getType(), target, ChronoZonedDateTime.class);
+    public boolean canDecode(MySqlColumnMetadata metadata, ParameterizedType target) {
+        return DateTimes.canDecodeChronology(metadata.getType(), target, ChronoZonedDateTime.class);
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, Class<?> target) {
-        return DateTimes.canDecodeDateTime(info.getType(), target, ZonedDateTime.class);
+    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        return DateTimes.canDecodeDateTime(metadata.getType(), target, ZonedDateTime.class);
     }
 
     @Nullable
@@ -107,8 +108,8 @@ final class ZonedDateTimeCodec implements ParametrizedCodec<ZonedDateTime> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.TIMESTAMP;
+        public MySqlType getType() {
+            return MySqlType.TIMESTAMP;
         }
 
         @Override

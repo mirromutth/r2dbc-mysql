@@ -16,10 +16,11 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -50,25 +51,22 @@ final class BlobCodec implements MassiveCodec<Blob> {
     }
 
     @Override
-    public Blob decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Blob decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         return LobUtils.createBlob(value);
     }
 
     @Override
-    public Blob decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary,
-        CodecContext context) {
+    public Blob decodeMassive(List<ByteBuf> value, MySqlColumnMetadata metadata, Class<?> target,
+        boolean binary, CodecContext context) {
         return LobUtils.createBlob(value);
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, Class<?> target) {
-        short type = info.getType();
-        if (!TypePredicates.isLob(type) && DataTypes.GEOMETRY != type) {
-            return false;
-        }
+    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        MySqlType type = metadata.getType();
 
-        return target.isAssignableFrom(Blob.class);
+        return (type.isLob() || type == MySqlType.GEOMETRY) && target.isAssignableFrom(Blob.class);
     }
 
     @Override
@@ -187,6 +185,11 @@ final class BlobCodec implements MassiveCodec<Blob> {
                     .doOnNext(writer::writeHex)
                     .then();
             });
+        }
+
+        @Override
+        public MySqlType getType() {
+            return MySqlType.LONGBLOB;
         }
 
         @Override

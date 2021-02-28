@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -39,9 +39,9 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     }
 
     @Override
-    public BigInteger decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public BigInteger decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        return binary ? decodeBinary(value, info) : decodeText(value, info);
+        return binary ? decodeBinary(value, metadata) : decodeText(value, metadata);
     }
 
     @Override
@@ -56,8 +56,8 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        return TypePredicates.isInt(info.getType());
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType().isInt();
     }
 
     private static boolean isGreaterThanMaxValue(String num) {
@@ -87,8 +87,8 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         return new BigInteger(bits);
     }
 
-    private static BigInteger decodeText(ByteBuf value, FieldInformation info) {
-        if (info.getType() == DataTypes.BIGINT && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
+    private static BigInteger decodeText(ByteBuf value, MySqlColumnMetadata metadata) {
+        if (metadata.getType() == MySqlType.BIGINT_UNSIGNED) {
             if (value.getByte(value.readerIndex()) == '+') {
                 value.skipBytes(1);
             }
@@ -107,41 +107,37 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         return BigInteger.valueOf(LongCodec.parse(value));
     }
 
-    private static BigInteger decodeBinary(ByteBuf value, FieldInformation info) {
-        boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
-
-        switch (info.getType()) {
-            case DataTypes.BIGINT:
+    private static BigInteger decodeBinary(ByteBuf value, MySqlColumnMetadata metadata) {
+        switch (metadata.getType()) {
+            case BIGINT_UNSIGNED:
                 long v = value.readLongLE();
-                if (isUnsigned && v < 0) {
+
+                if (v < 0) {
                     return unsignedBigInteger(v);
                 }
 
                 return BigInteger.valueOf(v);
-            case DataTypes.INT:
-                if (isUnsigned) {
-                    return BigInteger.valueOf(value.readUnsignedIntLE());
-                }
-
-                return BigInteger.valueOf(value.readIntLE());
-            case DataTypes.MEDIUMINT:
+            case BIGINT:
+                return BigInteger.valueOf(value.readLongLE());
+            case INT_UNSIGNED:
+                return BigInteger.valueOf(value.readUnsignedIntLE());
+            case INT:
+            case MEDIUMINT_UNSIGNED:
+            case MEDIUMINT:
                 // Note: MySQL return 32-bits two's complement for 24-bits integer
                 return BigInteger.valueOf(value.readIntLE());
-            case DataTypes.SMALLINT:
-                if (isUnsigned) {
-                    return BigInteger.valueOf(value.readUnsignedShortLE());
-                }
-
+            case SMALLINT_UNSIGNED:
+                return BigInteger.valueOf(value.readUnsignedShortLE());
+            case SMALLINT:
+            case YEAR:
                 return BigInteger.valueOf(value.readShortLE());
-            case DataTypes.YEAR:
-                return BigInteger.valueOf(value.readShortLE());
-            default: // TINYINT
-                if (isUnsigned) {
-                    return BigInteger.valueOf(value.readUnsignedByte());
-                }
-
+            case TINYINT_UNSIGNED:
+                return BigInteger.valueOf(value.readUnsignedByte());
+            case TINYINT:
                 return BigInteger.valueOf(value.readByte());
         }
+
+        throw new IllegalStateException("Cannot decode type " + metadata.getType() + " as a BigInteger");
     }
 
     private static long parseUnsigned(String num) {
@@ -177,8 +173,8 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.VARCHAR;
+        public MySqlType getType() {
+            return MySqlType.VARCHAR;
         }
 
         @Override

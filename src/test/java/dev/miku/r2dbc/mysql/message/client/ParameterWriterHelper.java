@@ -81,6 +81,5 @@ public final class ParameterWriterHelper {
         }
     }
 
-    private ParameterWriterHelper() {
-    }
+    private ParameterWriterHelper() { }
 }

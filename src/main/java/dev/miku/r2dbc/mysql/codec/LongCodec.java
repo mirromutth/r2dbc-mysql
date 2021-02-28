@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -36,11 +36,10 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public Long decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Long decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         if (binary) {
-            boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
-            return decodeBinary(value, info.getType(), isUnsigned);
+            return decodeBinary(value, metadata.getType());
         }
 
         // Note: no check overflow for BIGINT UNSIGNED
@@ -48,22 +47,15 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public boolean canDecode(FieldInformation info, Class<?> target) {
-        short type = info.getType();
-
-        if (!TypePredicates.isInt(type)) {
-            return false;
-        }
+    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
+        MySqlType type = metadata.getType();
 
         // Here is a special condition. In the application scenario, many times programmers define
         // BIGINT UNSIGNED usually for make sure the ID is not negative, in fact they just use 63-bits.
         // If users force the requirement to convert BIGINT UNSIGNED to Long, should allow this behavior
         // for better performance (BigInteger is obviously slower than long).
-        if (DataTypes.BIGINT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0) {
-            return Long.class == target;
-        }
-
-        return target.isAssignableFrom(Long.class);
+        return type.isInt() &&
+            (type == MySqlType.BIGINT_UNSIGNED ? Long.class == target : target.isAssignableFrom(Long.class));
     }
 
     @Override
@@ -87,9 +79,9 @@ final class LongCodec implements PrimitiveCodec<Long> {
     }
 
     @Override
-    public boolean canPrimitiveDecode(FieldInformation info) {
+    public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
         // Here is a special condition. see `canDecode`.
-        return TypePredicates.isInt(info.getType());
+        return metadata.getType().isInt();
     }
 
     @Override
@@ -127,35 +119,31 @@ final class LongCodec implements PrimitiveCodec<Long> {
         return isNegative ? -value : value;
     }
 
-    private static long decodeBinary(ByteBuf buf, short type, boolean isUnsigned) {
+    private static long decodeBinary(ByteBuf buf, MySqlType type) {
         switch (type) {
-            case DataTypes.BIGINT:
+            case BIGINT_UNSIGNED:
+            case BIGINT:
                 // Note: no check overflow for BIGINT UNSIGNED
                 return buf.readLongLE();
-            case DataTypes.INT:
-                if (isUnsigned) {
-                    return buf.readUnsignedIntLE();
-                }
-
-                return buf.readIntLE();
-            case DataTypes.MEDIUMINT:
+            case INT_UNSIGNED:
+                return buf.readUnsignedIntLE();
+            case INT:
+            case MEDIUMINT_UNSIGNED:
+            case MEDIUMINT:
                 // Note: MySQL return 32-bits two's complement for 24-bits integer
                 return buf.readIntLE();
-            case DataTypes.SMALLINT:
-                if (isUnsigned) {
-                    return buf.readUnsignedShortLE();
-                }
-
+            case SMALLINT_UNSIGNED:
+                return buf.readUnsignedShortLE();
+            case SMALLINT:
+            case YEAR:
                 return buf.readShortLE();
-            case DataTypes.YEAR:
-                return buf.readShortLE();
-            default: // TINYINT
-                if (isUnsigned) {
-                    return buf.readUnsignedByte();
-                }
-
+            case TINYINT_UNSIGNED:
+                return buf.readUnsignedByte();
+            case TINYINT:
                 return buf.readByte();
         }
+
+        throw new IllegalStateException("Cannot decode type " + type + " as a Long");
     }
 
     private static final class LongParameter extends AbstractParameter {
@@ -180,8 +168,8 @@ final class LongCodec implements PrimitiveCodec<Long> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.BIGINT;
+        public MySqlType getType() {
+            return MySqlType.BIGINT;
         }
 
         @Override

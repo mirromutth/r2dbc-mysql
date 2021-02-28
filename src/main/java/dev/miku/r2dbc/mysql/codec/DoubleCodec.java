@@ -16,9 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -35,13 +36,13 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    public Double decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Double decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
         if (binary) {
-            switch (info.getType()) {
-                case DataTypes.DOUBLE:
+            switch (metadata.getType()) {
+                case DOUBLE:
                     return value.readDoubleLE();
-                case DataTypes.FLOAT:
+                case FLOAT:
                     return (double) value.readFloatLE();
             }
             // DECIMAL and size less than 16, encoded by text.
@@ -60,10 +61,10 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        short type = info.getType();
-        return DataTypes.DOUBLE == type || DataTypes.FLOAT == type ||
-            (info.getSize() < 16 && TypePredicates.isDecimal(type));
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        MySqlType type = metadata.getType();
+        return type == MySqlType.DOUBLE || type == MySqlType.FLOAT ||
+            (type == MySqlType.DECIMAL && metadata.getNativePrecision() < 16);
     }
 
     private static final class DoubleParameter extends AbstractParameter {
@@ -96,8 +97,8 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.DOUBLE;
+        public MySqlType getType() {
+            return MySqlType.DOUBLE;
         }
 
         @Override

@@ -16,7 +16,6 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.constant.DataTypes;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,12 +29,6 @@ import reactor.util.annotation.Nullable;
 abstract class AbstractLobParameter extends AbstractParameter {
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractLobParameter.class);
-
-    @Override
-    public final short getType() {
-        // Clob (i.e. TEXT) is also BLOB with character collation.
-        return DataTypes.LONG_BLOB;
-    }
 
     @Override
     public final void dispose() {

@@ -16,10 +16,10 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.ColumnDefinitions;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -34,14 +34,9 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     }
 
     @Override
-    public Integer decode(ByteBuf value, FieldInformation info, Class<?> target, boolean binary,
+    public Integer decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        if (binary) {
-            boolean isUnsigned = (info.getDefinitions() & ColumnDefinitions.UNSIGNED) != 0;
-            return decodeBinary(value, info.getType(), isUnsigned);
-        }
-
-        return parse(value);
+        return binary ? decodeBinary(value, metadata.getType()) : parse(value);
     }
 
     @Override
@@ -65,10 +60,11 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     }
 
     @Override
-    protected boolean doCanDecode(FieldInformation info) {
-        short type = info.getType();
-        return isLowerInt(type) ||
-            (DataTypes.INT == type && (info.getDefinitions() & ColumnDefinitions.UNSIGNED) == 0);
+    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
+        MySqlType type = metadata.getType();
+
+        return type.isInt() && type != MySqlType.BIGINT_UNSIGNED && type != MySqlType.BIGINT &&
+            type != MySqlType.INT_UNSIGNED;
     }
 
     /**
@@ -101,33 +97,24 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         return isNegative ? -value : value;
     }
 
-    private static boolean isLowerInt(short type) {
-        return DataTypes.TINYINT == type ||
-            DataTypes.YEAR == type ||
-            DataTypes.SMALLINT == type ||
-            DataTypes.MEDIUMINT == type;
-    }
-
-    private static int decodeBinary(ByteBuf buf, short type, boolean isUnsigned) {
+    private static int decodeBinary(ByteBuf buf, MySqlType type) {
         switch (type) {
-            case DataTypes.INT: // Already check overflow in `doCanDecode`
-            case DataTypes.MEDIUMINT:
+            case INT:
+            case MEDIUMINT_UNSIGNED:
+            case MEDIUMINT:
                 return buf.readIntLE();
-            case DataTypes.SMALLINT:
-                if (isUnsigned) {
-                    return buf.readUnsignedShortLE();
-                }
-
+            case SMALLINT_UNSIGNED:
+                return buf.readUnsignedShortLE();
+            case SMALLINT:
+            case YEAR:
                 return buf.readShortLE();
-            case DataTypes.YEAR:
-                return buf.readShortLE();
-            default: // TINYINT
-                if (isUnsigned) {
-                    return buf.readUnsignedByte();
-                }
-
+            case TINYINT_UNSIGNED:
+                return buf.readUnsignedByte();
+            case TINYINT:
                 return buf.readByte();
         }
+
+        throw new IllegalStateException("Cannot decode type " + type + " as an Integer");
     }
 
     static final class IntParameter extends AbstractParameter {
@@ -152,8 +139,8 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         }
 
         @Override
-        public short getType() {
-            return DataTypes.INT;
+        public MySqlType getType() {
+            return MySqlType.INT;
         }
 
         @Override

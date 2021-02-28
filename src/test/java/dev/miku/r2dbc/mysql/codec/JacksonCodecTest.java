@@ -114,12 +114,8 @@ final class Group {
     private final List<Account> accounts;
 
     @JsonCreator
-    Group(
-        @JsonProperty("id") int id,
-        @JsonProperty("name") String name,
-        @JsonProperty("liked") int liked,
-        @JsonProperty("accounts") List<Account> accounts
-    ) {
+    Group(@JsonProperty("id") int id, @JsonProperty("name") String name, @JsonProperty("liked") int liked,
+        @JsonProperty("accounts") List<Account> accounts) {
         this.id = id;
         this.name = name;
         this.liked = liked;
@@ -174,12 +170,8 @@ final class Account {
     private final List<String> authorities;
 
     @JsonCreator
-    Account(
-        @JsonProperty("id") int id,
-        @JsonProperty("name") String username,
-        @JsonProperty("password") String password,
-        @JsonProperty("authorities") List<String> authorities
-    ) {
+    Account(@JsonProperty("id") int id, @JsonProperty("name") String username,
+        @JsonProperty("password") String password, @JsonProperty("authorities") List<String> authorities) {
         this.id = id;
         this.username = username;
         this.password = password;

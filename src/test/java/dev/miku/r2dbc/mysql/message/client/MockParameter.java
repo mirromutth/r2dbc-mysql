@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.IllegalReferenceCountException;
 import reactor.core.publisher.Mono;
@@ -67,8 +67,8 @@ final class MockParameter extends AtomicInteger implements Parameter {
     }
 
     @Override
-    public short getType() {
-        return DataTypes.TIME;
+    public MySqlType getType() {
+        return MySqlType.TIME;
     }
 
     @Override

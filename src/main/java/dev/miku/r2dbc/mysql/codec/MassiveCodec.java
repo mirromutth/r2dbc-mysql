@@ -16,6 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
+import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.Nullable;
 
@@ -31,14 +32,14 @@ public interface MassiveCodec<T> extends Codec<T> {
     /**
      * Decode a massive value as specified {@link Class}.
      *
-     * @param value   {@link ByteBuf}s list.
-     * @param info    the information of this value.
-     * @param target  the specified {@link Class}.
-     * @param binary  if the value should be decoded by binary protocol.
-     * @param context the codec context.
+     * @param value    {@link ByteBuf}s list.
+     * @param metadata the metadata of the column.
+     * @param target   the specified {@link Class}.
+     * @param binary   if the value should be decoded by binary protocol.
+     * @param context  the codec context.
      * @return the decoded result.
      */
     @Nullable
-    T decodeMassive(List<ByteBuf> value, FieldInformation info, Class<?> target, boolean binary,
+    T decodeMassive(List<ByteBuf> value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context);
 }

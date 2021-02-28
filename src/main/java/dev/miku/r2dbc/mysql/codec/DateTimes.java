@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.constant.DataTypes;
+import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import io.netty.buffer.ByteBuf;
 import io.r2dbc.spi.R2dbcNonTransientResourceException;
@@ -128,14 +128,14 @@ final class DateTimes {
             " value is zero date and ZeroDateOption is " + ZeroDateOption.EXCEPTION, ILLEGAL_ARGUMENT);
     }
 
-    static boolean canDecodeChronology(short type, ParameterizedType target,
+    static boolean canDecodeChronology(MySqlType type, ParameterizedType target,
         Class<? extends Temporal> chronology) {
-        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type) &&
+        return (type == MySqlType.DATETIME || type == MySqlType.TIMESTAMP) &&
             LocalDate.class == ParametrizedUtils.getTypeArgument(target, chronology);
     }
 
-    static boolean canDecodeDateTime(short type, Class<?> target, Class<? extends Temporal> temporal) {
-        return (DataTypes.DATETIME == type || DataTypes.TIMESTAMP == type) &&
+    static boolean canDecodeDateTime(MySqlType type, Class<?> target, Class<? extends Temporal> temporal) {
+        return (type == MySqlType.DATETIME || type == MySqlType.TIMESTAMP) &&
             target.isAssignableFrom(temporal);
     }
 
