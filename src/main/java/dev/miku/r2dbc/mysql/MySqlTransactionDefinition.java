@@ -41,6 +41,8 @@ public final class MySqlTransactionDefinition implements TransactionDefinition {
      * The option starts a consistent read for storage engines such as InnoDB and XtraDB that can do so, the
      * same as if a {@code START TRANSACTION} followed by a {@code SELECT ...} from any InnoDB table was
      * issued.
+     * <p>
+     * NOTICE: This option and {@link #READ_ONLY} cannot be enabled at the same definition.
      */
     public static final Option<Boolean> WITH_CONSISTENT_SNAPSHOT = Option.valueOf("withConsistentSnapshot");
 
@@ -83,22 +85,46 @@ public final class MySqlTransactionDefinition implements TransactionDefinition {
         return (T) this.options.get(option);
     }
 
+    /**
+     * Returns a builder to mutate options of this definition by creating a new instance and returning either
+     * mutated values or old values.
+     *
+     * @return the builder with old values.
+     */
     public Builder mutate() {
         return new Builder(new HashMap<>(this.options));
     }
 
+    /**
+     * Defines an empty transaction. i.e. the regular transaction.
+     *
+     * @return the empty transaction definition.
+     */
     public static MySqlTransactionDefinition empty() {
         return EMPTY;
     }
 
+    /**
+     * Creates a builder without any value.
+     *
+     * @return the builder.
+     */
     public static Builder builder() {
         return new Builder(new HashMap<>());
     }
 
+    /**
+     * A builder considers to create {@link TransactionDefinition}.
+     */
     public static final class Builder {
 
         private final Map<Option<?>, Object> options;
 
+        /**
+         * Builds a transaction definition with current values.
+         *
+         * @return the transaction definition.
+         */
         public MySqlTransactionDefinition build() {
             switch (this.options.size()) {
                 case 0:
@@ -113,26 +139,62 @@ public final class MySqlTransactionDefinition implements TransactionDefinition {
             }
         }
 
+        /**
+         * Changes the {@link #ISOLATION_LEVEL} option.
+         *
+         * @param isolationLevel the level which change to, or {@code null} to remove old value.
+         * @return this builder.
+         */
         public Builder isolationLevel(@Nullable IsolationLevel isolationLevel) {
             return option(ISOLATION_LEVEL, isolationLevel);
         }
 
+        /**
+         * Changes the {@link #LOCK_WAIT_TIMEOUT} option.
+         *
+         * @param lockWaitTimeout the timeout which change to, or {@code null} to remove old value.
+         * @return this builder.
+         */
         public Builder lockWaitTimeout(@Nullable Duration lockWaitTimeout) {
             return option(LOCK_WAIT_TIMEOUT, lockWaitTimeout);
         }
 
+        /**
+         * Changes the {@link #READ_ONLY} option.
+         *
+         * @param readOnly if enable read only, or {@code null} to remove old value.
+         * @return this builder.
+         */
         public Builder readOnly(@Nullable Boolean readOnly) {
             return option(READ_ONLY, readOnly);
         }
 
+        /**
+         * Changes the {@link #WITH_CONSISTENT_SNAPSHOT} option.
+         *
+         * @param withConsistentSnapshot if enable consistent snapshot, or {@code null} to remove old value.
+         * @return this builder.
+         */
         public Builder withConsistentSnapshot(@Nullable Boolean withConsistentSnapshot) {
             return option(WITH_CONSISTENT_SNAPSHOT, withConsistentSnapshot);
         }
 
+        /**
+         * Changes the {@link #CONSISTENT_SNAPSHOT_ENGINE} option.
+         *
+         * @param snapshotEngine the engine which change to, or {@code null} to remove old value.
+         * @return this builder.
+         */
         public Builder consistentSnapshotEngine(@Nullable ConsistentSnapshotEngine snapshotEngine) {
             return option(CONSISTENT_SNAPSHOT_ENGINE, snapshotEngine);
         }
 
+        /**
+         * Changes the {@link #CONSISTENT_SNAPSHOT_FROM_SESSION} option.
+         *
+         * @param sessionId the session id which change to, or {@code null} to remove old value.
+         * @return this builder.
+         */
         public Builder consistentSnapshotFromSession(@Nullable Long sessionId) {
             return option(CONSISTENT_SNAPSHOT_FROM_SESSION, sessionId);
         }
