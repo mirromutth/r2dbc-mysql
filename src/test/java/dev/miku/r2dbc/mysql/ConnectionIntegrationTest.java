@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Arrays;
 
 import static io.r2dbc.spi.IsolationLevel.READ_COMMITTED;
@@ -49,6 +50,26 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
             .doOnSuccess(ignored -> assertThat(connection.isInTransaction()).isTrue())
             .then(connection.rollbackTransaction())
             .doOnSuccess(ignored -> assertThat(connection.isInTransaction()).isFalse()));
+    }
+
+    @Test
+    void transactionDefinition() {
+        complete(connection -> connection.beginTransaction(MySqlTransactionDefinition.builder()
+            .lockWaitTimeout(Duration.ofSeconds(112))
+            .isolationLevel(READ_COMMITTED)
+            .withConsistentSnapshot(true)
+            .build())
+            .doOnSuccess(ignored -> {
+                assertThat(connection.isInTransaction()).isTrue();
+                assertThat(connection.getTransactionIsolationLevel()).isEqualTo(READ_COMMITTED);
+                assertThat(connection.isLockWaitTimeoutChanged()).isTrue();
+            })
+            .then(connection.rollbackTransaction())
+            .doOnSuccess(ignored -> {
+                assertThat(connection.isInTransaction()).isFalse();
+                assertThat(connection.getTransactionIsolationLevel()).isEqualTo(REPEATABLE_READ);
+                assertThat(connection.isLockWaitTimeoutChanged()).isFalse();
+            }));
     }
 
     @Test
