@@ -61,6 +61,11 @@ public interface MySqlAuthProvider {
     String NO_AUTH_PROVIDER = "";
 
     /**
+     * Supporting MySQL Clear Text Authentication
+     */
+    String MYSQL_CLEAR_PASSWORD = "mysql_clear_password";
+
+    /**
      * Get the built-in authentication plugin provider through the specified {@code type}.
      *
      * @param type the type name of a authentication plugin provider
@@ -81,6 +86,8 @@ public interface MySqlAuthProvider {
                 return OldAuthProvider.INSTANCE;
             case NO_AUTH_PROVIDER:
                 return NoAuthProvider.INSTANCE;
+            case MYSQL_CLEAR_PASSWORD:
+                return MySqlClearAuthProvider.INSTANCE;
         }
 
         throw new R2dbcPermissionDeniedException("Authentication plugin '" + type + "' not found");
