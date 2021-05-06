@@ -55,6 +55,11 @@ public interface MySqlAuthProvider {
     String MYSQL_OLD_PASSWORD = "mysql_old_password";
 
     /**
+     * The Cleartext Authentication, it is used by LDAP, PAM, AWS RDS Proxy, etc.
+     */
+    String MYSQL_CLEAR_PASSWORD = "mysql_clear_password";
+
+    /**
      * Try use empty string to represent has no authentication provider when {@code Capability.PLUGIN_AUTH}
      * does not set.
      */
@@ -75,6 +80,8 @@ public interface MySqlAuthProvider {
                 return CachingSha2FastAuthProvider.INSTANCE;
             case MYSQL_NATIVE_PASSWORD:
                 return MySqlNativeAuthProvider.INSTANCE;
+            case MYSQL_CLEAR_PASSWORD:
+                return MySqlClearAuthProvider.INSTANCE;
             case SHA256_PASSWORD:
                 return Sha256AuthProvider.INSTANCE;
             case MYSQL_OLD_PASSWORD:
