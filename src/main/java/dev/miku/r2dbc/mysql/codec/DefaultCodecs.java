@@ -98,7 +98,6 @@ final class DefaultCodecs implements Codecs {
 
         // Fast map for primitive classes.
         if (target.isPrimitive()) {
-            // If value is null field, then primitive codec should throw an exception instead of return null.
             return decodePrimitive(value, metadata, target, binary, context);
         } else if (value.isNull()) {
             // Not primitive classes and value is null field, return null.
@@ -184,7 +183,8 @@ final class DefaultCodecs implements Codecs {
     private <T> T decodePrimitive(FieldValue value, MySqlColumnMetadata metadata, Class<?> type,
         boolean binary, CodecContext context) {
         if (value.isNull()) {
-            throw new IllegalArgumentException("Cannot decode null for type " + metadata.getType());
+            // `type` would be primitive wrapper class and it could have null
+            return null;
         }
 
         @SuppressWarnings("unchecked")
