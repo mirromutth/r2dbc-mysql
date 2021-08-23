@@ -126,6 +126,7 @@ class MySqlConnectionFactoryProviderTest {
             .option(PASSWORD, "123456")
             .option(SSL, true)
             .option(Option.valueOf(CONNECT_TIMEOUT.name()), Duration.ofSeconds(3).toString())
+            .option(Option.valueOf("socketTimeout"), Duration.ofSeconds(4).toString())
             .option(DATABASE, "r2dbc")
             .option(Option.valueOf("serverZoneId"), "Asia/Tokyo")
             .option(Option.valueOf("useServerPrepareStatement"), AllTruePredicate.class.getName())
@@ -152,6 +153,7 @@ class MySqlConnectionFactoryProviderTest {
         assertThat(configuration.getUser()).isEqualTo("root");
         assertThat(configuration.getPassword()).isEqualTo("123456");
         assertThat(configuration.getConnectTimeout()).isEqualTo(Duration.ofSeconds(3));
+        assertThat(configuration.getSocketTimeout()).isEqualTo(Duration.ofSeconds(4));
         assertThat(configuration.getDatabase()).isEqualTo("r2dbc");
         assertThat(configuration.getZeroDateOption()).isEqualTo(ZeroDateOption.USE_ROUND);
         assertThat(configuration.isTcpKeepAlive()).isTrue();
