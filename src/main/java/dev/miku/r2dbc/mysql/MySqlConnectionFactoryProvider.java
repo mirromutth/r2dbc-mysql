@@ -138,6 +138,13 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         SSL_CONTEXT_BUILDER_CUSTOMIZER = Option.valueOf("sslContextBuilderCustomizer");
 
     /**
+     * TCP socket timeout
+     *
+     * @since 0.8.3
+     */
+    public static final Option<Duration> SOCKET_TIMEOUT = Option.valueOf("socketTimeout");
+
+    /**
      * Enable/Disable TCP KeepAlive.
      *
      * @since 0.8.2
@@ -253,6 +260,8 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             .into(builder::autodetectExtensions);
         mapper.from(CONNECT_TIMEOUT).asInstance(Duration.class, Duration::parse)
             .into(builder::connectTimeout);
+        mapper.from(SOCKET_TIMEOUT).asInstance(Duration.class, Duration::parse)
+            .into(builder::socketTimeout);
         mapper.from(DATABASE).asString()
             .into(builder::database);
 

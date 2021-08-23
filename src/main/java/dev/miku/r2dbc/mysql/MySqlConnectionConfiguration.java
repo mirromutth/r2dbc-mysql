@@ -71,6 +71,9 @@ public final class MySqlConnectionConfiguration {
     private final Duration connectTimeout;
 
     @Nullable
+    private final Duration socketTimeout;
+
+    @Nullable
     private final ZoneId serverZoneId;
 
     private final ZeroDateOption zeroDateOption;
@@ -93,8 +96,8 @@ public final class MySqlConnectionConfiguration {
 
     private MySqlConnectionConfiguration(boolean isHost, String domain, int port, MySqlSslConfiguration ssl,
         boolean tcpKeepAlive, boolean tcpNoDelay, @Nullable Duration connectTimeout,
-        ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId, String user,
-        @Nullable CharSequence password, @Nullable String database,
+        @Nullable Duration socketTimeout, ZeroDateOption zeroDateOption, @Nullable ZoneId serverZoneId,
+        String user, @Nullable CharSequence password, @Nullable String database,
         @Nullable Predicate<String> preferPrepareStatement, int queryCacheSize, int prepareCacheSize,
         Extensions extensions) {
         this.isHost = isHost;
@@ -103,6 +106,7 @@ public final class MySqlConnectionConfiguration {
         this.tcpKeepAlive = tcpKeepAlive;
         this.tcpNoDelay = tcpNoDelay;
         this.connectTimeout = connectTimeout;
+        this.socketTimeout = socketTimeout;
         this.ssl = ssl;
         this.serverZoneId = serverZoneId;
         this.zeroDateOption = requireNonNull(zeroDateOption, "zeroDateOption must not be null");
@@ -139,6 +143,11 @@ public final class MySqlConnectionConfiguration {
     @Nullable
     Duration getConnectTimeout() {
         return connectTimeout;
+    }
+
+    @Nullable
+    Duration getSocketTimeout() {
+        return socketTimeout;
     }
 
     MySqlSslConfiguration getSsl() {
@@ -208,6 +217,7 @@ public final class MySqlConnectionConfiguration {
             tcpKeepAlive == that.tcpKeepAlive &&
             tcpNoDelay == that.tcpNoDelay &&
             Objects.equals(connectTimeout, that.connectTimeout) &&
+            Objects.equals(socketTimeout, that.socketTimeout) &&
             Objects.equals(serverZoneId, that.serverZoneId) &&
             zeroDateOption == that.zeroDateOption &&
             user.equals(that.user) &&
@@ -222,7 +232,7 @@ public final class MySqlConnectionConfiguration {
     @Override
     public int hashCode() {
         return Objects.hash(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay,
-            connectTimeout, serverZoneId, zeroDateOption, user, password, database,
+            connectTimeout, socketTimeout, serverZoneId, zeroDateOption, user, password, database,
             preferPrepareStatement, queryCacheSize, prepareCacheSize, extensions);
     }
 
@@ -231,17 +241,19 @@ public final class MySqlConnectionConfiguration {
         if (isHost) {
             return "MySqlConnectionConfiguration{, host='" + domain + "', port=" + port + ", ssl=" + ssl +
                 ", tcpNoDelay=" + tcpNoDelay + ", tcpKeepAlive=" + tcpKeepAlive + ", connectTimeout=" +
-                connectTimeout + ", serverZoneId=" + serverZoneId + ", zeroDateOption=" + zeroDateOption +
-                ", user='" + user + '\'' + ", password=" + password + ", database='" + database +
-                "', preferPrepareStatement=" + preferPrepareStatement + ", queryCacheSize=" + queryCacheSize +
-                ", prepareCacheSize=" + prepareCacheSize + ", extensions=" + extensions + '}';
+                connectTimeout + ", socketTimeout=" + socketTimeout + ", serverZoneId=" + serverZoneId +
+                ", zeroDateOption=" + zeroDateOption + ", user='" + user + '\'' + ", password=" + password +
+                ", database='" + database + "', preferPrepareStatement=" + preferPrepareStatement +
+                ", queryCacheSize=" + queryCacheSize + ", prepareCacheSize=" + prepareCacheSize +
+                ", extensions=" + extensions + '}';
         }
 
         return "MySqlConnectionConfiguration{, unixSocket='" + domain + "', connectTimeout=" +
-            connectTimeout + ", serverZoneId=" + serverZoneId + ", zeroDateOption=" + zeroDateOption +
-            ", user='" + user + "', password=" + password + ", database='" + database +
-            "', preferPrepareStatement=" + preferPrepareStatement + ", queryCacheSize=" + queryCacheSize +
-            ", prepareCacheSize=" + prepareCacheSize + ", extensions=" + extensions + '}';
+            connectTimeout + ", socketTimeout=" + socketTimeout + ", serverZoneId=" + serverZoneId +
+            ", zeroDateOption=" + zeroDateOption + ", user='" + user + "', password=" + password +
+            ", database='" + database + "', preferPrepareStatement=" + preferPrepareStatement +
+            ", queryCacheSize=" + queryCacheSize + ", prepareCacheSize=" + prepareCacheSize +
+            ", extensions=" + extensions + '}';
     }
 
     /**
@@ -263,6 +275,9 @@ public final class MySqlConnectionConfiguration {
 
         @Nullable
         private Duration connectTimeout;
+
+        @Nullable
+        private Duration socketTimeout;
 
         private String user;
 
@@ -331,7 +346,7 @@ public final class MySqlConnectionConfiguration {
             MySqlSslConfiguration ssl = MySqlSslConfiguration.create(sslMode, tlsVersion, sslHostnameVerifier,
                 sslCa, sslKey, sslKeyPassword, sslCert, sslContextBuilderCustomizer);
             return new MySqlConnectionConfiguration(isHost, domain, port, ssl, tcpKeepAlive, tcpNoDelay,
-                connectTimeout, zeroDateOption, serverZoneId, user, password, database,
+                connectTimeout, socketTimeout, zeroDateOption, serverZoneId, user, password, database,
                 preferPrepareStatement, queryCacheSize, prepareCacheSize,
                 Extensions.from(extensions, autodetectExtensions));
         }
@@ -414,6 +429,18 @@ public final class MySqlConnectionConfiguration {
          */
         public Builder connectTimeout(@Nullable Duration connectTimeout) {
             this.connectTimeout = connectTimeout;
+            return this;
+        }
+
+        /**
+         * Configure the socket timeout.  Default no timeout.
+         *
+         * @param socketTimeout the socket timeout, or {@code null} if has no timeout.
+         * @return this {@link Builder}.
+         * @since 0.8.3
+         */
+        public Builder socketTimeout(@Nullable Duration socketTimeout) {
+            this.socketTimeout = socketTimeout;
             return this;
         }
 
@@ -755,6 +782,6 @@ public final class MySqlConnectionConfiguration {
             return sslMode;
         }
 
-        private Builder() { }
+        private Builder() {}
     }
 }
