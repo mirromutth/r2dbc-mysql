@@ -34,6 +34,6 @@ final class TextParametrizedStatement extends ParametrizedStatementSupport {
     @Override
     protected Flux<MySqlResult> execute(List<Binding> bindings) {
         return QueryFlow.execute(client, query, bindings)
-            .map(messages -> new MySqlResult(false, codecs, context, generatedKeyName, messages));
+            .map(messages -> MySqlResult.toResult(false, codecs, context, generatedKeyName, messages));
     }
 }

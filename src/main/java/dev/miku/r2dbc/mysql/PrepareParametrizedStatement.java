@@ -43,7 +43,7 @@ final class PrepareParametrizedStatement extends ParametrizedStatementSupport {
     @Override
     public Flux<MySqlResult> execute(List<Binding> bindings) {
         return QueryFlow.execute(client, query.getFormattedSql(), bindings, fetchSize, prepareCache)
-            .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
+            .map(messages -> MySqlResult.toResult(true, codecs, context, generatedKeyName, messages));
     }
 
     @Override

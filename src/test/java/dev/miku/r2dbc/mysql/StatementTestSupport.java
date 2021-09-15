@@ -18,6 +18,8 @@ package dev.miku.r2dbc.mysql;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.NoSuchElementException;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,7 +64,7 @@ interface StatementTestSupport<T extends MySqlStatementSupport> {
             assertThrows(IndexOutOfBoundsException.class, () -> statement.bind(-1, 1));
             assertThrows(IndexOutOfBoundsException.class, () -> statement.bind(2, 1));
             assertThrows(IllegalArgumentException.class, () -> statement.bind(1, null));
-            assertThrows(IllegalArgumentException.class, () -> statement.bind("", 1));
+            assertThrows(NoSuchElementException.class, () -> statement.bind("", 1));
             assertThrows(IllegalArgumentException.class, () -> statement.bind("", null));
         } else {
             assertThrows(UnsupportedOperationException.class, () -> statement.bind(0, 1));
@@ -103,7 +105,7 @@ interface StatementTestSupport<T extends MySqlStatementSupport> {
             assertThrows(IndexOutOfBoundsException.class, () -> statement.bindNull(-1, Integer.class));
             assertThrows(IndexOutOfBoundsException.class, () -> statement.bindNull(2, Integer.class));
             assertThrows(IllegalArgumentException.class, () -> statement.bindNull(1, null));
-            assertThrows(IllegalArgumentException.class, () -> statement.bindNull("", Integer.class));
+            assertThrows(NoSuchElementException.class, () -> statement.bindNull("", Integer.class));
             assertThrows(IllegalArgumentException.class, () -> statement.bindNull("", null));
         } else {
             assertThrows(UnsupportedOperationException.class, () -> statement.bindNull(0, Integer.class));

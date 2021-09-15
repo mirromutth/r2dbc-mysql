@@ -42,16 +42,18 @@ final class OptionMapper {
         return new SourceSpec(options, option);
     }
 
+    @SuppressWarnings("unchecked")
     <T> void consume(Option<T> option, Consumer<T> consumer) {
-        T t = options.getValue(option);
+        Object t = options.getValue(option);
 
         if (t != null) {
-            consumer.accept(t);
+            consumer.accept((T) t);
         }
     }
 
+    @SuppressWarnings("unchecked")
     <T> void requiredConsume(Option<T> option, Consumer<T> consumer) {
-        consumer.accept(options.getRequiredValue(option));
+        consumer.accept((T) options.getRequiredValue(option));
     }
 }
 
