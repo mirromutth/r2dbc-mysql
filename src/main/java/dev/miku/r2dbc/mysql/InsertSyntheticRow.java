@@ -90,6 +90,18 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
     }
 
     @Override
+    public boolean contains(String name) {
+        requireNonNull(name, "name must not be null");
+
+        return contains0(name);
+    }
+
+    @Override
+    public RowMetadata getMetadata() {
+        return this;
+    }
+
+    @Override
     public ColumnMetadata getColumnMetadata(int index) {
         assertValidIndex(index);
 
@@ -110,6 +122,7 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public Set<String> getColumnNames() {
         return nameSet;
     }
@@ -135,9 +148,13 @@ final class InsertSyntheticRow implements Row, RowMetadata, ColumnMetadata {
     }
 
     private void assertValidName(String name) {
-        if (!nameSet.contains(name)) {
+        if (!contains0(name)) {
             throw new NoSuchElementException("Column name '" + name + "' does not exist in " + this.nameSet);
         }
+    }
+
+    private boolean contains0(String name) {
+        return nameSet.contains(name);
     }
 
     private <T> T get0(Class<?> type) {

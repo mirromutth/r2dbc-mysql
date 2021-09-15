@@ -17,6 +17,8 @@
 package dev.miku.r2dbc.mysql;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.Result;
 import org.junit.jupiter.api.Test;
@@ -44,6 +46,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -554,6 +557,22 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
         return Flux.from(result.map((row, metadata) -> row.get(0, Integer.class)));
     }
 
+    private static <T> Flux<Tuple2<Long, T>> extractOk(Result result, Class<T> type) {
+        return Flux.from(result.flatMap(segment -> {
+            try {
+                if (segment instanceof Result.UpdateCount && segment instanceof Result.RowSegment) {
+                    long affected = ((Result.UpdateCount) segment).value();
+                    T t = Objects.requireNonNull(((Result.RowSegment) segment).row().get(0, type));
+                    return Mono.just(Tuples.of(affected, t));
+                } else {
+                    return Mono.empty();
+                }
+            } finally {
+                ReferenceCountUtil.release(segment);
+            }
+        }));
+    }
+
     @SuppressWarnings("unchecked")
     private static <T> Flux<Optional<T>> extractOptionalField(Result result, Type type) {
         if (type instanceof Class<?>) {
@@ -605,13 +624,11 @@ abstract class QueryIntegrationTestSupport extends IntegrationTestSupport {
 
         return Mono.from(insert.returnGeneratedValues("id")
             .execute())
-            .flatMap(result -> extractRowsUpdated(result)
-                .doOnNext(u -> assertThat(u).isEqualTo(1))
-                .thenMany(extractFirstInteger(result))
+            .flatMap(result -> extractOk(result, Integer.class)
                 .collectList()
                 .map(ids -> {
-                    assertThat(ids).hasSize(1);
-                    return ids.get(0);
+                    assertThat(ids).hasSize(1).first().extracting(Tuple2::getT1).isEqualTo(1L);
+                    return ids.get(0).getT2();
                 }))
             .flatMap(id -> Mono.from(connection.createStatement("SELECT value FROM test WHERE id=?")
                 .bind(0, id)

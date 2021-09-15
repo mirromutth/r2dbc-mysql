@@ -19,8 +19,8 @@ package dev.miku.r2dbc.mysql.util;
 import dev.miku.r2dbc.mysql.constant.Envelopes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -43,23 +43,33 @@ class FluxCumulateEnvelopeTest {
     private static final byte[] RD_PATTERN = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz"
         .getBytes(StandardCharsets.US_ASCII);
 
+    private static final Consumer<ByteBuf> EMPTY_HEADER = buf -> {
+        try {
+            assertThat(ByteBufUtil.getBytes(buf, buf.readerIndex(), buf.readableBytes(), false))
+                .hasSize(4)
+                .containsOnly(0);
+        } finally {
+            buf.release();
+        }
+    };
+
     private final ByteBufAllocator allocator = PooledByteBufAllocator.DEFAULT;
 
     @Test
     void empty() {
         envelopes(Flux.empty(), randomEnvelopeSize())
             .as(StepVerifier::create)
-            .expectNext(Unpooled.wrappedBuffer(new byte[4]))
+            .assertNext(EMPTY_HEADER)
             .verifyComplete();
 
         envelopes(Flux.just(allocator.buffer(0, 0)), randomEnvelopeSize())
             .as(StepVerifier::create)
-            .expectNext(Unpooled.wrappedBuffer(new byte[4]))
+            .assertNext(EMPTY_HEADER)
             .verifyComplete();
 
         envelopes(Flux.empty(), Integer.MAX_VALUE)
             .as(StepVerifier::create)
-            .expectNext(Unpooled.wrappedBuffer(new byte[4]))
+            .assertNext(EMPTY_HEADER)
             .verifyComplete();
     }
 
@@ -272,7 +282,7 @@ class FluxCumulateEnvelopeTest {
                         buffers.add(envelope);
                     } else {
                         assertThat(n - 1).isEqualTo(i);
-                        buffers.add(Unpooled.buffer(0, 0));
+                        buffers.add(header.alloc().buffer(0, 0));
                     }
                 }
 

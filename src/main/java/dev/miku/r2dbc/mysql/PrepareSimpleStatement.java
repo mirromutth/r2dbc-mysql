@@ -46,7 +46,7 @@ final class PrepareSimpleStatement extends SimpleStatementSupport {
     @Override
     public Flux<MySqlResult> execute() {
         return QueryFlow.execute(client, sql, BINDINGS, fetchSize, prepareCache)
-            .map(messages -> new MySqlResult(true, codecs, context, generatedKeyName, messages));
+            .map(messages -> MySqlResult.toResult(true, codecs, context, generatedKeyName, messages));
     }
 
     @Override

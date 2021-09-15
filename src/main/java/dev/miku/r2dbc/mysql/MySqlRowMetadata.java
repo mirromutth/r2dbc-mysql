@@ -21,7 +21,6 @@ import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.r2dbc.spi.RowMetadata;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -35,17 +34,9 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 final class MySqlRowMetadata implements RowMetadata {
 
-    private static final Comparator<MySqlColumnDescriptor> NAME_COMPARATOR = (left, right) ->
-        MySqlNames.compare(left.getName(), right.getName());
-
     private final MySqlColumnDescriptor[] originMetadata;
 
     private final MySqlColumnDescriptor[] sortedMetadata;
-
-    /**
-     * Copied column names from {@link #sortedMetadata}.
-     */
-    private final String[] sortedNames;
 
     private final ColumnNameSet nameSet;
 
@@ -60,21 +51,19 @@ final class MySqlRowMetadata implements RowMetadata {
 
                 this.originMetadata = metadata;
                 this.sortedMetadata = metadata;
-                this.sortedNames = new String[] { name };
                 this.nameSet = ColumnNameSet.of(name);
 
                 break;
             default:
                 MySqlColumnDescriptor[] sortedMetadata = new MySqlColumnDescriptor[size];
                 System.arraycopy(metadata, 0, sortedMetadata, 0, size);
-                Arrays.sort(sortedMetadata, NAME_COMPARATOR);
+                Arrays.sort(sortedMetadata, ColumnNameSet.NAME_COMPARATOR);
 
                 String[] originNames = getNames(metadata);
                 String[] sortedNames = getNames(sortedMetadata);
 
                 this.originMetadata = metadata;
                 this.sortedMetadata = sortedMetadata;
-                this.sortedNames = sortedNames;
                 this.nameSet = ColumnNameSet.of(originNames, sortedNames);
 
                 break;
@@ -94,7 +83,7 @@ final class MySqlRowMetadata implements RowMetadata {
     public MySqlColumnDescriptor getColumnMetadata(String name) {
         requireNonNull(name, "name must not be null");
 
-        int index = MySqlNames.nameSearch(this.sortedNames, name);
+        int index = nameSet.findIndex(name);
 
         if (index < 0) {
             throw new NoSuchElementException("Column name '" + name + "' does not exist");
@@ -104,10 +93,18 @@ final class MySqlRowMetadata implements RowMetadata {
     }
 
     @Override
+    public boolean contains(String name) {
+        requireNonNull(name, "name must not be null");
+
+        return nameSet.contains(name);
+    }
+
+    @Override
     public List<MySqlColumnDescriptor> getColumnMetadatas() {
         return InternalArrays.asImmutableList(originMetadata);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public Set<String> getColumnNames() {
         return nameSet;
@@ -116,7 +113,7 @@ final class MySqlRowMetadata implements RowMetadata {
     @Override
     public String toString() {
         return "MySqlRowMetadata{metadata=" + Arrays.toString(originMetadata) + ", sortedNames=" +
-            Arrays.toString(sortedNames) + '}';
+            Arrays.toString(nameSet.getSortedNames()) + '}';
     }
 
     MySqlColumnDescriptor[] unwrap() {

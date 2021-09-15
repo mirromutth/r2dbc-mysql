@@ -1,3 +1,16 @@
+# Why doesn't it seem so active
+
+Due to COVID-19 and my personal reasons, the progress of this project in 2021 is soooooo slow.
+
+If you ask me "Are u ok? how about u healthy?". Yes, I'm fine. In China, most areas are no longer infected
+with COVID-19. It just...my work plan was severely hindered because of COVID-19.
+
+I trust this will not become a norm. *I'm trying to maintain this project as well as I can*.
+
+**May the dead rest, and hope the living be healthy**
+
+*Donation are not accepted because I'm subscribing JetBrains open source license, thanks.*
+
 # Reactive Relational Database Connectivity MySQL Implementation
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.miku/r2dbc-mysql?color=green&label=Maven%20Central)](https://search.maven.org/search?q=g:%22dev.miku%22%20AND%20a:%22r2dbc-mysql%22)

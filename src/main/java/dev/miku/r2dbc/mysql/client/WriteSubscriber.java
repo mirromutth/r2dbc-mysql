@@ -19,6 +19,7 @@ package dev.miku.r2dbc.mysql.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import io.netty.util.ReferenceCountUtil;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 

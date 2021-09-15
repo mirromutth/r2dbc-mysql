@@ -38,6 +38,7 @@ import reactor.core.publisher.SynchronousSink;
 import reactor.util.annotation.Nullable;
 
 import java.time.DateTimeException;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.function.BiConsumer;
@@ -108,8 +109,8 @@ public final class MySqlConnection implements Connection, ConnectionState {
     private static final BiConsumer<ServerMessage, SynchronousSink<Boolean>> PING = (message, sink) -> {
         if (message instanceof ErrorMessage) {
             ErrorMessage msg = (ErrorMessage) message;
-            logger.debug("Remote validate failed: [{}] [{}] {}", msg.getErrorCode(), msg.getSqlState(),
-                msg.getErrorMessage());
+            logger.debug("Remote validate failed: [{}] [{}] {}", msg.getCode(), msg.getSqlState(),
+                msg.getMessage());
             sink.next(false);
             sink.complete();
         } else if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
@@ -132,8 +133,6 @@ public final class MySqlConnection implements Connection, ConnectionState {
 
     private final IsolationLevel sessionLevel;
 
-    private final long lockWaitTimeout;
-
     private final QueryCache queryCache;
 
     private final PrepareCache prepareCache;
@@ -153,6 +152,14 @@ public final class MySqlConnection implements Connection, ConnectionState {
      */
     private volatile IsolationLevel currentLevel;
 
+    /**
+     * Session lock wait timeout.
+     */
+    private volatile long lockWaitTimeout;
+
+    /**
+     * Current transaction lock wait timeout.
+     */
     private volatile long currentLockWaitTimeout;
 
     MySqlConnection(Client client, ConnectionContext context, Codecs codecs, IsolationLevel level,
@@ -225,11 +232,9 @@ public final class MySqlConnection implements Connection, ConnectionState {
 
     @Override
     public MySqlBatch createBatch() {
-        if (batchSupported) {
-            return new MySqlBatchingBatch(client, codecs, context);
-        }
+        return batchSupported ? new MySqlBatchingBatch(client, codecs, context) :
+            new MySqlSyntheticBatch(client, codecs, context);
 
-        return new MySqlSyntheticBatch(client, codecs, context);
     }
 
     @Override
@@ -377,7 +382,7 @@ public final class MySqlConnection implements Connection, ConnectionState {
     }
 
     @Override
-    public void setLockWaitTimeout(long timeoutSeconds) {
+    public void setCurrentLockWaitTimeout(long timeoutSeconds) {
         this.currentLockWaitTimeout = timeoutSeconds;
     }
 
@@ -392,13 +397,30 @@ public final class MySqlConnection implements Connection, ConnectionState {
     }
 
     @Override
-    public void resetLockWaitTimeout() {
+    public void resetCurrentLockWaitTimeout() {
         this.currentLockWaitTimeout = this.lockWaitTimeout;
     }
 
     @Override
     public boolean isInTransaction() {
         return (context.getServerStatuses() & ServerStatuses.IN_TRANSACTION) != 0;
+    }
+
+    @Override
+    public Mono<Void> setLockWaitTimeout(Duration timeout) {
+        requireNonNull(timeout, "timeout must not be null");
+
+        long timeoutSeconds = timeout.getSeconds();
+        return QueryFlow.executeVoid(client, "SET innodb_lock_wait_timeout=" + timeoutSeconds)
+            .doOnSuccess(ignored -> this.lockWaitTimeout = this.currentLockWaitTimeout = timeoutSeconds);
+    }
+
+    @Override
+    public Publisher<Void> setStatementTimeout(Duration timeout) {
+        requireNonNull(timeout, "timeout must not be null");
+
+        // TODO: implement me
+        return Mono.empty();
     }
 
     boolean isSessionAutoCommit() {
