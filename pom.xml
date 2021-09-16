@@ -269,7 +269,7 @@
                     </excludePackageNames>
                     <links>
                         <link>https://projectreactor.io/docs/core/release/api/</link>
-                        <link>http://www.reactive-streams.org/reactive-streams-1.0.2-javadoc/</link>
+                        <link>https://www.reactive-streams.org/reactive-streams-1.0.3-javadoc/</link>
                     </links>
                     <locale>en_US</locale>
                 </configuration>
