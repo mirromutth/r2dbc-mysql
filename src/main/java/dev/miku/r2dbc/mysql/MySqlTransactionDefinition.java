@@ -170,7 +170,8 @@ public final class MySqlTransactionDefinition implements TransactionDefinition {
         }
 
         /**
-         * Changes the {@link #WITH_CONSISTENT_SNAPSHOT} option.
+         * Changes the {@link #WITH_CONSISTENT_SNAPSHOT} option.  Notice that this phrase can only be used
+         * with the {@code REPEATABLE READ} isolation level.
          *
          * @param withConsistentSnapshot if enable consistent snapshot, or {@code null} to remove old value.
          * @return this builder.

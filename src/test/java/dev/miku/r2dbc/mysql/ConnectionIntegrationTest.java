@@ -41,7 +41,7 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
     @Test
     void isInTransaction() {
         complete(connection -> Mono.<Void>fromRunnable(() -> assertThat(connection.isInTransaction())
-            .isFalse())
+                .isFalse())
             .then(connection.beginTransaction())
             .doOnSuccess(ignored -> assertThat(connection.isInTransaction()).isTrue())
             .then(connection.commitTransaction())
@@ -53,15 +53,52 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    void transactionDefinition() {
+    void transactionDefinitionLockWaitTimeout() {
         complete(connection -> connection.beginTransaction(MySqlTransactionDefinition.builder()
-            .lockWaitTimeout(Duration.ofSeconds(112))
-            .isolationLevel(READ_COMMITTED)
-            .withConsistentSnapshot(true)
-            .build())
+                .lockWaitTimeout(Duration.ofSeconds(345))
+                .build())
+            .doOnSuccess(ignored -> {
+                assertThat(connection.isInTransaction()).isTrue();
+                assertThat(connection.getTransactionIsolationLevel()).isEqualTo(REPEATABLE_READ);
+                assertThat(connection.isLockWaitTimeoutChanged()).isTrue();
+            })
+            .then(connection.rollbackTransaction())
+            .doOnSuccess(ignored -> {
+                assertThat(connection.isInTransaction()).isFalse();
+                assertThat(connection.getTransactionIsolationLevel()).isEqualTo(REPEATABLE_READ);
+                assertThat(connection.isLockWaitTimeoutChanged()).isFalse();
+            }));
+    }
+
+    @Test
+    void transactionDefinitionIsolationLevel() {
+        complete(connection -> connection.beginTransaction(MySqlTransactionDefinition.builder()
+                .isolationLevel(READ_COMMITTED)
+                .build())
             .doOnSuccess(ignored -> {
                 assertThat(connection.isInTransaction()).isTrue();
                 assertThat(connection.getTransactionIsolationLevel()).isEqualTo(READ_COMMITTED);
+                assertThat(connection.isLockWaitTimeoutChanged()).isFalse();
+            })
+            .then(connection.rollbackTransaction())
+            .doOnSuccess(ignored -> {
+                assertThat(connection.isInTransaction()).isFalse();
+                assertThat(connection.getTransactionIsolationLevel()).isEqualTo(REPEATABLE_READ);
+                assertThat(connection.isLockWaitTimeoutChanged()).isFalse();
+            }));
+    }
+
+    @Test
+    void transactionDefinition() {
+        // The WITH CONSISTENT SNAPSHOT phrase can only be used with the REPEATABLE READ isolation level.
+        complete(connection -> connection.beginTransaction(MySqlTransactionDefinition.builder()
+                .lockWaitTimeout(Duration.ofSeconds(112))
+                .isolationLevel(REPEATABLE_READ)
+                .withConsistentSnapshot(true)
+                .build())
+            .doOnSuccess(ignored -> {
+                assertThat(connection.isInTransaction()).isTrue();
+                assertThat(connection.getTransactionIsolationLevel()).isEqualTo(REPEATABLE_READ);
                 assertThat(connection.isLockWaitTimeoutChanged()).isTrue();
             })
             .then(connection.rollbackTransaction())
@@ -137,7 +174,7 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
             String tdl = "CREATE TEMPORARY TABLE test(id INT PRIMARY KEY AUTO_INCREMENT,value VARCHAR(20))";
 
             return Mono.from(connection.createStatement(tdl)
-                .execute())
+                    .execute())
                 .thenMany(insertBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
                 .doOnNext(updated -> assertThat(updated).isEqualTo(1))
