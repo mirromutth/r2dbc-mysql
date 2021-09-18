@@ -94,14 +94,17 @@ final class DefaultCodecs implements Codecs {
         requireNonNull(context, "context must not be null");
         requireNonNull(type, "type must not be null");
 
+        if (value.isNull()) {
+            // T is always an object, so null should be returned even if the type is a primitive class.
+            // See also https://github.com/mirromutth/r2dbc-mysql/issues/184 .
+            return null;
+        }
+
         Class<?> target = chooseClass(metadata, type);
 
         // Fast map for primitive classes.
         if (target.isPrimitive()) {
             return decodePrimitive(value, metadata, target, binary, context);
-        } else if (value.isNull()) {
-            // Not primitive classes and value is null field, return null.
-            return null;
         } else if (value instanceof NormalFieldValue) {
             return decodeNormal((NormalFieldValue) value, metadata, target, binary, context);
         } else if (value instanceof LargeFieldValue) {
@@ -182,11 +185,6 @@ final class DefaultCodecs implements Codecs {
 
     private <T> T decodePrimitive(FieldValue value, MySqlColumnMetadata metadata, Class<?> type,
         boolean binary, CodecContext context) {
-        if (value.isNull()) {
-            // `type` would be primitive wrapper class and it could have null
-            return null;
-        }
-
         @SuppressWarnings("unchecked")
         PrimitiveCodec<T> codec = (PrimitiveCodec<T>) this.primitiveCodecs.get(type);
 
