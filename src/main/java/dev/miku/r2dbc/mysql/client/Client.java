@@ -87,37 +87,40 @@ public interface Client {
     ByteBufAllocator getByteBufAllocator();
 
     /**
-     * Local check connection is valid or not.
+     * Checks if the connection is open.
      *
      * @return if connection is valid
      */
     boolean isConnected();
 
     /**
-     * Send a signal to {@code this}, which means server does not support SSL.
+     * Sends a signal to the connection, which means server does not support SSL.
      */
     void sslUnsupported();
 
     /**
-     * Send a signal to {@code this}, which means login has succeed.
+     * Sends a signal to {@link Client this}, which means login has succeeded.
      */
     void loginSuccess();
 
     /**
-     * Connect to {@code address} with configurations. Normally, should login after connected.
+     * Connects to {@code address} with configurations.  Normally, should log-in after connected.
      *
      * @param ssl            the SSL configuration
      * @param address        socket address, may be host address, or Unix Domain Socket address
      * @param tcpKeepAlive   if enable the {@link ChannelOption#SO_KEEPALIVE}
      * @param tcpNoDelay     if enable the {@link ChannelOption#TCP_NODELAY}
      * @param context        the connection context
-     * @param connectTimeout connect timeout, or {@code null} if has no timeout
+     * @param connectTimeout connect timeout, or {@code null} if it has no timeout
+     * @param socketTimeout  socket timeout, or {@code null} if it has no timeout
      * @return A {@link Mono} that will emit a connected {@link Client}.
      * @throws IllegalArgumentException if {@code ssl}, {@code address} or {@code context} is {@code null}.
-     * @throws ArithmeticException      if {@code connectTimeout} milliseconds overflow as an int
+     * @throws ArithmeticException      if {@code connectTimeout} or {@code socketTimeout} milliseconds
+     *                                  overflow as an int
      */
     static Mono<Client> connect(MySqlSslConfiguration ssl, SocketAddress address, boolean tcpKeepAlive,
-        boolean tcpNoDelay, ConnectionContext context, @Nullable Duration connectTimeout) {
+        boolean tcpNoDelay, ConnectionContext context, @Nullable Duration connectTimeout,
+        @Nullable Duration socketTimeout) {
         requireNonNull(ssl, "ssl must not be null");
         requireNonNull(address, "address must not be null");
         requireNonNull(context, "context must not be null");
@@ -127,6 +130,11 @@ public interface Client {
         if (connectTimeout != null) {
             tcpClient = tcpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,
                 Math.toIntExact(connectTimeout.toMillis()));
+        }
+
+        if (socketTimeout != null) {
+            tcpClient = tcpClient.option(ChannelOption.SO_TIMEOUT,
+                Math.toIntExact(socketTimeout.toMillis()));
         }
 
         if (address instanceof InetSocketAddress) {

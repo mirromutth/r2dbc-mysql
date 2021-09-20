@@ -39,15 +39,15 @@ public interface MySqlColumnMetadata extends ColumnMetadata {
     MySqlTypeMetadata getNativeTypeMetadata();
 
     /**
-     * Get the {@link CharCollation} used for stringification type. If the server returns a binary collation,
-     * it will use the client collation.
+     * Gets the {@link CharCollation} used for stringification type.  It will not be a binary collation.
      *
+     * @param context the codec context for load the default character collation on the server-side.
      * @return the {@link CharCollation}.
      */
     CharCollation getCharCollation(CodecContext context);
 
     /**
-     * Get the field max size that's defined by the table, it is an unsigned int32.
+     * Gets the field max size that's defined by the table, the original type is an unsigned int32.
      *
      * @return the field max size.
      */

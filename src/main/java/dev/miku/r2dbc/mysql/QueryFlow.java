@@ -48,8 +48,8 @@ import dev.miku.r2dbc.mysql.message.server.SyntheticMetadataMessage;
 import dev.miku.r2dbc.mysql.message.server.SyntheticSslResponseMessage;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.IsolationLevel;
-import io.r2dbc.spi.R2dbcException;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import io.r2dbc.spi.TransactionDefinition;
 import org.slf4j.Logger;
@@ -82,32 +82,19 @@ final class QueryFlow {
     // Metadata EOF message will be not receive in here.
     private static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof CompleteMessage;
 
-    private static final Consumer<Object> OBJ_RELEASE = ReferenceCountUtil::release;
-
-    /**
-     * Login a {@link Client} and receive the {@code client} after logon.
-     *
-     * @param client   the {@link Client} to exchange messages with.
-     * @param sslMode  the {@link SslMode} defines SSL capability and behavior.
-     * @param database the database that will be connected.
-     * @param user     the user that will be login.
-     * @param password the password of the {@code user}.
-     * @param context  the {@link ConnectionContext} for initialization.
-     * @return the {@link Client}, or an error/exception received by login failed.
-     */
-    static Mono<Client> login(Client client, SslMode sslMode, String database, String user,
-        @Nullable CharSequence password, ConnectionContext context) {
-        return client.exchange(new LoginExchangeable(client, sslMode, database, user, password, context))
-            .onErrorResume(e -> client.forceClose().then(Mono.error(e)))
-            .then(Mono.just(client));
-    }
+    private static final Consumer<ServerMessage> EXECUTE_VOID = message -> {
+        if (message instanceof ErrorMessage) {
+            throw ((ErrorMessage) message).toException();
+        } else if (message instanceof ReferenceCounted) {
+            ReferenceCountUtil.safeRelease(message);
+        }
+    };
 
     /**
      * Execute multiple bindings of a server-preparing statement with one-by-one binary execution. The
      * execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. If client
-     * receives a {@link ErrorMessage} will emit an exception and cancel subsequent {@link Binding}s. The
-     * exchange will be completed by {@link CompleteMessage} after receive the last result for the last
-     * binding.
+     * receives a {@link ErrorMessage} will cancel subsequent {@link Binding}s. The exchange will be
+     * completed by {@link CompleteMessage} after receive the last result for the last binding.
      *
      * @param client    the {@link Client} to exchange messages with.
      * @param sql       the original statement for exception tracing.
@@ -151,36 +138,6 @@ final class QueryFlow {
     }
 
     /**
-     * Execute a simple query and return a {@link Mono} for the complete signal or error. Query execution
-     * terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage}
-     * will emit an exception. The exchange will be completed by {@link CompleteMessage} after receive the
-     * last result for the last binding.
-     *
-     * @param client the {@link Client} to exchange messages with.
-     * @param sql    the query to execute, can be contains multi-statements.
-     * @return receives complete signal.
-     */
-    static Mono<Void> executeVoid(Client client, String sql) {
-        return Mono.defer(() -> execute0(client, sql).doOnNext(OBJ_RELEASE).then());
-    }
-
-    /**
-     * Execute multiple simple queries with one-by-one and return a {@link Mono} for the complete signal or
-     * error. Query execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The
-     * {@link ErrorMessage} will emit an exception and cancel subsequent statements execution. The exchange
-     * will be completed by {@link CompleteMessage} after receive the last result for the last binding.
-     *
-     * @param client     the {@link Client} to exchange messages with.
-     * @param statements the queries to execute, each element can be contains multi-statements.
-     * @return receives complete signal.
-     */
-    static Mono<Void> executeVoid(Client client, String... statements) {
-        return client.exchange(new MultiQueryExchangeable(InternalArrays.asIterator(statements)))
-            .doOnNext(OBJ_RELEASE)
-            .then();
-    }
-
-    /**
      * Execute a simple compound query. Query execution terminates with the last {@link CompleteMessage} or a
      * {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception. The exchange will be completed
      * by {@link CompleteMessage} after receive the last result for the last binding.
@@ -215,6 +172,56 @@ final class QueryFlow {
                         .windowUntil(RESULT_DONE);
             }
         });
+    }
+
+    /**
+     * Login a {@link Client} and receive the {@code client} after logon. It will emit an exception when
+     * client receives a {@link ErrorMessage}.
+     *
+     *
+     * @param client   the {@link Client} to exchange messages with.
+     * @param sslMode  the {@link SslMode} defines SSL capability and behavior.
+     * @param database the database that will be connected.
+     * @param user     the user that will be login.
+     * @param password the password of the {@code user}.
+     * @param context  the {@link ConnectionContext} for initialization.
+     * @return the messages received in response to the login exchange.
+     */
+    static Mono<Client> login(Client client, SslMode sslMode, String database, String user,
+        @Nullable CharSequence password, ConnectionContext context) {
+        return client.exchange(new LoginExchangeable(client, sslMode, database, user, password, context))
+            .flatMap(message -> client.forceClose().then(Mono.error(message::toException)))
+            .then(Mono.just(client));
+    }
+
+    /**
+     * Execute a simple query and return a {@link Mono} for the complete signal or error. Query execution
+     * terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage}
+     * will emit an exception. The exchange will be completed by {@link CompleteMessage} after receive the
+     * last result for the last binding.
+     *
+     * @param client the {@link Client} to exchange messages with.
+     * @param sql    the query to execute, can be contains multi-statements.
+     * @return receives complete signal.
+     */
+    static Mono<Void> executeVoid(Client client, String sql) {
+        return Mono.defer(() -> execute0(client, sql).doOnNext(EXECUTE_VOID).then());
+    }
+
+    /**
+     * Execute multiple simple queries with one-by-one and return a {@link Mono} for the complete signal or
+     * error. Query execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. The
+     * {@link ErrorMessage} will emit an exception and cancel subsequent statements execution. The exchange
+     * will be completed by {@link CompleteMessage} after receive the last result for the last binding.
+     *
+     * @param client     the {@link Client} to exchange messages with.
+     * @param statements the queries to execute, each element can be contains multi-statements.
+     * @return receives complete signal.
+     */
+    static Mono<Void> executeVoid(Client client, String... statements) {
+        return client.exchange(new MultiQueryExchangeable(InternalArrays.asIterator(statements)))
+            .doOnNext(EXECUTE_VOID)
+            .then();
     }
 
     /**
@@ -273,7 +280,8 @@ final class QueryFlow {
     private static Flux<ServerMessage> execute0(Client client, String sql) {
         return client.exchange(TextQueryMessage.of(sql), (message, sink) -> {
             if (message instanceof ErrorMessage) {
-                sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+                sink.next(((ErrorMessage) message).offendedBy(sql));
+                sink.complete();
             } else {
                 sink.next(message);
 
@@ -303,7 +311,8 @@ abstract class BaseFluxExchangeable extends FluxExchangeable<ServerMessage> {
     @Override
     public final void accept(ServerMessage message, SynchronousSink<ServerMessage> sink) {
         if (message instanceof ErrorMessage) {
-            sink.error(transform((ErrorMessage) message));
+            sink.next(((ErrorMessage) message).offendedBy(offendingSql()));
+            sink.complete();
         } else {
             sink.next(message);
 
@@ -323,7 +332,7 @@ abstract class BaseFluxExchangeable extends FluxExchangeable<ServerMessage> {
 
     abstract protected ClientMessage nextMessage();
 
-    abstract protected R2dbcException transform(ErrorMessage message);
+    abstract protected String offendingSql();
 }
 
 /**
@@ -375,8 +384,8 @@ final class TextQueryExchangeable extends BaseFluxExchangeable {
     }
 
     @Override
-    protected R2dbcException transform(ErrorMessage message) {
-        return ExceptionFactory.createException(message, query.getFormattedSql());
+    protected String offendingSql() {
+        return query.getFormattedSql();
     }
 }
 
@@ -406,8 +415,8 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
     @Override
     protected void afterSubscribe() {
         String current = this.statements.next();
-        this.requests.onNext(TextQueryMessage.of(current));
         this.current = current;
+        this.requests.onNext(TextQueryMessage.of(current));
     }
 
     @Override
@@ -423,8 +432,8 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
     }
 
     @Override
-    protected R2dbcException transform(ErrorMessage message) {
-        return ExceptionFactory.createException(message, current);
+    protected String offendingSql() {
+        return current;
     }
 }
 
@@ -498,7 +507,8 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
     @Override
     public void accept(ServerMessage message, SynchronousSink<ServerMessage> sink) {
         if (message instanceof ErrorMessage) {
-            sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+            sink.next(((ErrorMessage) message).offendedBy(sql));
+            sink.complete();
             return;
         }
 
@@ -701,7 +711,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
  * Not like other {@link FluxExchangeable}s, it is started by a server-side message, which should be an
  * implementation of {@link HandshakeRequest}.
  */
-final class LoginExchangeable extends FluxExchangeable<Void> {
+final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
 
     private static final Logger logger = LoggerFactory.getLogger(LoginExchangeable.class);
 
@@ -753,9 +763,10 @@ final class LoginExchangeable extends FluxExchangeable<Void> {
     }
 
     @Override
-    public void accept(ServerMessage message, SynchronousSink<Void> sink) {
+    public void accept(ServerMessage message, SynchronousSink<ErrorMessage> sink) {
         if (message instanceof ErrorMessage) {
-            sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
+            sink.next((ErrorMessage) message);
+            sink.complete();
             return;
         }
 
@@ -963,11 +974,9 @@ abstract class AbstractTransactionState {
 
     final boolean accept(ServerMessage message, SynchronousSink<Void> sink) {
         if (message instanceof ErrorMessage) {
-            sink.error(ExceptionFactory.createException((ErrorMessage) message, sql));
+            sink.error(((ErrorMessage) message).toException(sql));
             return false;
-        }
-
-        if (message instanceof CompleteMessage) {
+        } else if (message instanceof CompleteMessage) {
             // Note: if CompleteMessage.isDone() is true, it is the last complete message of the entire
             // operation in batch mode and the last complete message of the current query in multi-query mode.
             // That means each complete message should be processed whatever it is done or not IN BATCH MODE.
@@ -980,9 +989,9 @@ abstract class AbstractTransactionState {
             this.tasks -= task;
 
             return process(task, sink);
+        } else if (message instanceof ReferenceCounted) {
+            ReferenceCountUtil.safeRelease(message);
         }
-
-        ReferenceCountUtil.safeRelease(message);
 
         return false;
     }
@@ -1017,7 +1026,7 @@ final class CommitRollbackState extends AbstractTransactionState {
     protected boolean process(int task, SynchronousSink<Void> sink) {
         switch (task) {
             case LOCK_WAIT_TIMEOUT:
-                state.resetLockWaitTimeout();
+                state.resetCurrentLockWaitTimeout();
                 return true;
             case COMMIT_OR_ROLLBACK:
                 state.resetIsolationLevel();
@@ -1081,7 +1090,7 @@ final class StartTransactionState extends AbstractTransactionState {
     protected boolean process(int task, SynchronousSink<Void> sink) {
         switch (task) {
             case LOCK_WAIT_TIMEOUT:
-                state.setLockWaitTimeout(lockWaitTimeout);
+                state.setCurrentLockWaitTimeout(lockWaitTimeout);
                 return true;
             case ISOLATION_LEVEL:
                 if (isolationLevel != null) {

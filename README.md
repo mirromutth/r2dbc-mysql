@@ -1,3 +1,16 @@
+# Why doesn't it seem so active
+
+Due to COVID-19 and my personal reasons, the progress of this project in 2021 is soooooo slow.
+
+If you ask me "Are u ok? how about u healthy?". Yes, I'm fine. In China, most areas are no longer infected
+with COVID-19. It just...my work plan was severely hindered because of COVID-19.
+
+I trust this will not become a norm. *I'm trying to maintain this project as well as I can*.
+
+**May the dead rest, and hope the living be healthy**
+
+*Donation are not accepted because I'm subscribing JetBrains open source license, thanks.*
+
 # Reactive Relational Database Connectivity MySQL Implementation
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.miku/r2dbc-mysql?color=green&label=Maven%20Central)](https://search.maven.org/search?q=g:%22dev.miku%22%20AND%20a:%22r2dbc-mysql%22)
@@ -129,6 +142,7 @@ ConnectionFactoryOptions options = ConnectionFactoryOptions.builder()
     .option(PASSWORD, "database-password-in-here") // optional, default null, null means has no password
     .option(DATABASE, "r2dbc") // optional, default null, null means not specifying the database
     .option(CONNECT_TIMEOUT, Duration.ofSeconds(3)) // optional, default null, null means no timeout
+    .option(Option.valueOf("socketTimeout"), Duration.ofSeconds(4)) // optional, default null, null means no timeout
     .option(SSL, true) // optional, default sslMode is "preferred", it will be ignore if sslMode is set
     .option(Option.valueOf("sslMode"), "verify_identity") // optional, default "preferred"
     .option(Option.valueOf("sslCa"), "/path/to/mysql/ca.pem") // required when sslMode is verify_ca or verify_identity, default null, null means has no server CA cert
@@ -175,6 +189,7 @@ MySqlConnectionConfiguration configuration = MySqlConnectionConfiguration.builde
     .database("r2dbc") // optional, default null, null means not specifying the database
     .serverZoneId(ZoneId.of("Continent/City")) // optional, default null, null means query server time zone when connection init
     .connectTimeout(Duration.ofSeconds(3)) // optional, default null, null means no timeout
+    .socketTimeout(Duration.ofSeconds(4)) // optional, default null, null means no timeout
     .sslMode(SslMode.VERIFY_IDENTITY) // optional, default SslMode.PREFERRED
     .sslCa("/path/to/mysql/ca.pem") // required when sslMode is VERIFY_CA or VERIFY_IDENTITY, default null, null means has no server CA cert
     .sslCert("/path/to/mysql/client-cert.pem") // optional, default has no client SSL certificate
@@ -221,6 +236,7 @@ Mono<Connection> connectionMono = Mono.from(connectionFactory.create());
 | password | Any printable string | Optional, default no password | The password of the MySQL database user |
 | database | A valid MySQL database name | Optional, default does not initialize database | Database used by the MySQL connection |
 | connectTimeout | A `Duration` which must be positive duration | Optional, default has no timeout | TCP connect timeout |
+| socketTimeout | A `Duration` which must be positive duration | Optional, default has no timeout | TCP socket timeout |
 | serverZoneId | An id of `ZoneId` | Optional, default query time zone when connection init | Server time zone id |
 | tcpKeepAlive | `true` or `false` | Optional, default disabled | Controls TCP KeepAlive |
 | tcpNoDelay | `true` or `false` | Optional, default disabled | Controls TCP NoDelay |

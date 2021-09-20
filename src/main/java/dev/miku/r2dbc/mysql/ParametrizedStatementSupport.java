@@ -23,6 +23,7 @@ import reactor.core.publisher.Flux;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -134,7 +135,7 @@ abstract class ParametrizedStatementSupport extends MySqlStatementSupport {
         ParameterIndex index = query.getNamedIndexes().get(name);
 
         if (index == null) {
-            throw new IllegalArgumentException(String.format("No such parameter with name '%s'", name));
+            throw new NoSuchElementException("No such parameter with name: " + name);
         }
 
         return index;

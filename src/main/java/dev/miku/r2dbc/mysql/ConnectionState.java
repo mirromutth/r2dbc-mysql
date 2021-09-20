@@ -35,10 +35,10 @@ interface ConnectionState {
      *
      * @param timeoutSeconds seconds of current lock wait timeout.
      */
-    void setLockWaitTimeout(long timeoutSeconds);
+    void setCurrentLockWaitTimeout(long timeoutSeconds);
 
     /**
-     * Checks if lock wait timeout has been changed by {@link #setLockWaitTimeout(long)}.
+     * Checks if lock wait timeout has been changed by {@link #setCurrentLockWaitTimeout(long)}.
      *
      * @return if lock wait timeout changed.
      */
@@ -52,7 +52,7 @@ interface ConnectionState {
     /**
      * Resets current isolation level in initial state.
      */
-    void resetLockWaitTimeout();
+    void resetCurrentLockWaitTimeout();
 
     /**
      * Checks if connection is processing a transaction.

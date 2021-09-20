@@ -46,7 +46,7 @@ final class OptionMapper {
         T t = clazz.cast(options.getValue(option));
 
         if (t != null) {
-            consumer.accept(t);
+            consumer.accept((T) t);
         }
     }
 

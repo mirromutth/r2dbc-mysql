@@ -19,6 +19,7 @@ package dev.miku.r2dbc.mysql;
 import dev.miku.r2dbc.mysql.codec.Codecs;
 import dev.miku.r2dbc.mysql.message.FieldValue;
 import io.r2dbc.spi.Row;
+import io.r2dbc.spi.RowMetadata;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
@@ -100,5 +101,13 @@ public final class MySqlRow implements Row {
 
         MySqlColumnDescriptor info = rowMetadata.getColumnMetadata(name);
         return codecs.decode(fields[info.getIndex()], info, type, binary, context);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public RowMetadata getMetadata() {
+        return rowMetadata;
     }
 }

@@ -18,14 +18,7 @@ package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 
-import java.util.AbstractSet;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Set;
-import java.util.Spliterator;
-import java.util.Spliterators;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -39,6 +32,9 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  * @see MySqlNames column name searching rules.
  */
 final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
+
+    static final Comparator<MySqlColumnDescriptor> NAME_COMPARATOR = (left, right) ->
+            MySqlNames.compare(left.getName(), right.getName());
 
     private final String[] originNames;
 
@@ -58,7 +54,7 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
     @Override
     public boolean contains(Object o) {
         if (o instanceof String) {
-            return MySqlNames.nameSearch(this.sortedNames, (String) o) >= 0;
+            return findIndex((String) o) >= 0;
         }
 
         return false;
@@ -184,6 +180,14 @@ final class ColumnNameSet extends AbstractSet<String> implements Set<String> {
     @Override
     public String toString() {
         return Arrays.toString(originNames);
+    }
+
+    int findIndex(String name) {
+        return MySqlNames.nameSearch(this.sortedNames, name);
+    }
+
+    String[] getSortedNames() {
+        return sortedNames;
     }
 
     static ColumnNameSet of(String name) {

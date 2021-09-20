@@ -32,6 +32,6 @@ final class TextSimpleStatement extends SimpleStatementSupport {
     @Override
     public Flux<MySqlResult> execute() {
         return QueryFlow.execute(client, sql)
-            .map(messages -> new MySqlResult(false, codecs, context, generatedKeyName, messages));
+            .map(messages -> MySqlResult.toResult(false, codecs, context, generatedKeyName, messages));
     }
 }

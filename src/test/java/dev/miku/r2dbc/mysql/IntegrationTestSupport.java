@@ -78,6 +78,7 @@ abstract class IntegrationTestSupport {
         MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder()
             .host("127.0.0.1")
             .connectTimeout(Duration.ofSeconds(3))
+            .socketTimeout(Duration.ofSeconds(3))
             .user("root")
             .password(password)
             .database("r2dbc")
