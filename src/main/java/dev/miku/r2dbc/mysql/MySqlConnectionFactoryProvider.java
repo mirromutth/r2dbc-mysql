@@ -228,10 +228,10 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         OptionMapper mapper = new OptionMapper(options);
         MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder();
 
-        mapper.requiredConsume(USER, builder::user);
+        mapper.requiredConsume(USER, builder::user, String.class);
         // Notice for contributors: password is special, should keep it CharSequence,
         // do NEVER use OptionMapper.from because it maybe convert password to String.
-        mapper.consume(PASSWORD, builder::password);
+        mapper.consume(PASSWORD, builder::password, CharSequence.class);
 
         mapper.from(UNIX_SOCKET).asString()
             .into(builder::unixSocket)
@@ -280,7 +280,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
      */
     @SuppressWarnings("unchecked")
     private static void setupHost(MySqlConnectionConfiguration.Builder builder, OptionMapper mapper) {
-        mapper.requiredConsume(HOST, builder::host);
+        mapper.requiredConsume(HOST, builder::host, String.class);
         mapper.from(PORT).asInt()
             .into(builder::port);
         mapper.from(SSL).asBoolean()
@@ -295,7 +295,7 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
             .into(builder::sslCert);
         mapper.from(SSL_KEY).asString()
             .into(builder::sslKey);
-        mapper.consume(SSL_KEY_PASSWORD, builder::sslKeyPassword);
+        mapper.consume(SSL_KEY_PASSWORD, builder::sslKeyPassword, CharSequence.class);
         mapper.from(SSL_CONTEXT_BUILDER_CUSTOMIZER).asInstance(Function.class)
             .into(builder::sslContextBuilderCustomizer);
         mapper.from(SSL_CA).asString()
