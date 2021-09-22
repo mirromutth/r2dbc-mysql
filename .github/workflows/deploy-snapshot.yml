@@ -17,7 +17,7 @@ jobs:
       - name: Prepare basic configuration
         run: |
           echo "${{secrets.SIGNING_SECRET_KEY_RING_FILE}}" > ~/.gnupg/secring.gpg.b64
-          base64 -d ~/.gradle/secring.gpg.b64 > ~/.gnupg/secring.gpg
+          base64 -d ~/.gnupg/secring.gpg.b64 > ~/.gnupg/secring.gpg
 
           echo "<settings><servers><server><id>ossrh</id><username>${{secrets.OSSRH_USERNAME}}</username><password>${{secrets.OSSRH_PASSWORD}}</password></server></servers></settings>" > ~/.m2/settings.xml
       - name: Deploy to snapshot repository
