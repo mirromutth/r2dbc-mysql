@@ -16,9 +16,11 @@ jobs:
           java-version: 1.8
       - name: Prepare basic configuration
         run: |
+          mkdir ~/.gnupg
           echo "${{secrets.SIGNING_SECRET_KEY_RING_FILE}}" > ~/.gnupg/secring.gpg.b64
           base64 -d ~/.gnupg/secring.gpg.b64 > ~/.gnupg/secring.gpg
 
+          mkdir ~/.m2
           echo "<settings><servers><server><id>ossrh</id><username>${{secrets.OSSRH_USERNAME}}</username><password>${{secrets.OSSRH_PASSWORD}}</password></server></servers></settings>" > ~/.m2/settings.xml
       - name: Deploy to snapshot repository
         run: mvn clean deploy -Dgpg.passphrase=${{secrets.GPG_PASSPHRASE}}
