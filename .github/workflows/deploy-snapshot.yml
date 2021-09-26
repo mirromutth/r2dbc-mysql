@@ -23,4 +23,4 @@ jobs:
           mkdir -p ~/.m2
           echo "<settings><servers><server><id>ossrh</id><username>${{secrets.OSSRH_USERNAME}}</username><password>${{secrets.OSSRH_PASSWORD}}</password></server></servers></settings>" > ~/.m2/settings.xml
       - name: Deploy to snapshot repository
-        run: mvn clean deploy -Dgpg.passphrase=${{secrets.GPG_PASSPHRASE}}
+        run: mvn clean deploy -Dgpg.passphrase=${{secrets.GPG_PASSPHRASE}} -DskipITs -Dmaven.surefire.skip=true
