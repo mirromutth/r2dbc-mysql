@@ -228,42 +228,36 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
         OptionMapper mapper = new OptionMapper(options);
         MySqlConnectionConfiguration.Builder builder = MySqlConnectionConfiguration.builder();
 
-        mapper.requiredConsume(USER, builder::user, String.class);
-        // Notice for contributors: password is special, should keep it CharSequence,
-        // do NEVER use OptionMapper.from because it maybe convert password to String.
-        mapper.consume(PASSWORD, builder::password, CharSequence.class);
-
-        mapper.from(UNIX_SOCKET).asString()
-            .into(builder::unixSocket)
+        mapper.requires(USER).asString()
+            .to(builder::user);
+        mapper.optional(PASSWORD).asPassword()
+            .to(builder::password);
+        mapper.optional(UNIX_SOCKET).asString()
+            .to(builder::unixSocket)
             .otherwise(() -> setupHost(builder, mapper));
-        mapper.from(SERVER_ZONE_ID).asInstance(ZoneId.class, id -> ZoneId.of(id, ZoneId.SHORT_IDS))
-            .into(builder::serverZoneId);
-        mapper.from(TCP_KEEP_ALIVE).asBoolean()
-            .into(builder::tcpKeepAlive);
-        mapper.from(TCP_NO_DELAY).asBoolean()
-            .into(builder::tcpNoDelay);
-        mapper.from(ZERO_DATE)
-            .asInstance(ZeroDateOption.class, id -> ZeroDateOption.valueOf(id.toUpperCase()))
-            .into(builder::zeroDateOption);
-        mapper.from(USE_SERVER_PREPARE_STATEMENT).servePrepare(enable -> {
-            if (enable) {
-                builder.useServerPrepareStatement();
-            } else {
-                builder.useClientPrepareStatement();
-            }
-        }, builder::useServerPrepareStatement);
-        mapper.from(QUERY_CACHE_SIZE).asInt()
-            .into(builder::queryCacheSize);
-        mapper.from(PREPARE_CACHE_SIZE).asInt()
-            .into(builder::prepareCacheSize);
-        mapper.from(AUTODETECT_EXTENSIONS).asBoolean()
-            .into(builder::autodetectExtensions);
-        mapper.from(CONNECT_TIMEOUT).asInstance(Duration.class, Duration::parse)
-            .into(builder::connectTimeout);
-        mapper.from(SOCKET_TIMEOUT).asInstance(Duration.class, Duration::parse)
-            .into(builder::socketTimeout);
-        mapper.from(DATABASE).asString()
-            .into(builder::database);
+        mapper.optional(SERVER_ZONE_ID).as(ZoneId.class, id -> ZoneId.of(id, ZoneId.SHORT_IDS))
+            .to(builder::serverZoneId);
+        mapper.optional(TCP_KEEP_ALIVE).asBoolean()
+            .to(builder::tcpKeepAlive);
+        mapper.optional(TCP_NO_DELAY).asBoolean()
+            .to(builder::tcpNoDelay);
+        mapper.optional(ZERO_DATE)
+            .as(ZeroDateOption.class, id -> ZeroDateOption.valueOf(id.toUpperCase()))
+            .to(builder::zeroDateOption);
+        mapper.optional(USE_SERVER_PREPARE_STATEMENT).prepare(builder::useClientPrepareStatement,
+            builder::useServerPrepareStatement, builder::useServerPrepareStatement);
+        mapper.optional(QUERY_CACHE_SIZE).asInt()
+            .to(builder::queryCacheSize);
+        mapper.optional(PREPARE_CACHE_SIZE).asInt()
+            .to(builder::prepareCacheSize);
+        mapper.optional(AUTODETECT_EXTENSIONS).asBoolean()
+            .to(builder::autodetectExtensions);
+        mapper.optional(CONNECT_TIMEOUT).as(Duration.class, Duration::parse)
+            .to(builder::connectTimeout);
+        mapper.optional(SOCKET_TIMEOUT).as(Duration.class, Duration::parse)
+            .to(builder::socketTimeout);
+        mapper.optional(DATABASE).asString()
+            .to(builder::database);
 
         return builder.build();
     }
@@ -271,34 +265,33 @@ public final class MySqlConnectionFactoryProvider implements ConnectionFactoryPr
     /**
      * Set builder of {@link MySqlConnectionConfiguration} for hostname-based address with SSL
      * configurations.
-     * <p>
-     * Notice for contributors: SSL key password is special, should keep it {@link CharSequence}, do NEVER use
-     * {@link OptionMapper#from} because it maybe convert password to {@link String}.
      *
      * @param builder the builder of {@link MySqlConnectionConfiguration}.
      * @param mapper  the {@link OptionMapper} of {@code options}.
      */
     @SuppressWarnings("unchecked")
     private static void setupHost(MySqlConnectionConfiguration.Builder builder, OptionMapper mapper) {
-        mapper.requiredConsume(HOST, builder::host, String.class);
-        mapper.from(PORT).asInt()
-            .into(builder::port);
-        mapper.from(SSL).asBoolean()
-            .into(isSsl -> builder.sslMode(isSsl ? SslMode.REQUIRED : SslMode.DISABLED));
-        mapper.from(SSL_MODE).asInstance(SslMode.class, id -> SslMode.valueOf(id.toUpperCase()))
-            .into(builder::sslMode);
-        mapper.from(TLS_VERSION).asStrings()
-            .into(builder::tlsVersion);
-        mapper.from(SSL_HOSTNAME_VERIFIER).asInstance(HostnameVerifier.class)
-            .into(builder::sslHostnameVerifier);
-        mapper.from(SSL_CERT).asString()
-            .into(builder::sslCert);
-        mapper.from(SSL_KEY).asString()
-            .into(builder::sslKey);
-        mapper.consume(SSL_KEY_PASSWORD, builder::sslKeyPassword, CharSequence.class);
-        mapper.from(SSL_CONTEXT_BUILDER_CUSTOMIZER).asInstance(Function.class)
-            .into(builder::sslContextBuilderCustomizer);
-        mapper.from(SSL_CA).asString()
-            .into(builder::sslCa);
+        mapper.requires(HOST).asString()
+            .to(builder::host);
+        mapper.optional(PORT).asInt()
+            .to(builder::port);
+        mapper.optional(SSL).asBoolean()
+            .to(isSsl -> builder.sslMode(isSsl ? SslMode.REQUIRED : SslMode.DISABLED));
+        mapper.optional(SSL_MODE).as(SslMode.class, id -> SslMode.valueOf(id.toUpperCase()))
+            .to(builder::sslMode);
+        mapper.optional(TLS_VERSION).asStrings()
+            .to(builder::tlsVersion);
+        mapper.optional(SSL_HOSTNAME_VERIFIER).as(HostnameVerifier.class)
+            .to(builder::sslHostnameVerifier);
+        mapper.optional(SSL_CERT).asString()
+            .to(builder::sslCert);
+        mapper.optional(SSL_KEY).asString()
+            .to(builder::sslKey);
+        mapper.optional(SSL_KEY_PASSWORD).asPassword()
+            .to(builder::sslKeyPassword);
+        mapper.optional(SSL_CONTEXT_BUILDER_CUSTOMIZER).as(Function.class)
+            .to(builder::sslContextBuilderCustomizer);
+        mapper.optional(SSL_CA).asString()
+            .to(builder::sslCa);
     }
 }

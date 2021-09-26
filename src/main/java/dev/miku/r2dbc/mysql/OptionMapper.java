@@ -18,6 +18,7 @@ package dev.miku.r2dbc.mysql;
 
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.Option;
+import reactor.util.annotation.Nullable;
 
 import java.util.Collection;
 import java.util.function.Consumer;
@@ -38,235 +39,225 @@ final class OptionMapper {
         this.options = options;
     }
 
-    SourceSpec from(Option<?> option) {
-        return new SourceSpec(options, option);
+    Source<Object> requires(Option<?> option) {
+        return Source.of(options.getRequiredValue(option));
     }
 
-    <T> void consume(Option<T> option, Consumer<T> consumer, Class<T> clazz) {
-        T t = clazz.cast(options.getValue(option));
-
-        if (t != null) {
-            consumer.accept(t);
-        }
-    }
-
-    <T> void requiredConsume(Option<T> option, Consumer<T> consumer, Class<T> clazz) {
-        consumer.accept(clazz.cast(options.getRequiredValue(option)));
+    Source<Object> optional(Option<?> option) {
+        return Source.of(options.getValue(option));
     }
 }
 
-final class SourceSpec {
+final class Source<T> {
 
-    private final ConnectionFactoryOptions options;
+    private static final Source<Object> NIL = new Source<>(null);
 
-    private final Option<?> option;
+    @Nullable
+    private final T value;
 
-    SourceSpec(ConnectionFactoryOptions options, Option<?> option) {
-        this.options = options;
-        this.option = option;
+    private Source(@Nullable T value) { this.value = value; }
+
+    Otherwise to(Consumer<? super T> consumer) {
+        if (value == null) {
+            return Otherwise.FALL;
+        }
+
+        consumer.accept(value);
+
+        return Otherwise.NOOP;
     }
 
-    <T> Source<T> asInstance(Class<T> type) {
-        Object value = options.getValue(option);
-
+    <R> Source<R> as(Class<R> type) {
         if (value == null) {
-            return Source.nilSource();
+            return nilSource();
         }
 
         if (type.isInstance(value)) {
-            return new Source.Impl<>(type.cast(value));
+            return new Source<>(type.cast(value));
         } else if (value instanceof String) {
             try {
                 Class<?> impl = Class.forName((String) value);
 
                 if (type.isAssignableFrom(impl)) {
-                    return new Source.Impl<>(type.cast(impl.getDeclaredConstructor().newInstance()));
+                    return new Source<>(type.cast(impl.getDeclaredConstructor().newInstance()));
                 }
-                // Otherwise not an implementation, convert failed.
+                // Otherwise, not an implementation, convert failed.
             } catch (ReflectiveOperationException e) {
                 throw new IllegalArgumentException("Cannot instantiate '" + value + "'", e);
             }
         }
 
-        throw new IllegalArgumentException(toMessage(option, value, type.getName()));
+        throw new IllegalArgumentException(toMessage(value, type.getName()));
     }
 
-    <T> Source<T> asInstance(Class<T> type, Function<String, T> mapping) {
-        Object value = options.getValue(option);
-
+    <R> Source<R> as(Class<R> type, Function<String, R> mapping) {
         if (value == null) {
-            return Source.nilSource();
+            return nilSource();
         }
 
         if (type.isInstance(value)) {
-            return new Source.Impl<>(type.cast(value));
+            return new Source<>(type.cast(value));
         } else if (value instanceof String) {
             // Type cast for check mapping result.
-            return new Source.Impl<>(type.cast(mapping.apply((String) value)));
+            return new Source<>(type.cast(mapping.apply((String) value)));
         }
 
-        throw new IllegalArgumentException(toMessage(option, value, type.getTypeName()));
+        throw new IllegalArgumentException(toMessage(value, type.getTypeName()));
     }
 
     Source<String[]> asStrings() {
-        Object value = options.getValue(option);
-
         if (value == null) {
-            return Source.nilSource();
+            return nilSource();
         }
 
         if (value instanceof String[]) {
-            return new Source.Impl<>((String[]) value);
+            return new Source<>((String[]) value);
         } else if (value instanceof String) {
-            return new Source.Impl<>(((String) value).split(","));
+            return new Source<>(((String) value).split(","));
         } else if (value instanceof Collection<?>) {
-            return new Source.Impl<>(((Collection<?>) value).stream()
+            return new Source<>(((Collection<?>) value).stream()
                 .map(String.class::cast).toArray(String[]::new));
         }
 
-        throw new IllegalArgumentException(toMessage(option, value, "String[]"));
+        throw new IllegalArgumentException(toMessage(value, "String[]"));
     }
 
     Source<Boolean> asBoolean() {
-        Object value = options.getValue(option);
-
         if (value == null) {
-            return Source.nilSource();
+            return nilSource();
         }
 
         if (value instanceof Boolean) {
-            return new Source.Impl<>((Boolean) value);
+            return new Source<>((Boolean) value);
         } else if (value instanceof String) {
-            return new Source.Impl<>(Boolean.parseBoolean((String) value));
+            return new Source<>(Boolean.parseBoolean((String) value));
         }
 
-        throw new IllegalArgumentException(toMessage(option, value, "Boolean"));
+        throw new IllegalArgumentException(toMessage(value, "Boolean"));
     }
 
     Source<Integer> asInt() {
-        Object value = options.getValue(option);
-
         if (value == null) {
-            return Source.nilSource();
+            return nilSource();
         }
 
         if (value instanceof Integer) {
             // Reduce the cost of re-boxed.
-            return new Source.Impl<>((Integer) value);
+            return new Source<>((Integer) value);
         } else if (value instanceof Number) {
-            return new Source.Impl<>(((Number) value).intValue());
+            return new Source<>(((Number) value).intValue());
         } else if (value instanceof String) {
-            return new Source.Impl<>(Integer.parseInt((String) value));
+            return new Source<>(Integer.parseInt((String) value));
         }
 
-        throw new IllegalArgumentException(toMessage(option, value, "Integer"));
+        throw new IllegalArgumentException(toMessage(value, "Integer"));
+    }
+
+    Source<CharSequence> asPassword() {
+        if (value == null) {
+            return nilSource();
+        }
+
+        if (value instanceof CharSequence) {
+            return new Source<>((CharSequence) value);
+        }
+
+        throw new IllegalArgumentException(toMessage("REDACTED", "CharSequence"));
     }
 
     Source<String> asString() {
-        Object value = options.getValue(option);
-
         if (value == null) {
-            return Source.nilSource();
+            return nilSource();
         }
 
         if (value instanceof String) {
-            return new Source.Impl<>((String) value);
+            return new Source<>((String) value);
         }
 
-        throw new IllegalArgumentException(toMessage(option, value, "String"));
+        throw new IllegalArgumentException(toMessage(value, "String"));
     }
 
     @SuppressWarnings("unchecked")
-    void servePrepare(Consumer<Boolean> enables, Consumer<Predicate<String>> preferred) {
-        Object value = options.getValue(option);
-
+    void prepare(Runnable client, Runnable server, Consumer<Predicate<String>> preferred) {
         if (value == null) {
             return;
         }
 
         if (value instanceof Boolean) {
-            enables.accept((Boolean) value);
+            if ((Boolean) value) {
+                server.run();
+            } else {
+                client.run();
+            }
             return;
         } else if (value instanceof Predicate<?>) {
             preferred.accept((Predicate<String>) value);
             return;
         } else if (value instanceof String) {
-            String serverPreparing = (String) value;
+            String stringify = (String) value;
 
-            if ("true".equalsIgnoreCase(serverPreparing) || "false".equalsIgnoreCase(serverPreparing)) {
-                enables.accept(Boolean.parseBoolean(serverPreparing));
+            if ("true".equalsIgnoreCase(stringify)) {
+                server.run();
+                return;
+            } else if ("false".equalsIgnoreCase(stringify)) {
+                client.run();
                 return;
             }
 
             try {
-                Class<?> impl = Class.forName(serverPreparing);
+                Class<?> impl = Class.forName(stringify);
 
                 if (Predicate.class.isAssignableFrom(impl)) {
                     preferred.accept((Predicate<String>) impl.getDeclaredConstructor().newInstance());
                     return;
                 }
-                // Otherwise not an implementation, convert failed.
+                // Otherwise, not an implementation, convert failed.
             } catch (ReflectiveOperationException e) {
                 throw new IllegalArgumentException("Cannot instantiate '" + value + "'", e);
             }
         }
 
-        throw new IllegalArgumentException(toMessage(option, value, "Boolean or Predicate<String>"));
+        throw new IllegalArgumentException(toMessage(value, "Boolean or Predicate<String>"));
     }
 
-    private static String toMessage(Option<?> option, Object value, String type) {
-        return "Cannot convert value " + value + " of " + value.getClass() + " as " + type + " for option " +
-            option.name();
+    static Source<Object> of(@Nullable Object value) {
+        if (value == null) {
+            return NIL;
+        }
+
+        return new Source<>(value);
     }
-}
-
-@FunctionalInterface
-interface Source<T> {
-
-    Otherwise into(Consumer<T> consumer);
 
     @SuppressWarnings("unchecked")
-    static <T> Source<T> nilSource() {
-        return (Source<T>) Nil.INSTANCE;
+    private static <T> Source<T> nilSource() {
+        return (Source<T>) NIL;
     }
 
-    final class Impl<T> implements Source<T> {
-
-        private final T value;
-
-        Impl(T value) {
-            this.value = value;
-        }
-
-        @Override
-        public Otherwise into(Consumer<T> consumer) {
-            consumer.accept(value);
-            return Otherwise.NOOP;
-        }
-    }
-
-    enum Nil implements Source<Object> {
-
-        INSTANCE;
-
-        @Override
-        public Otherwise into(Consumer<Object> consumer) {
-            return Otherwise.FALL;
-        }
+    private static String toMessage(Object value, String type) {
+        return "Cannot convert value " + value + " to " + type;
     }
 }
 
-@FunctionalInterface
-interface Otherwise {
+enum Otherwise {
 
-    Otherwise NOOP = ignored -> { };
+    NOOP {
+        @Override
+        void otherwise(Runnable runnable) {
+            // Do nothing
+        }
+    },
 
-    Otherwise FALL = Runnable::run;
+    FALL {
+        @Override
+        void otherwise(Runnable runnable) {
+            runnable.run();
+        }
+    };
 
     /**
      * Invoked if the previous {@link Source} outcome did not match.
      *
      * @param runnable the {@link Runnable} that should be invoked.
      */
-    void otherwise(Runnable runnable);
+    abstract void otherwise(Runnable runnable);
 }
