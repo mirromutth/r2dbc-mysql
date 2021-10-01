@@ -25,7 +25,7 @@ jobs:
           mkdir -p ~/.m2
           echo "<settings><servers><server><id>ossrh</id><username>${{ secrets.OSSRH_USERNAME }}</username><password>${{ secrets.OSSRH_PASSWORD }}</password></server></servers></settings>" > ~/.m2/settings.xml
       - name: Deploy to repository
-        run: mvn clean deploy -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }} -DskipITs -Dmaven.deploy.skip=false
+        run: mvn clean deploy -B -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }} -DskipITs -Dmaven.deploy.skip=false -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN
       - name: Clean up environment
         run: |
           rm -rf ~/.gnupg
