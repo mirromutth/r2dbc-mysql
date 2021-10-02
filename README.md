@@ -11,6 +11,8 @@ I trust this will not become a norm. *I'm trying to maintain this project as wel
 
 *Donation are not accepted because I'm subscribing JetBrains open source license, thanks.*
 
+Current goal: follow up with 0.9.0 and 0.8.x.
+
 # Reactive Relational Database Connectivity MySQL Implementation
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.miku/r2dbc-mysql?color=green&label=Maven%20Central)](https://search.maven.org/search?q=g:%22dev.miku%22%20AND%20a:%22r2dbc-mysql%22)
@@ -560,6 +562,19 @@ If you want to raise an issue, please follow the recommendations below:
 ## License
 
 This project is released under version 2.0 of the [Apache License](https://www.apache.org/licenses/LICENSE-2.0).
+
+# Acknowledgements
+
+## Contributors
+
+[![Avatars of contributors](https://contrib.rocks/image?repo=mirromutth/r2dbc-mysql)](https://github.com/mirromutth/r2dbc-mysql/graphs/contributors)
+
+Thanks a lot for your support!
+
+## Supports
+
+- [R2DBC Team](https://r2dbc.io) - Thanks for their support by sharing all relevant resources around R2DBC 
+  projects.
 
 [m]: https://www.mysql.com
 [java-BigDecimal-ref]: https://docs.oracle.com/javase/8/docs/api/java/math/BigDecimal.html
