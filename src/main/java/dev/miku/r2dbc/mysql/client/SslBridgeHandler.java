@@ -51,15 +51,19 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(SslBridgeHandler.class);
 
-    /**
-     * Lowest version of community edition for TLSv1.2 support.
-     */
-    private static final ServerVersion TLS1_2_COMMUNITY_VER = ServerVersion.create(8, 0, 4);
+    private static final String[] TLS_PROTOCOLS = new String[] {
+        TlsVersions.TLS1_3, TlsVersions.TLS1_2, TlsVersions.TLS1_1, TlsVersions.TLS1
+    };
 
-    /**
-     * Lowest version of enterprise edition for TLSv1.2 support. See {@link ServerVersion#isEnterprise()}.
-     */
-    private static final ServerVersion TLS1_2_ENTERPRISE_VER = ServerVersion.create(5, 6, 0);
+    private static final String[] OLD_TLS_PROTOCOLS = new String[] { TlsVersions.TLS1_1, TlsVersions.TLS1 };
+
+    private static final ServerVersion VER_5_6_0 = ServerVersion.create(5, 6, 0);
+
+    private static final ServerVersion VER_5_6_46 = ServerVersion.create(5, 6, 46);
+
+    private static final ServerVersion VER_5_7_0 = ServerVersion.create(5, 7, 0);
+
+    private static final ServerVersion VER_5_7_28 = ServerVersion.create(5, 7, 28);
 
     private final ConnectionContext context;
 
@@ -116,7 +120,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                     "' could not be verified"));
                 return;
             }
-            // Otherwise verify success, continue subsequence logic.
+            // Otherwise, verify success, continue subsequence logic.
         }
 
         if (mode != SslMode.TUNNEL) {
@@ -147,7 +151,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
                 ctx.pipeline().remove(NAME);
                 break;
         }
-        // Ignore another custom SSL states because they are useless.
+        // Ignore another unknown SSL states because it should not throw an exception.
     }
 
     private HostnameVerifier hostnameVerifier() {
@@ -163,7 +167,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
     }
 
     private static SslContextBuilder buildContext(MySqlSslConfiguration ssl, ServerVersion version) {
-        SslContextBuilder builder = withTlsVersion(SslContextBuilder.forClient(), ssl, version);
+        SslContextBuilder builder = withTlsVersion(ssl, version);
         String sslKey = ssl.getSslKey();
 
         if (sslKey != null) {
@@ -184,7 +188,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
             if (sslCa != null) {
                 builder.trustManager(new File(sslCa));
             }
-            // Otherwise use default algorithm with trust manager.
+            // Otherwise, use default algorithm with trust manager.
         } else {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }
@@ -192,23 +196,29 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
         return ssl.customizeSslContext(builder);
     }
 
-    private static SslContextBuilder withTlsVersion(SslContextBuilder builder, MySqlSslConfiguration ssl,
-        ServerVersion version) {
+    private static SslContextBuilder withTlsVersion(MySqlSslConfiguration ssl, ServerVersion version) {
+        SslContextBuilder builder = SslContextBuilder.forClient();
         String[] tlsProtocols = ssl.getTlsVersion();
 
         if (tlsProtocols.length > 0) {
             builder.protocols(tlsProtocols);
-        } else if (isEnabledTls1_2(version)) {
-            builder.protocols(TlsVersions.TLS1_2, TlsVersions.TLS1_1, TlsVersions.TLS1);
+        } else if (isCurrentTlsEnabled(version)) {
+            builder.protocols(TLS_PROTOCOLS);
         } else {
-            builder.protocols(TlsVersions.TLS1_1, TlsVersions.TLS1);
+            // Not sure if we need to check the JDK version, suggest not.
+            logger.warn("MySQL {} does not support TLS1.2, and TLS1.1 is disabled in latest JDKs", version);
+            builder.protocols(OLD_TLS_PROTOCOLS);
         }
 
         return builder;
     }
 
-    private static boolean isEnabledTls1_2(ServerVersion version) {
-        return version.isGreaterThanOrEqualTo(TLS1_2_COMMUNITY_VER) ||
-            (version.isGreaterThanOrEqualTo(TLS1_2_ENTERPRISE_VER) && version.isEnterprise());
+    private static boolean isCurrentTlsEnabled(ServerVersion version) {
+        // See also https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-using-ssl.html
+        // Quoting fragment: TLSv1,TLSv1.1,TLSv1.2,TLSv1.3 for MySQL Community Servers 8.0, 5.7.28 and
+        // later, and 5.6.46 and later, and for all commercial versions of MySQL Servers.
+        return version.isGreaterThanOrEqualTo(VER_5_7_28)
+            || (version.isGreaterThanOrEqualTo(VER_5_6_46) && version.isLessThan(VER_5_7_0))
+            || (version.isGreaterThanOrEqualTo(VER_5_6_0) && version.isEnterprise());
     }
 }
