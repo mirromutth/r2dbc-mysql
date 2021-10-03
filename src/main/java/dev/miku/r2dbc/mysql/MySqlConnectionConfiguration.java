@@ -433,11 +433,13 @@ public final class MySqlConnectionConfiguration {
         }
 
         /**
-         * Configure the socket timeout.  Default no timeout.
+         * Configure the socket timeout, only for compatibility with {@code socketTimeout} property in the
+         * JDBC driver.  In fact, {@code SO_TIMEOUT} has effect only for OIO socket transport.  Default no
+         * timeout.
          *
          * @param socketTimeout the socket timeout, or {@code null} if has no timeout.
          * @return this {@link Builder}.
-         * @since 0.8.3
+         * @since 0.8.6
          */
         public Builder socketTimeout(@Nullable Duration socketTimeout) {
             this.socketTimeout = socketTimeout;
@@ -782,6 +784,6 @@ public final class MySqlConnectionConfiguration {
             return sslMode;
         }
 
-        private Builder() {}
+        private Builder() { }
     }
 }
