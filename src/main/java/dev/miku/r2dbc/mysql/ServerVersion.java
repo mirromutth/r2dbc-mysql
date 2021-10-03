@@ -24,7 +24,11 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
  */
 public final class ServerVersion implements Comparable<ServerVersion> {
 
-    private static final String[] ENTERPRISES = new String[] { "enterprise", "commercial", "advanced" };
+    private static final String ENTERPRISE = "enterprise";
+
+    private static final String COMMERCIAL = "commercial";
+
+    private static final String ADVANCED = "advanced";
 
     /**
      * Unresolved/origin version pattern, do NOT use it on {@link #hashCode()}, {@link #equals(Object)} or
@@ -95,18 +99,14 @@ public final class ServerVersion implements Comparable<ServerVersion> {
 
     /**
      * Checks if the version is enterprise edition.
+     * <p>
+     * Notice: it is unstable API, should not be used outer than {@literal r2dbc-mysql}.
      *
      * @return if is enterprise edition.
      */
     public boolean isEnterprise() {
-        for (String enterprise : ENTERPRISES) {
-            // Maybe should ignore case?
-            if (origin.contains(enterprise)) {
-                return true;
-            }
-        }
-
-        return false;
+        // Maybe should ignore case?
+        return origin.contains(ENTERPRISE) || origin.contains(COMMERCIAL) || origin.contains(ADVANCED);
     }
 
     @Override
