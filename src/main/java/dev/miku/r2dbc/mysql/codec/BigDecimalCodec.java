@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
-import dev.miku.r2dbc.mysql.util.VarIntUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
@@ -40,27 +39,33 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     @Override
     public BigDecimal decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
+        MySqlType type = metadata.getType();
+
         if (binary) {
-            switch (metadata.getType()) {
-                case FLOAT:
-                    return BigDecimal.valueOf(value.readFloatLE());
-                case DOUBLE:
-                    return BigDecimal.valueOf(value.readDoubleLE());
-            }
-            // Not float or double, is text-encoded yet.
+            return decodeBinary(value, type);
         }
 
-        BigDecimal decimal = new BigDecimal(value.toString(StandardCharsets.US_ASCII));
+        switch (type) {
+            case FLOAT:
+                return BigDecimal.valueOf(Float.parseFloat(value.toString(StandardCharsets.US_ASCII)));
+            case DOUBLE:
+                return BigDecimal.valueOf(Double.parseDouble(value.toString(StandardCharsets.US_ASCII)));
+            case DECIMAL:
+                return parseBigDecimal(value);
+            case BIGINT_UNSIGNED:
+                if (value.getByte(value.readerIndex()) == '+') {
+                    value.skipBytes(1);
+                }
 
-        // Why Java has not BigDecimal.parseBigDecimal(String)?
-        if (BigDecimal.ZERO.equals(decimal)) {
-            return BigDecimal.ZERO;
-        } else if (BigDecimal.ONE.equals(decimal)) {
-            return BigDecimal.ONE;
-        } else if (BigDecimal.TEN.equals(decimal)) {
-            return BigDecimal.TEN;
-        } else {
-            return decimal;
+                String num = value.toString(StandardCharsets.US_ASCII);
+
+                if (CodecUtils.isGreaterThanLongMax(num)) {
+                    return new BigDecimal(num);
+                }
+
+                return BigDecimal.valueOf(CodecUtils.parsePositive(num));
+            default:
+                return BigDecimal.valueOf(CodecUtils.parseLong(value));
         }
     }
 
@@ -76,29 +81,49 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
 
     @Override
     protected boolean doCanDecode(MySqlColumnMetadata metadata) {
-        MySqlType type = metadata.getType();
-        return type == MySqlType.DECIMAL || type == MySqlType.FLOAT || type == MySqlType.DOUBLE;
+        return metadata.getType().isNumeric();
     }
 
-    static ByteBuf encodeAscii(ByteBufAllocator alloc, String ascii) {
-        // Using ASCII, so byte size is string length.
-        int size = ascii.length();
+    private static BigDecimal decodeBinary(ByteBuf buf, MySqlType type) {
+        switch (type) {
+            case BIGINT_UNSIGNED:
+                long v = buf.readLongLE();
 
-        if (size == 0) {
-            // It is zero of var int, not terminal.
-            return alloc.buffer(Byte.BYTES).writeByte(0);
+                if (v < 0) {
+                    return new BigDecimal(CodecUtils.unsignedBigInteger(v));
+                }
+
+                return BigDecimal.valueOf(v);
+            case BIGINT:
+                return BigDecimal.valueOf(buf.readLongLE());
+            case INT_UNSIGNED:
+                return BigDecimal.valueOf(buf.readUnsignedIntLE());
+            case INT:
+            case MEDIUMINT_UNSIGNED:
+            case MEDIUMINT:
+                return BigDecimal.valueOf(buf.readIntLE());
+            case SMALLINT_UNSIGNED:
+                return BigDecimal.valueOf(buf.readUnsignedShortLE());
+            case SMALLINT:
+            case YEAR:
+                return BigDecimal.valueOf(buf.readShortLE());
+            case TINYINT_UNSIGNED:
+                return BigDecimal.valueOf(buf.readUnsignedByte());
+            case TINYINT:
+                return BigDecimal.valueOf(buf.readByte());
+            case DECIMAL:
+                return parseBigDecimal(buf);
+            case FLOAT:
+                return BigDecimal.valueOf(buf.readFloatLE());
+            case DOUBLE:
+                return BigDecimal.valueOf(buf.readDoubleLE());
         }
 
-        ByteBuf buf = alloc.buffer(VarIntUtils.varIntBytes(size) + size);
+        throw new IllegalStateException("Cannot decode type " + type + " as a BigDecimal");
+    }
 
-        try {
-            VarIntUtils.writeVarInt(buf, size);
-            buf.writeCharSequence(ascii, StandardCharsets.US_ASCII);
-            return buf;
-        } catch (Throwable e) {
-            buf.release();
-            throw e;
-        }
+    private static BigDecimal parseBigDecimal(ByteBuf buf) {
+        return new BigDecimal(buf.toString(StandardCharsets.US_ASCII));
     }
 
     private static final class BigDecimalParameter extends AbstractParameter {
@@ -114,7 +139,7 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
 
         @Override
         public Mono<ByteBuf> publishBinary() {
-            return Mono.fromSupplier(() -> encodeAscii(allocator, value.toString()));
+            return Mono.fromSupplier(() -> CodecUtils.encodeAscii(allocator, value.toString()));
         }
 
         @Override

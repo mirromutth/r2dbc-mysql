@@ -36,23 +36,7 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     @Override
     public Short decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        if (binary) {
-            MySqlType type = metadata.getType();
-
-            switch (type) {
-                case SMALLINT:
-                case YEAR:
-                    return value.readShortLE();
-                case TINYINT_UNSIGNED:
-                    return value.readUnsignedByte();
-                case TINYINT:
-                    return (short) value.readByte();
-            }
-
-            throw new IllegalStateException("Cannot decode type " + type + " as a Short");
-        }
-
-        return (short) IntegerCodec.parse(value);
+        return (short) IntegerCodec.decodeInt(value, binary, metadata.getType());
     }
 
     @Override
@@ -72,11 +56,8 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
-        MySqlType type = metadata.getType();
-
-        return type == MySqlType.TINYINT_UNSIGNED || type == MySqlType.TINYINT ||
-            type == MySqlType.SMALLINT || type == MySqlType.YEAR;
+    public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType().isNumeric();
     }
 
     static final class ShortParameter extends AbstractParameter {

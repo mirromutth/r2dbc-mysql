@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import io.netty.buffer.ByteBuf;
-import reactor.util.annotation.NonNull;
 
 /**
  * Base class considers primitive class for {@link Codec} implementations. It should be an internal
@@ -40,7 +39,6 @@ interface PrimitiveCodec<T> extends Codec<T> {
      * @param context  the codec context.
      * @return the decoded data that is boxed.
      */
-    @NonNull
     @Override
     T decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context);

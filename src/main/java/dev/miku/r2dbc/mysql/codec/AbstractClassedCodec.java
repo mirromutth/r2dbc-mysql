@@ -28,16 +28,16 @@ abstract class AbstractClassedCodec<T> implements Codec<T> {
 
     protected final ByteBufAllocator allocator;
 
-    private final Class<? extends T> clazz;
+    private final Class<? extends T> type;
 
-    AbstractClassedCodec(ByteBufAllocator allocator, Class<? extends T> clazz) {
+    AbstractClassedCodec(ByteBufAllocator allocator, Class<? extends T> type) {
         this.allocator = allocator;
-        this.clazz = clazz;
+        this.type = type;
     }
 
     @Override
     public final boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
-        return target.isAssignableFrom(this.clazz) && doCanDecode(metadata);
+        return target.isAssignableFrom(this.type) && doCanDecode(metadata);
     }
 
     abstract protected boolean doCanDecode(MySqlColumnMetadata metadata);

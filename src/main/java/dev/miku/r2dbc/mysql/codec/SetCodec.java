@@ -116,7 +116,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
             return false;
         }
 
-        Class<?> argument = ParametrizedUtils.getTypeArgument(target, Set.class);
+        Class<?> argument = CodecUtils.getTypeArgument(target, Set.class);
 
         return argument != null && (argument.isEnum() || argument.isAssignableFrom(String.class));
     }

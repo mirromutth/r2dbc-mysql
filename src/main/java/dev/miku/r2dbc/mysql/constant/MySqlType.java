@@ -46,6 +46,11 @@ public enum MySqlType implements Type {
      */
     DECIMAL(MySqlType.ID_NEW_DECIMAL, BigDecimal.class) {
         @Override
+        public boolean isNumeric() {
+            return true;
+        }
+
+        @Override
         public boolean isDecimals() {
             return true;
         }
@@ -56,7 +61,7 @@ public enum MySqlType implements Type {
      */
     TINYINT(MySqlType.ID_TINYINT, Byte.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -71,7 +76,7 @@ public enum MySqlType implements Type {
      */
     TINYINT_UNSIGNED(MySqlType.ID_TINYINT, Short.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -86,7 +91,7 @@ public enum MySqlType implements Type {
      */
     SMALLINT(MySqlType.ID_SMALLINT, Short.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -101,7 +106,7 @@ public enum MySqlType implements Type {
      */
     SMALLINT_UNSIGNED(MySqlType.ID_SMALLINT, Integer.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -116,7 +121,7 @@ public enum MySqlType implements Type {
      */
     INT(MySqlType.ID_INT, Integer.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -131,7 +136,7 @@ public enum MySqlType implements Type {
      */
     INT_UNSIGNED(MySqlType.ID_INT, Long.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -146,6 +151,11 @@ public enum MySqlType implements Type {
      * is 8.0 or higher. Otherwise, the server will report a warning when defining the column.
      */
     FLOAT(MySqlType.ID_FLOAT, Float.class) {
+        @Override
+        public boolean isNumeric() {
+            return true;
+        }
+
         @Override
         public boolean isDecimals() {
             return true;
@@ -162,6 +172,11 @@ public enum MySqlType implements Type {
      * is 8.0 or higher. Otherwise, the server will report a warning when defining the column.
      */
     DOUBLE(MySqlType.ID_DOUBLE, Double.class) {
+        @Override
+        public boolean isNumeric() {
+            return true;
+        }
+
         @Override
         public boolean isDecimals() {
             return true;
@@ -189,7 +204,7 @@ public enum MySqlType implements Type {
      */
     BIGINT(MySqlType.ID_BIGINT, Long.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -204,7 +219,7 @@ public enum MySqlType implements Type {
      */
     BIGINT_UNSIGNED(MySqlType.ID_BIGINT, BigInteger.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -219,7 +234,7 @@ public enum MySqlType implements Type {
      */
     MEDIUMINT(MySqlType.ID_MEDIUMINT, Integer.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -234,7 +249,7 @@ public enum MySqlType implements Type {
      */
     MEDIUMINT_UNSIGNED(MySqlType.ID_MEDIUMINT, Integer.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -264,7 +279,7 @@ public enum MySqlType implements Type {
      */
     YEAR(MySqlType.ID_YEAR, Short.class) {
         @Override
-        public boolean isInt() {
+        public boolean isNumeric() {
             return true;
         }
 
@@ -596,15 +611,6 @@ public enum MySqlType implements Type {
     }
 
     /**
-     * Checks if this type is an integer. The {@link #YEAR} is an 16-bits integer.
-     *
-     * @return if it is an integer type.
-     */
-    public boolean isInt() {
-        return false;
-    }
-
-    /**
      * Checks if this type is a BLOB or CLOB.
      *
      * @return if it is a BLOB/CLOB type.
@@ -624,6 +630,15 @@ public enum MySqlType implements Type {
      * @return if it is a string type.
      */
     public boolean isString() {
+        return false;
+    }
+
+    /**
+     * Checks if this type is a numeric type. The {@link #YEAR} is an 16-bits integer.
+     *
+     * @return if it is a numeric type.
+     */
+    public boolean isNumeric() {
         return false;
     }
 

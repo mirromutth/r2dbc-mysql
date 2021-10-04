@@ -38,11 +38,21 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     @Override
     public Float decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        if (binary && metadata.getType() == MySqlType.FLOAT) {
-            return value.readFloatLE();
+        MySqlType type = metadata.getType();
+
+        if (binary) {
+            return decodeBinary(value, type);
         }
-        // otherwise encoded by text (must not be DOUBLE).
-        return Float.parseFloat(value.toString(StandardCharsets.US_ASCII));
+
+        switch (metadata.getType()) {
+            case FLOAT:
+            case DOUBLE:
+            case DECIMAL:
+            case BIGINT_UNSIGNED:
+                return Float.parseFloat(value.toString(StandardCharsets.US_ASCII));
+            default:
+                return (float) CodecUtils.parseLong(value);
+        }
     }
 
     @Override
@@ -56,9 +66,46 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
-        MySqlType type = metadata.getType();
-        return type == MySqlType.FLOAT || (type == MySqlType.DECIMAL && metadata.getNativePrecision() < 7);
+    public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType().isNumeric();
+    }
+
+    private static float decodeBinary(ByteBuf buf, MySqlType type) {
+        switch (type) {
+            case BIGINT_UNSIGNED:
+                long v = buf.readLongLE();
+
+                if (v < 0) {
+                    return CodecUtils.unsignedBigInteger(v).floatValue();
+                }
+
+                return v;
+            case BIGINT:
+                return buf.readLongLE();
+            case INT_UNSIGNED:
+                return buf.readUnsignedIntLE();
+            case INT:
+            case MEDIUMINT_UNSIGNED:
+            case MEDIUMINT:
+                return buf.readIntLE();
+            case SMALLINT_UNSIGNED:
+                return buf.readUnsignedShortLE();
+            case SMALLINT:
+            case YEAR:
+                return buf.readShortLE();
+            case TINYINT_UNSIGNED:
+                return buf.readUnsignedByte();
+            case TINYINT:
+                return buf.readByte();
+            case DECIMAL:
+                return Float.parseFloat(buf.toString(StandardCharsets.US_ASCII));
+            case FLOAT:
+                return buf.readFloatLE();
+            case DOUBLE:
+                return (float) buf.readDoubleLE();
+        }
+
+        throw new IllegalStateException("Cannot decode type " + type + " as a Float");
     }
 
     private static final class FloatParameter extends AbstractParameter {
@@ -111,7 +158,7 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
 
         @Override
         public int hashCode() {
-            return (value != +0.0f ? Float.floatToIntBits(value) : 0);
+            return (value != 0.0f ? Float.floatToIntBits(value) : 0);
         }
     }
 }

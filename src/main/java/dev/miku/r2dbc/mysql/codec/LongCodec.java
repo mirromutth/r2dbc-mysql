@@ -24,38 +24,37 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+
 /**
  * Codec for {@code long}.
  */
-final class LongCodec implements PrimitiveCodec<Long> {
-
-    private final ByteBufAllocator allocator;
+final class LongCodec extends AbstractPrimitiveCodec<Long> {
 
     LongCodec(ByteBufAllocator allocator) {
-        this.allocator = allocator;
+        super(allocator, Long.TYPE, Long.class);
     }
 
     @Override
     public Long decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        if (binary) {
-            return decodeBinary(value, metadata.getType());
-        }
-
-        // Note: no check overflow for BIGINT UNSIGNED
-        return parse(value);
-    }
-
-    @Override
-    public boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
         MySqlType type = metadata.getType();
 
-        // Here is a special condition. In the application scenario, many times programmers define
-        // BIGINT UNSIGNED usually for make sure the ID is not negative, in fact they just use 63-bits.
-        // If users force the requirement to convert BIGINT UNSIGNED to Long, should allow this behavior
-        // for better performance (BigInteger is obviously slower than long).
-        return type.isInt() &&
-            (type == MySqlType.BIGINT_UNSIGNED ? Long.class == target : target.isAssignableFrom(Long.class));
+        if (binary) {
+            return decodeBinary(value, type);
+        }
+
+        switch (type) {
+            case FLOAT:
+                return (long) Float.parseFloat(value.toString(StandardCharsets.US_ASCII));
+            case DOUBLE:
+                return (long) Double.parseDouble(value.toString(StandardCharsets.US_ASCII));
+            case DECIMAL:
+                return decimalLong(value);
+            default:
+                return CodecUtils.parseLong(value);
+        }
     }
 
     @Override
@@ -80,50 +79,13 @@ final class LongCodec implements PrimitiveCodec<Long> {
 
     @Override
     public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
-        // Here is a special condition. see `canDecode`.
-        return metadata.getType().isInt();
-    }
-
-    @Override
-    public Class<Long> getPrimitiveClass() {
-        return Long.TYPE;
-    }
-
-    /**
-     * Fast parse a negotiable integer from {@link ByteBuf} without copy.
-     *
-     * @param buf a {@link ByteBuf} include an integer that maybe has sign.
-     * @return an integer from {@code buf}.
-     */
-    static long parse(ByteBuf buf) {
-        byte first = buf.readByte();
-        boolean isNegative;
-        long value;
-
-        if (first == '-') {
-            isNegative = true;
-            value = 0L;
-        } else if (first >= '0' && first <= '9') {
-            isNegative = false;
-            value = (long) first - '0';
-        } else {
-            // Must be '+'.
-            isNegative = false;
-            value = 0L;
-        }
-
-        while (buf.isReadable()) {
-            value = value * 10L + (buf.readByte() - '0');
-        }
-
-        return isNegative ? -value : value;
+        return metadata.getType().isNumeric();
     }
 
     private static long decodeBinary(ByteBuf buf, MySqlType type) {
         switch (type) {
             case BIGINT_UNSIGNED:
             case BIGINT:
-                // Note: no check overflow for BIGINT UNSIGNED
                 return buf.readLongLE();
             case INT_UNSIGNED:
                 return buf.readUnsignedIntLE();
@@ -141,9 +103,19 @@ final class LongCodec implements PrimitiveCodec<Long> {
                 return buf.readUnsignedByte();
             case TINYINT:
                 return buf.readByte();
+            case DECIMAL:
+                return decimalLong(buf);
+            case FLOAT:
+                return (long) buf.readFloatLE();
+            case DOUBLE:
+                return (long) buf.readDoubleLE();
         }
 
         throw new IllegalStateException("Cannot decode type " + type + " as a Long");
+    }
+
+    private static long decimalLong(ByteBuf buf) {
+        return new BigDecimal(buf.toString(StandardCharsets.US_ASCII)).longValue();
     }
 
     private static final class LongParameter extends AbstractParameter {
