@@ -38,16 +38,21 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     @Override
     public Double decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
+        MySqlType type = metadata.getType();
+
         if (binary) {
-            switch (metadata.getType()) {
-                case DOUBLE:
-                    return value.readDoubleLE();
-                case FLOAT:
-                    return (double) value.readFloatLE();
-            }
-            // DECIMAL and size less than 16, encoded by text.
+            return decodeBinary(value, type);
         }
-        return Double.parseDouble(value.toString(StandardCharsets.US_ASCII));
+
+        switch (metadata.getType()) {
+            case FLOAT:
+            case DOUBLE:
+            case DECIMAL:
+            case BIGINT_UNSIGNED:
+                return Double.parseDouble(value.toString(StandardCharsets.US_ASCII));
+            default:
+                return (double) CodecUtils.parseLong(value);
+        }
     }
 
     @Override
@@ -61,10 +66,46 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
-        MySqlType type = metadata.getType();
-        return type == MySqlType.DOUBLE || type == MySqlType.FLOAT ||
-            (type == MySqlType.DECIMAL && metadata.getNativePrecision() < 16);
+    public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType().isNumeric();
+    }
+
+    private static double decodeBinary(ByteBuf buf, MySqlType type) {
+        switch (type) {
+            case BIGINT_UNSIGNED:
+                long v = buf.readLongLE();
+
+                if (v < 0) {
+                    return CodecUtils.unsignedBigInteger(v).doubleValue();
+                }
+
+                return v;
+            case BIGINT:
+                return buf.readLongLE();
+            case INT_UNSIGNED:
+                return buf.readUnsignedIntLE();
+            case INT:
+            case MEDIUMINT_UNSIGNED:
+            case MEDIUMINT:
+                return buf.readIntLE();
+            case SMALLINT_UNSIGNED:
+                return buf.readUnsignedShortLE();
+            case SMALLINT:
+            case YEAR:
+                return buf.readShortLE();
+            case TINYINT_UNSIGNED:
+                return buf.readUnsignedByte();
+            case TINYINT:
+                return buf.readByte();
+            case DECIMAL:
+                return Double.parseDouble(buf.toString(StandardCharsets.US_ASCII));
+            case FLOAT:
+                return buf.readFloatLE();
+            case DOUBLE:
+                return buf.readDoubleLE();
+        }
+
+        throw new IllegalStateException("Cannot decode type " + type + " as a Double");
     }
 
     private static final class DoubleParameter extends AbstractParameter {

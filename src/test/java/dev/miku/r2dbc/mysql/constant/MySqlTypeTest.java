@@ -32,7 +32,7 @@ class MySqlTypeTest {
                 assertThat(type.isBinary()).isTrue();
             }
 
-            if (type.isInt() || type.isDecimals()) {
+            if (type.isNumeric()) {
                 assertThat(type.isBinary()).isFalse();
             }
 
@@ -55,12 +55,16 @@ class MySqlTypeTest {
     void isInt() {
         for (MySqlType type : MySqlType.values()) {
             if (type == MySqlType.YEAR) {
-                assertThat(type.isInt()).isTrue();
+                assertThat(type.isNumeric()).isTrue();
             }
 
-            if (type.isBinary() || type.isLob() || type.isDecimals() || type.isString()) {
-                assertThat(type.isInt()).isFalse();
-            } else if (type.isInt() && type != MySqlType.YEAR) {
+            if (type.isDecimals()) {
+                assertThat(type.isNumeric()).isTrue();
+            }
+
+            if (type.isBinary() || type.isLob() || type.isString()) {
+                assertThat(type.isNumeric()).isFalse();
+            } else if (type.isNumeric() && type != MySqlType.YEAR && !type.isDecimals()) {
                 assertThat(type.name()).matches("[A-Z]*INT(_UNSIGNED)?");
             }
         }
@@ -106,10 +110,7 @@ class MySqlTypeTest {
     @Test
     void getBinarySize() {
         for (MySqlType type : MySqlType.values()) {
-            if (type.isInt()) {
-                assertThat(type.getBinarySize()).isBetween(Byte.BYTES, Long.BYTES)
-                    .matches(i -> (i & -i) == i, "Should be a power of 2");
-            } else if (type.isDecimals()) {
+            if (type.isDecimals()) {
                 switch (type) {
                     case FLOAT:
                         assertThat(type.getBinarySize()).isEqualTo(Float.BYTES);
@@ -121,6 +122,9 @@ class MySqlTypeTest {
                         assertThat(type.getBinarySize()).isEqualTo(0);
                         break;
                 }
+            } else if (type.isNumeric()) {
+                assertThat(type.getBinarySize()).isBetween(Byte.BYTES, Long.BYTES)
+                    .matches(i -> (i & -i) == i, "Should be a power of 2");
             } else {
                 assertThat(type.getBinarySize()).isEqualTo(0);
             }

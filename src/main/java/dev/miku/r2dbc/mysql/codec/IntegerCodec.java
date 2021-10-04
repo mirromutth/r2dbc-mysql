@@ -24,6 +24,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+
 /**
  * Codec for {@code int}.
  */
@@ -36,7 +39,7 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     @Override
     public Integer decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        return binary ? decodeBinary(value, metadata.getType()) : parse(value);
+        return decodeInt(value, binary, metadata.getType());
     }
 
     @Override
@@ -50,9 +53,7 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
 
         if ((byte) v == v) {
             return new ByteCodec.ByteParameter(allocator, (byte) v);
-        }
-
-        if ((short) v == v) {
+        } else if ((short) v == v) {
             return new ShortCodec.ShortParameter(allocator, (short) v);
         }
 
@@ -60,48 +61,37 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     }
 
     @Override
-    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
-        MySqlType type = metadata.getType();
-
-        return type.isInt() && type != MySqlType.BIGINT_UNSIGNED && type != MySqlType.BIGINT &&
-            type != MySqlType.INT_UNSIGNED;
+    public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType().isNumeric();
     }
 
-    /**
-     * Fast parse a negotiable integer from {@link ByteBuf} without copy.
-     *
-     * @param buf a {@link ByteBuf} include an integer that maybe has sign.
-     * @return an integer from {@code buf}.
-     */
-    static int parse(ByteBuf buf) {
-        byte first = buf.readByte();
-        boolean isNegative;
-        int value;
-
-        if (first == '-') {
-            isNegative = true;
-            value = 0;
-        } else if (first >= '0' && first <= '9') {
-            isNegative = false;
-            value = first - '0';
-        } else {
-            // Must be '+'.
-            isNegative = false;
-            value = 0;
+    static int decodeInt(ByteBuf buf, boolean binary, MySqlType type) {
+        if (binary) {
+            return decodeBinary(buf, type);
         }
 
-        while (buf.isReadable()) {
-            value = value * 10 + (buf.readByte() - '0');
+        switch (type) {
+            case FLOAT:
+                return (int) Float.parseFloat(buf.toString(StandardCharsets.US_ASCII));
+            case DOUBLE:
+                return (int) Double.parseDouble(buf.toString(StandardCharsets.US_ASCII));
+            case DECIMAL:
+                return decimalInt(buf);
+            default:
+                return CodecUtils.parseInt(buf);
         }
-
-        return isNegative ? -value : value;
     }
 
     private static int decodeBinary(ByteBuf buf, MySqlType type) {
         switch (type) {
+            case BIGINT_UNSIGNED:
+            case BIGINT:
+            case INT_UNSIGNED:
             case INT:
             case MEDIUMINT_UNSIGNED:
             case MEDIUMINT:
+                // MySQL was using little endian, only need lower 4-bytes for int64.
+                // MySQL return 32-bits two's complement for 24-bits integer
                 return buf.readIntLE();
             case SMALLINT_UNSIGNED:
                 return buf.readUnsignedShortLE();
@@ -112,9 +102,19 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
                 return buf.readUnsignedByte();
             case TINYINT:
                 return buf.readByte();
+            case DECIMAL:
+                return decimalInt(buf);
+            case FLOAT:
+                return (int) buf.readFloatLE();
+            case DOUBLE:
+                return (int) buf.readDoubleLE();
         }
 
         throw new IllegalStateException("Cannot decode type " + type + " as an Integer");
+    }
+
+    private static int decimalInt(ByteBuf buf) {
+        return new BigDecimal(buf.toString(StandardCharsets.US_ASCII)).intValue();
     }
 
     static final class IntParameter extends AbstractParameter {

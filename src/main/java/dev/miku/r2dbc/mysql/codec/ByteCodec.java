@@ -36,7 +36,7 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     @Override
     public Byte decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        return binary ? value.readByte() : (byte) IntegerCodec.parse(value);
+        return (byte) IntegerCodec.decodeInt(value, binary, metadata.getType());
     }
 
     @Override
@@ -50,8 +50,8 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    protected boolean doCanDecode(MySqlColumnMetadata metadata) {
-        return metadata.getType() == MySqlType.TINYINT;
+    public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType().isNumeric();
     }
 
     static final class ByteParameter extends AbstractParameter {

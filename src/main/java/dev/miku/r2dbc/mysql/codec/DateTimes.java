@@ -131,7 +131,7 @@ final class DateTimes {
     static boolean canDecodeChronology(MySqlType type, ParameterizedType target,
         Class<? extends Temporal> chronology) {
         return (type == MySqlType.DATETIME || type == MySqlType.TIMESTAMP) &&
-            LocalDate.class == ParametrizedUtils.getTypeArgument(target, chronology);
+            LocalDate.class == CodecUtils.getTypeArgument(target, chronology);
     }
 
     static boolean canDecodeDateTime(MySqlType type, Class<?> target, Class<? extends Temporal> temporal) {

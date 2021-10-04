@@ -38,7 +38,7 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     @Override
     public Year decode(ByteBuf value, MySqlColumnMetadata metadata, Class<?> target, boolean binary,
         CodecContext context) {
-        return binary ? Year.of(value.readShortLE()) : Year.of(IntegerCodec.parse(value));
+        return binary ? Year.of(value.readShortLE()) : Year.of(CodecUtils.parseInt(value));
     }
 
     @Override
@@ -52,9 +52,7 @@ final class YearCodec extends AbstractClassedCodec<Year> {
 
         if ((byte) year == year) {
             return new ByteCodec.ByteParameter(allocator, (byte) year);
-        }
-
-        if ((short) year == year) {
+        } else if ((short) year == year) {
             return new ShortCodec.ShortParameter(allocator, (short) year);
         }
 

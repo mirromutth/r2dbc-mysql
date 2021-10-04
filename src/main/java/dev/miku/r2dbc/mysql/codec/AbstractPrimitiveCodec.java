@@ -45,18 +45,11 @@ abstract class AbstractPrimitiveCodec<T> implements PrimitiveCodec<T> {
 
     @Override
     public final boolean canDecode(MySqlColumnMetadata metadata, Class<?> target) {
-        return target.isAssignableFrom(boxedClass) && doCanDecode(metadata);
-    }
-
-    @Override
-    public final boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
-        return doCanDecode(metadata);
+        return target.isAssignableFrom(boxedClass) && canPrimitiveDecode(metadata);
     }
 
     @Override
     public final Class<T> getPrimitiveClass() {
         return primitiveClass;
     }
-
-    abstract protected boolean doCanDecode(MySqlColumnMetadata metadata);
 }

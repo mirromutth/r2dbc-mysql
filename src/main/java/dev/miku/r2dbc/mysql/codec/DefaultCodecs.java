@@ -148,13 +148,13 @@ final class DefaultCodecs implements Codecs {
             return (T) Long.valueOf(value);
         } else if (BigInteger.class == type) {
             if (value < 0) {
-                return (T) BigIntegerCodec.unsignedBigInteger(value);
+                return (T) CodecUtils.unsignedBigInteger(value);
             }
 
             return (T) BigInteger.valueOf(value);
         } else if (type.isAssignableFrom(Number.class)) {
             if (value < 0) {
-                return (T) BigIntegerCodec.unsignedBigInteger(value);
+                return (T) CodecUtils.unsignedBigInteger(value);
             }
 
             return (T) Long.valueOf(value);
@@ -254,18 +254,8 @@ final class DefaultCodecs implements Codecs {
     }
 
     private static Class<?> chooseClass(MySqlColumnMetadata metadata, Class<?> type) {
-        // Object.class means could return any thing
-        if (Object.class == type) {
-            Class<?> mainType = metadata.getJavaType();
-
-            if (mainType != null) {
-                // use main type if main type exists
-                return mainType;
-            }
-            // otherwise no main type, just use Object.class
-        }
-
-        return type;
+        Class<?> javaType = metadata.getType().getJavaType();;
+        return type.isAssignableFrom(javaType) ? javaType : type;
     }
 
     private static Codec<?>[] defaultCodecs(ByteBufAllocator allocator) {
