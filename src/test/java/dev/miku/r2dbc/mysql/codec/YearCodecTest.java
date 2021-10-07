@@ -68,7 +68,7 @@ class YearCodecTest implements CodecTestSupport<Year> {
     public ByteBuf[] binaryParameters(Charset charset) {
         return Arrays.stream(years)
             .map(Year::getValue)
-            .map(LongCodecTest::encode)
+            .map(LongCodecTest::convert)
             .toArray(ByteBuf[]::new);
     }
 

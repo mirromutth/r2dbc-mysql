@@ -45,7 +45,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
      * @param context  information context array.
      * @return the {@link FieldValue} array.
      */
-    public final FieldValue[] decode(boolean isBinary, MySqlColumnMetadata[] context) {
+    public FieldValue[] decode(boolean isBinary, MySqlColumnMetadata[] context) {
         return isBinary ? binary(context) : text(context.length);
     }
 
@@ -134,7 +134,7 @@ public final class RowMessage implements ReferenceCounted, ServerMessage {
     }
 
     @Override
-    public final RowMessage touch(Object o) {
+    public RowMessage touch(Object o) {
         reader.touch(o);
         return this;
     }

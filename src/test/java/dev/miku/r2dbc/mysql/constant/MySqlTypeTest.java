@@ -52,19 +52,19 @@ class MySqlTypeTest {
     }
 
     @Test
-    void isInt() {
+    void isNumeric() {
         for (MySqlType type : MySqlType.values()) {
             if (type == MySqlType.YEAR) {
                 assertThat(type.isNumeric()).isTrue();
             }
 
-            if (type.isDecimals()) {
+            if (type.isFractional()) {
                 assertThat(type.isNumeric()).isTrue();
             }
 
             if (type.isBinary() || type.isLob() || type.isString()) {
                 assertThat(type.isNumeric()).isFalse();
-            } else if (type.isNumeric() && type != MySqlType.YEAR && !type.isDecimals()) {
+            } else if (type.isNumeric() && type != MySqlType.YEAR && !type.isFractional()) {
                 assertThat(type.name()).matches("[A-Z]*INT(_UNSIGNED)?");
             }
         }
@@ -90,9 +90,9 @@ class MySqlTypeTest {
     }
 
     @Test
-    void isDecimals() {
+    void isFractional() {
         for (MySqlType type : MySqlType.values()) {
-            if (type.isDecimals()) {
+            if (type.isFractional()) {
                 assertThat(type).isIn(MySqlType.FLOAT, MySqlType.DOUBLE, MySqlType.DECIMAL);
             }
         }
@@ -110,7 +110,7 @@ class MySqlTypeTest {
     @Test
     void getBinarySize() {
         for (MySqlType type : MySqlType.values()) {
-            if (type.isDecimals()) {
+            if (type.isFractional()) {
                 switch (type) {
                     case FLOAT:
                         assertThat(type.getBinarySize()).isEqualTo(Float.BYTES);

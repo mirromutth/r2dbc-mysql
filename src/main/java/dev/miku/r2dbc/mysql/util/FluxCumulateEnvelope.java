@@ -208,7 +208,7 @@ final class CumulateEnvelopeSubscriber implements CoreSubscriber<ByteBuf>, Scann
 
     @Override
     @SuppressWarnings("rawtypes")
-    public final Object scanUnsafe(Attr key) {
+    public Object scanUnsafe(Attr key) {
         if (key == Attr.PARENT) {
             return this.s;
         } else if (key == Attr.ACTUAL) {

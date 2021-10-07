@@ -78,6 +78,6 @@ class BitSetCodecTest implements CodecTestSupport<BitSet> {
         if (value.isEmpty()) {
             return Unpooled.wrappedBuffer(new byte[] { 0 });
         }
-        return LongCodecTest.encode(value.toLongArray()[0]);
+        return LongCodecTest.convert(value.toLongArray()[0]);
     }
 }

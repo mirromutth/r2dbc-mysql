@@ -84,7 +84,7 @@ final class ParamWriter extends ParameterWriter {
         requireNonNull(value, "value must not be null");
 
         startAvailable(Mode.NUMERIC);
-        builder.append(value.toString());
+        builder.append(value);
     }
 
     @Override
@@ -106,7 +106,7 @@ final class ParamWriter extends ParameterWriter {
         requireNonNull(value, "value must not be null");
 
         startAvailable(Mode.NUMERIC);
-        builder.append(value.toString());
+        builder.append(value);
     }
 
     @Override

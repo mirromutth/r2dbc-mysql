@@ -48,10 +48,11 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
 
         switch (type) {
             case FLOAT:
-                return BigInteger.valueOf((long) Float.parseFloat(value.toString(StandardCharsets.US_ASCII)));
+                return BigDecimal.valueOf(Float.parseFloat(value.toString(StandardCharsets.US_ASCII)))
+                    .toBigInteger();
             case DOUBLE:
-                return BigInteger.valueOf(
-                    (long) Double.parseDouble(value.toString(StandardCharsets.US_ASCII)));
+                return BigDecimal.valueOf(Double.parseDouble(value.toString(StandardCharsets.US_ASCII)))
+                    .toBigInteger();
             case DECIMAL:
                 return decimalBigInteger(value);
             case BIGINT_UNSIGNED:
@@ -80,6 +81,12 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
+        BigInteger i = (BigInteger) value;
+
+        if (i.bitLength() < Long.SIZE) {
+            return LongCodec.encodeLong(allocator, i.longValue());
+        }
+
         return new BigIntegerParameter(allocator, (BigInteger) value);
     }
 
@@ -119,9 +126,9 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
             case DECIMAL:
                 return decimalBigInteger(buf);
             case FLOAT:
-                return BigInteger.valueOf((long) buf.readFloatLE());
+                return BigDecimal.valueOf(buf.readFloatLE()).toBigInteger();
             case DOUBLE:
-                return BigInteger.valueOf((long) buf.readDoubleLE());
+                return BigDecimal.valueOf(buf.readDoubleLE()).toBigInteger();
         }
 
         throw new IllegalStateException("Cannot decode type " + type + " as a BigInteger");

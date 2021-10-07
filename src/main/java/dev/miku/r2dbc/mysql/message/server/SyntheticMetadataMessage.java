@@ -47,11 +47,11 @@ public final class SyntheticMetadataMessage implements ServerMessage {
         this.eof = eof;
     }
 
-    public final DefinitionMetadataMessage[] unwrap() {
+    public DefinitionMetadataMessage[] unwrap() {
         return messages;
     }
 
-    public final boolean isCompleted() {
+    public boolean isCompleted() {
         return completed;
     }
 

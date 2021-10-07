@@ -18,7 +18,6 @@ package dev.miku.r2dbc.mysql;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.Connection;
 import io.r2dbc.spi.Result;
 import org.junit.jupiter.api.Test;

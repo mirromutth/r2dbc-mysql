@@ -64,8 +64,15 @@ final class LongCodec extends AbstractPrimitiveCodec<Long> {
 
     @Override
     public Parameter encode(Object value, CodecContext context) {
-        long v = (Long) value;
+        return encodeLong(allocator, (Long) value);
+    }
 
+    @Override
+    public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
+        return metadata.getType().isNumeric();
+    }
+
+    static Parameter encodeLong(ByteBufAllocator allocator, long v) {
         if ((byte) v == v) {
             return new ByteCodec.ByteParameter(allocator, (byte) v);
         } else if ((short) v == v) {
@@ -75,11 +82,6 @@ final class LongCodec extends AbstractPrimitiveCodec<Long> {
         }
 
         return new LongParameter(allocator, v);
-    }
-
-    @Override
-    public boolean canPrimitiveDecode(MySqlColumnMetadata metadata) {
-        return metadata.getType().isNumeric();
     }
 
     private static long decodeBinary(ByteBuf buf, MySqlType type) {
