@@ -17,6 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.ConnectionContextTest;
+import dev.miku.r2dbc.mysql.Parameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.Query;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
@@ -34,6 +35,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -42,8 +44,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Base class considers unit tests for implementations of {@link Codec}.
- * <p>
- * TODO: add test cases for decoding.
  */
 interface CodecTestSupport<T> {
 
@@ -57,7 +57,7 @@ interface CodecTestSupport<T> {
         .build();
 
     @Test
-    default void binary() {
+    default void encodeBinary() {
         Codec<T> codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
         T[] origin = originParameters();
         ByteBuf[] binaries = binaryParameters(CharCollation.clientCharCollation().getCharset());
@@ -68,7 +68,8 @@ interface CodecTestSupport<T> {
             AtomicReference<ByteBuf> buf = new AtomicReference<>();
             ByteBuf sized = sized(binaries[i]);
             try {
-                merge(Flux.from(codec.encode(origin[i], context()).publishBinary()))
+                Parameter parameter = codec.encode(origin[i], context());
+                merge(Flux.from(parameter.publishBinary()))
                     .doOnNext(buf::set)
                     .as(StepVerifier::create)
                     .expectNext(sized)
@@ -81,7 +82,7 @@ interface CodecTestSupport<T> {
     }
 
     @Test
-    default void stringify() {
+    default void encodeStringify() {
         Codec<T> codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
         T[] origin = originParameters();
         Object[] strings = stringifyParameters();
@@ -97,6 +98,28 @@ interface CodecTestSupport<T> {
                 .as(StepVerifier::create)
                 .verifyComplete();
             assertEquals(ParameterWriterHelper.toSql(writer), strings[i].toString());
+        }
+    }
+
+    @Test
+    default void decodeBinary() {
+        Codec<T> codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
+
+        for (Decoding d : decoding(true, StandardCharsets.UTF_8)) {
+            assertThat(codec.decode(d.content(), d.metadata(), Object.class, true, context()))
+                .as("Decode failed, %s", d)
+                .isEqualTo(d.value());
+        }
+    }
+
+    @Test
+    default void decodeStringify() {
+        Codec<T> codec = getCodec(UnpooledByteBufAllocator.DEFAULT);
+
+        for (Decoding d : decoding(false, StandardCharsets.UTF_8)) {
+            assertThat(codec.decode(d.content(), d.metadata(), Object.class, false, context()))
+                .as("Decode failed, %s", d)
+                .isEqualTo(d.value());
         }
     }
 
@@ -146,4 +169,16 @@ interface CodecTestSupport<T> {
     Object[] stringifyParameters();
 
     ByteBuf[] binaryParameters(Charset charset);
+
+    default Decoding[] decoding(boolean binary, Charset charset) {
+        // TODO: remove default implementation. Currently, it is only overridden by numeric types' codec.
+        return new Decoding[0];
+    }
+
+    default ByteBuf encodeAscii(String s) {
+        ByteBuf buf = Unpooled.buffer(s.length(), s.length());
+        buf.writeCharSequence(s, StandardCharsets.US_ASCII);
+
+        return buf;
+    }
 }

@@ -20,13 +20,31 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 
+import java.math.BigInteger;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+
+import static dev.miku.r2dbc.mysql.constant.MySqlType.BIGINT;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.BIGINT_UNSIGNED;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.DECIMAL;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.DOUBLE;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.FLOAT;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.INT;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.INT_UNSIGNED;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.MEDIUMINT;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.MEDIUMINT_UNSIGNED;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.SMALLINT;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.SMALLINT_UNSIGNED;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.TINYINT;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.TINYINT_UNSIGNED;
+import static dev.miku.r2dbc.mysql.constant.MySqlType.YEAR;
 
 /**
  * Unit tests for {@link ByteCodec}.
  */
-class ByteCodecTest implements CodecTestSupport<Byte> {
+class ByteCodecTest extends NumericCodecTestSupport<Byte> {
 
     private final Byte[] bytes = {
         0,
@@ -63,7 +81,72 @@ class ByteCodecTest implements CodecTestSupport<Byte> {
     }
 
     @Override
-    public ByteBuf sized(ByteBuf value) {
-        return value;
+    public Decoding[] decoding(boolean binary, Charset charset) {
+        return decimals().flatMap(it -> {
+            List<Decoding> d = new ArrayList<>();
+            BigInteger integer = it.toBigInteger();
+            byte res = integer.byteValue();
+
+            d.add(new Decoding(encodeAscii(it.toString()), res, DECIMAL));
+
+            float fv = it.floatValue();
+
+            if (Float.isFinite(fv) && (byte) fv == res) {
+                d.add(new Decoding(encodeFloat(fv, binary), res, FLOAT));
+            }
+
+            double dv = it.doubleValue();
+
+            if (Double.isFinite(dv) && (byte) dv == res) {
+                d.add(new Decoding(encodeDouble(dv, binary), res, DOUBLE));
+            }
+
+            int bitLength = integer.bitLength(), sign = integer.signum();
+
+            if (sign > 0) {
+                if (bitLength <= Long.SIZE) {
+                    d.add(new Decoding(encodeUin64(integer.longValue(), binary), res, BIGINT_UNSIGNED));
+                }
+
+                if (bitLength <= Integer.SIZE) {
+                    d.add(new Decoding(encodeUint(integer.intValue(), binary), res, INT_UNSIGNED));
+                }
+
+                if (bitLength <= MEDIUM_SIZE) {
+                    d.add(new Decoding(encodeInt(integer.intValue(), binary), res, MEDIUMINT_UNSIGNED));
+                }
+
+                if (bitLength <= Short.SIZE) {
+                    d.add(new Decoding(encodeUint16(integer.shortValue(), binary), res, SMALLINT_UNSIGNED));
+                }
+
+                if (bitLength <= Byte.SIZE) {
+                    d.add(new Decoding(encodeUint8(integer.byteValue(), binary), res, TINYINT_UNSIGNED));
+                }
+            }
+
+            if (bitLength < Long.SIZE) {
+                d.add(new Decoding(encodeInt64(integer.longValueExact(), binary), res, BIGINT));
+            }
+
+            if (bitLength < Integer.SIZE) {
+                d.add(new Decoding(encodeInt(integer.intValueExact(), binary), res, INT));
+            }
+
+            if (bitLength < MEDIUM_SIZE) {
+                d.add(new Decoding(encodeInt(integer.intValueExact(), binary), res, MEDIUMINT));
+            }
+
+            if (bitLength < Short.SIZE) {
+                d.add(new Decoding(encodeInt16(integer.shortValueExact(), binary), res, SMALLINT));
+                d.add(new Decoding(encodeInt16(integer.shortValueExact(), binary), res, YEAR));
+            }
+
+            if (bitLength < Byte.SIZE) {
+                d.add(new Decoding(encodeInt8(integer.byteValueExact(), binary), res, TINYINT));
+            }
+
+            return d.stream();
+        }).toArray(Decoding[]::new);
     }
 }

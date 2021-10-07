@@ -183,6 +183,7 @@ final class DefaultCodecs implements Codecs {
         return NullParameter.INSTANCE;
     }
 
+    @Nullable
     private <T> T decodePrimitive(FieldValue value, MySqlColumnMetadata metadata, Class<?> type,
         boolean binary, CodecContext context) {
         @SuppressWarnings("unchecked")
@@ -254,7 +255,7 @@ final class DefaultCodecs implements Codecs {
     }
 
     private static Class<?> chooseClass(MySqlColumnMetadata metadata, Class<?> type) {
-        Class<?> javaType = metadata.getType().getJavaType();;
+        Class<?> javaType = metadata.getType().getJavaType();
         return type.isAssignableFrom(javaType) ? javaType : type;
     }
 

@@ -51,7 +51,7 @@ public enum MySqlType implements Type {
         }
 
         @Override
-        public boolean isDecimals() {
+        public boolean isFractional() {
             return true;
         }
     },
@@ -157,7 +157,7 @@ public enum MySqlType implements Type {
         }
 
         @Override
-        public boolean isDecimals() {
+        public boolean isFractional() {
             return true;
         }
 
@@ -178,7 +178,7 @@ public enum MySqlType implements Type {
         }
 
         @Override
-        public boolean isDecimals() {
+        public boolean isFractional() {
             return true;
         }
 
@@ -643,12 +643,12 @@ public enum MySqlType implements Type {
     }
 
     /**
-     * Checks if this type can be decoded as a decimal number. This means that it may have the scale of the
-     * column.
+     * Checks if this type can be decoded as a fractional number.  This means that it may have the scale of
+     * the column.
      *
-     * @return if it is a decimal type.
+     * @return if it is a fractional type.
      */
-    public boolean isDecimals() {
+    public boolean isFractional() {
         return false;
     }
 

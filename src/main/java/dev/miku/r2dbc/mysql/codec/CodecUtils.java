@@ -104,8 +104,8 @@ final class CodecUtils {
     }
 
     /**
-     * Parses a positive integer from a {@link String} which should only contain numeric characters.  It
-     * will not check if overflow or not.
+     * Parses a positive integer from a {@link String} which should only contain numeric characters.  It will
+     * not check if overflow or not.
      *
      * @param num the {@link String}.
      * @return the parsed integer.

@@ -115,7 +115,7 @@ final class MySqlColumnDescriptor implements MySqlColumnMetadata {
         // 0x00 means it is an integer or a static string.
         // 0x1f means it is a dynamic string, an original-double or an original-float.
         // 0x00 to 0x51 for the number of digits to right of the decimal point.
-        if (type.isDecimals() && decimals >= 0 && decimals <= 0x51) {
+        if (type.isFractional() && decimals >= 0 && decimals <= 0x51) {
             return decimals;
         }
 
