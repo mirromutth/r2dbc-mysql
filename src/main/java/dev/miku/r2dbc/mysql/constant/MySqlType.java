@@ -23,7 +23,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 
@@ -272,7 +271,7 @@ public enum MySqlType implements Type {
     /**
      * A date time type. It does not contain timezone. It uses string format to transfer the value.
      */
-    DATETIME(MySqlType.ID_DATETIME, LocalDateTime.class),
+    DATETIME(MySqlType.ID_DATETIME, ZonedDateTime.class),
 
     /**
      * A year type. It contains neither leap year information nor timezone.
