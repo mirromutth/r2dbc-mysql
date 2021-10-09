@@ -16,8 +16,8 @@
 
 package dev.miku.r2dbc.mysql.message.server;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
 /**
@@ -25,7 +25,7 @@ import reactor.util.annotation.Nullable;
  */
 abstract class MetadataDecodeContext implements DecodeContext {
 
-    private static final Logger logger = LoggerFactory.getLogger(MetadataDecodeContext.class);
+    private static final Logger logger = Loggers.getLogger(MetadataDecodeContext.class);
 
     private final boolean eofDeprecated;
 

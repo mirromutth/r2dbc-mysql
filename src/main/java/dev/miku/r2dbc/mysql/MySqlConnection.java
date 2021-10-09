@@ -31,10 +31,10 @@ import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.TransactionDefinition;
 import io.r2dbc.spi.ValidationDepth;
 import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
 import java.time.DateTimeException;
@@ -53,7 +53,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireValidName;
  */
 public final class MySqlConnection implements Connection, ConnectionState {
 
-    private static final Logger logger = LoggerFactory.getLogger(MySqlConnection.class);
+    private static final Logger logger = Loggers.getLogger(MySqlConnection.class);
 
     private static final int DEFAULT_LOCK_WAIT_TIMEOUT = 50;
 

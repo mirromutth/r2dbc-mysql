@@ -70,7 +70,6 @@
         <logback.version>1.2.5</logback.version>
         <mockito.version>3.12.3</mockito.version>
         <mysql.version>8.0.26</mysql.version>
-        <slf4j.version>1.7.32</slf4j.version>
         <testcontainers.version>1.16.0</testcontainers.version>
         <hikari-cp.version>4.0.3</hikari-cp.version>
         <spring-framework.version>5.3.9</spring-framework.version>
@@ -130,11 +129,6 @@
             <artifactId>r2dbc-spi</artifactId>
             <version>${r2dbc-spi.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
@@ -193,6 +187,12 @@
             <artifactId>HikariCP</artifactId>
             <version>${hikari-cp.version}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
