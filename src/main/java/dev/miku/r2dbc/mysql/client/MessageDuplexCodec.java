@@ -38,9 +38,9 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.util.ReferenceCountUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -53,7 +53,7 @@ final class MessageDuplexCodec extends ChannelDuplexHandler {
 
     static final String NAME = "R2dbcMySqlMessageDuplexCodec";
 
-    private static final Logger logger = LoggerFactory.getLogger(MessageDuplexCodec.class);
+    private static final Logger logger = Loggers.getLogger(MessageDuplexCodec.class);
 
     private DecodeContext decodeContext = DecodeContext.login();
 

@@ -17,8 +17,8 @@
 package dev.miku.r2dbc.mysql.client;
 
 import dev.miku.r2dbc.mysql.util.AddressUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 import javax.naming.InvalidNameException;
 import javax.naming.ldap.LdapName;
@@ -47,7 +47,7 @@ final class DefaultHostnameVerifier implements HostnameVerifier {
 
     static final DefaultHostnameVerifier INSTANCE = new DefaultHostnameVerifier();
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultHostnameVerifier.class);
+    private static final Logger logger = Loggers.getLogger(DefaultHostnameVerifier.class);
 
     private static final boolean LOG_DEBUG = logger.isDebugEnabled();
 

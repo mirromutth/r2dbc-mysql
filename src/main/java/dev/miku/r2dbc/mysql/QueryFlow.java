@@ -52,14 +52,14 @@ import io.netty.util.ReferenceCounted;
 import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import io.r2dbc.spi.TransactionDefinition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Operators;
 import reactor.core.publisher.SynchronousSink;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
@@ -447,7 +447,7 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
  */
 final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 
-    private static final Logger logger = LoggerFactory.getLogger(PrepareExchangeable.class);
+    private static final Logger logger = Loggers.getLogger(PrepareExchangeable.class);
 
     private static final int PREPARE_OR_RESET = 1;
 
@@ -713,7 +713,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
  */
 final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
 
-    private static final Logger logger = LoggerFactory.getLogger(LoginExchangeable.class);
+    private static final Logger logger = Loggers.getLogger(LoginExchangeable.class);
 
     private static final Map<String, String> ATTRIBUTES = Collections.emptyMap();
 

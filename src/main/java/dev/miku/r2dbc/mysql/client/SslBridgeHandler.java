@@ -28,9 +28,9 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.netty.tcp.SslProvider;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLEngine;
@@ -49,7 +49,7 @@ final class SslBridgeHandler extends ChannelDuplexHandler {
 
     private static final String SSL_NAME = "R2dbcMySqlSslHandler";
 
-    private static final Logger logger = LoggerFactory.getLogger(SslBridgeHandler.class);
+    private static final Logger logger = Loggers.getLogger(SslBridgeHandler.class);
 
     private static final String[] TLS_PROTOCOLS = new String[] {
         TlsVersions.TLS1_3, TlsVersions.TLS1_2, TlsVersions.TLS1_1, TlsVersions.TLS1

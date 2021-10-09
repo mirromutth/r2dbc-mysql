@@ -17,10 +17,10 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
 /**
@@ -28,7 +28,7 @@ import reactor.util.annotation.Nullable;
  */
 abstract class AbstractLobParameter extends AbstractParameter {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractLobParameter.class);
+    private static final Logger logger = Loggers.getLogger(AbstractLobParameter.class);
 
     @Override
     public final void dispose() {
