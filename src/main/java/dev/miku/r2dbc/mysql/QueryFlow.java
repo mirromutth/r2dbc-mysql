@@ -53,7 +53,6 @@ import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import io.r2dbc.spi.TransactionDefinition;
 import reactor.core.CoreSubscriber;
-import reactor.core.publisher.DirectProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Operators;
@@ -301,7 +300,12 @@ final class QueryFlow {
  */
 abstract class BaseFluxExchangeable extends FluxExchangeable<ServerMessage> {
 
-    protected final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
+    /**
+     * TODO: use new API.
+     */
+    @SuppressWarnings("deprecation")
+    protected final reactor.core.publisher.DirectProcessor<ClientMessage> requests =
+        reactor.core.publisher.DirectProcessor.create();
 
     @Override
     public final void subscribe(CoreSubscriber<? super ClientMessage> actual) {
@@ -465,7 +469,12 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 
     private final AtomicBoolean disposed = new AtomicBoolean();
 
-    private final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
+    /**
+     * TODO: use new API.
+     */
+    @SuppressWarnings("deprecation")
+    private final reactor.core.publisher.DirectProcessor<ClientMessage> requests =
+        reactor.core.publisher.DirectProcessor.create();
 
     private final PrepareCache cache;
 
@@ -730,7 +739,12 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
 
     private static final int HANDSHAKE_VERSION = 10;
 
-    private final DirectProcessor<LoginClientMessage> requests = DirectProcessor.create();
+    /**
+     * TODO: use new API.
+     */
+    @SuppressWarnings("deprecation")
+    private final reactor.core.publisher.DirectProcessor<LoginClientMessage> requests =
+        reactor.core.publisher.DirectProcessor.create();
 
     private final Client client;
 
@@ -1229,7 +1243,12 @@ final class TransactionBatchExchangeable extends FluxExchangeable<Void> {
 
 final class TransactionMultiExchangeable extends FluxExchangeable<Void> {
 
-    private final DirectProcessor<ClientMessage> requests = DirectProcessor.create();
+    /**
+     * TODO: use new API.
+     */
+    @SuppressWarnings("deprecation")
+    private final reactor.core.publisher.DirectProcessor<ClientMessage> requests =
+        reactor.core.publisher.DirectProcessor.create();
 
     private final AbstractTransactionState state;
 
