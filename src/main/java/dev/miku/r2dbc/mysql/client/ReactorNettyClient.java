@@ -32,7 +32,6 @@ import io.r2dbc.spi.R2dbcException;
 import org.reactivestreams.Subscription;
 import reactor.core.CoreSubscriber;
 import reactor.core.Disposable;
-import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
@@ -66,9 +65,19 @@ final class ReactorNettyClient implements Client {
 
     private final ConnectionContext context;
 
-    private final EmitterProcessor<ClientMessage> requestProcessor = EmitterProcessor.create(false);
+    /**
+     * TODO: use new API.
+     */
+    @SuppressWarnings("deprecation")
+    private final reactor.core.publisher.EmitterProcessor<ClientMessage> requestProcessor =
+        reactor.core.publisher.EmitterProcessor.create(false);
 
-    private final EmitterProcessor<ServerMessage> responseProcessor = EmitterProcessor.create(false);
+    /**
+     * TODO: use new API.
+     */
+    @SuppressWarnings("deprecation")
+    private final reactor.core.publisher.EmitterProcessor<ServerMessage> responseProcessor =
+        reactor.core.publisher.EmitterProcessor.create(false);
 
     private final RequestQueue requestQueue = new RequestQueue();
 

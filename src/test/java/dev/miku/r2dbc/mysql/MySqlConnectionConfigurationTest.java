@@ -99,6 +99,26 @@ class MySqlConnectionConfigurationTest {
     }
 
     @Test
+    void allSslModeHosted() {
+        String sslCa = "/path/to/ca.pem";
+
+        for (SslMode mode : SslMode.values()) {
+            ObjectAssert<MySqlConnectionConfiguration> asserted = assertThat(hostedSslMode(mode, sslCa));
+
+            asserted.extracting(MySqlConnectionConfiguration::getDomain).isEqualTo(HOST);
+            asserted.extracting(MySqlConnectionConfiguration::getUser).isEqualTo(USER);
+            asserted.extracting(MySqlConnectionConfiguration::isHost).isEqualTo(true);
+            asserted.extracting(MySqlConnectionConfiguration::getSsl)
+                .extracting(MySqlSslConfiguration::getSslMode).isEqualTo(mode);
+
+            if (mode.startSsl()) {
+                asserted.extracting(MySqlConnectionConfiguration::getSsl)
+                    .extracting(MySqlSslConfiguration::getSslCa).isSameAs(sslCa);
+            }
+        }
+    }
+
+    @Test
     void invalidPort() {
         ThrowableTypeAssert<?> asserted = assertThatIllegalArgumentException();
 
@@ -129,9 +149,10 @@ class MySqlConnectionConfigurationTest {
             .sslMode(SslMode.REQUIRED)
             .sslContextBuilderCustomizer(customizer)
             .build();
+        MySqlSslConfiguration ssl = configuration.getSsl();
 
         assertThatIllegalStateException()
-            .isThrownBy(() -> configuration.getSsl().customizeSslContext(SslContextBuilder.forClient()))
+            .isThrownBy(() -> ssl.customizeSslContext(SslContextBuilder.forClient()))
             .withMessage(message);
     }
 
