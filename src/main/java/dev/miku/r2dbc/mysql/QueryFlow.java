@@ -110,6 +110,7 @@ final class QueryFlow {
                 return Flux.empty();
             }
 
+            // Note: the prepared SQL may not be sent when the cache matches.
             return client.exchange(new PrepareExchangeable(cache, sql, bindings.iterator(), fetchSize))
                 .windowUntil(RESULT_DONE);
         });
@@ -278,7 +279,7 @@ final class QueryFlow {
      * @return the messages received in response to this exchange.
      */
     private static Flux<ServerMessage> execute0(Client client, String sql) {
-        return client.exchange(TextQueryMessage.of(sql), (message, sink) -> {
+        return client.<ServerMessage>exchange(TextQueryMessage.of(sql), (message, sink) -> {
             if (message instanceof ErrorMessage) {
                 sink.next(((ErrorMessage) message).offendedBy(sql));
                 sink.complete();
@@ -289,7 +290,7 @@ final class QueryFlow {
                     sink.complete();
                 }
             }
-        });
+        }).doOnSubscribe(ignored -> QueryLogger.log(sql));
     }
 
     private QueryFlow() { }
@@ -370,6 +371,8 @@ final class TextQueryExchangeable extends BaseFluxExchangeable {
     @Override
     protected void afterSubscribe() {
         Binding binding = this.bindings.next();
+
+        QueryLogger.log(query);
         this.requests.onNext(binding.toTextMessage(this.query));
     }
 
@@ -380,6 +383,7 @@ final class TextQueryExchangeable extends BaseFluxExchangeable {
 
     @Override
     protected ClientMessage nextMessage() {
+        QueryLogger.log(query);
         return bindings.next().toTextMessage(query);
     }
 
@@ -415,6 +419,8 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
     @Override
     protected void afterSubscribe() {
         String current = this.statements.next();
+
+        QueryLogger.log(current);
         this.current = current;
         this.requests.onNext(TextQueryMessage.of(current));
     }
@@ -427,6 +433,8 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
     @Override
     protected ClientMessage nextMessage() {
         String current = statements.next();
+
+        QueryLogger.log(current);
         this.current = current;
         return TextQueryMessage.of(current);
     }
@@ -494,6 +502,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
         if (statementId == null) {
             logger.debug("Prepare cache mismatch, try to preparing");
             this.shouldClose = true;
+            QueryLogger.log(sql);
             this.requests.onNext(new PrepareQueryMessage(sql));
         } else {
             logger.debug("Prepare cache matched statement {} when getting", statementId);
@@ -1212,6 +1221,7 @@ final class TransactionBatchExchangeable extends FluxExchangeable<Void> {
 
         String sql = state.batchStatement();
 
+        QueryLogger.log(sql);
         state.setSql(sql);
         s.onSubscribe(Operators.scalarSubscription(s, TextQueryMessage.of(sql)));
     }
@@ -1235,6 +1245,7 @@ final class TransactionMultiExchangeable extends FluxExchangeable<Void> {
         if (state.accept(message, sink)) {
             String sql = statements.next();
 
+            QueryLogger.log(sql);
             state.setSql(sql);
             requests.onNext(TextQueryMessage.of(sql));
         }
@@ -1255,6 +1266,7 @@ final class TransactionMultiExchangeable extends FluxExchangeable<Void> {
 
         String sql = statements.next();
 
+        QueryLogger.log(sql);
         state.setSql(sql);
         requests.subscribe(s);
         requests.onNext(TextQueryMessage.of(sql));
