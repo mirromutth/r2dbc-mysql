@@ -26,28 +26,45 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 
 /**
- * A plain text SQL query message, it could include multi-statements.
+ * A client prepared query message based on text protocol.
  */
-public final class TextQueryMessage implements ClientMessage {
+public final class PreparedTextQueryMessage extends AtomicReference<Parameter[]>
+    implements ClientMessage, Disposable {
 
-    static final byte QUERY_FLAG = 3;
-
-    private final String sql;
+    private final Query query;
 
     /**
-     * Creates a {@link TextQueryMessage} without parameter.
+     * Creates a {@link PreparedTextQueryMessage} with parameters.
      *
-     * @param sql plain text SQL, should not contain any parameter placeholder.
-     * @throws IllegalArgumentException if {@code sql} is {@code null}.
+     * @param query  the parsed {@link Query}.
+     * @param values the parameter values.
+     * @throws IllegalArgumentException if {@code query} or {@code values} is {@code null}.
      */
-    public TextQueryMessage(String sql) {
-        requireNonNull(sql, "sql must not be null");
+    public PreparedTextQueryMessage(Query query, Parameter[] values) {
+        super(requireNonNull(values, "values must not be null"));
 
-        this.sql = sql;
+        this.query = requireNonNull(query, "query must not be null");
+    }
+
+    @Override
+    public void dispose() {
+        Parameter[] values = getAndSet(null);
+
+        for (Parameter value : values) {
+            if (value != null) {
+                value.dispose();
+            }
+        }
+    }
+
+    @Override
+    public boolean isDisposed() {
+        return get() == null;
     }
 
     @Override
@@ -56,12 +73,21 @@ public final class TextQueryMessage implements ClientMessage {
         requireNonNull(context, "context must not be null");
 
         Charset charset = context.getClientCollation().getCharset();
+        Flux<Parameter> parameters = Flux.defer(() -> {
+            Parameter[] values = getAndSet(null);
 
-        return Mono.fromSupplier(() -> {
+            if (values == null) {
+                return Flux.error(new IllegalStateException("Parameters have been disposed"));
+            }
+
+            return Flux.fromArray(values);
+        });
+
+        return ParamWriter.publish(query, parameters).map(it -> {
             ByteBuf buf = allocator.buffer();
 
             try {
-                buf.writeByte(QUERY_FLAG).writeCharSequence(sql, charset);
+                buf.writeByte(TextQueryMessage.QUERY_FLAG).writeCharSequence(it, charset);
                 return buf;
             } catch (Throwable e) {
                 // Maybe IndexOutOfBounds or OOM (too large sql)
@@ -73,6 +99,6 @@ public final class TextQueryMessage implements ClientMessage {
 
     @Override
     public String toString() {
-        return "TextQueryMessage{sql=REDACTED}";
+        return "PreparedTextQueryMessage{sql=REDACTED}";
     }
 }

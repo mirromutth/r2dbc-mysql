@@ -29,8 +29,10 @@ import dev.miku.r2dbc.mysql.message.client.LoginClientMessage;
 import dev.miku.r2dbc.mysql.message.client.PingMessage;
 import dev.miku.r2dbc.mysql.message.client.PrepareQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedCloseMessage;
+import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedFetchMessage;
 import dev.miku.r2dbc.mysql.message.client.PreparedResetMessage;
+import dev.miku.r2dbc.mysql.message.client.PreparedTextQueryMessage;
 import dev.miku.r2dbc.mysql.message.client.SslRequest;
 import dev.miku.r2dbc.mysql.message.client.TextQueryMessage;
 import dev.miku.r2dbc.mysql.message.server.AuthMoreDataMessage;
@@ -53,13 +55,16 @@ import io.r2dbc.spi.IsolationLevel;
 import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import io.r2dbc.spi.TransactionDefinition;
 import reactor.core.CoreSubscriber;
+import reactor.core.Scannable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Operators;
+import reactor.core.publisher.Sinks;
 import reactor.core.publisher.SynchronousSink;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
+import reactor.util.concurrent.Queues;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -78,6 +83,8 @@ import java.util.function.Predicate;
  */
 final class QueryFlow {
 
+    static final Logger logger = Loggers.getLogger(QueryFlow.class);
+
     // Metadata EOF message will be not receive in here.
     private static final Predicate<ServerMessage> RESULT_DONE = message -> message instanceof CompleteMessage;
 
@@ -92,8 +99,8 @@ final class QueryFlow {
     /**
      * Execute multiple bindings of a server-preparing statement with one-by-one binary execution. The
      * execution terminates with the last {@link CompleteMessage} or a {@link ErrorMessage}. If client
-     * receives a {@link ErrorMessage} will cancel subsequent {@link Binding}s. The exchange will be
-     * completed by {@link CompleteMessage} after receive the last result for the last binding.
+     * receives a {@link ErrorMessage} will cancel subsequent {@link Binding}s. The exchange will be completed
+     * by {@link CompleteMessage} after receive the last result for the last binding.
      *
      * @param client    the {@link Client} to exchange messages with.
      * @param sql       the original statement for exception tracing.
@@ -153,8 +160,8 @@ final class QueryFlow {
     /**
      * Execute multiple simple compound queries with one-by-one. Query execution terminates with the last
      * {@link CompleteMessage} or a {@link ErrorMessage}. The {@link ErrorMessage} will emit an exception and
-     * cancel subsequent statements execution. The exchange will be completed by {@link CompleteMessage} after
-     * receive the last result for the last binding.
+     * cancel subsequent statements' execution. The exchange will be completed by {@link CompleteMessage}
+     * after receive the last result for the last binding.
      *
      * @param client     the {@link Client} to exchange messages with.
      * @param statements bundled sql for execute.
@@ -178,7 +185,6 @@ final class QueryFlow {
      * Login a {@link Client} and receive the {@code client} after logon. It will emit an exception when
      * client receives a {@link ErrorMessage}.
      *
-     *
      * @param client   the {@link Client} to exchange messages with.
      * @param sslMode  the {@link SslMode} defines SSL capability and behavior.
      * @param database the database that will be connected.
@@ -190,7 +196,7 @@ final class QueryFlow {
     static Mono<Client> login(Client client, SslMode sslMode, String database, String user,
         @Nullable CharSequence password, ConnectionContext context) {
         return client.exchange(new LoginExchangeable(client, sslMode, database, user, password, context))
-            .flatMap(message -> client.forceClose().then(Mono.error(message::toException)))
+            .onErrorResume(e -> client.forceClose().then(Mono.error(e)))
             .then(Mono.just(client));
     }
 
@@ -219,9 +225,16 @@ final class QueryFlow {
      * @return receives complete signal.
      */
     static Mono<Void> executeVoid(Client client, String... statements) {
-        return client.exchange(new MultiQueryExchangeable(InternalArrays.asIterator(statements)))
-            .doOnNext(EXECUTE_VOID)
-            .then();
+        switch (statements.length) {
+            case 0:
+                return Mono.empty();
+            case 1:
+                return executeVoid(client, statements[0]);
+            default:
+                return client.exchange(new MultiQueryExchangeable(InternalArrays.asIterator(statements)))
+                    .doOnNext(EXECUTE_VOID)
+                    .then();
+        }
     }
 
     /**
@@ -278,7 +291,7 @@ final class QueryFlow {
      * @return the messages received in response to this exchange.
      */
     private static Flux<ServerMessage> execute0(Client client, String sql) {
-        return client.<ServerMessage>exchange(TextQueryMessage.of(sql), (message, sink) -> {
+        return client.<ServerMessage>exchange(new TextQueryMessage(sql), (message, sink) -> {
             if (message instanceof ErrorMessage) {
                 sink.next(((ErrorMessage) message).offendedBy(sql));
                 sink.complete();
@@ -300,17 +313,13 @@ final class QueryFlow {
  */
 abstract class BaseFluxExchangeable extends FluxExchangeable<ServerMessage> {
 
-    /**
-     * TODO: use new API.
-     */
-    @SuppressWarnings("deprecation")
-    protected final reactor.core.publisher.DirectProcessor<ClientMessage> requests =
-        reactor.core.publisher.DirectProcessor.create();
+    protected final Sinks.Many<ClientMessage> requests = Sinks.many().unicast()
+        .onBackpressureBuffer(Queues.<ClientMessage>one().get());
 
     @Override
     public final void subscribe(CoreSubscriber<? super ClientMessage> actual) {
-        requests.subscribe(actual);
-        afterSubscribe();
+        requests.asFlux().subscribe(actual);
+        tryNextOrComplete(null);
     }
 
     @Override
@@ -322,20 +331,12 @@ abstract class BaseFluxExchangeable extends FluxExchangeable<ServerMessage> {
             sink.next(message);
 
             if (message instanceof CompleteMessage && ((CompleteMessage) message).isDone()) {
-                if (!requests.isTerminated() && hasNext()) {
-                    requests.onNext(nextMessage());
-                } else {
-                    sink.complete();
-                }
+                tryNextOrComplete(sink);
             }
         }
     }
 
-    abstract protected void afterSubscribe();
-
-    abstract protected boolean hasNext();
-
-    abstract protected ClientMessage nextMessage();
+    abstract protected void tryNextOrComplete(@Nullable SynchronousSink<ServerMessage> sink);
 
     abstract protected String offendingSql();
 }
@@ -359,7 +360,8 @@ final class TextQueryExchangeable extends BaseFluxExchangeable {
     @Override
     public void dispose() {
         if (disposed.compareAndSet(false, true)) {
-            requests.onComplete();
+            // No particular error condition handling for complete signal.
+            requests.tryEmitComplete();
 
             while (bindings.hasNext()) {
                 bindings.next().clear();
@@ -373,22 +375,24 @@ final class TextQueryExchangeable extends BaseFluxExchangeable {
     }
 
     @Override
-    protected void afterSubscribe() {
-        Binding binding = this.bindings.next();
+    protected void tryNextOrComplete(@Nullable SynchronousSink<ServerMessage> sink) {
+        if (this.bindings.hasNext()) {
+            QueryLogger.log(this.query);
 
-        QueryLogger.log(query);
-        this.requests.onNext(binding.toTextMessage(this.query));
-    }
+            PreparedTextQueryMessage message = this.bindings.next().toTextMessage(this.query);
+            Sinks.EmitResult result = this.requests.tryEmitNext(message);
 
-    @Override
-    protected boolean hasNext() {
-        return bindings.hasNext();
-    }
+            if (result == Sinks.EmitResult.OK) {
+                return;
+            }
 
-    @Override
-    protected ClientMessage nextMessage() {
-        QueryLogger.log(query);
-        return bindings.next().toTextMessage(query);
+            QueryFlow.logger.error("Emit request failed due to {}", result);
+            message.dispose();
+        }
+
+        if (sink != null) {
+            sink.complete();
+        }
     }
 
     @Override
@@ -412,35 +416,35 @@ final class MultiQueryExchangeable extends BaseFluxExchangeable {
 
     @Override
     public void dispose() {
-        requests.onComplete();
+        // No particular error condition handling for complete signal.
+        requests.tryEmitComplete();
     }
 
     @Override
     public boolean isDisposed() {
-        return requests.isTerminated();
+        return requests.scanOrDefault(Scannable.Attr.TERMINATED, Boolean.FALSE);
     }
 
     @Override
-    protected void afterSubscribe() {
-        String current = this.statements.next();
+    protected void tryNextOrComplete(@Nullable SynchronousSink<ServerMessage> sink) {
+        if (this.statements.hasNext()) {
+            String current = this.statements.next();
 
-        QueryLogger.log(current);
-        this.current = current;
-        this.requests.onNext(TextQueryMessage.of(current));
-    }
+            QueryLogger.log(current);
+            this.current = current;
 
-    @Override
-    protected boolean hasNext() {
-        return statements.hasNext();
-    }
+            Sinks.EmitResult result = this.requests.tryEmitNext(new TextQueryMessage(current));
 
-    @Override
-    protected ClientMessage nextMessage() {
-        String current = statements.next();
+            if (result == Sinks.EmitResult.OK) {
+                return;
+            }
 
-        QueryLogger.log(current);
-        this.current = current;
-        return TextQueryMessage.of(current);
+            QueryFlow.logger.error("Emit request failed due to {}", result);
+        }
+
+        if (sink != null) {
+            sink.complete();
+        }
     }
 
     @Override
@@ -469,12 +473,8 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
 
     private final AtomicBoolean disposed = new AtomicBoolean();
 
-    /**
-     * TODO: use new API.
-     */
-    @SuppressWarnings("deprecation")
-    private final reactor.core.publisher.DirectProcessor<ClientMessage> requests =
-        reactor.core.publisher.DirectProcessor.create();
+    private final Sinks.Many<ClientMessage> requests = Sinks.many().unicast()
+        .onBackpressureBuffer(Queues.<ClientMessage>one().get());
 
     private final PrepareCache cache;
 
@@ -489,9 +489,6 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
     @Nullable
     private Integer statementId;
 
-    @Nullable
-    private PreparedFetchMessage fetch;
-
     private boolean shouldClose;
 
     PrepareExchangeable(PrepareCache cache, String sql, Iterator<Binding> bindings, int fetchSize) {
@@ -504,7 +501,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
     @Override
     public void subscribe(CoreSubscriber<? super ClientMessage> actual) {
         // It is also initialization method.
-        requests.subscribe(actual);
+        requests.asFlux().subscribe(actual);
 
         // After subscribe.
         Integer statementId = cache.getIfPresent(sql);
@@ -512,13 +509,21 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
             logger.debug("Prepare cache mismatch, try to preparing");
             this.shouldClose = true;
             QueryLogger.log(sql);
-            this.requests.onNext(new PrepareQueryMessage(sql));
+            Sinks.EmitResult result = this.requests.tryEmitNext(new PrepareQueryMessage(sql));
+
+            if (result != Sinks.EmitResult.OK) {
+                logger.error("Fail to emit prepare query message due to {}", result);
+            }
         } else {
             logger.debug("Prepare cache matched statement {} when getting", statementId);
             // Should reset only when it comes from cache.
             this.shouldClose = false;
             this.statementId = statementId;
-            this.requests.onNext(new PreparedResetMessage(statementId));
+            Sinks.EmitResult result = this.requests.tryEmitNext(new PreparedResetMessage(statementId));
+
+            if (result != Sinks.EmitResult.OK) {
+                logger.error("Fail to emit reset statement message due to {}", result);
+            }
         }
     }
 
@@ -576,7 +581,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
                 } else if (message instanceof SyntheticMetadataMessage) {
                     EofMessage eof = ((SyntheticMetadataMessage) message).getEof();
                     if (eof instanceof ServerStatusMessage) {
-                        // Otherwise means cursor does not be opened, wait for end of row EOF message.
+                        // Otherwise, cursor does not be opened, wait for end of row EOF message.
                         if ((((ServerStatusMessage) eof).getServerStatuses() &
                             ServerStatuses.CURSOR_EXISTS) != 0) {
                             if (doNextFetch(sink)) {
@@ -610,14 +615,18 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
     @Override
     public void dispose() {
         if (disposed.compareAndSet(false, true)) {
-            if (!requests.isTerminated()) {
-                Integer statementId = this.statementId;
-                if (shouldClose && statementId != null) {
-                    logger.debug("Closing statement {} after used", statementId);
-                    requests.onNext(new PreparedCloseMessage(statementId));
+            Integer statementId = this.statementId;
+            if (shouldClose && statementId != null) {
+                logger.debug("Closing statement {} after used", statementId);
+
+                Sinks.EmitResult result = requests.tryEmitNext(new PreparedCloseMessage(statementId));
+
+                if (result != Sinks.EmitResult.OK) {
+                    logger.error("Fail to close statement {} due to {}", statementId, result);
                 }
-                requests.onComplete();
             }
+            // No particular error condition handling for complete signal.
+            requests.tryEmitComplete();
 
             while (bindings.hasNext()) {
                 bindings.next().clear();
@@ -636,7 +645,12 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
         try {
             putSucceed = cache.putIfAbsent(sql, statementId, evictId -> {
                 logger.debug("Prepare cache evicts statement {} when putting", evictId);
-                requests.onNext(new PreparedCloseMessage(evictId));
+
+                Sinks.EmitResult result = requests.tryEmitNext(new PreparedCloseMessage(evictId));
+
+                if (result != Sinks.EmitResult.OK) {
+                    logger.error("Fail to close evicted statement {} due to {}", statementId, result);
+                }
             });
         } catch (Throwable e) {
             logger.error("Put statement {} to cache failed", statementId, e);
@@ -649,15 +663,16 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
     }
 
     private void doNextExecute(int statementId, SynchronousSink<ServerMessage> sink) {
-        if (requests.isTerminated()) {
-            sink.complete();
-            return;
-        }
-
-        Binding binding = bindings.next();
-
         setMode(EXECUTE);
-        requests.onNext(binding.toExecuteMessage(statementId, fetchSize <= 0));
+
+        PreparedExecuteMessage message = bindings.next().toExecuteMessage(statementId, fetchSize <= 0);
+        Sinks.EmitResult result = requests.tryEmitNext(message);
+
+        if (result != Sinks.EmitResult.OK) {
+            logger.error("Fail to execute {} due to {}", statementId, result);
+            message.dispose();
+            sink.complete();
+        }
     }
 
     private boolean doNextFetch(SynchronousSink<ServerMessage> sink) {
@@ -668,17 +683,18 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
             return false;
         }
 
-        if (requests.isTerminated()) {
-            logger.error("Unexpected terminated on requests");
-            sink.complete();
-            return false;
+        setMode(FETCH);
+
+        Sinks.EmitResult result = requests.tryEmitNext(new PreparedFetchMessage(statementId, fetchSize));
+
+        if (result == Sinks.EmitResult.OK) {
+            return true;
         }
 
-        setMode(FETCH);
-        requests.onNext(this.fetch == null ? (this.fetch = new PreparedFetchMessage(statementId, fetchSize)) :
-            this.fetch);
+        logger.error("Fail to fetch {} due to {}", statementId, result);
+        sink.complete();
 
-        return true;
+        return false;
     }
 
     private void setMode(int mode) {
@@ -687,7 +703,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
     }
 
     private void onCompleteMessage(CompleteMessage message, SynchronousSink<ServerMessage> sink) {
-        if (requests.isTerminated()) {
+        if (requests.scanOrDefault(Scannable.Attr.TERMINATED, Boolean.FALSE)) {
             logger.error("Unexpected terminated on requests");
             sink.next(message);
             sink.complete();
@@ -702,7 +718,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
                 // Not last complete message, no need emit.
                 return;
             }
-            // Otherwise is last row sent or did not open cursor.
+            // Otherwise, it is last row sent or did not open cursor.
         }
 
         // The last row complete message should be emitted, whatever cursor has been opened.
@@ -729,7 +745,7 @@ final class PrepareExchangeable extends FluxExchangeable<ServerMessage> {
  * Not like other {@link FluxExchangeable}s, it is started by a server-side message, which should be an
  * implementation of {@link HandshakeRequest}.
  */
-final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
+final class LoginExchangeable extends FluxExchangeable<Void> {
 
     private static final Logger logger = Loggers.getLogger(LoginExchangeable.class);
 
@@ -739,12 +755,8 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
 
     private static final int HANDSHAKE_VERSION = 10;
 
-    /**
-     * TODO: use new API.
-     */
-    @SuppressWarnings("deprecation")
-    private final reactor.core.publisher.DirectProcessor<LoginClientMessage> requests =
-        reactor.core.publisher.DirectProcessor.create();
+    private final Sinks.Many<LoginClientMessage> requests = Sinks.many().unicast()
+        .onBackpressureBuffer(Queues.<LoginClientMessage>one().get());
 
     private final Client client;
 
@@ -782,14 +794,13 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
 
     @Override
     public void subscribe(CoreSubscriber<? super ClientMessage> actual) {
-        requests.subscribe(actual);
+        requests.asFlux().subscribe(actual);
     }
 
     @Override
-    public void accept(ServerMessage message, SynchronousSink<ErrorMessage> sink) {
+    public void accept(ServerMessage message, SynchronousSink<Void> sink) {
         if (message instanceof ErrorMessage) {
-            sink.next((ErrorMessage) message);
-            sink.complete();
+            sink.error(((ErrorMessage) message).toException());
             return;
         }
 
@@ -803,10 +814,10 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
                 lastEnvelopeId = request.getEnvelopeId() + 1;
 
                 if (capability.isSslEnabled()) {
-                    requests.onNext(SslRequest.from(lastEnvelopeId, capability,
-                        context.getClientCollation().getId()));
+                    emitNext(SslRequest.from(lastEnvelopeId, capability,
+                        context.getClientCollation().getId()), sink);
                 } else {
-                    requests.onNext(createHandshakeResponse(lastEnvelopeId, capability));
+                    emitNext(createHandshakeResponse(lastEnvelopeId, capability), sink);
                 }
             } else {
                 sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
@@ -821,7 +832,7 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
             sink.complete();
         } else if (message instanceof SyntheticSslResponseMessage) {
             sslCompleted = true;
-            requests.onNext(createHandshakeResponse(++lastEnvelopeId, context.getCapability()));
+            emitNext(createHandshakeResponse(++lastEnvelopeId, context.getCapability()), sink);
         } else if (message instanceof AuthMoreDataMessage) {
             AuthMoreDataMessage msg = (AuthMoreDataMessage) message;
             lastEnvelopeId = msg.getEnvelopeId() + 1;
@@ -832,7 +843,7 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
                         context.getConnectionId());
                 }
 
-                requests.onNext(createAuthResponse(lastEnvelopeId, "full authentication"));
+                emitNext(createAuthResponse(lastEnvelopeId, "full authentication"), sink);
             }
             // Otherwise success, wait until OK message or Error message.
         } else if (message instanceof ChangeAuthMessage) {
@@ -840,7 +851,7 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
             lastEnvelopeId = msg.getEnvelopeId() + 1;
             authProvider = MySqlAuthProvider.build(msg.getAuthType());
             salt = msg.getSalt();
-            requests.onNext(createAuthResponse(lastEnvelopeId, "change authentication"));
+            emitNext(createAuthResponse(lastEnvelopeId, "change authentication"), sink);
         } else {
             sink.error(new R2dbcPermissionDeniedException("Unexpected message type '" +
                 message.getClass().getSimpleName() + "' in login phase"));
@@ -849,15 +860,23 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
 
     @Override
     public void dispose() {
-        this.requests.onComplete();
+        // No particular error condition handling for complete signal.
+        this.requests.tryEmitComplete();
+    }
+
+    private void emitNext(LoginClientMessage message, SynchronousSink<Void> sink) {
+        Sinks.EmitResult result = requests.tryEmitNext(message);
+
+        if (result != Sinks.EmitResult.OK) {
+            sink.error(new IllegalStateException("Fail to emit a login request due to " + result));
+        }
     }
 
     private AuthResponse createAuthResponse(int envelopeId, String phase) {
         MySqlAuthProvider authProvider = getAndNextProvider();
 
         if (authProvider.isSslNecessary() && !sslCompleted) {
-            throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), phase),
-                CLI_SPECIFIC);
+            throw new R2dbcPermissionDeniedException(authFails(authProvider.getType(), phase), CLI_SPECIFIC);
         }
 
         return new AuthResponse(envelopeId,
@@ -882,7 +901,7 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
                 throw new R2dbcPermissionDeniedException("Server version '" + context.getServerVersion() +
                     "' does not support SSL but mode '" + sslMode + "' requires SSL", CLI_SPECIFIC);
             } else if (sslMode.startSsl()) {
-                // SSL has start yet, and client can be disable SSL, disable now.
+                // SSL has start yet, and client can disable SSL, disable now.
                 client.sslUnsupported();
             }
         } else {
@@ -933,7 +952,7 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
         MySqlAuthProvider authProvider = getAndNextProvider();
 
         if (authProvider.isSslNecessary() && !sslCompleted) {
-            throw new R2dbcPermissionDeniedException(formatAuthFails(authProvider.getType(), "handshake"),
+            throw new R2dbcPermissionDeniedException(authFails(authProvider.getType(), "handshake"),
                 CLI_SPECIFIC);
         }
 
@@ -950,7 +969,7 @@ final class LoginExchangeable extends FluxExchangeable<ErrorMessage> {
             user, authorization, authType, database, ATTRIBUTES);
     }
 
-    private static String formatAuthFails(String authType, String phase) {
+    private static String authFails(String authType, String phase) {
         return "Authentication type '" + authType + "' must require SSL in " + phase + " phase";
     }
 }
@@ -1237,18 +1256,14 @@ final class TransactionBatchExchangeable extends FluxExchangeable<Void> {
 
         QueryLogger.log(sql);
         state.setSql(sql);
-        s.onSubscribe(Operators.scalarSubscription(s, TextQueryMessage.of(sql)));
+        s.onSubscribe(Operators.scalarSubscription(s, new TextQueryMessage(sql)));
     }
 }
 
 final class TransactionMultiExchangeable extends FluxExchangeable<Void> {
 
-    /**
-     * TODO: use new API.
-     */
-    @SuppressWarnings("deprecation")
-    private final reactor.core.publisher.DirectProcessor<ClientMessage> requests =
-        reactor.core.publisher.DirectProcessor.create();
+    private final Sinks.Many<ClientMessage> requests = Sinks.many().unicast()
+        .onBackpressureBuffer(Queues.<ClientMessage>one().get());
 
     private final AbstractTransactionState state;
 
@@ -1266,13 +1281,20 @@ final class TransactionMultiExchangeable extends FluxExchangeable<Void> {
 
             QueryLogger.log(sql);
             state.setSql(sql);
-            requests.onNext(TextQueryMessage.of(sql));
+
+            Sinks.EmitResult result = requests.tryEmitNext(new TextQueryMessage(sql));
+
+            if (result != Sinks.EmitResult.OK) {
+                QueryFlow.logger.error("Fail to emit a transaction message due to {}", result);
+                sink.complete();
+            }
         }
     }
 
     @Override
     public void dispose() {
-        requests.onComplete();
+        // No particular error condition handling for complete signal.
+        requests.tryEmitComplete();
     }
 
     @Override
@@ -1287,7 +1309,12 @@ final class TransactionMultiExchangeable extends FluxExchangeable<Void> {
 
         QueryLogger.log(sql);
         state.setSql(sql);
-        requests.subscribe(s);
-        requests.onNext(TextQueryMessage.of(sql));
+        requests.asFlux().subscribe(s);
+
+        Sinks.EmitResult result = requests.tryEmitNext(new TextQueryMessage(sql));
+
+        if (result != Sinks.EmitResult.OK) {
+            QueryFlow.logger.error("Fail to emit a transaction message due to {}", result);
+        }
     }
 }
