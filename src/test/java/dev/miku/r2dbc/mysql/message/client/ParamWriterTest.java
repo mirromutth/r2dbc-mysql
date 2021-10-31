@@ -132,7 +132,7 @@ class ParamWriterTest {
             values[i] = new MockParameter(true);
         }
 
-        Flux.from(ParamWriter.publish(parameterOnly(SIZE), values))
+        Flux.from(ParamWriter.publish(parameterOnly(SIZE), Flux.fromArray(values)))
             .as(StepVerifier::create)
             .expectNext(new String(new char[SIZE]).replace("\0", "''"))
             .verifyComplete();
@@ -154,7 +154,7 @@ class ParamWriterTest {
             values[i] = new MockParameter(false);
         }
 
-        Flux.from(ParamWriter.publish(parameterOnly(SIZE), values))
+        Flux.from(ParamWriter.publish(parameterOnly(SIZE), Flux.fromArray(values)))
             .as(StepVerifier::create)
             .verifyError(MockException.class);
 
@@ -169,7 +169,7 @@ class ParamWriterTest {
             values[i] = new MockParameter(false);
         }
 
-        Flux.from(ParamWriter.publish(parameterOnly(SIZE), values))
+        Flux.from(ParamWriter.publish(parameterOnly(SIZE), Flux.fromArray(values)))
             .as(StepVerifier::create)
             .verifyError(MockException.class);
 

@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql;
 
 import dev.miku.r2dbc.mysql.message.client.PreparedExecuteMessage;
-import dev.miku.r2dbc.mysql.message.client.TextQueryMessage;
+import dev.miku.r2dbc.mysql.message.client.PreparedTextQueryMessage;
 
 import java.util.Arrays;
 
@@ -70,8 +70,8 @@ final class Binding {
         return new PreparedExecuteMessage(statementId, immediate, drainValues());
     }
 
-    TextQueryMessage toTextMessage(Query query) {
-        return TextQueryMessage.of(query, drainValues());
+    PreparedTextQueryMessage toTextMessage(Query query) {
+        return new PreparedTextQueryMessage(query, drainValues());
     }
 
     /**

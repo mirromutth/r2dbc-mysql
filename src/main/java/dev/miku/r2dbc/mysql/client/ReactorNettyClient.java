@@ -34,6 +34,7 @@ import reactor.core.CoreSubscriber;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.publisher.SynchronousSink;
 import reactor.netty.Connection;
 import reactor.netty.FutureMono;
@@ -65,12 +66,7 @@ final class ReactorNettyClient implements Client {
 
     private final ConnectionContext context;
 
-    /**
-     * TODO: use new API.
-     */
-    @SuppressWarnings("deprecation")
-    private final reactor.core.publisher.EmitterProcessor<ClientMessage> requestProcessor =
-        reactor.core.publisher.EmitterProcessor.create(false);
+    private final Sinks.Many<ClientMessage> requests = Sinks.many().unicast().onBackpressureBuffer();
 
     /**
      * TODO: use new API.
@@ -125,13 +121,14 @@ final class ReactorNettyClient implements Client {
             .onErrorResume(this::resumeError)
             .subscribe(new ResponseSubscriber(sink));
 
-        this.requestProcessor.concatMap(message -> {
-            if (DEBUG_ENABLED) {
-                logger.debug("Request: {}", message);
-            }
+        this.requests.asFlux()
+            .concatMap(message -> {
+                if (DEBUG_ENABLED) {
+                    logger.debug("Request: {}", message);
+                }
 
-            return connection.outbound().sendObject(message);
-        })
+                return connection.outbound().sendObject(message);
+            })
             .onErrorResume(this::resumeError)
             .doAfterTerminate(this::handleClose)
             .subscribe();
@@ -152,9 +149,9 @@ final class ReactorNettyClient implements Client {
             }
 
             Flux<T> responses = OperatorUtils.discardOnCancel(responseProcessor
-                .doOnSubscribe(ignored -> requestProcessor.onNext(request))
-                .handle(handler)
-                .doOnTerminate(requestQueue))
+                    .doOnSubscribe(ignored -> emitNextRequest(request))
+                    .handle(handler)
+                    .doOnTerminate(requestQueue))
                 .doOnDiscard(ReferenceCounted.class, RELEASE);
 
             requestQueue.submit(RequestTask.wrap(request, sink, responses));
@@ -171,21 +168,14 @@ final class ReactorNettyClient implements Client {
                     if (request instanceof Disposable) {
                         ((Disposable) request).dispose();
                     }
-                }, requestProcessor::onError);
+                }, e -> requests.emitError(e, Sinks.EmitFailureHandler.FAIL_FAST));
                 sink.error(ClientExceptions.exchangeClosed());
                 return;
             }
 
             Flux<T> responses = responseProcessor
-                .doOnSubscribe(ignored -> exchangeable.subscribe(request -> {
-                    if (isConnected()) {
-                        requestProcessor.onNext(request);
-                    } else {
-                        if (request instanceof Disposable) {
-                            ((Disposable) request).dispose();
-                        }
-                    }
-                }, requestProcessor::onError))
+                .doOnSubscribe(ignored -> exchangeable.subscribe(this::emitNextRequest,
+                    e -> requests.emitError(e, Sinks.EmitFailureHandler.FAIL_FAST)))
                 .handle(exchangeable)
                 .doOnTerminate(() -> {
                     exchangeable.dispose();
@@ -207,22 +197,17 @@ final class ReactorNettyClient implements Client {
                 return;
             }
 
-            requestQueue.submit(RequestTask.wrap(sink, Mono.fromRunnable(() ->
-                requestProcessor.onNext(ExitMessage.INSTANCE))));
+            requestQueue.submit(RequestTask.wrap(sink, Mono.fromRunnable(() -> {
+                Sinks.EmitResult result = requests.tryEmitNext(ExitMessage.INSTANCE);
+
+                if (result != Sinks.EmitResult.OK) {
+                    logger.error("Exit message sending failed due to {}, force closing", result);
+                }
+            })));
         }).flatMap(identity()).onErrorResume(e -> {
             logger.error("Exit message sending failed, force closing", e);
             return Mono.empty();
         }).then(forceClose());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> Mono<T> resumeError(Throwable e) {
-        drainError(ClientExceptions.wrap(e));
-        this.requestProcessor.onComplete();
-
-        logger.error("Error: {}", e.getLocalizedMessage(), e);
-
-        return (Mono<T>) close();
     }
 
     @Override
@@ -254,6 +239,33 @@ final class ReactorNettyClient implements Client {
     public String toString() {
         return String.format("ReactorNettyClient(%s){connectionId=%d}",
             this.closing.get() ? "closing or closed" : "activating", context.getConnectionId());
+    }
+
+    private void emitNextRequest(ClientMessage request) {
+        if (isConnected() && requests.tryEmitNext(request) == Sinks.EmitResult.OK) {
+            return;
+        }
+
+        if (request instanceof Disposable) {
+            ((Disposable) request).dispose();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> Mono<T> resumeError(Throwable e) {
+        drainError(ClientExceptions.wrap(e));
+
+        requests.emitComplete((signalType, emitResult) -> {
+            if (emitResult.isFailure()) {
+                logger.error("Error: {}", emitResult);
+            }
+
+            return false;
+        });
+
+        logger.error("Error: {}", e.getLocalizedMessage(), e);
+
+        return (Mono<T>) close();
     }
 
     private void drainError(R2dbcException e) {
