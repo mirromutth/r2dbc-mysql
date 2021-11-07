@@ -23,10 +23,10 @@ import dev.miku.r2dbc.mysql.message.LargeFieldValue;
 import dev.miku.r2dbc.mysql.message.NormalFieldValue;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
 import io.netty.buffer.ByteBufAllocator;
+import io.r2dbc.spi.Parameter;
 import reactor.util.annotation.Nullable;
 
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,12 +48,12 @@ final class DefaultCodecs implements Codecs {
 
     private final MassiveParametrizedCodec<?>[] massiveParametrizedCodecs;
 
-    private final Map<Type, PrimitiveCodec<?>> primitiveCodecs;
+    private final Map<Class<?>, PrimitiveCodec<?>> primitiveCodecs;
 
     private DefaultCodecs(Codec<?>[] codecs) {
         this.codecs = requireNonNull(codecs, "codecs must not be null");
 
-        Map<Type, PrimitiveCodec<?>> primitiveCodecs = new HashMap<>();
+        Map<Class<?>, PrimitiveCodec<?>> primitiveCodecs = new HashMap<>();
         List<ParametrizedCodec<?>> parametrizedCodecs = new ArrayList<>();
         List<MassiveCodec<?>> massiveCodecs = new ArrayList<>();
         List<MassiveParametrizedCodec<?>> massiveParamCodecs = new ArrayList<>();
@@ -169,13 +169,31 @@ final class DefaultCodecs implements Codecs {
         requireNonNull(value, "value must not be null");
         requireNonNull(context, "context must not be null");
 
+        Object parameterValue;
+        Class<?> type;
+
+        if (value instanceof Parameter) {
+            Parameter parameter = (Parameter) value;
+
+            parameterValue = parameter.getValue();
+
+            if (parameterValue == null) {
+                return encodeNull();
+            }
+
+            type = parameter.getType().getJavaType();
+        } else {
+            parameterValue = value;
+            type = Object.class;
+        }
+
         for (Codec<?> codec : codecs) {
-            if (codec.canEncode(value)) {
-                return codec.encode(value, context);
+            if (codec.canEncode(parameterValue)) {
+                return codec.encode(parameterValue, context);
             }
         }
 
-        throw new IllegalArgumentException("Cannot encode " + value.getClass());
+        throw new IllegalArgumentException("Cannot encode " + parameterValue.getClass() + " as " + type);
     }
 
     @Override
