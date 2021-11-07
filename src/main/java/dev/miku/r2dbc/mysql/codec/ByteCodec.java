@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -45,8 +45,8 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new ByteParameter(allocator, (Byte) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new ByteMySqlParameter(allocator, (Byte) value);
     }
 
     @Override
@@ -54,13 +54,13 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
         return metadata.getType().isNumeric();
     }
 
-    static final class ByteParameter extends AbstractParameter {
+    static final class ByteMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final byte value;
 
-        ByteParameter(ByteBufAllocator allocator, byte value) {
+        ByteMySqlParameter(ByteBufAllocator allocator, byte value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -85,11 +85,11 @@ final class ByteCodec extends AbstractPrimitiveCodec<Byte> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ByteParameter)) {
+            if (!(o instanceof ByteMySqlParameter)) {
                 return false;
             }
 
-            ByteParameter byteValue = (ByteParameter) o;
+            ByteMySqlParameter byteValue = (ByteMySqlParameter) o;
 
             return value == byteValue.value;
         }

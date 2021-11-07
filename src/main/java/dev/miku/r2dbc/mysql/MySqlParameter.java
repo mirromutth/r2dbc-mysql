@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
  * <p>
  * TODO: add ScalarParameter for better performance.
  */
-public interface Parameter extends Disposable {
+public interface MySqlParameter extends Disposable {
 
     /**
      * Note: the {@code null} is processed by built-in codecs.

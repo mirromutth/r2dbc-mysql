@@ -141,13 +141,13 @@ abstract class ParametrizedStatementSupport extends MySqlStatementSupport {
         return index;
     }
 
-    private void addBinding(int index, Parameter value) {
+    private void addBinding(int index, MySqlParameter value) {
         assertNotExecuted();
 
         this.bindings.getCurrent().add(index, value);
     }
 
-    private void addBinding(ParameterIndex indexes, Parameter value) {
+    private void addBinding(ParameterIndex indexes, MySqlParameter value) {
         assertNotExecuted();
 
         indexes.bind(this.bindings.getCurrent(), value);

@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -57,8 +57,8 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new DurationParameter(allocator, (Duration) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new DurationMySqlParameter(allocator, (Duration) value);
     }
 
     @Override
@@ -158,13 +158,13 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
         return Duration.ofSeconds(isNegative ? -totalSeconds : totalSeconds, isNegative ? -nanos : nanos);
     }
 
-    private static final class DurationParameter extends AbstractParameter {
+    private static final class DurationMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final Duration value;
 
-        private DurationParameter(ByteBufAllocator allocator, Duration value) {
+        private DurationMySqlParameter(ByteBufAllocator allocator, Duration value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -231,11 +231,11 @@ final class DurationCodec extends AbstractClassedCodec<Duration> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof DurationParameter)) {
+            if (!(o instanceof DurationMySqlParameter)) {
                 return false;
             }
 
-            DurationParameter that = (DurationParameter) o;
+            DurationMySqlParameter that = (DurationMySqlParameter) o;
 
             return value.equals(that.value);
         }

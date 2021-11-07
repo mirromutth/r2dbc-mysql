@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -51,8 +51,8 @@ final class InstantCodec implements Codec<Instant> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new InstantParameter(allocator, (Instant) value, context);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new InstantMySqlParameter(allocator, (Instant) value, context);
     }
 
     @Override
@@ -65,7 +65,7 @@ final class InstantCodec implements Codec<Instant> {
         return DateTimes.canDecodeDateTime(metadata.getType(), target, Instant.class);
     }
 
-    private static final class InstantParameter extends AbstractParameter {
+    private static final class InstantMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
@@ -73,7 +73,7 @@ final class InstantCodec implements Codec<Instant> {
 
         private final CodecContext context;
 
-        private InstantParameter(ByteBufAllocator allocator, Instant value, CodecContext context) {
+        private InstantMySqlParameter(ByteBufAllocator allocator, Instant value, CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
@@ -102,7 +102,7 @@ final class InstantCodec implements Codec<Instant> {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            InstantParameter that = (InstantParameter) o;
+            InstantMySqlParameter that = (InstantMySqlParameter) o;
             return value.equals(that.value);
         }
 

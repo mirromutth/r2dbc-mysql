@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -48,16 +48,16 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
+    public MySqlParameter encode(Object value, CodecContext context) {
         int v = (Integer) value;
 
         if ((byte) v == v) {
-            return new ByteCodec.ByteParameter(allocator, (byte) v);
+            return new ByteCodec.ByteMySqlParameter(allocator, (byte) v);
         } else if ((short) v == v) {
-            return new ShortCodec.ShortParameter(allocator, (short) v);
+            return new ShortCodec.ShortMySqlParameter(allocator, (short) v);
         }
 
-        return new IntParameter(allocator, v);
+        return new IntMySqlParameter(allocator, v);
     }
 
     @Override
@@ -117,13 +117,13 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
         return new BigDecimal(buf.toString(StandardCharsets.US_ASCII)).intValue();
     }
 
-    static final class IntParameter extends AbstractParameter {
+    static final class IntMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final int value;
 
-        IntParameter(ByteBufAllocator allocator, int value) {
+        IntMySqlParameter(ByteBufAllocator allocator, int value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -148,11 +148,11 @@ final class IntegerCodec extends AbstractPrimitiveCodec<Integer> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof IntParameter)) {
+            if (!(o instanceof IntMySqlParameter)) {
                 return false;
             }
 
-            IntParameter intValue = (IntParameter) o;
+            IntMySqlParameter intValue = (IntMySqlParameter) o;
 
             return value == intValue.value;
         }

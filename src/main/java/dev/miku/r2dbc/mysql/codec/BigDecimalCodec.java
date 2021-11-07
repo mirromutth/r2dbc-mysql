@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -75,8 +75,8 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new BigDecimalParameter(allocator, (BigDecimal) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new BigDecimalMySqlParameter(allocator, (BigDecimal) value);
     }
 
     @Override
@@ -126,13 +126,13 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
         return new BigDecimal(buf.toString(StandardCharsets.US_ASCII));
     }
 
-    private static final class BigDecimalParameter extends AbstractParameter {
+    private static final class BigDecimalMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final BigDecimal value;
 
-        private BigDecimalParameter(ByteBufAllocator allocator, BigDecimal value) {
+        private BigDecimalMySqlParameter(ByteBufAllocator allocator, BigDecimal value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -157,11 +157,11 @@ final class BigDecimalCodec extends AbstractClassedCodec<BigDecimal> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BigDecimalParameter)) {
+            if (!(o instanceof BigDecimalMySqlParameter)) {
                 return false;
             }
 
-            BigDecimalParameter that = (BigDecimalParameter) o;
+            BigDecimalMySqlParameter that = (BigDecimalMySqlParameter) o;
 
             return value.equals(that.value);
         }

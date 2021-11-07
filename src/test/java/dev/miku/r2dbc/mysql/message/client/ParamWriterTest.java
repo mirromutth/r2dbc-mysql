@@ -126,10 +126,10 @@ class ParamWriterTest {
 
     @Test
     void publishSuccess() {
-        MockParameter[] values = new MockParameter[SIZE];
+        MockMySqlParameter[] values = new MockMySqlParameter[SIZE];
 
         for (int i = 0; i < SIZE; ++i) {
-            values[i] = new MockParameter(true);
+            values[i] = new MockMySqlParameter(true);
         }
 
         Flux.from(ParamWriter.publish(parameterOnly(SIZE), Flux.fromArray(values)))
@@ -137,43 +137,43 @@ class ParamWriterTest {
             .expectNext(new String(new char[SIZE]).replace("\0", "''"))
             .verifyComplete();
 
-        assertThat(values).extracting(MockParameter::refCnt).containsOnly(0);
+        assertThat(values).extracting(MockMySqlParameter::refCnt).containsOnly(0);
     }
 
     @Test
     void publishPartially() {
-        MockParameter[] values = new MockParameter[SIZE];
+        MockMySqlParameter[] values = new MockMySqlParameter[SIZE];
 
         int i = 0;
 
         for (; i < SIZE >>> 1; ++i) {
-            values[i] = new MockParameter(true);
+            values[i] = new MockMySqlParameter(true);
         }
 
         for (; i < SIZE; ++i) {
-            values[i] = new MockParameter(false);
+            values[i] = new MockMySqlParameter(false);
         }
 
         Flux.from(ParamWriter.publish(parameterOnly(SIZE), Flux.fromArray(values)))
             .as(StepVerifier::create)
             .verifyError(MockException.class);
 
-        assertThat(values).extracting(MockParameter::refCnt).containsOnly(0);
+        assertThat(values).extracting(MockMySqlParameter::refCnt).containsOnly(0);
     }
 
     @Test
     void publishNothing() {
-        MockParameter[] values = new MockParameter[SIZE];
+        MockMySqlParameter[] values = new MockMySqlParameter[SIZE];
 
         for (int i = 0; i < SIZE; ++i) {
-            values[i] = new MockParameter(false);
+            values[i] = new MockMySqlParameter(false);
         }
 
         Flux.from(ParamWriter.publish(parameterOnly(SIZE), Flux.fromArray(values)))
             .as(StepVerifier::create)
             .verifyError(MockException.class);
 
-        assertThat(values).extracting(MockParameter::refCnt).containsOnly(0);
+        assertThat(values).extracting(MockMySqlParameter::refCnt).containsOnly(0);
     }
 
     private static Query parameterOnly(int parameters) {

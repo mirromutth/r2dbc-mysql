@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.Query;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
@@ -41,7 +41,7 @@ final class ParamWriter extends ParameterWriter {
     private static final char[] HEX_CHAR = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c',
         'd', 'e', 'f' };
 
-    private static final Consumer<Parameter> DISPOSE = Parameter::dispose;
+    private static final Consumer<MySqlParameter> DISPOSE = MySqlParameter::dispose;
 
     private final StringBuilder builder;
 
@@ -350,12 +350,12 @@ final class ParamWriter extends ParameterWriter {
         }
     }
 
-    static Mono<String> publish(Query query, Flux<Parameter> values) {
+    static Mono<String> publish(Query query, Flux<MySqlParameter> values) {
         return Mono.defer(() -> {
             ParamWriter writer = new ParamWriter(query);
 
             return OperatorUtils.discardOnCancel(values)
-                .doOnDiscard(Parameter.class, DISPOSE)
+                .doOnDiscard(MySqlParameter.class, DISPOSE)
                 .concatMap(it -> it.publishText(writer).doOnSuccess(writer::flushParameter))
                 .then(Mono.fromCallable(writer::toSql));
         });

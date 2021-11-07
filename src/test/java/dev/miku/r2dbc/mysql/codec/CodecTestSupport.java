@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.ConnectionContextTest;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.Query;
 import dev.miku.r2dbc.mysql.collation.CharCollation;
@@ -68,7 +68,7 @@ interface CodecTestSupport<T> {
             AtomicReference<ByteBuf> buf = new AtomicReference<>();
             ByteBuf sized = sized(binaries[i]);
             try {
-                Parameter parameter = codec.encode(origin[i], context());
+                MySqlParameter parameter = codec.encode(origin[i], context());
                 merge(Flux.from(parameter.publishBinary()))
                     .doOnNext(buf::set)
                     .as(StepVerifier::create)

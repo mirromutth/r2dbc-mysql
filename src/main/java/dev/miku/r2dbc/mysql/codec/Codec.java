@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import io.netty.buffer.ByteBuf;
 import reactor.util.annotation.Nullable;
 
@@ -62,11 +62,11 @@ public interface Codec<T> {
     boolean canEncode(Object value);
 
     /**
-     * Encode a value to a {@link Parameter}.
+     * Encode a value to a {@link MySqlParameter}.
      *
      * @param value   the specified value.
      * @param context the codec context.
-     * @return encoded {@link Parameter}.
+     * @return encoded {@link MySqlParameter}.
      */
-    Parameter encode(Object value, CodecContext context);
+    MySqlParameter encode(Object value, CodecContext context);
 }

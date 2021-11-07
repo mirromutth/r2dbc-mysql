@@ -59,7 +59,7 @@ final class ParameterIndex {
         }
     }
 
-    void bind(Binding binding, Parameter value) {
+    void bind(Binding binding, MySqlParameter value) {
         if (values == null) {
             binding.add(first, value);
         } else {

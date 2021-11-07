@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
@@ -54,8 +54,8 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new ByteBufferParameter(allocator, (ByteBuffer) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new ByteBufferMySqlParameter(allocator, (ByteBuffer) value);
     }
 
     @Override
@@ -68,13 +68,13 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
         return metadata.getType().isBinary();
     }
 
-    private static final class ByteBufferParameter extends AbstractParameter {
+    private static final class ByteBufferMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final ByteBuffer buffer;
 
-        private ByteBufferParameter(ByteBufAllocator allocator, ByteBuffer buffer) {
+        private ByteBufferMySqlParameter(ByteBufAllocator allocator, ByteBuffer buffer) {
             this.allocator = allocator;
             this.buffer = buffer;
         }
@@ -115,10 +115,10 @@ final class ByteBufferCodec extends AbstractClassedCodec<ByteBuffer> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ByteBufferParameter)) {
+            if (!(o instanceof ByteBufferMySqlParameter)) {
                 return false;
             }
-            ByteBufferParameter that = (ByteBufferParameter) o;
+            ByteBufferMySqlParameter that = (ByteBufferMySqlParameter) o;
             return buffer.equals(that.buffer);
         }
 

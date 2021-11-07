@@ -16,12 +16,12 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 
 /**
- * Base class considers non null values for {@link Parameter} implementations.
+ * Base class considers non null values for {@link MySqlParameter} implementations.
  */
-abstract class AbstractParameter implements Parameter {
+abstract class AbstractMySqlParameter implements MySqlParameter {
 
     @Override
     public final String toString() {

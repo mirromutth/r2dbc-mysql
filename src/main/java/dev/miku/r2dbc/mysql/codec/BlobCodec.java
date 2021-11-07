@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.lob.LobUtils;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
@@ -75,8 +75,8 @@ final class BlobCodec implements MassiveCodec<Blob> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new BlobParameter(allocator, (Blob) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new BlobMySqlParameter(allocator, (Blob) value);
     }
 
     static List<ByteBuf> toList(List<ByteBuf> buffers) {
@@ -105,13 +105,13 @@ final class BlobCodec implements MassiveCodec<Blob> {
         }
     }
 
-    private static final class BlobParameter extends AbstractLobParameter {
+    private static final class BlobMySqlParameter extends AbstractLobMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final AtomicReference<Blob> blob;
 
-        private BlobParameter(ByteBufAllocator allocator, Blob blob) {
+        private BlobMySqlParameter(ByteBufAllocator allocator, Blob blob) {
             this.allocator = allocator;
             this.blob = new AtomicReference<>(blob);
         }
@@ -197,11 +197,11 @@ final class BlobCodec implements MassiveCodec<Blob> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BlobParameter)) {
+            if (!(o instanceof BlobMySqlParameter)) {
                 return false;
             }
 
-            BlobParameter blobValue = (BlobParameter) o;
+            BlobMySqlParameter blobValue = (BlobMySqlParameter) o;
 
             return Objects.equals(this.blob.get(), blobValue.blob.get());
         }

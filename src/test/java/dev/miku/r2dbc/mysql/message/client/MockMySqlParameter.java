@@ -16,7 +16,7 @@
 
 package dev.miku.r2dbc.mysql.message.client;
 
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -28,11 +28,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Mocked parameter for memory-leak unit tests.
  */
-final class MockParameter extends AtomicInteger implements Parameter {
+final class MockMySqlParameter extends AtomicInteger implements MySqlParameter {
 
     private final boolean success;
 
-    MockParameter(boolean success) {
+    MockMySqlParameter(boolean success) {
         super(1);
         this.success = success;
     }

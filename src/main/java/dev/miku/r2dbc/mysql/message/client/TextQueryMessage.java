@@ -17,12 +17,8 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
-import dev.miku.r2dbc.mysql.Parameter;
-import dev.miku.r2dbc.mysql.Query;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.Charset;

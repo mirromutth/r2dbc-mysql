@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -57,11 +57,11 @@ final class EnumCodec implements Codec<Enum<?>> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new EnumParameter(allocator, (Enum<?>) value, context);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new EnumMySqlParameter(allocator, (Enum<?>) value, context);
     }
 
-    private static final class EnumParameter extends AbstractParameter {
+    private static final class EnumMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
@@ -69,7 +69,7 @@ final class EnumCodec implements Codec<Enum<?>> {
 
         private final CodecContext context;
 
-        private EnumParameter(ByteBufAllocator allocator, Enum<?> value, CodecContext context) {
+        private EnumMySqlParameter(ByteBufAllocator allocator, Enum<?> value, CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
@@ -95,11 +95,11 @@ final class EnumCodec implements Codec<Enum<?>> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof EnumParameter)) {
+            if (!(o instanceof EnumMySqlParameter)) {
                 return false;
             }
 
-            EnumParameter enumValue = (EnumParameter) o;
+            EnumMySqlParameter enumValue = (EnumMySqlParameter) o;
 
             return value.equals(enumValue.value);
         }

@@ -24,7 +24,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
 /**
- * A writer for {@link Parameter}s of parametrized statements with text-based protocol.
+ * A writer for {@link MySqlParameter}s of parametrized statements with text-based protocol.
  */
 public abstract class ParameterWriter extends Writer {
 

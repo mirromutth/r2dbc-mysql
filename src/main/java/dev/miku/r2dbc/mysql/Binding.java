@@ -22,27 +22,27 @@ import dev.miku.r2dbc.mysql.message.client.PreparedTextQueryMessage;
 import java.util.Arrays;
 
 /**
- * A collection of {@link Parameter} for one bind invocation of a parametrized statement.
+ * A collection of {@link MySqlParameter} for one bind invocation of a parametrized statement.
  *
  * @see ParametrizedStatementSupport
  */
 final class Binding {
 
-    private static final Parameter[] EMPTY_VALUES = { };
+    private static final MySqlParameter[] EMPTY_VALUES = { };
 
-    private final Parameter[] values;
+    private final MySqlParameter[] values;
 
     Binding(int length) {
-        this.values = length == 0 ? EMPTY_VALUES : new Parameter[length];
+        this.values = length == 0 ? EMPTY_VALUES : new MySqlParameter[length];
     }
 
     /**
-     * Add a {@link Parameter} to the binding.
+     * Add a {@link MySqlParameter} to the binding.
      *
-     * @param index the index of the {@link Parameter}
-     * @param value the {@link Parameter} from {@link PrepareParametrizedStatement}
+     * @param index the index of the {@link MySqlParameter}
+     * @param value the {@link MySqlParameter} from {@link PrepareParametrizedStatement}
      */
-    void add(int index, Parameter value) {
+    void add(int index, MySqlParameter value) {
         if (index < 0 || index >= this.values.length) {
             throw new IndexOutOfBoundsException("Index: " + index + ", length: " + this.values.length);
         }
@@ -80,7 +80,7 @@ final class Binding {
     void clear() {
         int size = this.values.length;
         for (int i = 0; i < size; ++i) {
-            Parameter value = this.values[i];
+            MySqlParameter value = this.values[i];
             this.values[i] = null;
 
             if (value != null) {
@@ -125,8 +125,8 @@ final class Binding {
         return String.format("Binding{values=%s}", Arrays.toString(values));
     }
 
-    private Parameter[] drainValues() {
-        Parameter[] results = new Parameter[this.values.length];
+    private MySqlParameter[] drainValues() {
+        MySqlParameter[] results = new MySqlParameter[this.values.length];
 
         System.arraycopy(this.values, 0, results, 0, this.values.length);
         Arrays.fill(this.values, null);

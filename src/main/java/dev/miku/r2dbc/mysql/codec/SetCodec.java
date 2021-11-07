@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.InternalArrays;
@@ -127,13 +127,13 @@ final class SetCodec implements ParametrizedCodec<String[]> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
+    public MySqlParameter encode(Object value, CodecContext context) {
         if (value instanceof CharSequence[]) {
-            return new StringArrayParameter(allocator, InternalArrays.toImmutableList((CharSequence[]) value),
+            return new StringArrayMySqlParameter(allocator, InternalArrays.toImmutableList((CharSequence[]) value),
                 context);
         }
 
-        return new SetParameter(allocator, (Set<?>) value, context);
+        return new SetMySqlParameter(allocator, (Set<?>) value, context);
     }
 
     private static Set<?> buildSet(Class<?> subClass, boolean isEnum) {
@@ -289,7 +289,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
     }
 
-    private static final class SetParameter extends AbstractParameter {
+    private static final class SetMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
@@ -297,7 +297,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
         private final CodecContext context;
 
-        private SetParameter(ByteBufAllocator allocator, Set<?> value, CodecContext context) {
+        private SetMySqlParameter(ByteBufAllocator allocator, Set<?> value, CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
@@ -330,11 +330,11 @@ final class SetCodec implements ParametrizedCodec<String[]> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof SetParameter)) {
+            if (!(o instanceof SetMySqlParameter)) {
                 return false;
             }
 
-            SetParameter setValue = (SetParameter) o;
+            SetMySqlParameter setValue = (SetMySqlParameter) o;
 
             return value.equals(setValue.value);
         }
@@ -345,7 +345,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
         }
     }
 
-    private static final class StringArrayParameter extends AbstractParameter {
+    private static final class StringArrayMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
@@ -353,7 +353,7 @@ final class SetCodec implements ParametrizedCodec<String[]> {
 
         private final CodecContext context;
 
-        private StringArrayParameter(ByteBufAllocator allocator, List<CharSequence> value,
+        private StringArrayMySqlParameter(ByteBufAllocator allocator, List<CharSequence> value,
             CodecContext context) {
             this.allocator = allocator;
             this.value = value;
@@ -387,11 +387,11 @@ final class SetCodec implements ParametrizedCodec<String[]> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof StringArrayParameter)) {
+            if (!(o instanceof StringArrayMySqlParameter)) {
                 return false;
             }
 
-            StringArrayParameter that = (StringArrayParameter) o;
+            StringArrayMySqlParameter that = (StringArrayMySqlParameter) o;
 
             return this.value.equals(that.value);
         }

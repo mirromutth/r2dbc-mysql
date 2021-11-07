@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.codec.CodecContext;
 import dev.miku.r2dbc.mysql.codec.ParametrizedCodec;
@@ -79,8 +79,8 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new JacksonParameter(allocator, value, context);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new JacksonMySqlParameter(allocator, value, context);
     }
 
     @Override
@@ -102,7 +102,7 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
         return mode.isDecode() && metadata.getType() == MySqlType.JSON;
     }
 
-    private static final class JacksonParameter implements Parameter {
+    private static final class JacksonMySqlParameter implements MySqlParameter {
 
         private final ByteBufAllocator allocator;
 
@@ -110,7 +110,7 @@ public final class JacksonCodec implements ParametrizedCodec<Object> {
 
         private final CodecContext context;
 
-        private JacksonParameter(ByteBufAllocator allocator, Object value, CodecContext context) {
+        private JacksonMySqlParameter(ByteBufAllocator allocator, Object value, CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
