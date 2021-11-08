@@ -33,7 +33,7 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,10 +64,10 @@ class SetCodecTest implements CodecTestSupport<String[]> {
         Collections.singleton(""),
         Collections.singleton(SomeElement.GOOD),
         Collections.singleton("\r\n\0\032\\'\"\u00a5\u20a9"),
-        new HashSet<>(Arrays.asList("Hello", "world!")),
-        new HashSet<>(Arrays.asList("", "")),
-        new HashSet<>(Arrays.asList(SomeElement.GOOD, SomeElement.NICE)),
-        new HashSet<>(Arrays.asList("Hello", "R2DBC", "MySQL")),
+        new LinkedHashSet<>(Arrays.asList("Hello", "world!")),
+        new LinkedHashSet<>(Arrays.asList("", "")),
+        new LinkedHashSet<>(Arrays.asList(SomeElement.GOOD, SomeElement.NICE)),
+        new LinkedHashSet<>(Arrays.asList("Hello", "R2DBC", "MySQL")),
     };
 
     @Override
