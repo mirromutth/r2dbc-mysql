@@ -39,6 +39,7 @@ import reactor.util.annotation.Nullable;
 
 import java.time.DateTimeException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.function.BiConsumer;
@@ -458,12 +459,16 @@ public final class MySqlConnection implements Connection, ConnectionState {
             query.append(",@@system_time_zone AS s,@@time_zone AS t");
             handler = FULL_INIT;
         } else {
+            String offset = Instant.now().atZone(context.getServerZoneId()).getOffset().getId();
+            if ("Z".equals(offset)) offset = "+00:00";
+            query.insert(0, "SET time_zone = '" + offset + "';");
             handler = INIT_HANDLER;
         }
 
         return new TextSimpleStatement(client, codecs, context, query.toString())
             .execute()
-            .flatMap(handler)
+            .last()
+            .flatMapMany(handler)
             .last()
             .map(data -> {
                 ZoneId serverZoneId = data.serverZoneId;
