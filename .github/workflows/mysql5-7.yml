@@ -22,4 +22,4 @@ jobs:
           mysql database: r2dbc
           mysql root password: ${{ secrets.DB_PASSWORD }}
       - name: Integration test with MySQL 5.7
-        run: ./mvnw -B verify -Dmaven.javadoc.skip=true -Dmaven.surefire.skip=true -Dtest.mysql.password=${{ secrets.DatabasePassword }} -Dtest.mysql.version=5.7 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN
+        run: ./mvnw -B verify -Dmaven.javadoc.skip=true -Dmaven.surefire.skip=true -Dtest.mysql.password=${{ secrets.DB_PASSWORD }} -Dtest.mysql.version=5.7 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN

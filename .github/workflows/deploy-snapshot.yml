@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    if: github.repository == 'mirromutth/r2dbc-mysql'
+    if: github.repository == 'figroc/r2dbc-mysql'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

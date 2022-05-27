@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright 2018-2021 the original author or authors.
+  ~ Copyright 2018-2022 the original author or authors.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>dev.miku</groupId>
+    <groupId>io.opil</groupId>
     <artifactId>r2dbc-mysql</artifactId>
     <version>0.9.0.BUILD-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Reactive Relational Database Connectivity - MySQL</name>
-    <url>https://github.com/mirromutth/r2dbc-mysql</url>
+    <url>https://github.com/figroc/r2dbc-mysql</url>
     <description>R2DBC MySQL Implementation</description>
 
     <licenses>
@@ -46,13 +46,23 @@
             </roles>
             <timezone>+8</timezone>
         </developer>
+        <developer>
+            <id>figroc</id>
+            <name>P Chen</name>
+            <email>figroc(at)gmail.com</email>
+            <url>https://github.com/figroc</url>
+            <roles>
+                <role>R2DBC MySQL Contributor</role>
+            </roles>
+            <timezone>+8</timezone>
+        </developer>
     </developers>
 
-    <inceptionYear>2018</inceptionYear>
+    <inceptionYear>2022</inceptionYear>
     <scm>
-        <connection>scm:git:git://github.com/mirromutth/r2dbc-mysql.git</connection>
-        <developerConnection>scm:git:ssh://github.com:mirromutth/r2dbc-mysql.git</developerConnection>
-        <url>https://github.com/mirromutth/r2dbc-mysql</url>
+        <connection>scm:git:git://github.com/figroc/r2dbc-mysql.git</connection>
+        <developerConnection>scm:git:ssh://github.com:figroc/r2dbc-mysql.git</developerConnection>
+        <url>https://github.com/figroc/r2dbc-mysql</url>
     </scm>
 
     <properties>
@@ -257,30 +267,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <version>2.8.2</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.3.1</version>
-                <configuration>
-                    <excludePackageNames>
-                        dev.miku.r2dbc.mysql.authentication,dev.miku.r2dbc.mysql.client,dev.miku.r2dbc.mysql.util,dev.miku.r2dbc.mysql.codec.lob,dev.miku.r2dbc.mysql.message
-                    </excludePackageNames>
-                    <links>
-                        <link>https://r2dbc.io/spec/${r2dbc-spi.version}/api/</link>
-                        <link>https://projectreactor.io/docs/core/release/api/</link>
-                        <link>https://www.reactive-streams.org/reactive-streams-1.0.3-javadoc/</link>
-                    </links>
-                    <locale>en_US</locale>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

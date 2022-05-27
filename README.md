@@ -1,23 +1,15 @@
-# Why doesn't it seem so active
+# Why fork from @mirromutth
 
-Due to COVID-19 and my personal reasons, the progress of this project in 2021 is soooooo slow.
+Due to the inactivity of @mirromutth and tweaks are needed, I fork the project and maintain
+a separate distribtion under ``io.opil:r2dbc-mysql`` while keeping the package names.
 
-If you ask me "Are u ok? how about u healthy?". Yes, I'm fine. In China, most areas are no longer infected
-with COVID-19. It just...my work plan was severely hindered because of COVID-19.
-
-I trust this will not become a norm. *I'm trying to maintain this project as well as I can*.
-
-**May the dead rest, and hope the living be healthy**
-
-*Donation are not accepted because I'm subscribing JetBrains open source license, thanks.*
-
-Current goal: follow up with 0.9.0 and 0.8.x.
+All credits go to @mirromutth.
 
 # Reactive Relational Database Connectivity MySQL Implementation
 
-[![Maven Central](https://img.shields.io/maven-central/v/dev.miku/r2dbc-mysql?color=green&label=Maven%20Central)](https://search.maven.org/search?q=g:%22dev.miku%22%20AND%20a:%22r2dbc-mysql%22)
+[![Maven Central](https://img.shields.io/maven-central/v/io.opil/r2dbc-mysql?color=green&label=Maven%20Central)](https://search.maven.org/search?q=g:%22io.opil%22%20AND%20a:%22r2dbc-mysql%22)
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Unit tests status](https://github.com/mirromutth/r2dbc-mysql/workflows/Unit%20tests/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22Unit+tests%22)
+[![Unit tests status](https://github.com/figroc/r2dbc-mysql/workflows/Unit%20tests/badge.svg)](https://github.com/figroc/r2dbc-mysql/actions?query=workflow%3A%22Unit+tests%22)
 
 This project contains the [MySQL][m] implementation of the [R2DBC SPI](https://github.com/r2dbc/r2dbc-spi).
 This implementation is not intended to be used directly, but rather to be
@@ -41,10 +33,10 @@ This driver provides the following features:
 
 ## Version compatibility / Integration tests states
 
-[![MySQL 5.5 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.5/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.5%22)
-[![MySQL 5.6 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.6/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.6%22)
-[![MySQL 5.7 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%205.7/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.7%22)
-[![MySQL 8.0 status](https://github.com/mirromutth/r2dbc-mysql/workflows/MySQL%208.0/badge.svg)](https://github.com/mirromutth/r2dbc-mysql/actions?query=workflow%3A%22MySQL+8.0%22)
+[![MySQL 5.5 status](https://github.com/figroc/r2dbc-mysql/workflows/MySQL%205.5/badge.svg)](https://github.com/figroc/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.5%22)
+[![MySQL 5.6 status](https://github.com/figroc/r2dbc-mysql/workflows/MySQL%205.6/badge.svg)](https://github.com/figroc/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.6%22)
+[![MySQL 5.7 status](https://github.com/figroc/r2dbc-mysql/workflows/MySQL%205.7/badge.svg)](https://github.com/figroc/r2dbc-mysql/actions?query=workflow%3A%22MySQL+5.7%22)
+[![MySQL 8.0 status](https://github.com/figroc/r2dbc-mysql/workflows/MySQL%208.0/badge.svg)](https://github.com/figroc/r2dbc-mysql/actions?query=workflow%3A%22MySQL+8.0%22)
 
 In fact, it supports lower versions, in the theory, such as 4.1, 4.0, etc.
 
@@ -54,7 +46,7 @@ However, Docker-certified images do not have these versions lower than 5.5.0, so
 
 ```xml
 <dependency>
-    <groupId>dev.miku</groupId>
+    <groupId>io.opil</groupId>
     <artifactId>r2dbc-mysql</artifactId>
     <version>0.8.2.RELEASE</version>
 </dependency>
@@ -64,7 +56,7 @@ If you'd rather like the latest snapshots of the upcoming major version, use Son
 
 ```xml
 <dependency>
-    <groupId>dev.miku</groupId>
+    <groupId>io.opil</groupId>
     <artifactId>r2dbc-mysql</artifactId>
     <version>${r2dbc-mysql.version}.BUILD-SNAPSHOT</version>
 </dependency>
@@ -85,7 +77,7 @@ If you'd rather like the latest snapshots of the upcoming major version, use Son
 
 ```groovy
 dependencies {
-    implementation 'dev.miku:r2dbc-mysql:0.8.2.RELEASE'
+    implementation 'io.opil:r2dbc-mysql:0.8.2.RELEASE'
 }
 ```
 
@@ -94,7 +86,7 @@ dependencies {
 ```kotlin
 dependencies {
     // Maybe should to use `compile` instead of `implementation` on the lower version of Gradle.
-    implementation("dev.miku:r2dbc-mysql:0.8.2.RELEASE")
+    implementation("io.opil:r2dbc-mysql:0.8.2.RELEASE")
 }
 ```
 
@@ -544,8 +536,8 @@ org.example.demo.json.JacksonCodecRegistrar
 The R2DBC MySQL Implementation uses GitHub as issue tracking system to record bugs and feature requests. 
 If you want to raise an issue, please follow the recommendations below:
 
-- Before log a bug, please search the [issue tracker](https://github.com/mirromutth/r2dbc-mysql/issues) to see if someone has already reported the problem.
-- If the issue doesn't already exist, [create a new issue](https://github.com/mirromutth/r2dbc-mysql/issues/new).
+- Before log a bug, please search the [issue tracker](https://github.com/figroc/r2dbc-mysql/issues) to see if someone has already reported the problem.
+- If the issue doesn't already exist, [create a new issue](https://github.com/figroc/r2dbc-mysql/issues/new).
 - Please provide as much information as possible with the issue report, we like to know the version of R2DBC MySQL that you are using and JVM version.
 - If you need to paste code, or include a stack trace use Markdown **&#96;&#96;&#96;** escapes before and after your text.
 - If possible try to create a test-case or project that replicates the issue. Attach a link to your code or a compressed file containing your code.
@@ -567,7 +559,7 @@ This project is released under version 2.0 of the [Apache License](https://www.a
 
 ## Contributors
 
-[![Avatars of contributors](https://contrib.rocks/image?repo=mirromutth/r2dbc-mysql)](https://github.com/mirromutth/r2dbc-mysql/graphs/contributors)
+[![Avatars of contributors](https://contrib.rocks/image?repo=figroc/r2dbc-mysql)](https://github.com/figroc/r2dbc-mysql/graphs/contributors)
 
 Thanks a lot for your support!
 
