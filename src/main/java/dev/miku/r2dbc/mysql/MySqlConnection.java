@@ -442,16 +442,17 @@ public final class MySqlConnection implements Connection, ConnectionState {
     static Mono<MySqlConnection> init(Client client, Codecs codecs, ConnectionContext context,
         QueryCache queryCache, PrepareCache prepareCache, @Nullable Predicate<String> prepare) {
         ServerVersion version = context.getServerVersion();
-        StringBuilder query = new StringBuilder(128);
+        MySqlSyntheticBatch init = new MySqlSyntheticBatch(client, codecs, context);
 
         // Maybe create a InitFlow for data initialization after login?
+        StringBuilder query = new StringBuilder("SELECT ");
         if (version.isGreaterThanOrEqualTo(TRAN_LEVEL_8X) ||
             (version.isGreaterThanOrEqualTo(TRAN_LEVEL_5X) && version.isLessThan(TX_LEVEL_8X))) {
-            query.append(
-                "SELECT @@transaction_isolation AS i,@@innodb_lock_wait_timeout AS l,@@version_comment AS v");
+            query.append("@@transaction_isolation");
         } else {
-            query.append("SELECT @@tx_isolation AS i,@@innodb_lock_wait_timeout AS l,@@version_comment AS v");
+            query.append("@@tx_isolation");
         }
+        query.append(" AS i,@@innodb_lock_wait_timeout AS l,@@version_comment AS v");
 
         Function<MySqlResult, Publisher<InitData>> handler;
 
@@ -461,11 +462,11 @@ public final class MySqlConnection implements Connection, ConnectionState {
         } else {
             String offset = Instant.now().atZone(context.getServerZoneId()).getOffset().getId();
             if ("Z".equals(offset)) offset = "+00:00";
-            query.insert(0, "SET time_zone = '" + offset + "';");
+            init.add("SET time_zone = '" + offset + "'");
             handler = INIT_HANDLER;
         }
 
-        return new TextSimpleStatement(client, codecs, context, query.toString())
+        return init.add(query.toString())
             .execute()
             .last()
             .flatMapMany(handler)
