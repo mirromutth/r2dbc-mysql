@@ -68,7 +68,7 @@
         <junit.version>5.8.1</junit.version>
         <logback.version>1.2.6</logback.version>
         <mockito.version>4.0.0</mockito.version>
-        <mysql.version>8.0.27</mysql.version>
+        <mysql.version>8.0.28</mysql.version>
         <testcontainers.version>1.16.2</testcontainers.version>
         <hikari-cp.version>4.0.3</hikari-cp.version>
         <spring-framework.version>5.3.12</spring-framework.version>
