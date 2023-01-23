@@ -63,7 +63,7 @@ abstract class IntegrationTestSupport {
             .as(StepVerifier::create);
     }
 
-    static Mono<Integer> extractRowsUpdated(Result result) {
+    static Mono<Long> extractRowsUpdated(Result result) {
         return Mono.from(result.getRowsUpdated());
     }
 

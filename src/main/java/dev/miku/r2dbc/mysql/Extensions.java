@@ -20,7 +20,6 @@ import dev.miku.r2dbc.mysql.extension.Extension;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 
-import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -108,9 +107,7 @@ final class Extensions {
     private static List<Extension> autodetect(List<Extension> discovered) {
         logger.debug("Discovering Extensions using ServiceLoader");
 
-        ServiceLoader<Extension> extensions = AccessController.doPrivileged(
-            (PrivilegedAction<ServiceLoader<Extension>>) () ->
-                ServiceLoader.load(Extension.class, Extensions.class.getClassLoader()));
+        ServiceLoader<Extension> extensions = ServiceLoader.load(Extension.class, Extensions.class.getClassLoader());
 
         for (Extension extension : extensions) {
             logger.debug(String.format("Registering extension %s", extension.getClass().getName()));

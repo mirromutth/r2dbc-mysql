@@ -104,12 +104,6 @@ final class MySqlRowMetadata implements RowMetadata {
         return InternalArrays.asImmutableList(originMetadata);
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public Set<String> getColumnNames() {
-        return nameSet;
-    }
-
     @Override
     public String toString() {
         return "MySqlRowMetadata{metadata=" + Arrays.toString(originMetadata) + ", sortedNames=" +
