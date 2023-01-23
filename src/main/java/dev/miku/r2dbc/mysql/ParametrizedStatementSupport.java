@@ -111,6 +111,9 @@ abstract class ParametrizedStatementSupport extends MySqlStatementSupport {
         if (bindings.bindings.isEmpty()) {
             throw new IllegalStateException("No parameters bound for current statement");
         }
+        if (bindings.current == null) {
+            return Flux.error(new IllegalStateException("Trailing add() detected"));
+        }
         bindings.validatedFinish();
 
         return Flux.defer(() -> {

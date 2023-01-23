@@ -59,6 +59,9 @@ final class DefaultCodecs implements Codecs {
         List<MassiveParametrizedCodec<?>> massiveParamCodecs = new ArrayList<>();
 
         for (Codec<?> codec : codecs) {
+            if (codec instanceof UsesCodecs) {
+                ((UsesCodecs)codec).setCodecs(this);
+            }
             if (codec instanceof PrimitiveCodec<?>) {
                 // Primitive codec must be class-based codec, cannot support ParameterizedType.
                 PrimitiveCodec<?> c = (PrimitiveCodec<?>) codec;
@@ -296,7 +299,8 @@ final class DefaultCodecs implements Codecs {
             new BlobCodec(allocator),
 
             new ByteBufferCodec(allocator),
-            new ByteArrayCodec(allocator)
+            new ByteArrayCodec(allocator),
+            new ParameterCodec()
         };
     }
 
