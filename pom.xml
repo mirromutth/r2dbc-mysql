@@ -66,7 +66,7 @@
         <assertj.version>3.21.0</assertj.version>
         <jmh.version>1.33</jmh.version>
         <junit.version>5.8.1</junit.version>
-        <logback.version>1.2.6</logback.version>
+        <logback.version>1.2.13</logback.version>
         <mockito.version>4.0.0</mockito.version>
         <mysql.version>8.0.27</mysql.version>
         <testcontainers.version>1.16.2</testcontainers.version>
