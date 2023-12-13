@@ -1,17 +1,8 @@
-# Why doesn't it seem so active
+# ⚠️ Archived ⚠️
 
-Due to COVID-19 and my personal reasons, the progress of this project in 2021 is soooooo slow.
+The current repository is NO LONGER MAINTAINED, please switch to `io.asyncer:r2dbc-mysql`.
 
-If you ask me "Are u ok? how about u healthy?". Yes, I'm fine. In China, most areas are no longer infected
-with COVID-19. It just...my work plan was severely hindered because of COVID-19.
-
-I trust this will not become a norm. *I'm trying to maintain this project as well as I can*.
-
-**May the dead rest, and hope the living be healthy**
-
-*Donation are not accepted because I'm subscribing JetBrains open source license, thanks.*
-
-Current goal: follow up with 0.9.0 and 0.8.x.
+See also [https://github.com/asyncer-io/r2dbc-mysql](https://github.com/asyncer-io/r2dbc-mysql). It is currently being maintained by [@jchrys](https://github.com/jchrys).
 
 # Reactive Relational Database Connectivity MySQL Implementation
 
