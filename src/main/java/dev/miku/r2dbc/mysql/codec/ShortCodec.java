@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -45,14 +45,14 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
+    public MySqlParameter encode(Object value, CodecContext context) {
         short v = (Short) value;
 
         if ((byte) v == v) {
-            return new ByteCodec.ByteParameter(allocator, (byte) v);
+            return new ByteCodec.ByteMySqlParameter(allocator, (byte) v);
         }
 
-        return new ShortParameter(allocator, v);
+        return new ShortMySqlParameter(allocator, v);
     }
 
     @Override
@@ -60,13 +60,13 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
         return metadata.getType().isNumeric();
     }
 
-    static final class ShortParameter extends AbstractParameter {
+    static final class ShortMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final short value;
 
-        ShortParameter(ByteBufAllocator allocator, short value) {
+        ShortMySqlParameter(ByteBufAllocator allocator, short value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -91,11 +91,11 @@ final class ShortCodec extends AbstractPrimitiveCodec<Short> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof ShortParameter)) {
+            if (!(o instanceof ShortMySqlParameter)) {
                 return false;
             }
 
-            ShortParameter that = (ShortParameter) o;
+            ShortMySqlParameter that = (ShortMySqlParameter) o;
 
             return value == that.value;
         }

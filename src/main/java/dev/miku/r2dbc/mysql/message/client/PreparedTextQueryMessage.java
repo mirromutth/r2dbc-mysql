@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.Query;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -33,7 +33,7 @@ import static dev.miku.r2dbc.mysql.util.AssertUtils.requireNonNull;
 /**
  * A client prepared query message based on text protocol.
  */
-public final class PreparedTextQueryMessage extends AtomicReference<Parameter[]>
+public final class PreparedTextQueryMessage extends AtomicReference<MySqlParameter[]>
     implements ClientMessage, Disposable {
 
     private final Query query;
@@ -45,7 +45,7 @@ public final class PreparedTextQueryMessage extends AtomicReference<Parameter[]>
      * @param values the parameter values.
      * @throws IllegalArgumentException if {@code query} or {@code values} is {@code null}.
      */
-    public PreparedTextQueryMessage(Query query, Parameter[] values) {
+    public PreparedTextQueryMessage(Query query, MySqlParameter[] values) {
         super(requireNonNull(values, "values must not be null"));
 
         this.query = requireNonNull(query, "query must not be null");
@@ -53,9 +53,9 @@ public final class PreparedTextQueryMessage extends AtomicReference<Parameter[]>
 
     @Override
     public void dispose() {
-        Parameter[] values = getAndSet(null);
+        MySqlParameter[] values = getAndSet(null);
 
-        for (Parameter value : values) {
+        for (MySqlParameter value : values) {
             if (value != null) {
                 value.dispose();
             }
@@ -73,8 +73,8 @@ public final class PreparedTextQueryMessage extends AtomicReference<Parameter[]>
         requireNonNull(context, "context must not be null");
 
         Charset charset = context.getClientCollation().getCharset();
-        Flux<Parameter> parameters = Flux.defer(() -> {
-            Parameter[] values = getAndSet(null);
+        Flux<MySqlParameter> parameters = Flux.defer(() -> {
+            MySqlParameter[] values = getAndSet(null);
 
             if (values == null) {
                 return Flux.error(new IllegalStateException("Parameters have been disposed"));

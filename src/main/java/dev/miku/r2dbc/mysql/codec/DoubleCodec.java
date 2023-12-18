@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -61,8 +61,8 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new DoubleParameter(allocator, (Double) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new DoubleMySqlParameter(allocator, (Double) value);
     }
 
     @Override
@@ -108,13 +108,13 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
         throw new IllegalStateException("Cannot decode type " + type + " as a Double");
     }
 
-    private static final class DoubleParameter extends AbstractParameter {
+    private static final class DoubleMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final double value;
 
-        private DoubleParameter(ByteBufAllocator allocator, double value) {
+        private DoubleMySqlParameter(ByteBufAllocator allocator, double value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -147,11 +147,11 @@ final class DoubleCodec extends AbstractPrimitiveCodec<Double> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof DoubleParameter)) {
+            if (!(o instanceof DoubleMySqlParameter)) {
                 return false;
             }
 
-            DoubleParameter that = (DoubleParameter) o;
+            DoubleMySqlParameter that = (DoubleMySqlParameter) o;
 
             return Double.compare(that.value, value) == 0;
         }

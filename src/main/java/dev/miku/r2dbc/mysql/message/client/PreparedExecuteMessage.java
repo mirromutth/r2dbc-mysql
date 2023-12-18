@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.message.client;
 
 import dev.miku.r2dbc.mysql.ConnectionContext;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.util.OperatorUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -59,7 +59,7 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
 
     private static final byte EXECUTE_FLAG = 0x17;
 
-    private static final Consumer<Parameter> DISPOSE = Parameter::dispose;
+    private static final Consumer<MySqlParameter> DISPOSE = MySqlParameter::dispose;
 
     private final int statementId;
 
@@ -68,9 +68,9 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
      */
     private final boolean immediate;
 
-    private final Parameter[] values;
+    private final MySqlParameter[] values;
 
-    public PreparedExecuteMessage(int statementId, boolean immediate, Parameter[] values) {
+    public PreparedExecuteMessage(int statementId, boolean immediate, MySqlParameter[] values) {
         this.values = requireNonNull(values, "values must not be null");
         this.statementId = statementId;
         this.immediate = immediate;
@@ -78,7 +78,7 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
 
     @Override
     public void dispose() {
-        for (Parameter value : values) {
+        for (MySqlParameter value : values) {
             value.dispose();
         }
         Arrays.fill(values, null);
@@ -115,7 +115,7 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
                     return Flux.just(buf);
                 }
 
-                List<Parameter> nonNull = new ArrayList<>(size);
+                List<MySqlParameter> nonNull = new ArrayList<>(size);
                 byte[] nullMap = fillNullBitmap(size, nonNull);
 
                 // Fill null-bitmap.
@@ -131,8 +131,8 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
                 writeTypes(buf, size);
 
                 Flux<ByteBuf> parameters = OperatorUtils.discardOnCancel(Flux.fromArray(values))
-                    .doOnDiscard(Parameter.class, DISPOSE)
-                    .concatMap(Parameter::publishBinary);
+                    .doOnDiscard(MySqlParameter.class, DISPOSE)
+                    .concatMap(MySqlParameter::publishBinary);
 
                 return Flux.just(buf).concatWith(parameters);
             } catch (Throwable e) {
@@ -143,11 +143,11 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
         });
     }
 
-    private byte[] fillNullBitmap(int size, List<Parameter> nonNull) {
+    private byte[] fillNullBitmap(int size, List<MySqlParameter> nonNull) {
         byte[] nullMap = new byte[ceilDiv8(size)];
 
         for (int i = 0; i < size; ++i) {
-            Parameter value = values[i];
+            MySqlParameter value = values[i];
 
             if (value.isNull()) {
                 nullMap[i >> 3] |= 1 << (i & 7);
@@ -166,7 +166,7 @@ public final class PreparedExecuteMessage implements ClientMessage, Disposable {
     }
 
     private void cancelParameters() {
-        for (Parameter value : values) {
+        for (MySqlParameter value : values) {
             value.dispose();
         }
     }

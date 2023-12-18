@@ -24,11 +24,11 @@ import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
 /**
- * Base class considers LOB types (i.e. BLOB, CLOB) for {@link AbstractParameter} implementations.
+ * Base class considers LOB types (i.e. BLOB, CLOB) for {@link AbstractMySqlParameter} implementations.
  */
-abstract class AbstractLobParameter extends AbstractParameter {
+abstract class AbstractLobMySqlParameter extends AbstractMySqlParameter {
 
-    private static final Logger logger = Loggers.getLogger(AbstractLobParameter.class);
+    private static final Logger logger = Loggers.getLogger(AbstractLobMySqlParameter.class);
 
     @Override
     public final void dispose() {

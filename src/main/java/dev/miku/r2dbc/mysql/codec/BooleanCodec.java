@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -45,8 +45,8 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new BooleanParameter(allocator, (Boolean) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new BooleanMySqlParameter(allocator, (Boolean) value);
     }
 
     @Override
@@ -55,13 +55,13 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
         return (type == MySqlType.BIT || type == MySqlType.TINYINT) && metadata.getNativePrecision() == 1;
     }
 
-    private static final class BooleanParameter extends AbstractParameter {
+    private static final class BooleanMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final boolean value;
 
-        private BooleanParameter(ByteBufAllocator allocator, boolean value) {
+        private BooleanMySqlParameter(ByteBufAllocator allocator, boolean value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -88,11 +88,11 @@ final class BooleanCodec extends AbstractPrimitiveCodec<Boolean> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BooleanParameter)) {
+            if (!(o instanceof BooleanMySqlParameter)) {
                 return false;
             }
 
-            BooleanParameter that = (BooleanParameter) o;
+            BooleanMySqlParameter that = (BooleanMySqlParameter) o;
 
             return value == that.value;
         }

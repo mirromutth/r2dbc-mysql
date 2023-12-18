@@ -145,13 +145,13 @@ class QueryTest {
 
         assertThat(binding.findUnbind()).isZero();
 
-        binding.add(0, MockParameter.INSTANCE);
+        binding.add(0, MockMySqlParameter.INSTANCE);
         assertThat(binding.findUnbind()).isOne();
 
-        query.getNamedIndexes().get("name").bind(binding, MockParameter.INSTANCE);
+        query.getNamedIndexes().get("name").bind(binding, MockMySqlParameter.INSTANCE);
         assertThat(binding.findUnbind()).isEqualTo(2);
 
-        query.getNamedIndexes().get("age").bind(binding, MockParameter.INSTANCE);
+        query.getNamedIndexes().get("age").bind(binding, MockMySqlParameter.INSTANCE);
         assertThat(binding.findUnbind()).isEqualTo(-1);
 
         query = Query.parse("INSERT INTO `user` (`id`, `nickname`, `real_name`) VALUE " +
@@ -162,13 +162,13 @@ class QueryTest {
 
         assertThat(binding.findUnbind()).isZero();
 
-        binding.add(0, MockParameter.INSTANCE);
+        binding.add(0, MockMySqlParameter.INSTANCE);
         assertThat(binding.findUnbind()).isOne();
 
-        query.getNamedIndexes().get("initName").bind(binding, MockParameter.INSTANCE);
+        query.getNamedIndexes().get("initName").bind(binding, MockMySqlParameter.INSTANCE);
         assertThat(binding.findUnbind()).isEqualTo(3);
 
-        query.getNamedIndexes().get("updateName").bind(binding, MockParameter.INSTANCE);
+        query.getNamedIndexes().get("updateName").bind(binding, MockMySqlParameter.INSTANCE);
         assertThat(binding.findUnbind()).isEqualTo(-1);
     }
 
@@ -323,9 +323,9 @@ class QueryTest {
         return result;
     }
 
-    private static final class MockParameter implements Parameter {
+    private static final class MockMySqlParameter implements MySqlParameter {
 
-        static final MockParameter INSTANCE = new MockParameter();
+        static final MockMySqlParameter INSTANCE = new MockMySqlParameter();
 
         @Override
         public boolean isNull() {
@@ -357,6 +357,6 @@ class QueryTest {
             return "MockParameter{}";
         }
 
-        private MockParameter() { }
+        private MockMySqlParameter() { }
     }
 }

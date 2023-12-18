@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -63,7 +63,7 @@ final class LongCodec extends AbstractPrimitiveCodec<Long> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
+    public MySqlParameter encode(Object value, CodecContext context) {
         return encodeLong(allocator, (Long) value);
     }
 
@@ -72,16 +72,16 @@ final class LongCodec extends AbstractPrimitiveCodec<Long> {
         return metadata.getType().isNumeric();
     }
 
-    static Parameter encodeLong(ByteBufAllocator allocator, long v) {
+    static MySqlParameter encodeLong(ByteBufAllocator allocator, long v) {
         if ((byte) v == v) {
-            return new ByteCodec.ByteParameter(allocator, (byte) v);
+            return new ByteCodec.ByteMySqlParameter(allocator, (byte) v);
         } else if ((short) v == v) {
-            return new ShortCodec.ShortParameter(allocator, (short) v);
+            return new ShortCodec.ShortMySqlParameter(allocator, (short) v);
         } else if ((int) v == v) {
-            return new IntegerCodec.IntParameter(allocator, (int) v);
+            return new IntegerCodec.IntMySqlParameter(allocator, (int) v);
         }
 
-        return new LongParameter(allocator, v);
+        return new LongMySqlParameter(allocator, v);
     }
 
     private static long decodeBinary(ByteBuf buf, MySqlType type) {
@@ -120,13 +120,13 @@ final class LongCodec extends AbstractPrimitiveCodec<Long> {
         return new BigDecimal(buf.toString(StandardCharsets.US_ASCII)).longValue();
     }
 
-    private static final class LongParameter extends AbstractParameter {
+    private static final class LongMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final long value;
 
-        private LongParameter(ByteBufAllocator allocator, long value) {
+        private LongMySqlParameter(ByteBufAllocator allocator, long value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -151,11 +151,11 @@ final class LongCodec extends AbstractPrimitiveCodec<Long> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof LongParameter)) {
+            if (!(o instanceof LongMySqlParameter)) {
                 return false;
             }
 
-            LongParameter longValue = (LongParameter) o;
+            LongMySqlParameter longValue = (LongMySqlParameter) o;
 
             return value == longValue.value;
         }

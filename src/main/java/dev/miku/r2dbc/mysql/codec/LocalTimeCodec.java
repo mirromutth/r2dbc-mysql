@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -64,8 +64,8 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new LocalTimeParameter(allocator, (LocalTime) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new LocalTimeMySqlParameter(allocator, (LocalTime) value);
     }
 
     @Override
@@ -193,13 +193,13 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
         return LocalTime.ofNanoOfDay(((total % NANOS_OF_DAY) + NANOS_OF_DAY) % NANOS_OF_DAY);
     }
 
-    private static final class LocalTimeParameter extends AbstractParameter {
+    private static final class LocalTimeMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final LocalTime value;
 
-        private LocalTimeParameter(ByteBufAllocator allocator, LocalTime value) {
+        private LocalTimeMySqlParameter(ByteBufAllocator allocator, LocalTime value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -224,11 +224,11 @@ final class LocalTimeCodec extends AbstractClassedCodec<LocalTime> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof LocalTimeParameter)) {
+            if (!(o instanceof LocalTimeMySqlParameter)) {
                 return false;
             }
 
-            LocalTimeParameter that = (LocalTimeParameter) o;
+            LocalTimeMySqlParameter that = (LocalTimeMySqlParameter) o;
 
             return value.equals(that.value);
         }

@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -57,8 +57,8 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new LocalDateParameter(allocator, (LocalDate) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new LocalDateMySqlParameter(allocator, (LocalDate) value);
     }
 
     @Override
@@ -156,13 +156,13 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
         writer.writeInt(day);
     }
 
-    private static final class LocalDateParameter extends AbstractParameter {
+    private static final class LocalDateMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final LocalDate value;
 
-        private LocalDateParameter(ByteBufAllocator allocator, LocalDate value) {
+        private LocalDateMySqlParameter(ByteBufAllocator allocator, LocalDate value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -187,11 +187,11 @@ final class LocalDateCodec extends AbstractClassedCodec<LocalDate> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof LocalDateParameter)) {
+            if (!(o instanceof LocalDateMySqlParameter)) {
                 return false;
             }
 
-            LocalDateParameter that = (LocalDateParameter) o;
+            LocalDateMySqlParameter that = (LocalDateMySqlParameter) o;
 
             return value.equals(that.value);
         }

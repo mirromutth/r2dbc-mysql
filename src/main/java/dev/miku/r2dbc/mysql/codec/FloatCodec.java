@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -61,8 +61,8 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new FloatParameter(allocator, (Float) value);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new FloatMySqlParameter(allocator, (Float) value);
     }
 
     @Override
@@ -108,13 +108,13 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
         throw new IllegalStateException("Cannot decode type " + type + " as a Float");
     }
 
-    private static final class FloatParameter extends AbstractParameter {
+    private static final class FloatMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final float value;
 
-        private FloatParameter(ByteBufAllocator allocator, float value) {
+        private FloatMySqlParameter(ByteBufAllocator allocator, float value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -147,11 +147,11 @@ final class FloatCodec extends AbstractPrimitiveCodec<Float> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof FloatParameter)) {
+            if (!(o instanceof FloatMySqlParameter)) {
                 return false;
             }
 
-            FloatParameter that = (FloatParameter) o;
+            FloatMySqlParameter that = (FloatMySqlParameter) o;
 
             return Float.compare(that.value, value) == 0;
         }

@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -80,14 +80,14 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
+    public MySqlParameter encode(Object value, CodecContext context) {
         BigInteger i = (BigInteger) value;
 
         if (i.bitLength() < Long.SIZE) {
             return LongCodec.encodeLong(allocator, i.longValue());
         }
 
-        return new BigIntegerParameter(allocator, (BigInteger) value);
+        return new BigIntegerMySqlParameter(allocator, (BigInteger) value);
     }
 
     @Override
@@ -138,13 +138,13 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
         return new BigDecimal(buf.toString(StandardCharsets.US_ASCII)).toBigInteger();
     }
 
-    private static class BigIntegerParameter extends AbstractParameter {
+    private static class BigIntegerMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
         private final BigInteger value;
 
-        private BigIntegerParameter(ByteBufAllocator allocator, BigInteger value) {
+        private BigIntegerMySqlParameter(ByteBufAllocator allocator, BigInteger value) {
             this.allocator = allocator;
             this.value = value;
         }
@@ -169,10 +169,10 @@ final class BigIntegerCodec extends AbstractClassedCodec<BigInteger> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BigIntegerParameter)) {
+            if (!(o instanceof BigIntegerMySqlParameter)) {
                 return false;
             }
-            BigIntegerParameter that = (BigIntegerParameter) o;
+            BigIntegerMySqlParameter that = (BigIntegerMySqlParameter) o;
             return value.equals(that.value);
         }
 

@@ -729,10 +729,10 @@ public enum MySqlType implements Type {
             case ID_BLOB:
                 return definition.isBinary() ? BLOB : TEXT;
             case ID_GEOMETRY:
-                // Most of Geometry libraries were using byte[] to encode/decode which based on WKT
+                // Most Geometry libraries were using byte[] to encode/decode which based on WKT
                 // (includes Extended-WKT) or WKB
                 // MySQL using WKB for encoding/decoding, so use byte[] instead of ByteBuffer by default type.
-                // It maybe change after R2DBC SPI specify default type for GEOMETRY.
+                // It maybe changes after R2DBC SPI specify default type for GEOMETRY.
                 return GEOMETRY;
             default:
                 return UNKNOWN;

@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -50,8 +50,8 @@ final class OffsetTimeCodec extends AbstractClassedCodec<OffsetTime> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new OffsetTimeParameter(allocator, (OffsetTime) value, context);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new OffsetTimeMySqlParameter(allocator, (OffsetTime) value, context);
     }
 
     @Override
@@ -64,7 +64,7 @@ final class OffsetTimeCodec extends AbstractClassedCodec<OffsetTime> {
         return metadata.getType() == MySqlType.TIME;
     }
 
-    private static final class OffsetTimeParameter extends AbstractParameter {
+    private static final class OffsetTimeMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
@@ -72,7 +72,7 @@ final class OffsetTimeCodec extends AbstractClassedCodec<OffsetTime> {
 
         private final CodecContext context;
 
-        private OffsetTimeParameter(ByteBufAllocator allocator, OffsetTime value, CodecContext context) {
+        private OffsetTimeMySqlParameter(ByteBufAllocator allocator, OffsetTime value, CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
@@ -98,11 +98,11 @@ final class OffsetTimeCodec extends AbstractClassedCodec<OffsetTime> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof OffsetTimeParameter)) {
+            if (!(o instanceof OffsetTimeMySqlParameter)) {
                 return false;
             }
 
-            OffsetTimeParameter that = (OffsetTimeParameter) o;
+            OffsetTimeMySqlParameter that = (OffsetTimeMySqlParameter) o;
 
             return value.equals(that.value);
         }

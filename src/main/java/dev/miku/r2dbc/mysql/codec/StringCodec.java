@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import dev.miku.r2dbc.mysql.util.VarIntUtils;
@@ -52,8 +52,8 @@ final class StringCodec extends AbstractClassedCodec<String> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
-        return new StringParameter(allocator, (CharSequence) value, context);
+    public MySqlParameter encode(Object value, CodecContext context) {
+        return new StringMySqlParameter(allocator, (CharSequence) value, context);
     }
 
     @Override
@@ -82,7 +82,7 @@ final class StringCodec extends AbstractClassedCodec<String> {
         }
     }
 
-    private static class StringParameter extends AbstractParameter {
+    private static class StringMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
@@ -90,7 +90,7 @@ final class StringCodec extends AbstractClassedCodec<String> {
 
         private final CodecContext context;
 
-        private StringParameter(ByteBufAllocator allocator, CharSequence value, CodecContext context) {
+        private StringMySqlParameter(ByteBufAllocator allocator, CharSequence value, CodecContext context) {
             this.allocator = allocator;
             this.value = value;
             this.context = context;
@@ -116,11 +116,11 @@ final class StringCodec extends AbstractClassedCodec<String> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof StringParameter)) {
+            if (!(o instanceof StringMySqlParameter)) {
                 return false;
             }
 
-            StringParameter that = (StringParameter) o;
+            StringMySqlParameter that = (StringMySqlParameter) o;
 
             return value.equals(that.value);
         }

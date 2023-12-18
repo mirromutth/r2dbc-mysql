@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -47,17 +47,17 @@ final class YearCodec extends AbstractClassedCodec<Year> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
+    public MySqlParameter encode(Object value, CodecContext context) {
         int year = ((Year) value).getValue();
 
         if ((byte) year == year) {
-            return new ByteCodec.ByteParameter(allocator, (byte) year);
+            return new ByteCodec.ByteMySqlParameter(allocator, (byte) year);
         } else if ((short) year == year) {
-            return new ShortCodec.ShortParameter(allocator, (short) year);
+            return new ShortCodec.ShortMySqlParameter(allocator, (short) year);
         }
 
         // Server does not support it, but still encodes it.
-        return new IntegerCodec.IntParameter(allocator, year);
+        return new IntegerCodec.IntMySqlParameter(allocator, year);
     }
 
     @Override

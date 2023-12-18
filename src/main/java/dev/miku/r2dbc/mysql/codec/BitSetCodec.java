@@ -17,7 +17,7 @@
 package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
@@ -55,7 +55,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
     }
 
     @Override
-    public Parameter encode(Object value, CodecContext context) {
+    public MySqlParameter encode(Object value, CodecContext context) {
         BitSet set = (BitSet) value;
         long bits;
         if (set.isEmpty()) {
@@ -83,7 +83,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
             type = MySqlType.BIGINT;
         }
 
-        return new BitSetParameter(allocator, bits, type);
+        return new BitSetMySqlParameter(allocator, bits, type);
     }
 
     @Override
@@ -105,7 +105,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
         return bytes;
     }
 
-    private static final class BitSetParameter extends AbstractParameter {
+    private static final class BitSetMySqlParameter extends AbstractMySqlParameter {
 
         private final ByteBufAllocator allocator;
 
@@ -113,7 +113,7 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
 
         private final MySqlType type;
 
-        private BitSetParameter(ByteBufAllocator allocator, long value, MySqlType type) {
+        private BitSetMySqlParameter(ByteBufAllocator allocator, long value, MySqlType type) {
             this.allocator = allocator;
             this.value = value;
             this.type = type;
@@ -158,11 +158,11 @@ final class BitSetCodec extends AbstractClassedCodec<BitSet> {
             if (this == o) {
                 return true;
             }
-            if (!(o instanceof BitSetParameter)) {
+            if (!(o instanceof BitSetMySqlParameter)) {
                 return false;
             }
 
-            BitSetParameter that = (BitSetParameter) o;
+            BitSetMySqlParameter that = (BitSetMySqlParameter) o;
 
             return value == that.value;
         }

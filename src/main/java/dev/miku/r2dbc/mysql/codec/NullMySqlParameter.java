@@ -16,21 +16,21 @@
 
 package dev.miku.r2dbc.mysql.codec;
 
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import dev.miku.r2dbc.mysql.ParameterWriter;
 import dev.miku.r2dbc.mysql.constant.MySqlType;
 import io.netty.buffer.ByteBuf;
 import reactor.core.publisher.Mono;
 
 /**
- * An implementation of {@link Parameter} which considers value is {@code null}.
+ * An implementation of {@link MySqlParameter} which considers value is {@code null}.
  * <p>
  * Note: the parameter is marked with a bitmap of {@code null}, so {@link #publishBinary} will not do
  * anything.
  */
-final class NullParameter implements Parameter {
+final class NullMySqlParameter implements MySqlParameter {
 
-    static final NullParameter INSTANCE = new NullParameter();
+    static final NullMySqlParameter INSTANCE = new NullMySqlParameter();
 
     @Override
     public boolean isNull() {
@@ -68,5 +68,5 @@ final class NullParameter implements Parameter {
         return "Parameter{REDACTED}";
     }
 
-    private NullParameter() { }
+    private NullMySqlParameter() { }
 }

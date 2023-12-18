@@ -18,7 +18,7 @@ package dev.miku.r2dbc.mysql.codec;
 
 import dev.miku.r2dbc.mysql.MySqlColumnMetadata;
 import dev.miku.r2dbc.mysql.message.FieldValue;
-import dev.miku.r2dbc.mysql.Parameter;
+import dev.miku.r2dbc.mysql.MySqlParameter;
 import io.netty.buffer.ByteBufAllocator;
 import reactor.util.annotation.Nullable;
 
@@ -74,21 +74,21 @@ public interface Codecs {
     <T> T decodeLastInsertId(long value, Class<?> type);
 
     /**
-     * Encode a value to a {@link Parameter}.
+     * Encode a value to a {@link MySqlParameter}.
      *
      * @param value   the value which should be decoded.
      * @param context the codec context.
-     * @return encoded {@link Parameter}.
+     * @return encoded {@link MySqlParameter}.
      * @throws IllegalArgumentException if any parameter is {@code null}, or {@code value} cannot be encoded.
      */
-    Parameter encode(Object value, CodecContext context);
+    MySqlParameter encode(Object value, CodecContext context);
 
     /**
-     * Encode a null {@link Parameter}.
+     * Encode a null {@link MySqlParameter}.
      *
-     * @return a {@link Parameter} take a {@code null} value.
+     * @return a {@link MySqlParameter} take a {@code null} value.
      */
-    Parameter encodeNull();
+    MySqlParameter encodeNull();
 
     /**
      * Create a builder from a {@link ByteBufAllocator}.
