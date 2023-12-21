@@ -61,7 +61,7 @@
         <java.version>1.8</java.version>
         <maven.surefire.skip>false</maven.surefire.skip>
 
-        <r2dbc-spi.version>0.9.0.BUILD-SNAPSHOT</r2dbc-spi.version>
+        <r2dbc-spi.version>1.0.0.RELEASE</r2dbc-spi.version>
         <reactor.version>2020.0.12</reactor.version>
         <assertj.version>3.21.0</assertj.version>
         <jmh.version>1.33</jmh.version>

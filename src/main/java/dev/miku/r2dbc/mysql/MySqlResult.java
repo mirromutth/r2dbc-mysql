@@ -78,8 +78,8 @@ public final class MySqlResult implements Result {
     }
 
     @Override
-    public Mono<Integer> getRowsUpdated() {
-        return segments.handle(ROWS_UPDATED).reduce(SUM);
+    public Mono<Long> getRowsUpdated() {
+        return segments.handle(ROWS_UPDATED).reduce(SUM).map(i->(long)i);
     }
 
     @Override

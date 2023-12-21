@@ -188,7 +188,7 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
                 .thenMany(updateBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
                 .collectList()
-                .doOnNext(updated -> assertThat(updated).isEqualTo(Arrays.asList(2, 3)))
+                .doOnNext(updated -> assertThat(updated).isEqualTo(Arrays.asList(2L, 3L)))
                 .thenMany(selectBatch.execute())
                 .concatMap(result -> result.map((row, metadata) -> row.get("value", String.class)))
                 .collectList()
@@ -197,7 +197,7 @@ class ConnectionIntegrationTest extends IntegrationTestSupport {
                 .thenMany(deleteBatch.execute())
                 .concatMap(r -> Mono.from(r.getRowsUpdated()))
                 .collectList()
-                .doOnNext(deleted -> assertThat(deleted).isEqualTo(Arrays.asList(3, 2)))
+                .doOnNext(deleted -> assertThat(deleted).isEqualTo(Arrays.asList(3L, 2L)))
                 .then();
         });
     }
